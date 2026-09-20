@@ -11,7 +11,7 @@ Plain-language explainer in `ARTICLE.md` (must match actual behavior — update 
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (187 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (203 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -68,6 +68,13 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    factor k found by binary search so after-tax income (withdrawals + full SS − tax) = need.
    Taxable SS uses (pretax + taxable withdrawals) as "other income".
 9. No inflation is modeled: treat the return as a real (after-inflation) return; all dollars are today's.
+10. **Simple view** (`compare.js` -> `withoutSocialSecurity`): same comparison with Social Security set to
+    $0, so accounts must supply the whole need. Retirement rate = **marginal** rate (bracket of the last
+    dollar of the stack: other pre-tax draws + this account's gross-up − standard deduction; 0% if still
+    sheltered), applied to the whole 4% withdrawal. The blended rate is returned too, for reference.
+    PROPERTY (tested): when this account is needed (gross-up > 0), marginal later <= marginal now, so this
+    view can only tie or favor Pre-tax. Roth can win only when other accounts' *forced* 4% draws already
+    exceed the need (existing balances set the bracket).
 
 ## Decisions and deviations from the original spec (deliberate)
 - **SS taxability:** the spec's "$6,000 (Single) / $12,000 (MFJ)" was wrong. The IRS worksheet uses half the
@@ -77,7 +84,17 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Section 3 has an extra **"Withdrawal rate needed"** row and a note: a higher tax bill is not a verdict
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
 - UI: retirement number is a standalone hero line; rates beneath; dropdowns ("How is this calculated?",
-  "How is the effective rate calculated?", "Show the calculation") show the arithmetic.
+  "How is the effective rate calculated?", "Simple view: ... without Social Security", "Show the
+  calculation") show the arithmetic. The effective-rate dropdown defines "this account" (the account the
+  contributions build) vs "other income" (SS + other balances) and walks Steps 1–3.
+- Form: expected return lives in a collapsed **Assumptions** section (default 7%; summary shows the current
+  value). Savings hint reads "the amount you're currently contributing ... or considering". Account-type
+  hint removed.
+- The Pre-tax/Roth contribution amounts ("Current possible contribution") are a row in the Section 2
+  table, with a note that they cost the same take-home pay; no longer in Section 1.
+- Section 3 calculation dropdown labels total income "Gross income (withdrawals + Social Security)".
+- Simple-view interpretation: "without Social Security" = benefit set to $0 (plan as if it isn't there),
+  NOT "benefit received but untaxed". If the user meant the latter, change `withoutSocialSecurity`.
 - Employer match in the article says "most plans" (SECURE 2.0 permits Roth match, few offer it).
 - SS wage base lives only in `ficaRates.js`.
 
@@ -88,6 +105,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Not modeled: state tax, 65+ additional standard deduction and the temporary senior deduction (both
   would lower retirement tax), RMDs, employer match, raises, tax-efficient withdrawal order, IRA phase-outs
   and catch-up contributions, self-employment tax, two-earner couples' separate wage bases.
+- Simple view applies the *marginal* rate to the whole withdrawal (stricter than the blended rate); the
+  blended figure is shown beside it.
 - Full "maxing out" side-account comparison and a Roth/Traditional split are future features (the app warns
   at >= 90% of the contribution limit).
 
@@ -107,6 +126,10 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-19 — Round 2 UI changes: reworded rate note; savings/account-type hints; return moved into an
+  Assumptions dropdown; contribution amounts moved into the Section 2 table; "Gross income" label in
+  Section 3; effective-rate dropdown rewritten (this account vs other income, Steps 1–3); new
+  "Simple view" (no Social Security, marginal rate) with hand-verified tests + property test. 203 tests.
 - 2026-09-19 — Initial build (data, lib, tests, UI, article). Added FICA; hero line + calculation
   dropdowns; Social Security shown in Section 3. Published to GitHub + Netlify. Added 2026 data verified
   against IRS pages; article examples moved to 2026 figures. Created this file.

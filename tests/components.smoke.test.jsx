@@ -40,6 +40,20 @@ describe('InputForm', () => {
     expect(html).not.toMatch(/type="submit"|<button/);
   });
 
+  it('drops the two hints, rewords the savings hint, and moves the return into Assumptions', () => {
+    expect(html).not.toContain('Also used as the contribution amount in the comparison');
+    expect(html).not.toContain('Used only to check against the IRS contribution limit');
+    expect(html).toContain("The amount you're currently contributing to retirement accounts each year, or the amount you're considering.".replaceAll("'", '&#x27;'));
+    // the return selector lives inside a collapsed Assumptions section that shows the current rate
+    const assumptions = html.slice(html.indexOf('class="details assumptions"'));
+    expect(assumptions).toContain('Assumptions:');
+    expect(assumptions).toContain('7% expected annual investment return');
+    expect(assumptions).toContain('Expected annual investment return');
+    // ...and is not in the main fieldsets above it
+    const mainForm = html.slice(0, html.indexOf('class="details assumptions"'));
+    expect(mainForm).not.toContain('Expected annual investment return');
+  });
+
   it('hides the SS benefit input when the answer is No, and shows the estimate disclaimer', () => {
     expect(html).not.toContain('Annual gross Social Security benefit');
     expect(html).toContain('Estimated — see');
@@ -60,8 +74,7 @@ describe('ResultsSummary', () => {
       'Retirement income number',
       'Marginal rate while working',
       'Effective rate in retirement',
-      'Current possible Pre-tax contribution (P)',
-      'Current possible Roth contribution (R)',
+      'Current possible contribution',
       'Value of a single contribution at retirement',
       'After-tax value of that contribution',
       'Total value of account',
@@ -121,7 +134,46 @@ describe('ResultsSummary', () => {
     expect(html).toContain('taxable</span>');
     expect(html).toContain('Show the calculation');
     expect(html).toContain('Taxable part of Social Security');
-    expect(html).toContain('Total income before tax');
+    expect(html).toContain('Gross income (withdrawals + Social Security)');
+    expect(html).not.toContain('Total income before tax');
+  });
+
+  it('rewords the rates note and drops the old sentence', () => {
+    const html = render();
+    expect(html).toContain('Why two different rates?');
+    expect(html).not.toContain('different kinds of rate on purpose');
+  });
+
+  it('puts the Pre-tax and Roth contribution amounts in the comparison table, not in Section 1', () => {
+    const html = render();
+    const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
+    expect(sec1).not.toContain('Current possible');
+    const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec3"'));
+    expect(sec2).toContain('Current possible contribution');
+    expect(sec2).toContain('cost you the same take-home pay');
+  });
+
+  it('explains what "this account" and "other income" mean in the effective-rate dropdown', () => {
+    const html = render();
+    expect(html).toContain('the account your contributions are building');
+    expect(html).toContain('Step 1: income from everything except this account');
+    expect(html).toContain('Step 2: what this account has to supply');
+    expect(html).toContain('Still needed from this account, after tax');
+    expect(html).not.toContain('Gap left after other sources');
+    expect(html).not.toContain('before this account');
+  });
+
+  it('has the simple view without Social Security, using the marginal rate', () => {
+    const html = render();
+    expect(html).toContain('Simple view: the same comparison without Social Security');
+    expect(html).toContain('Marginal rate in retirement (bracket of the last dollar)');
+    expect(html).toContain('Tax rate on the withdrawal');
+    expect(html).toContain('the effect of Social Security');
+  });
+
+  it('explains the forced-draw case in the simple view when other accounts already cover the need', () => {
+    const html = render({ grossIncome: '30000', savings: '0', otherPretaxBalance: '1500000' });
+    expect(html).toContain('your other accounts alone already produce more taxable');
   });
 
   it('lists validation errors instead of results for bad input', () => {

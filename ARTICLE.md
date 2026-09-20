@@ -68,6 +68,12 @@ The calculator doesn't use a lookup table for this. It runs the actual IRS combi
 
 This is also why the "effective rate in retirement" can look surprisingly high, even higher than your bracket, when your other retirement income puts you just past a threshold. The **"How is the effective rate calculated?"** dropdown in the calculator shows the arithmetic step by step, including how much Social Security the withdrawal pulls into taxable income. One caveat: the rate is measured on the withdrawal needed to close the gap between your other income and your target, and then applied to the whole account. If your account is much larger than that gap, part of it would be taxed outside the phase-in range, at a lower blended rate, so the calculator can lean a little toward Roth in those cases.
 
+## A simpler view: leaving Social Security out
+
+The calculator also shows a stripped-down comparison, in a dropdown under the main table. It sets Social Security to zero, so your whole retirement income number has to come from your accounts. That removes the phase-in and leaves plain tax brackets. The rate it uses is the **marginal** rate: the bracket that the last dollar of your withdrawal falls in, which is the classic "my rate now versus my rate later" rule of thumb. It's a stricter test than the blended rate, because it applies the top bracket to the whole withdrawal, so the calculator also shows the blended figure beside it.
+
+There's a built-in pattern to watch for. When the account is needed to fill the gap, your retirement income is lower than your income today, so your bracket in retirement can't be higher than your bracket now. In that case this simple view can only tie or favor Traditional. The gap between it and the main result is the effect of Social Security. The one exception is a very large existing Traditional balance: if your other accounts already produce more taxable income than you need, that balance sets your bracket, and Roth can come out ahead.
+
 ## Why maxing out changes the math
 
 Everything above assumes Roth and Traditional cost you the same out of your paycheck. The calculator handles that by converting between them. At a 22% marginal rate, a $10,000 Pre-tax contribution costs the same take-home pay as a $7,800 Roth contribution.

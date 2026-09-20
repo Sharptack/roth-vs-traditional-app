@@ -508,3 +508,34 @@ th.win .th-sub {
     font-size: 2.2rem;
   }
 }
+
+/* ---------- numbered steps, assumptions, simple view ---------- */
+
+.steps {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+
+.steps li {
+  margin-bottom: 6px;
+}
+
+.assumptions {
+  margin-top: 4px;
+}
+
+.assumptions .details-body {
+  background: var(--bg);
+}
+
+.assumptions .field {
+  margin-bottom: 0;
+}
+
+.simple-verdict {
+  margin-top: 14px;
+}
+
+.details-body .table-wrap {
+  margin-top: 12px;
+}

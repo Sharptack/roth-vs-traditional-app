@@ -9,6 +9,8 @@ const RETURN_OPTIONS = [
   { value: '0.09', label: '9%' },
 ];
 
+const returnLabel = (value) => RETURN_OPTIONS.find((o) => o.value === value)?.label ?? value;
+
 function Field({ label, hint, children, id }) {
   return (
     <div className="field">
@@ -145,7 +147,7 @@ export default function InputForm({ values, onChange }) {
         <legend>Your retirement savings</legend>
         <CurrencyInput
           label="Savings for retirement (annual)"
-          hint="Also used as the contribution amount in the comparison."
+          hint="The amount you're currently contributing to retirement accounts each year, or the amount you're considering."
           value={values.savings}
           onChange={set('savings')}
         />
@@ -158,17 +160,9 @@ export default function InputForm({ values, onChange }) {
         />
         <SelectInput
           label="Account type these savings are held in"
-          hint="Used only to check against the IRS contribution limit."
           value={values.accountType}
           onChange={set('accountType')}
           options={toOptions(ACCOUNT_TYPES)}
-        />
-        <SelectInput
-          label="Expected annual investment return"
-          hint="No inflation is modeled, so think of this as a return after inflation."
-          value={values.returnRate}
-          onChange={set('returnRate')}
-          options={RETURN_OPTIONS}
         />
       </fieldset>
 
@@ -221,6 +215,21 @@ export default function InputForm({ values, onChange }) {
           onChange={set('otherTaxableBalance')}
         />
       </fieldset>
+
+      <details className="details assumptions">
+        <summary>
+          Assumptions: {returnLabel(values.returnRate)} expected annual investment return
+        </summary>
+        <div className="details-body">
+          <SelectInput
+            label="Expected annual investment return"
+            hint="Applied to every account until you retire. The default is 7%. No inflation is modeled, so think of this as a return after inflation."
+            value={values.returnRate}
+            onChange={set('returnRate')}
+            options={RETURN_OPTIONS}
+          />
+        </div>
+      </details>
     </form>
   );
 }

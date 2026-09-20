@@ -325,3 +325,121 @@ describe('compareRothVsTraditional — 2026 rules, end-to-end HAND CALC (no SS, 
     expect(r.limitCheck.year).toBe(2026);
   });
 });
+
+describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
+  // Single, 2025, $60,000 gross, saves $5,000 Pre-tax, ages 35 -> 65, 7%, no other accounts.
+  //   taxable = 60,000 - 15,750 = 44,250; tax = 1,192.50 + 12% x 32,325 (3,879) = 5,071.50; marginal 12%
+  //   FICA = 7.65% x 60,000 = 4,590;  take-home = 60,000 - 5,071.50 - 4,590 = 50,338.50
+  //   need = 50,338.50 - 5,000 = 45,338.50;   P = 5,000, R = 5,000 x 0.88 = 4,400
+  // Without Social Security the accounts must supply all 45,338.50 after tax. T in the 12% bracket:
+  //   net = 0.88 T + 15,988.50 = 45,338.50  ->  T = 29,350 / 0.88 = 33,352.27  (in 12%: OK)
+  //   G = 33,352.27 + 15,750 = 49,102.27;  tax = 0.12 T - 238.50 = 3,763.77
+  //   blended (effective) rate = 3,763.77 / 49,102.27 = 0.07666;  MARGINAL rate = 12%
+  // Marginal rate later (12%) = marginal rate now (12%), so the Roth and Pre-tax after-tax
+  // incomes are exactly equal: P x 0.88 = R (same paycheck cost, same tax rate).
+  const inputs = { ...baseInputs, grossIncome: 60000, savings: 5000 };
+  const r = compareRothVsTraditional(inputs);
+  const s = r.withoutSocialSecurity;
+
+  it('Section 1 inputs for this case', () => {
+    expect(r.current.tax).toBeCloseTo(5071.5, 6);
+    expect(r.rates.marginalNow).toBe(0.12);
+    expect(r.retirementNeed.target).toBeCloseTo(45338.5, 6);
+    expect(r.contribution.roth).toBeCloseTo(4400, 6);
+  });
+
+  it('solves the gross-up with no Social Security', () => {
+    expect(s.grossUp.grossWithdrawal).toBeCloseTo(49102.27, 1);
+    expect(s.grossUp.totalTaxPaid).toBeCloseTo(3763.77, 1);
+    expect(s.grossUp.solutionStack.taxableSS).toBe(0);
+    expect(s.effectiveRateRetirement).toBeCloseTo(0.07666, 4);
+  });
+
+  it('reads the MARGINAL rate at the top of the stack', () => {
+    expect(s.marginalRateRetirement).toBe(0.12);
+    expect(s.taxableIncomeAtTop).toBeCloseTo(33352.27, 1);
+  });
+
+  it('compares Roth and Pre-tax at the marginal rate: exactly even when the two marginal rates match', () => {
+    expect(s.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(s.annuity.roth.afterTaxWithdrawal, 4);
+    expect(s.comparison.winner).toBe('even');
+  });
+
+  it('also reports the blended-rate figure for reference (higher, because 7.7% < 12%)', () => {
+    // 4% x FV(P) x (1 - 0.07666) vs x (1 - 0.12)
+    expect(s.annuity.pretax.afterTaxWithdrawalAtEffective).toBeGreaterThan(s.annuity.pretax.afterTaxWithdrawal);
+    expect(s.annuity.pretax.afterTaxWithdrawalAtEffective / s.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(
+      (1 - 0.07666) / (1 - 0.12),
+      4,
+    );
+  });
+
+  it('ignores whatever Social Security benefit is entered', () => {
+    const withSS = compareRothVsTraditional({ ...inputs, socialSecurityBenefit: 24000 });
+    expect(withSS.withoutSocialSecurity.marginalRateRetirement).toBe(s.marginalRateRetirement);
+    expect(withSS.withoutSocialSecurity.grossUp.grossWithdrawal).toBeCloseTo(s.grossUp.grossWithdrawal, 6);
+    // ...while the with-Social-Security result does change
+    expect(withSS.grossUp.grossWithdrawal).toBeLessThan(s.grossUp.grossWithdrawal);
+  });
+
+  it('PROPERTY: when this account is needed to fill the gap, the no-SS retirement bracket never exceeds today\'s, so Roth never wins', () => {
+    // Reason: when withdrawals from this account are needed (gross-up > 0), total pre-tax income Y solves
+    // net(Y) = need. Need <= today's take-home, so Y < today's gross income; brackets are monotone, so
+    // marginal later <= marginal now. (Not true when other accounts' forced 4% draws already exceed the
+    // need: see the next test.)
+    for (const filingStatus of ['single', 'mfj']) {
+      for (const grossIncome of [30000, 60000, 100000, 180000, 400000]) {
+        for (const savings of [0, 5000, 20000]) {
+          for (const otherPretaxBalance of [0, 150000, 1500000]) {
+            const q = compareRothVsTraditional({
+              ...baseInputs,
+              filingStatus,
+              grossIncome,
+              savings,
+              otherPretaxBalance,
+              otherRothBalance: 50000,
+              otherTaxableBalance: 30000,
+            });
+            const label = JSON.stringify({ filingStatus, grossIncome, savings, otherPretaxBalance });
+            if (!(q.withoutSocialSecurity.grossUp.grossWithdrawal > 0)) continue; // other accounts already cover the need
+            expect(q.withoutSocialSecurity.marginalRateRetirement, label).toBeLessThanOrEqual(q.rates.marginalNow);
+            expect(q.withoutSocialSecurity.comparison.winner, label).not.toBe('roth');
+          }
+        }
+      }
+    }
+  });
+
+  it('big existing Pre-tax balances can push the bracket ABOVE today\'s, favoring Roth (HAND CALC)', () => {
+    // Single, 2025, $30,000 gross: taxable 14,250 -> marginal 12% now. No savings.
+    // $1,500,000 of other Pre-tax money x 1.07^30 (7.612255) = 11,418,383; 4% = 456,735 of taxable
+    // Pre-tax income every year, far more than the ~$25k need, so this account is not needed (G = 0)
+    // and the bracket is set by those existing balances: 456,735 - 15,750 = 440,985 -> 35% bracket.
+    const q = compareRothVsTraditional({ ...baseInputs, grossIncome: 30000, savings: 0, otherPretaxBalance: 1500000 });
+    expect(q.rates.marginalNow).toBe(0.12);
+    expect(q.withoutSocialSecurity.grossUp.grossWithdrawal).toBe(0);
+    expect(q.withoutSocialSecurity.marginalRateRetirement).toBe(0.35);
+  });
+
+  it('income below the standard deduction has a 0% marginal rate later, so Pre-tax beats Roth on paper', () => {
+    // Need 11,929 (see the 14,000 case above): T = 0, so the last dollar is still sheltered.
+    const q = compareRothVsTraditional({ ...baseInputs, grossIncome: 14000, savings: 1000 });
+    expect(q.withoutSocialSecurity.marginalRateRetirement).toBe(0);
+    expect(q.withoutSocialSecurity.comparison.winner).toBe('even'); // 0% now, 0% later
+  });
+
+  it('is a plain object of numbers (no NaN) for awkward inputs', () => {
+    for (const o of [
+      { grossIncome: 10000 },
+      { savings: 0 },
+      { debtPayments: 90000 },
+      { otherPretaxBalance: 5000000 },
+      { filingStatus: 'mfj', grossIncome: 300000, savings: 23500 },
+    ]) {
+      const q = compareRothVsTraditional({ ...baseInputs, ...o }).withoutSocialSecurity;
+      for (const v of [q.marginalRateRetirement, q.effectiveRateRetirement, q.annuity.pretax.afterTaxWithdrawal, q.annuity.roth.afterTaxWithdrawal]) {
+        expect(Number.isFinite(v), JSON.stringify(o)).toBe(true);
+      }
+    }
+  });
+});

@@ -16,7 +16,7 @@
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
-import { calculateTaxFromGross } from './taxCalculations.js';
+import { calculateTaxFromGross, getMarginalRate } from './taxCalculations.js';
 import { calculateFica } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solveGrossWithdrawal } from './incomeNeed.js';
@@ -203,6 +203,49 @@ export function compareRothVsTraditional(inputs) {
     };
   }
 
+  // 12. "Simple view": the same comparison with Social Security left out entirely
+  // (benefit = $0), so the retirement income number has to come from the accounts.
+  // This strips out the Social Security phase-in and leaves plain brackets. The
+  // retirement rate here is the MARGINAL rate: the bracket the last dollar of the
+  // withdrawal lands in (the classic "rate now vs. rate later" rule of thumb).
+  // It is the higher of the two rates ever shown, since the marginal rate is the
+  // top-bracket rate applied to the whole withdrawal; the blended (effective) rate
+  // is returned alongside for reference.
+  const noSsGrossUp = solveGrossWithdrawal({
+    targetAfterTaxIncome,
+    ssBenefit: 0,
+    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
+    otherRothWithdrawal: otherWithdrawals.roth,
+    otherTaxableWithdrawal: otherWithdrawals.taxableGross,
+    filingStatus,
+    year,
+    ltcgRate: LTCG_RATE,
+  });
+  // Signed taxable income at the top of the stack: with no Social Security it is
+  // just pre-tax withdrawals minus the standard deduction (negative = still sheltered).
+  const noSsTopOfStack =
+    otherWithdrawals.pretaxGross + noSsGrossUp.grossWithdrawal - current.standardDeduction;
+  const noSsMarginalRate = getMarginalRate(noSsTopOfStack, filingStatus, year);
+  const noSsPretaxAtMarginal = annuity.pretax.annualWithdrawal * (1 - noSsMarginalRate);
+  const withoutSocialSecurity = {
+    grossUp: noSsGrossUp,
+    marginalRateRetirement: noSsMarginalRate,
+    effectiveRateRetirement: noSsGrossUp.retirementEffectiveTaxRate,
+    taxableIncomeAtTop: Math.max(0, noSsTopOfStack),
+    annuity: {
+      roth: { afterTaxWithdrawal: annuity.roth.afterTaxWithdrawal },
+      pretax: {
+        afterTaxWithdrawal: noSsPretaxAtMarginal, // at the marginal rate (the headline)
+        afterTaxWithdrawalAtEffective:
+          annuity.pretax.annualWithdrawal * (1 - noSsGrossUp.retirementEffectiveTaxRate),
+      },
+    },
+    comparison: {
+      winner: winnerOf(annuity.roth.afterTaxWithdrawal, noSsPretaxAtMarginal),
+      afterTaxIncomeDifference: Math.abs(annuity.roth.afterTaxWithdrawal - noSsPretaxAtMarginal),
+    },
+  };
+
   const rothTax = portfolio.roth.totalTaxPaid;
   const pretaxTax = portfolio.pretax.totalTaxPaid;
   const taxDifference = {
@@ -251,5 +294,6 @@ export function compareRothVsTraditional(inputs) {
     },
     portfolio,
     taxDifference,
+    withoutSocialSecurity,
   };
 }
