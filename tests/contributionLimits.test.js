@@ -34,11 +34,32 @@ describe('checkContributionLimit (2025: 401(k) $23,500, IRA $7,000)', () => {
     expect(checkContributionLimit(30000, '401k', 2025).message).toContain('above the 2025 401(k)');
   });
   it('uses the newest data on file for a later year, and says which year that was', () => {
+    // 2030 is beyond the data, so the 2026 limits apply and the message says 2026
     const r = checkContributionLimit(23000, '401k', 2030);
-    expect(r.year).toBe(2025);
-    expect(r.message).toContain('2025');
+    expect(r.year).toBe(2026);
+    expect(r.limit).toBe(24500);
+    expect(r.message).toContain('2026');
   });
   it('rejects an unknown account type', () => {
     expect(() => checkContributionLimit(1000, '403b', 2025)).toThrow(/account type/i);
+  });
+});
+
+describe('checkContributionLimit (2026: 401(k) $24,500, IRA $7,500)', () => {
+  it('401(k): flags at exactly 90% = $22,050, not below', () => {
+    expect(checkContributionLimit(22050, '401k', 2026)).toMatchObject({ atLimit: true, limit: 24500, year: 2026 });
+    expect(checkContributionLimit(22049, '401k', 2026).atLimit).toBe(false);
+  });
+  it('IRA: 90% of $7,500 = $6,750', () => {
+    expect(checkContributionLimit(6750, 'ira', 2026)).toMatchObject({ atLimit: true, limit: 7500 });
+    expect(checkContributionLimit(6749, 'ira', 2026).atLimit).toBe(false);
+  });
+  it('the message shows the 2026 figures', () => {
+    expect(checkContributionLimit(24000, '401k', 2026).message).toContain(
+      "You're at/near the 2026 401(k) contribution limit of $24,500.",
+    );
+  });
+  it('2025 limits are still available for 2025', () => {
+    expect(checkContributionLimit(1000, '401k', 2025).limit).toBe(23500);
   });
 });

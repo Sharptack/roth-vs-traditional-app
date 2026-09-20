@@ -29,7 +29,7 @@ So the calculator uses two kinds of rate on purpose:
 
 These fit together. The effective rate in retirement is the extra tax caused by this account's withdrawal, divided by the size of the withdrawal. It is still an incremental measure, since it counts only the tax that wouldn't exist without this withdrawal. It just averages over the whole block instead of looking at its last dollar.
 
-**A simple example.** Take a single filer earning $100,000 (2025 rules). After the $15,750 standard deduction, their top bracket is 22%, so a Pre-tax dollar saves 22 cents. Take-home pay is about $78,900 after $13,400 of income tax and $7,650 of FICA, and they save $10,000 of that, so they need about $68,900 a year after tax in retirement. Suppose that all comes from one Traditional account and nothing else. That takes a withdrawal of roughly $77,400. After the standard deduction, that income is spread across the 10%, 12% and 22% brackets, so the tax works out to about $8,500, or **10.9%** of the withdrawal. It's a lot less than 22%. Here Traditional wins, because deducting at 22% and paying back at 12.2% is a good trade.
+**A simple example.** Take a single filer earning $100,000 (2026 rules). After the $16,100 standard deduction, their top bracket is 22%, so a Pre-tax dollar saves 22 cents. Take-home pay is about $79,200 after $13,200 of income tax and $7,650 of FICA, and they save $10,000 of that, so they need about $69,200 a year after tax in retirement. Suppose that all comes from one Traditional account and nothing else. That takes a withdrawal of roughly $77,400. After the standard deduction, that income is spread across the 10%, 12% and 22% brackets, so the tax works out to about $8,200, or **10.6%** of the withdrawal. It's a lot less than 22%. Here Traditional wins, because deducting at 22% and paying back at 10.6% is a good trade.
 
 ## How the calculator estimates your retirement tax rate
 
@@ -72,12 +72,12 @@ This is also why the "effective rate in retirement" can look surprisingly high, 
 
 Everything above assumes Roth and Traditional cost you the same out of your paycheck. The calculator handles that by converting between them. At a 22% marginal rate, a $10,000 Pre-tax contribution costs the same take-home pay as a $7,800 Roth contribution.
 
-But the IRS limit is a limit on *dollars in the account*, not on take-home cost. In 2025 the 401(k) limit is $23,500 for both types. At that limit:
+But the IRS limit is a limit on *dollars in the account*, not on take-home cost. In 2026 the 401(k) limit is $24,500 for both types. At that limit:
 
-- A Roth contribution puts $23,500 of after-tax money to work.
-- A Traditional contribution puts $23,500 of pre-tax money to work, and at 22% that is only worth about $18,330 after tax.
+- A Roth contribution puts $24,500 of after-tax money to work.
+- A Traditional contribution puts $24,500 of pre-tax money to work, and at 22% that is only worth about $19,110 after tax.
 
-Roth shelters more real value at the limit. The Traditional saver does keep about $5,170 in take-home pay that the Roth saver didn't, and they could invest it in a regular taxable account, but the growth there is taxed along the way and the tax-free treatment is lost.
+Roth shelters more real value at the limit. The Traditional saver does keep about $5,390 in take-home pay that the Roth saver didn't, and they could invest it in a regular taxable account, but the growth there is taxed along the way and the tax-free treatment is lost.
 
 The calculator **warns you when your savings are at or near the limit** (90% or more) but does not yet model the fuller comparison, which would pit "Traditional plus a taxable side account" against a Roth at the same limit. That's a planned future feature. Until then, treat the Roth-vs-Traditional result as leaning too Traditional-friendly at the limit.
 

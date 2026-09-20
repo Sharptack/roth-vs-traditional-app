@@ -294,3 +294,34 @@ describe('validateInputs', () => {
     ).toEqual([]);
   });
 });
+
+describe('compareRothVsTraditional — 2026 rules, end-to-end HAND CALC (no SS, no other accounts)', () => {
+  // Same person as the 2025 scenario (Single, $100,000, 35 -> 65, 7%, $10,000 Pre-tax),
+  // under 2026 rules.
+  //   taxable = 100,000 - 16,100 = 83,900; tax = 1,240 + 4,560 + 22% x 33,500 (7,370) = 13,170
+  //   FICA 7,650;  take-home = 100,000 - 13,170 - 7,650 = 79,180;  need = 69,180
+  //   Gross-up, taxable T in the 22% bracket: tax = 5,800 + 0.22 (T - 50,400) = 0.22 T - 5,288
+  //     net = (T + 16,100) - 0.22 T + 5,288 = 0.78 T + 21,388 = 69,180
+  //     T = 47,792 / 0.78 = 61,271.79;  G = 77,371.79;  tax = G - 69,180 = 8,191.79
+  //     effective rate = 8,191.79 / 77,371.79 = 0.10588
+  const r = compareRothVsTraditional({ ...baseInputs, year: 2026 });
+
+  it('uses the 2026 data', () => {
+    expect(r.dataYear).toBe(2026);
+    expect(r.current.standardDeduction).toBe(16100);
+    expect(r.current.tax).toBeCloseTo(13170, 6);
+    expect(r.rates.marginalNow).toBe(0.22);
+    expect(r.retirementNeed.target).toBeCloseTo(69180, 6);
+  });
+
+  it('gross-up and effective rate', () => {
+    expect(r.grossUp.grossWithdrawal).toBeCloseTo(77371.79, 1);
+    expect(r.grossUp.totalTaxPaid).toBeCloseTo(8191.79, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.10588, 4);
+  });
+
+  it('contribution limit check uses the 2026 limit', () => {
+    expect(r.limitCheck.limit).toBe(24500);
+    expect(r.limitCheck.year).toBe(2026);
+  });
+});

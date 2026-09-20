@@ -138,6 +138,73 @@ describe('calculateTaxFromGross', () => {
     expect(r.marginalRate).toBe(0);
   });
   it('reports which year of data was used when the year is not in the table', () => {
-    expect(calculateTaxFromGross(100000, 'single', 2031).dataYear).toBe(2025);
+    // 2031 is beyond the data -> newest year on file (2026)
+    expect(calculateTaxFromGross(100000, 'single', 2031).dataYear).toBe(2026);
+    // 2024 is before the data -> earliest year on file (2025)
+    expect(calculateTaxFromGross(100000, 'single', 2024).dataYear).toBe(2025);
+  });
+});
+
+// 2026 figures from the IRS inflation-adjustment release: standard deduction
+// $16,100 / $32,200; single brackets top out at 12,400 / 50,400 / 105,700 /
+// 201,775 / 256,225 / 640,600; MFJ at 24,800 / 100,800 / 211,400 / 403,550 /
+// 512,450 / 768,700.
+describe('2026 tax data (HAND CALC)', () => {
+  const Y26 = 2026;
+
+  it('standard deduction is $16,100 single and $32,200 MFJ', () => {
+    expect(getStandardDeduction('single', Y26)).toBe(16100);
+    expect(getStandardDeduction('mfj', Y26)).toBe(32200);
+  });
+
+  it('single, $60,000', () => {
+    // 10% x 12,400                    = 1,240.00
+    // 12% x (50,400 - 12,400=38,000)  = 4,560.00
+    // 22% x (60,000 - 50,400=9,600)   = 2,112.00
+    //                          total = 7,912.00
+    expect(calculateTax(60000, 'single', Y26)).toBeCloseTo(7912, 6);
+  });
+
+  it('MFJ, $120,000', () => {
+    // 10% x 24,800                     = 2,480
+    // 12% x (100,800 - 24,800=76,000)  = 9,120
+    // 22% x (120,000 - 100,800=19,200) = 4,224
+    //                           total = 15,824
+    expect(calculateTax(120000, 'mfj', Y26)).toBeCloseTo(15824, 6);
+  });
+
+  it('single, $700,000 spans all seven brackets', () => {
+    // 10% x 12,400                       =   1,240.00
+    // 12% x 38,000                       =   4,560.00
+    // 22% x (105,700-50,400=55,300)      =  12,166.00
+    // 24% x (201,775-105,700=96,075)     =  23,058.00
+    // 32% x (256,225-201,775=54,450)     =  17,424.00
+    // 35% x (640,600-256,225=384,375)    = 134,531.25
+    // 37% x (700,000-640,600=59,400)     =  21,978.00
+    //                             total = 214,957.25
+    expect(calculateTax(700000, 'single', Y26)).toBeCloseTo(214957.25, 6);
+  });
+
+  it('marginal rate changes at the 2026 boundaries', () => {
+    expect(getMarginalRate(12399, 'single', Y26)).toBe(0.1);
+    expect(getMarginalRate(12400, 'single', Y26)).toBe(0.12);
+    expect(getMarginalRate(50399, 'single', Y26)).toBe(0.12);
+    expect(getMarginalRate(50400, 'single', Y26)).toBe(0.22);
+    expect(getMarginalRate(100799, 'mfj', Y26)).toBe(0.12);
+    expect(getMarginalRate(100800, 'mfj', Y26)).toBe(0.22);
+  });
+
+  it('single, $100,000 gross', () => {
+    // taxable = 100,000 - 16,100 = 83,900
+    // 1,240 + 4,560 + 22% x (83,900 - 50,400 = 33,500 -> 7,370) = 13,170
+    const r = calculateTaxFromGross(100000, 'single', Y26);
+    expect(r.dataYear).toBe(2026);
+    expect(r.taxableIncome).toBe(83900);
+    expect(r.tax).toBeCloseTo(13170, 6);
+    expect(r.marginalRate).toBe(0.22);
+  });
+
+  it('keeps 2025 results unchanged when 2025 is requested', () => {
+    expect(calculateTax(60000, 'single', 2025)).toBeCloseTo(8114, 6);
   });
 });

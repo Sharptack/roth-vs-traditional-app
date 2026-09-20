@@ -44,3 +44,14 @@ describe('calculateFica (2025, HAND CALC)', () => {
     expect(() => calculateFica(1, 'hoh', Y)).toThrow(/filing status/i);
   });
 });
+
+describe('calculateFica (2026, HAND CALC)', () => {
+  it('$200,000 single: Social Security stops at the $184,500 wage base', () => {
+    // 6.2% x 184,500 = 11,439;  Medicare 1.45% x 200,000 = 2,900;  additional 0
+    //  total = 14,339
+    expect(calculateFica(200000, 'single', 2026).total).toBeCloseTo(14339, 6);
+  });
+  it('$100,000 is 7.65% in 2026 too', () => {
+    expect(calculateFica(100000, 'single', 2026).total).toBeCloseTo(7650, 6);
+  });
+});

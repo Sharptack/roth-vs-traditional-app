@@ -15,10 +15,18 @@
 // NOTE: SSA fixes bend points at the year a worker turns 62, not the current
 // year. The estimator applies the requested year's bend points to everyone —
 // part of why it is a simplified estimate.
+//
+// Source: SSA "Benefit Formula Bend Points" (ssa.gov/oact/cola/bendpoints.html).
+// SSA's site blocked direct retrieval, so these were corroborated from
+// secondary excerpts of SSA's tables; 2026 rounds SSA's $7,749.15 down to $7,749.
 export const SS_BEND_POINTS = {
   2025: {
     bendPoint1: 1226,
     bendPoint2: 7391,
+  },
+  2026: {
+    bendPoint1: 1286,
+    bendPoint2: 7749,
   },
 };
 

@@ -11,8 +11,16 @@
 //
 // Filing status keys: 'single' | 'mfj' (married filing jointly).
 //
-// 2025 sources: IRS Rev. Proc. 2024-40 (brackets); standard deduction as amended
-// by P.L. 119-21 (July 2025): $15,750 single / $31,500 MFJ.
+// Sources (checked against irs.gov):
+//   2025 brackets: irs.gov/filing/federal-income-tax-rates-and-brackets.
+//        Standard deduction $15,750 single / $31,500 MFJ, as raised by P.L. 119-21
+//        (July 2025) — IRS Pub. 501 (2025).
+//   2026 brackets and standard deduction ($16,100 / $32,200): IRS "tax inflation
+//        adjustments for tax year 2026, including amendments from the One Big
+//        Beautiful Bill" (irs.gov/newsroom).
+//
+// Not modeled: the additional standard deduction for age 65+, and the temporary
+// senior deduction created by P.L. 119-21. Both would lower retirement tax.
 export const TAX_BRACKETS = {
   2025: {
     standardDeduction: {
@@ -36,6 +44,32 @@ export const TAX_BRACKETS = {
         { rate: 0.24, upTo: 394600 },
         { rate: 0.32, upTo: 501050 },
         { rate: 0.35, upTo: 751600 },
+        { rate: 0.37, upTo: Infinity },
+      ],
+    },
+  },
+  2026: {
+    standardDeduction: {
+      single: 16100,
+      mfj: 32200,
+    },
+    brackets: {
+      single: [
+        { rate: 0.10, upTo: 12400 },
+        { rate: 0.12, upTo: 50400 },
+        { rate: 0.22, upTo: 105700 },
+        { rate: 0.24, upTo: 201775 },
+        { rate: 0.32, upTo: 256225 },
+        { rate: 0.35, upTo: 640600 },
+        { rate: 0.37, upTo: Infinity },
+      ],
+      mfj: [
+        { rate: 0.10, upTo: 24800 },
+        { rate: 0.12, upTo: 100800 },
+        { rate: 0.22, upTo: 211400 },
+        { rate: 0.24, upTo: 403550 },
+        { rate: 0.32, upTo: 512450 },
+        { rate: 0.35, upTo: 768700 },
         { rate: 0.37, upTo: Infinity },
       ],
     },

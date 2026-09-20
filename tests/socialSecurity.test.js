@@ -125,3 +125,24 @@ describe('estimateSocialSecurityBenefit (HAND CALC)', () => {
     expect(high.annualBenefit / 120000).toBeLessThan(low.annualBenefit / 30000);
   });
 });
+
+describe('estimateSocialSecurityBenefit (2026 bend points 1,286 / 7,749; HAND CALC)', () => {
+  // Age 35 in 2026 -> born 1991 -> FRA 67.
+  it('$60,000 income, claiming at 67', () => {
+    // AIME 5,000: 90% x 1,286 = 1,157.40 + 32% x (5,000 - 1,286 = 3,714) = 1,188.48 -> PIA 2,345.88
+    // x 12 = 28,150.56
+    const r = estimateSocialSecurityBenefit({ annualIncome: 60000, currentAge: 35, retirementAge: 67, year: 2026 });
+    expect(r.dataYear).toBe(2026);
+    expect(r.pia).toBeCloseTo(2345.88, 6);
+    expect(r.annualBenefit).toBeCloseTo(28150.56, 4);
+  });
+  it('caps income at the 2026 wage base ($184,500)', () => {
+    // AIME = 184,500 / 12 = 15,375
+    // 1,157.40 + 32% x (7,749 - 1,286 = 6,463) = 2,068.16 + 15% x (15,375 - 7,749 = 7,626) = 1,143.90
+    //  -> PIA 4,369.46;  x 12 = 52,433.52
+    const r = estimateSocialSecurityBenefit({ annualIncome: 400000, currentAge: 35, retirementAge: 67, year: 2026 });
+    expect(r.aime).toBeCloseTo(15375, 6);
+    expect(r.pia).toBeCloseTo(4369.46, 6);
+    expect(r.annualBenefit).toBeCloseTo(52433.52, 4);
+  });
+});
