@@ -6,12 +6,13 @@ the change log at the bottom. Read this first in a new session.
 ## What this is
 Client-side React (Vite) calculator: does a Roth or Pre-tax (Traditional) contribution leave more
 after-tax wealth? Bracket-aware, budget-driven ("top-down") model. No backend. Owner: Michael Sharpnack.
-Plain-language explainer in `ARTICLE.md` (must match actual behavior — update it when behavior changes).
+Plain-language explainer in `ARTICLE.md`: must match actual behavior (update it when behavior changes), and it
+is **also the public "How this works" page** — see "Article page" below.
 
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (242 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (250 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -45,8 +46,20 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
   `contributionLimits`, `compare` (orchestrator; single source of every UI number), `constants`
   (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`.
-- `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`. `src/App.jsx` holds state and the
+- `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`, `ArticlePage.jsx` (renders ARTICLE.md). `src/lib/route.js`: hash routing helper. `src/App.jsx` holds state and the
   "Future enhancements" comment block. `tests/` mirrors `src/lib` plus `components.smoke.test.jsx`.
+
+## Article page ("How this works")
+- `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
+  the `marked` library, so editing the file updates the site. No second copy exists.
+- Route: hash-based (`#/how-it-works`; anything else = calculator) — works on any static host with no rewrite
+  rules. `App.jsx` keeps the calculator mounted but `hidden` while the article is open, so inputs, open
+  dropdowns and scroll position survive the round trip (verified in headless Chrome).
+- Links from the app: header ("How this works →") and footer; the article has "← Back to the calculator" at
+  the top and bottom. The page title switches while the article is open.
+- Because it is public, the article must not mention UI section numbers ("Section 3") or renamed labels; smoke
+  tests fail on "Section N", "Simple view" and the old dropdown title. Keep the two effective rates named as in
+  the app.
 
 ## The model (as built)
 1. Current tax: income tax on (gross − half of any self-employment tax − standard deduction) + payroll tax:
@@ -149,6 +162,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-20 — Article is now an in-app page: `#/how-it-works` renders ARTICLE.md (marked + ?raw), linked
+  from the header and footer with a back link; wording fixed (no "Section 3", current dropdown names). Round 3
+  moved the rates to the top of Roth vs. Traditional. 250 tests.
 - 2026-09-20 — Round 3: retirement number is its own section; rates at the top of the Roth vs. Traditional
   section (first placed in the portfolio section by mistake, then corrected) and renamed (effective rate on these withdrawals; new overall effective rate = total tax ÷ gross
   income); "Simple view" renamed "Retirement years without Social Security" and now headlines the blended

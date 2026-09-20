@@ -29,7 +29,7 @@ So the calculator uses two kinds of rate on purpose:
 - Today, we ask what one more dollar of deduction saves. That's a marginal question, answered with the marginal rate.
 - In retirement, the withdrawal from this account is a block of income stacked on top of your other retirement income. We ask what that whole block costs in tax. That's an average across the block, answered with an effective rate.
 
-These fit together. The effective rate in retirement is the extra tax caused by this account's withdrawal, divided by the size of the withdrawal. It is still an incremental measure, since it counts only the tax that wouldn't exist without this withdrawal. It just averages over the whole block instead of looking at its last dollar.
+These fit together. The effective rate on these withdrawals is the extra tax caused by this account's withdrawal, divided by the size of the withdrawal. It is still an incremental measure, since it counts only the tax that wouldn't exist without this withdrawal. It just averages over the whole block instead of looking at its last dollar.
 
 **A simple example.** Take a single filer earning $100,000 (2026 rules). After the $16,100 standard deduction, their top bracket is 22%, so a Pre-tax dollar saves 22 cents. Take-home pay is about $79,200 after $13,200 of income tax and $7,650 of FICA, and they save $10,000 of that, so they need about $69,200 a year after tax in retirement. Suppose that all comes from one Traditional account and nothing else. That takes a withdrawal of roughly $77,400. After the standard deduction, that income is spread across the 10%, 12% and 22% brackets, so the tax works out to about $8,200, or **10.6%** of the withdrawal. It's a lot less than 22%. Here Traditional wins, because deducting at 22% and paying back at 10.6% is a good trade.
 
@@ -68,7 +68,7 @@ The catch is what happens inside those ranges. Every extra dollar you withdraw f
 
 The calculator doesn't use a lookup table for this. It runs the actual IRS combined-income formula every time, so the bump appears wherever it belongs in your situation, and it disappears once the 85% cap is reached.
 
-This is also why the "effective rate in retirement" can look surprisingly high, even higher than your bracket, when your other retirement income puts you just past a threshold. The **"How is the effective rate calculated?"** dropdown in the calculator shows the arithmetic step by step, including how much Social Security the withdrawal pulls into taxable income. One caveat: the rate is measured on the withdrawal needed to close the gap between your other income and your target, and then applied to the whole account. If your account is much larger than that gap, part of it would be taxed outside the phase-in range, at a lower blended rate, so the calculator can lean a little toward Roth in those cases.
+This is also why the "effective rate on these withdrawals" can look surprisingly high, even higher than your bracket, when your other retirement income puts you just past a threshold. The **"How are the retirement rates calculated?"** dropdown in the calculator shows the arithmetic step by step, including how much Social Security the withdrawal pulls into taxable income. One caveat: the rate is measured on the withdrawal needed to close the gap between your other income and your target, and then applied to the whole account. If your account is much larger than that gap, part of it would be taxed outside the phase-in range, at a lower blended rate, so the calculator can lean a little toward Roth in those cases.
 
 ## Years without Social Security
 
@@ -95,11 +95,11 @@ Roth shelters more real value at the limit. The Traditional saver does keep abou
 
 The calculator **warns you when your savings are at or near the limit** (90% or more) but does not yet model the fuller comparison, which would pit "Traditional plus a taxable side account" against a Roth at the same limit. That's a planned future feature. Until then, treat the Roth-vs-Traditional result as leaning too Traditional-friendly at the limit.
 
-## Why your existing balances matter (Section 3)
+## Why your existing balances matter
 
 Deciding where to put *new* contributions is only half the story. You may already have a large Pre-tax balance from earlier years or from an employer, and that balance is already shaping your retirement tax bracket, whatever you decide today.
 
-That's why Section 3 compares your whole portfolio. It builds two versions of your future:
+That's why the calculator's total portfolio tax comparison looks at your whole portfolio. It builds two versions of your future:
 
 - **All-Roth**: this account's future contributions go to Roth.
 - **All-Pre-tax**: they go to Traditional.

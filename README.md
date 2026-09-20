@@ -5,7 +5,8 @@ leaves you with more after-tax wealth, using a bracket-aware, budget-driven tax 
 backend: `npm run build` produces static files that any static host can serve.
 
 Estimates only — not tax or financial advice. See [ARTICLE.md](ARTICLE.md) for how the calculator
-works, in plain language.
+works, in plain language. The app serves that same file as its own "How this works" page
+(`#/how-it-works`), so edit ARTICLE.md to change it.
 
 ## Commands
 

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import App from '../src/App.jsx';
+import ArticlePage from '../src/components/ArticlePage.jsx';
+import articleMarkdown from '../ARTICLE.md?raw';
 import InputForm from '../src/components/InputForm.jsx';
 import ResultsSummary from '../src/components/ResultsSummary.jsx';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
@@ -323,5 +325,52 @@ describe('App', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain('Roth vs. Pre-Tax Calculator');
     expect(html).toContain('Total portfolio tax comparison');
+  });
+
+  it('links to the "How this works" page from the header and the footer', () => {
+    const html = renderToStaticMarkup(<App />);
+    const links = html.match(/href="#\/how-it-works"/g) ?? [];
+    expect(links.length).toBe(2);
+    expect(html).toContain('How this works');
+    expect(html).toContain('class="page-footer"');
+  });
+
+  it('shows the calculator (not the article) by default', () => {
+    const html = renderToStaticMarkup(<App />);
+    expect(html).not.toContain('Back to the calculator');
+    expect(html).not.toMatch(/<div hidden/); // the calculator wrapper is visible
+  });
+});
+
+describe('ArticlePage', () => {
+  const html = renderToStaticMarkup(<ArticlePage />);
+
+  it('renders the article as real headings and paragraphs, not raw markdown', () => {
+    expect(html).toContain('<h1>Roth or Traditional? How to Think About It, and How This Calculator Does</h1>');
+    expect(html).toContain('<h2>Years without Social Security</h2>');
+    expect(html).toContain('<blockquote>');
+    expect(html).toContain('<strong>');
+    expect(html).not.toMatch(/(^|>)#{1,3} /); // no leaked "## " heading markers
+    expect(html).not.toContain('**');
+  });
+
+  it('renders every section of ARTICLE.md (the file is the single source)', () => {
+    const h2InMarkdown = articleMarkdown.split('\n').filter((l) => l.startsWith('## ')).length;
+    const h2InHtml = (html.match(/<h2>/g) ?? []).length;
+    expect(h2InMarkdown).toBeGreaterThan(5);
+    expect(h2InHtml).toBe(h2InMarkdown);
+    expect(html).toContain('educational purposes only');
+  });
+
+  it('has a back link to the calculator at the top and bottom', () => {
+    const back = html.match(/href="#\/"/g) ?? [];
+    expect(back.length).toBe(2);
+    expect(html).toContain('Back to the calculator');
+  });
+
+  it('does not refer to UI sections that no longer exist', () => {
+    expect(html).not.toMatch(/Section \d/);
+    expect(html).not.toContain('Simple view');
+    expect(html).not.toContain('How is the effective rate calculated?');
   });
 });
