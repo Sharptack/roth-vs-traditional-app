@@ -335,8 +335,11 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
   //   net = 0.88 T + 15,988.50 = 45,338.50  ->  T = 29,350 / 0.88 = 33,352.27  (in 12%: OK)
   //   G = 33,352.27 + 15,750 = 49,102.27;  tax = 0.12 T - 238.50 = 3,763.77
   //   blended (effective) rate = 3,763.77 / 49,102.27 = 0.07666;  MARGINAL rate = 12%
-  // Marginal rate later (12%) = marginal rate now (12%), so the Roth and Pre-tax after-tax
-  // incomes are exactly equal: P x 0.88 = R (same paycheck cost, same tax rate).
+  // Annual 4% withdrawals (FV factor 94.46079): Roth 4,400 -> 415,627.5 -> 16,625.10.
+  //   Pre-tax 5,000 -> 472,303.9 -> 18,892.16;  x (1 - 0.07665) = 17,444.0 at the BLENDED rate
+  //   (the headline: same method as the main comparison, minus the Social Security phase-in),
+  //   or x (1 - 0.12) = 16,625.10 at the marginal rate (reference only). Marginal later (12%) =
+  //   marginal now (12%), so at the marginal rate the two are exactly equal: P x 0.88 = R.
   const inputs = { ...baseInputs, grossIncome: 60000, savings: 5000 };
   const r = compareRothVsTraditional(inputs);
   const s = r.withoutSocialSecurity;
@@ -360,17 +363,18 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
     expect(s.taxableIncomeAtTop).toBeCloseTo(33352.27, 1);
   });
 
-  it('compares Roth and Pre-tax at the marginal rate: exactly even when the two marginal rates match', () => {
-    expect(s.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(s.annuity.roth.afterTaxWithdrawal, 4);
-    expect(s.comparison.winner).toBe('even');
+  it('headline compares Roth and Pre-tax at the BLENDED rate: Pre-tax wins (7.7% < 12% now)', () => {
+    expect(s.annuity.roth.afterTaxWithdrawal).toBeCloseTo(16625.1, 0);
+    expect(s.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(17444.0, 0);
+    expect(s.comparison.winner).toBe('pretax');
+    expect(s.comparison.afterTaxIncomeDifference).toBeCloseTo(17444.0 - 16625.1, 0);
   });
 
-  it('also reports the blended-rate figure for reference (higher, because 7.7% < 12%)', () => {
-    // 4% x FV(P) x (1 - 0.07666) vs x (1 - 0.12)
-    expect(s.annuity.pretax.afterTaxWithdrawalAtEffective).toBeGreaterThan(s.annuity.pretax.afterTaxWithdrawal);
-    expect(s.annuity.pretax.afterTaxWithdrawalAtEffective / s.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(
-      (1 - 0.07666) / (1 - 0.12),
-      4,
+  it('the at-marginal-rate figure is reference only, and equals Roth exactly when the marginal rates match', () => {
+    expect(s.annuity.pretax.afterTaxWithdrawalAtMarginal).toBeCloseTo(s.annuity.roth.afterTaxWithdrawal, 4);
+    expect(s.annuity.pretax.afterTaxWithdrawal / s.annuity.pretax.afterTaxWithdrawalAtMarginal).toBeCloseTo(
+      (1 - s.effectiveRateRetirement) / (1 - 0.12),
+      8,
     );
   });
 
@@ -403,6 +407,9 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
             const label = JSON.stringify({ filingStatus, grossIncome, savings, otherPretaxBalance });
             if (!(q.withoutSocialSecurity.grossUp.grossWithdrawal > 0)) continue; // other accounts already cover the need
             expect(q.withoutSocialSecurity.marginalRateRetirement, label).toBeLessThanOrEqual(q.rates.marginalNow);
+            expect(q.withoutSocialSecurity.effectiveRateRetirement, label).toBeLessThanOrEqual(
+              q.withoutSocialSecurity.marginalRateRetirement + 1e-9,
+            );
             expect(q.withoutSocialSecurity.comparison.winner, label).not.toBe('roth');
           }
         }
@@ -411,14 +418,15 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
   });
 
   it('big existing Pre-tax balances can push the bracket ABOVE today\'s, favoring Roth (HAND CALC)', () => {
-    // Single, 2025, $30,000 gross: taxable 14,250 -> marginal 12% now. No savings.
+    // Single, 2025, $30,000 gross: taxable 14,250 -> marginal 12% now. $2,000 saved (so both accounts hold something).
     // $1,500,000 of other Pre-tax money x 1.07^30 (7.612255) = 11,418,383; 4% = 456,735 of taxable
     // Pre-tax income every year, far more than the ~$25k need, so this account is not needed (G = 0)
     // and the bracket is set by those existing balances: 456,735 - 15,750 = 440,985 -> 35% bracket.
-    const q = compareRothVsTraditional({ ...baseInputs, grossIncome: 30000, savings: 0, otherPretaxBalance: 1500000 });
+    const q = compareRothVsTraditional({ ...baseInputs, grossIncome: 30000, savings: 2000, otherPretaxBalance: 1500000 });
     expect(q.rates.marginalNow).toBe(0.12);
     expect(q.withoutSocialSecurity.grossUp.grossWithdrawal).toBe(0);
     expect(q.withoutSocialSecurity.marginalRateRetirement).toBe(0.35);
+    expect(q.withoutSocialSecurity.comparison.winner).toBe('roth');
   });
 
   it('income below the standard deduction has a 0% marginal rate later, so Pre-tax beats Roth on paper', () => {
@@ -441,5 +449,165 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
         expect(Number.isFinite(v), JSON.stringify(o)).toBe(true);
       }
     }
+  });
+});
+
+describe('retirement lifestyle factor (HAND CALC)', () => {
+  // Single, 2025, $100,000 gross, $10,000 Pre-tax savings: need 68,901 at the same lifestyle (see above).
+  it('a 25% higher retirement lifestyle scales the need to 86,126.25', () => {
+    // need = 68,901 x 1.25 = 86,126.25.  Gross-up in the 22% bracket: 0.78 T + 20,836 = 86,126.25
+    //   T = 65,290.25 / 0.78 = 83,705.45 (in 22%);  G = 83,705.45 + 15,750 = 99,455.45
+    //   tax = 0.22 T - 5,086 = 13,329.20;  effective rate = 13,329.20 / 99,455.45 = 0.13402
+    const r = compareRothVsTraditional({ ...baseInputs, retirementLifestyle: 1.25 });
+    expect(r.retirementNeed.beforeLifestyleAdjustment).toBeCloseTo(68901, 6);
+    expect(r.retirementNeed.lifestyleFactor).toBe(1.25);
+    expect(r.retirementNeed.target).toBeCloseTo(86126.25, 6);
+    expect(r.grossUp.grossWithdrawal).toBeCloseTo(99455.45, 1);
+    expect(r.grossUp.totalTaxPaid).toBeCloseTo(13329.2, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.13402, 4);
+    // both portfolio scenarios are solved to the higher target
+    expect(r.portfolio.roth.achievedAfterTaxIncome).toBeCloseTo(86126.25, 2);
+  });
+
+  it('a lower lifestyle scales the need down', () => {
+    expect(compareRothVsTraditional({ ...baseInputs, retirementLifestyle: 0.8 }).retirementNeed.target).toBeCloseTo(
+      68901 * 0.8,
+      6,
+    );
+  });
+
+  it('defaults to 1 (same lifestyle) and leaves every earlier result unchanged', () => {
+    const r = compareRothVsTraditional(baseInputs);
+    expect(r.retirementNeed.lifestyleFactor).toBe(1);
+    expect(r.retirementNeed.target).toBeCloseTo(68901, 6);
+  });
+
+  it('a much higher future lifestyle can push the retirement bracket ABOVE today\'s and favor Roth (HAND CALC)', () => {
+    // Single, 2025, $60,000 gross, $5,000 saved: need 45,338.50 (see above), marginal now 12%.
+    // Expect twice the lifestyle: need = 90,677.  22% bracket: 0.78 T + 20,836 = 90,677
+    //   T = 69,841 / 0.78 = 89,539.74 (in 22%);  G = 105,289.74;  tax = G - 90,677 = 14,612.74
+    //   blended rate = 14,612.74 / 105,289.74 = 0.13879 (> 12% now);  marginal later 22% (> 12%)
+    const r = compareRothVsTraditional({
+      ...baseInputs,
+      grossIncome: 60000,
+      savings: 5000,
+      retirementLifestyle: 2,
+    });
+    expect(r.rates.marginalNow).toBe(0.12);
+    expect(r.retirementNeed.target).toBeCloseTo(90677, 6);
+    expect(r.grossUp.grossWithdrawal).toBeCloseTo(105289.74, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.13879, 4);
+    expect(r.comparison.winner).toBe('roth');
+    expect(r.withoutSocialSecurity.marginalRateRetirement).toBe(0.22);
+    expect(r.withoutSocialSecurity.comparison.winner).toBe('roth');
+  });
+});
+
+describe('overall effective rate in retirement', () => {
+  it('equals total tax / total gross income (Social Security + every withdrawal, Roth included)', () => {
+    const r = compareRothVsTraditional({
+      ...baseInputs,
+      knowsSocialSecurity: true,
+      socialSecurityBenefit: 20000,
+      otherPretaxBalance: 60000,
+      otherRothBalance: 40000,
+      otherTaxableBalance: 20000,
+    });
+    const gross =
+      20000 +
+      r.otherWithdrawals.pretaxGross +
+      r.otherWithdrawals.roth +
+      r.otherWithdrawals.taxableGross +
+      r.grossUp.grossWithdrawal;
+    expect(r.retirementOverall.grossIncome).toBeCloseTo(gross, 6);
+    expect(r.retirementOverall.totalTax).toBeCloseTo(r.grossUp.solutionStack.totalTax, 6);
+    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(r.grossUp.solutionStack.totalTax / gross, 10);
+  });
+
+  it('with a single pre-tax source it equals the effective rate on the withdrawal (HAND CALC)', () => {
+    // no Social Security, no other accounts: total gross = G = 77,371.79, total tax = 8,470.79
+    const r = compareRothVsTraditional(baseInputs);
+    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(0.10948, 4);
+    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(r.rates.effectiveRetirement, 10);
+  });
+
+  it('is lower than the rate on the withdrawals when Social Security and Roth money share the income (HAND CALC)', () => {
+    // Social Security 30,000 and 4% of a 50,000 Roth balance grown 30y (15,224.51) are mostly untaxed, and
+    // together they leave about 23,677 for this account to supply, so total tax / total gross income
+    // (spread over ~73,000) is well below the tax on the pre-tax withdrawal alone (spread over ~28,000).
+    const r = compareRothVsTraditional({
+      ...baseInputs,
+      knowsSocialSecurity: true,
+      socialSecurityBenefit: 30000,
+      otherRothBalance: 50000,
+    });
+    expect(r.grossUp.grossWithdrawal).toBeGreaterThan(0);
+    expect(r.rates.overallEffectiveRetirement).toBeLessThan(r.rates.effectiveRetirement);
+  });
+});
+
+describe('W-2 vs 1099 income (2025 single, HAND CALC)', () => {
+  it('all 1099, $100,000, $10,000 saved', () => {
+    // SE tax = 15.3% x 92,350 = 14,129.55; half deducted = 7,064.775
+    // taxable = 100,000 - 7,064.775 - 15,750 = 77,185.225
+    // tax = 5,578.50 + 22% x (77,185.225 - 48,475 = 28,710.225) = 5,578.50 + 6,316.2495 = 11,894.7495
+    // take-home = 100,000 - 11,894.7495 - 14,129.55 = 73,975.7005;  need = 63,975.70
+    const r = compareRothVsTraditional({ ...baseInputs, selfEmploymentIncome: 100000 });
+    expect(r.current.fica.selfEmployment.tax).toBeCloseTo(14129.55, 6);
+    expect(r.current.adjustments).toBeCloseTo(7064.775, 6);
+    expect(r.current.taxableIncome).toBeCloseTo(77185.225, 6);
+    expect(r.current.tax).toBeCloseTo(11894.7495, 4);
+    expect(r.rates.marginalNow).toBe(0.22);
+    expect(r.current.afterTaxIncome).toBeCloseTo(73975.7005, 4);
+    expect(r.retirementNeed.target).toBeCloseTo(63975.7005, 4);
+    expect(r.retirementNeed.breakdown.selfEmploymentTax).toBeCloseTo(14129.55, 6);
+  });
+
+  it('$60,000 W-2 + $40,000 1099', () => {
+    // payroll = 3,720 + 870 + 5,651.82 = 10,241.82;  half of SE tax = 2,825.91
+    // taxable = 100,000 - 2,825.91 - 15,750 = 81,424.09
+    // tax = 5,578.50 + 22% x (81,424.09 - 48,475 = 32,949.09) = 5,578.50 + 7,248.8 = 12,827.30
+    // take-home = 100,000 - 12,827.30 - 10,241.82 = 76,930.88
+    const r = compareRothVsTraditional({ ...baseInputs, selfEmploymentIncome: 40000 });
+    expect(r.current.fica.total).toBeCloseTo(10241.82, 6);
+    expect(r.current.tax).toBeCloseTo(12827.3, 1);
+    expect(r.current.afterTaxIncome).toBeCloseTo(76930.88, 1);
+  });
+
+  it('all W-2 is unchanged from the earlier results', () => {
+    const r = compareRothVsTraditional({ ...baseInputs, selfEmploymentIncome: 0 });
+    expect(r.current.fica.total).toBeCloseTo(7650, 6);
+    expect(r.current.adjustments).toBe(0);
+    expect(r.retirementNeed.target).toBeCloseTo(68901, 6);
+  });
+
+  it('1099 income lowers take-home pay, so it lowers the retirement income number', () => {
+    const w2 = compareRothVsTraditional(baseInputs);
+    const se = compareRothVsTraditional({ ...baseInputs, selfEmploymentIncome: 100000 });
+    expect(se.retirementNeed.target).toBeLessThan(w2.retirementNeed.target);
+  });
+
+  it('the Social Security estimate counts net self-employment earnings (92.35%)', () => {
+    const r = compareRothVsTraditional({ ...baseInputs, knowsSocialSecurity: false, selfEmploymentIncome: 100000 });
+    const expected = estimateSocialSecurityBenefit({
+      annualIncome: 92350,
+      currentAge: 35,
+      retirementAge: 65,
+      year: 2025,
+    });
+    expect(r.socialSecurity.annualBenefit).toBeCloseTo(expected.annualBenefit, 6);
+  });
+});
+
+describe('validation of the new inputs', () => {
+  it('1099 income cannot exceed gross income or be negative', () => {
+    expect(validateInputs({ ...baseInputs, selfEmploymentIncome: 120000 }).join(' ')).toMatch(/1099/);
+    expect(validateInputs({ ...baseInputs, selfEmploymentIncome: -5 }).join(' ')).toMatch(/1099/);
+    expect(validateInputs({ ...baseInputs, selfEmploymentIncome: 100000 })).toEqual([]);
+  });
+  it('the lifestyle factor must be between 0.5 and 3', () => {
+    expect(validateInputs({ ...baseInputs, retirementLifestyle: 0.4 }).join(' ')).toMatch(/lifestyle/i);
+    expect(validateInputs({ ...baseInputs, retirementLifestyle: 3.5 }).join(' ')).toMatch(/lifestyle/i);
+    expect(validateInputs({ ...baseInputs, retirementLifestyle: 1.5 })).toEqual([]);
   });
 });

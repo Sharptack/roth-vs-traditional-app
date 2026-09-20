@@ -3,6 +3,10 @@
 //
 // Inputs (all dollars are annual unless noted; rates are decimals):
 //   grossIncome, filingStatus ('single' | 'mfj'), currentAge, retirementAge,
+//   selfEmploymentIncome                   — the part of grossIncome that is 1099 (net) income;
+//                                            the rest is W-2. Optional, default 0.
+//   retirementLifestyle                    — retirement spending vs. today, as a multiplier
+//                                            (1 = same, 1.25 = 25% higher). Optional, default 1.
 //   debtPayments, otherExpenses            — costs that end by retirement
 //   savings                                — annual retirement savings, also the
 //                                            contribution amount compared
@@ -17,7 +21,7 @@
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
 import { calculateTaxFromGross, getMarginalRate } from './taxCalculations.js';
-import { calculateFica } from './ficaTax.js';
+import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solveGrossWithdrawal } from './incomeNeed.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
@@ -53,6 +57,16 @@ export function validateInputs(inputs) {
     errors.push('Enter your total gross income.');
   }
   if (!(inputs.filingStatus in FILING_STATUSES)) errors.push('Choose a filing status.');
+  const se = inputs.selfEmploymentIncome ?? 0;
+  if (!isNum(se) || se < 0) {
+    errors.push('Enter your 1099 income.');
+  } else if (isNum(inputs.grossIncome) && se > inputs.grossIncome) {
+    errors.push("Your 1099 income can't be more than your total gross income.");
+  }
+  const lifestyle = inputs.retirementLifestyle ?? 1;
+  if (!isNum(lifestyle) || lifestyle < 0.5 || lifestyle > 3) {
+    errors.push('Choose an expected retirement lifestyle.');
+  }
   if (!isNum(inputs.currentAge) || inputs.currentAge < 16 || inputs.currentAge > 100) {
     errors.push('Enter your current age (16–100).');
   }
@@ -100,10 +114,24 @@ export function compareRothVsTraditional(inputs) {
   const years = retirementAge - currentAge;
 
   // 1. Current tax position. Take-home pay is gross income minus federal income
-  // tax AND FICA: payroll tax comes out of every paycheck but stops when you
-  // retire, so it must not be counted as spending you need to replace.
-  const current = calculateTaxFromGross(grossIncome, filingStatus, year);
-  const fica = calculateFica(grossIncome, filingStatus, year);
+  // tax AND payroll tax (FICA for W-2 income, self-employment tax for 1099
+  // income): it comes out of every paycheck but stops when you retire, so it must
+  // not be counted as spending you need to replace. Half of any self-employment
+  // tax is deducted before income tax.
+  const selfEmploymentIncome = inputs.selfEmploymentIncome ?? 0;
+  const lifestyleFactor = inputs.retirementLifestyle ?? 1;
+  const fica = calculateEmploymentTaxes({
+    wages: grossIncome - selfEmploymentIncome,
+    selfEmploymentIncome,
+    filingStatus,
+    year,
+  });
+  const current = calculateTaxFromGross(
+    grossIncome,
+    filingStatus,
+    year,
+    fica.selfEmployment.deduction,
+  );
   const afterTaxCurrentIncome = grossIncome - current.tax - fica.total;
   const marginalRateNow = current.marginalRate;
 
@@ -113,16 +141,25 @@ export function compareRothVsTraditional(inputs) {
     socialSecurity = { annualBenefit: inputs.socialSecurityBenefit, estimated: false };
   } else {
     socialSecurity = {
-      ...estimateSocialSecurityBenefit({ annualIncome: grossIncome, currentAge, retirementAge, year }),
+      // Earnings that count toward a benefit: W-2 wages plus net self-employment earnings.
+      ...estimateSocialSecurityBenefit({
+        annualIncome: grossIncome - selfEmploymentIncome + fica.selfEmployment.netEarnings,
+        currentAge,
+        retirementAge,
+        year,
+      }),
       estimated: true,
     };
   }
   const ssBenefit = socialSecurity.annualBenefit;
 
   // 3. After-tax retirement income need (top-down budget). Floored at 0: if
-  // current spending already exceeds income there is no need to model.
+  // current spending already exceeds income there is no need to model. The optional
+  // lifestyle factor scales it for people who expect to spend more (or less) in
+  // retirement than they do today, e.g. because their earnings will rise.
   const rawNeed = afterTaxCurrentIncome - debtPayments - otherExpenses - savings;
-  const targetAfterTaxIncome = Math.max(0, rawNeed);
+  const needBeforeLifestyle = Math.max(0, rawNeed);
+  const targetAfterTaxIncome = needBeforeLifestyle * lifestyleFactor;
 
   // 8. Paycheck-equivalent contribution (both forms, regardless of current type)
   const contribution = calculatePaycheckEquivalents(savings, currentType, marginalRateNow);
@@ -159,6 +196,18 @@ export function compareRothVsTraditional(inputs) {
     ltcgRate: LTCG_RATE,
   });
   const effectiveRateRetirement = grossUp.retirementEffectiveTaxRate;
+
+  // Overall effective rate in retirement: all tax owed on the whole first-year
+  // retirement stack (with this account's withdrawal) divided by the gross income
+  // received: Social Security plus every withdrawal, Roth included.
+  const retirementGrossIncome =
+    ssBenefit +
+    otherWithdrawals.pretaxGross +
+    otherWithdrawals.roth +
+    otherWithdrawals.taxableGross +
+    grossUp.grossWithdrawal;
+  const overallEffectiveRateRetirement =
+    retirementGrossIncome > 0 ? grossUp.solutionStack.totalTax / retirementGrossIncome : 0;
 
   // 9. Calculation 1 — a single lump-sum contribution
   const lumpSum = {
@@ -203,14 +252,13 @@ export function compareRothVsTraditional(inputs) {
     };
   }
 
-  // 12. "Simple view": the same comparison with Social Security left out entirely
-  // (benefit = $0), so the retirement income number has to come from the accounts.
-  // This strips out the Social Security phase-in and leaves plain brackets. The
-  // retirement rate here is the MARGINAL rate: the bracket the last dollar of the
-  // withdrawal lands in (the classic "rate now vs. rate later" rule of thumb).
-  // It is the higher of the two rates ever shown, since the marginal rate is the
-  // top-bracket rate applied to the whole withdrawal; the blended (effective) rate
-  // is returned alongside for reference.
+  // 12. "Years without Social Security": the same comparison with Social Security
+  // left out entirely (benefit = $0) — e.g. retirement years before benefits start —
+  // so the retirement income number has to come from the accounts. This strips out
+  // the Social Security phase-in and leaves plain brackets. The headline retirement
+  // rate is the BLENDED (effective) rate on this account's withdrawal, exactly as in
+  // the main comparison but with no phase-in. The marginal bracket of the last dollar
+  // is returned too, and the after-tax figure at that rate, for reference only.
   const noSsGrossUp = solveGrossWithdrawal({
     targetAfterTaxIncome,
     ssBenefit: 0,
@@ -227,6 +275,8 @@ export function compareRothVsTraditional(inputs) {
     otherWithdrawals.pretaxGross + noSsGrossUp.grossWithdrawal - current.standardDeduction;
   const noSsMarginalRate = getMarginalRate(noSsTopOfStack, filingStatus, year);
   const noSsPretaxAtMarginal = annuity.pretax.annualWithdrawal * (1 - noSsMarginalRate);
+  const noSsPretaxAtEffective =
+    annuity.pretax.annualWithdrawal * (1 - noSsGrossUp.retirementEffectiveTaxRate);
   const withoutSocialSecurity = {
     grossUp: noSsGrossUp,
     marginalRateRetirement: noSsMarginalRate,
@@ -235,14 +285,13 @@ export function compareRothVsTraditional(inputs) {
     annuity: {
       roth: { afterTaxWithdrawal: annuity.roth.afterTaxWithdrawal },
       pretax: {
-        afterTaxWithdrawal: noSsPretaxAtMarginal, // at the marginal rate (the headline)
-        afterTaxWithdrawalAtEffective:
-          annuity.pretax.annualWithdrawal * (1 - noSsGrossUp.retirementEffectiveTaxRate),
+        afterTaxWithdrawal: noSsPretaxAtEffective, // at the blended rate (the headline)
+        afterTaxWithdrawalAtMarginal: noSsPretaxAtMarginal, // reference only
       },
     },
     comparison: {
-      winner: winnerOf(annuity.roth.afterTaxWithdrawal, noSsPretaxAtMarginal),
-      afterTaxIncomeDifference: Math.abs(annuity.roth.afterTaxWithdrawal - noSsPretaxAtMarginal),
+      winner: winnerOf(annuity.roth.afterTaxWithdrawal, noSsPretaxAtEffective),
+      afterTaxIncomeDifference: Math.abs(annuity.roth.afterTaxWithdrawal - noSsPretaxAtEffective),
     },
   };
 
@@ -266,18 +315,33 @@ export function compareRothVsTraditional(inputs) {
     retirementNeed: {
       raw: rawNeed,
       target: targetAfterTaxIncome,
+      beforeLifestyleAdjustment: needBeforeLifestyle,
+      lifestyleFactor,
       // The budget walk from gross income to the retirement income number.
       breakdown: {
         grossIncome,
         incomeTax: current.tax,
         fica: fica.total,
+        selfEmploymentTax: fica.selfEmployment.tax,
+        selfEmploymentDeduction: fica.selfEmployment.deduction,
+        selfEmploymentIncome,
         takeHome: afterTaxCurrentIncome,
         debtPayments,
         otherExpenses,
         savings,
       },
     },
-    rates: { marginalNow: marginalRateNow, effectiveRetirement: effectiveRateRetirement },
+    // effectiveRetirement = tax caused by THIS account's withdrawals / those withdrawals.
+    // overallEffectiveRetirement = total tax / total gross income in retirement.
+    rates: {
+      marginalNow: marginalRateNow,
+      effectiveRetirement: effectiveRateRetirement,
+      overallEffectiveRetirement: overallEffectiveRateRetirement,
+    },
+    retirementOverall: {
+      totalTax: grossUp.solutionStack.totalTax,
+      grossIncome: retirementGrossIncome,
+    },
     contribution,
     limitCheck,
     grown,

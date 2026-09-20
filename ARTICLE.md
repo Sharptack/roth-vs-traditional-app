@@ -18,6 +18,8 @@ The tricky part is knowing which "tax rate" to compare. This calculator's answer
 
 **Effective rate** is the blended rate across a whole chunk of income. In retirement you don't withdraw one dollar; you withdraw enough to live on, and that amount gets taxed across several brackets.
 
+The calculator shows two effective rates, and it's worth keeping them apart. The **effective rate on these withdrawals** is the extra tax caused by the withdrawals from the account your contributions are building, divided by those withdrawals. That's the rate that matters for the Roth-versus-Traditional decision. Your **overall effective rate** is simply all the tax you owe in retirement divided by all the gross income you receive, Social Security and every account included. It's usually lower, because it averages in income that's untaxed or lightly taxed.
+
 ### Why a blended rate later isn't a contradiction
 
 Federal income tax is *progressive*. Your first dollars of taxable income are taxed at 10%, the next slice at 12%, the next at 22%, and so on. No one pays their top rate on everything.
@@ -35,7 +37,7 @@ These fit together. The effective rate in retirement is the extra tax caused by 
 
 Many tools ask you to guess your retirement tax bracket. Guessing is hard, and small guesses swing the answer. This calculator builds the estimate from a budget instead, working top-down:
 
-1. Start with your take-home pay today: gross income minus federal income tax **and FICA** (the Social Security and Medicare payroll taxes). FICA comes out of every paycheck but stops when you stop working, so it isn't part of the lifestyle you need to replace.
+1. Start with your take-home pay today: gross income minus federal income tax **and payroll tax**. For W-2 income that's FICA (Social Security and Medicare). For 1099 income it's self-employment tax, which is roughly double because you pay both halves, though half of it is deductible before income tax. Either way it comes out of every paycheck but stops when you stop working, so it isn't part of the lifestyle you need to replace.
 2. Subtract costs that will end before you retire: debt payments, kids' college or private school.
 3. Subtract what you save for retirement.
 4. What's left is your **retirement income number**, the after-tax lifestyle you're already living without those costs.
@@ -68,11 +70,17 @@ The calculator doesn't use a lookup table for this. It runs the actual IRS combi
 
 This is also why the "effective rate in retirement" can look surprisingly high, even higher than your bracket, when your other retirement income puts you just past a threshold. The **"How is the effective rate calculated?"** dropdown in the calculator shows the arithmetic step by step, including how much Social Security the withdrawal pulls into taxable income. One caveat: the rate is measured on the withdrawal needed to close the gap between your other income and your target, and then applied to the whole account. If your account is much larger than that gap, part of it would be taxed outside the phase-in range, at a lower blended rate, so the calculator can lean a little toward Roth in those cases.
 
-## A simpler view: leaving Social Security out
+## Years without Social Security
 
-The calculator also shows a stripped-down comparison, in a dropdown under the main table. It sets Social Security to zero, so your whole retirement income number has to come from your accounts. That removes the phase-in and leaves plain tax brackets. The rate it uses is the **marginal** rate: the bracket that the last dollar of your withdrawal falls in, which is the classic "my rate now versus my rate later" rule of thumb. It's a stricter test than the blended rate, because it applies the top bracket to the whole withdrawal, so the calculator also shows the blended figure beside it.
+You may have years in retirement without Social Security, for example if you retire before you claim benefits, or you may simply want to plan without it. The calculator shows that case in a dropdown under the main table. It sets Social Security to zero, so your whole retirement income number has to come from your accounts. With nothing to phase in, the tax is plain brackets, and the comparison uses the same measure as the main result: the blended effective rate on the withdrawals from this account. The bracket that the last dollar falls in is shown for reference.
 
-There's a built-in pattern to watch for. When the account is needed to fill the gap, your retirement income is lower than your income today, so your bracket in retirement can't be higher than your bracket now. In that case this simple view can only tie or favor Traditional. The gap between it and the main result is the effect of Social Security. The one exception is a very large existing Traditional balance: if your other accounts already produce more taxable income than you need, that balance sets your bracket, and Roth can come out ahead.
+There's a pattern to watch for. When the account is needed to fill the gap, your retirement income is lower than your income today, so your bracket in retirement can't be higher than your bracket now. In that case this view can only tie or favor Traditional, and the gap between it and the main result is the effect of Social Security. There are two ways Roth can come out ahead here. One is a very large existing Traditional balance: if your other accounts already produce more taxable income than you need, that balance sets your bracket. The other is a higher retirement lifestyle, covered next.
+
+## If you expect to spend more, or less, in retirement
+
+The retirement income number assumes you'll live in retirement the way you live now. That won't always be right. If you're early in your career and expect your earnings, and your spending, to rise, your retirement budget may be well above today's, and with it your retirement bracket. That is one of the most common ways Roth wins. Under **Assumptions** you can choose a retirement lifestyle from 20% lower to 100% higher than today's, and the calculator scales the retirement income number to match.
+
+One thing it doesn't do: if your earnings rise, the contributions you make in those later years will be deducted at a higher rate than today's marginal rate. That pushes toward Traditional and partly offsets the higher retirement bracket. Modeling contributions that change over time is a planned feature.
 
 ## Why maxing out changes the math
 

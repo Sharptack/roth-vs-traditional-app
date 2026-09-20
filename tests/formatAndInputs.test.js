@@ -74,3 +74,35 @@ describe('toCompareInputs', () => {
     expect(r.valid).toBe(false);
   });
 });
+
+describe('W-2 / 1099 and lifestyle inputs', () => {
+  const inputsFor = (over) => toCompareInputs({ ...DEFAULT_FORM_VALUES, ...over }, 2025);
+
+  it('defaults are all W-2 and the same lifestyle', () => {
+    const i = inputsFor({});
+    expect(i.selfEmploymentIncome).toBe(0);
+    expect(i.retirementLifestyle).toBe(1);
+  });
+  it('1099 makes all of gross income self-employment income', () => {
+    expect(inputsFor({ incomeType: '1099', grossIncome: '$90,000' }).selfEmploymentIncome).toBe(90000);
+  });
+  it('"both" uses the entered 1099 amount, and blank means none', () => {
+    expect(inputsFor({ incomeType: 'both', selfEmploymentIncome: '30,000' }).selfEmploymentIncome).toBe(30000);
+    expect(inputsFor({ incomeType: 'both', selfEmploymentIncome: '' }).selfEmploymentIncome).toBe(0);
+  });
+  it('a stale 1099 amount is ignored unless "both" is selected', () => {
+    expect(inputsFor({ incomeType: 'w2', selfEmploymentIncome: '30000' }).selfEmploymentIncome).toBe(0);
+  });
+  it('a blank gross income with 1099 does not add a second, confusing error', () => {
+    const r = compareRothVsTraditional(inputsFor({ incomeType: '1099', grossIncome: '' }));
+    expect(r.valid).toBe(false);
+    expect(r.errors.join(' ')).not.toMatch(/1099/);
+  });
+  it('1099 above gross income is flagged', () => {
+    const r = compareRothVsTraditional(inputsFor({ incomeType: 'both', selfEmploymentIncome: '150000' }));
+    expect(r.errors.join(' ')).toMatch(/1099 income can't be more/);
+  });
+  it('the lifestyle selection is converted to a multiplier', () => {
+    expect(inputsFor({ retirementLifestyle: '1.25' }).retirementLifestyle).toBe(1.25);
+  });
+});

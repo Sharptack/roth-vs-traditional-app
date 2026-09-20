@@ -539,3 +539,28 @@ th.win .th-sub {
 .details-body .table-wrap {
   margin-top: 12px;
 }
+
+/* ---------- three-rate row and sub-headings inside a card ---------- */
+
+.stats.three {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.subhead {
+  margin: 22px 0 8px;
+  font-size: 1.05rem;
+}
+
+.tax-rates {
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tax-rates > .subhead:first-child {
+  margin-top: 4px;
+}
+
+.hero .hero-value {
+  margin-top: 0;
+}

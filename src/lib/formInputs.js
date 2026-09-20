@@ -14,6 +14,8 @@ const blankAsZero = (text) => (String(text ?? '').trim() === '' ? 0 : parseNumbe
 
 export const DEFAULT_FORM_VALUES = {
   grossIncome: '100000',
+  incomeType: 'w2', // 'w2' | '1099' | 'both'
+  selfEmploymentIncome: '', // the 1099 part, used when incomeType is 'both'
   filingStatus: 'single',
   currentAge: '35',
   retirementAge: '65',
@@ -25,14 +27,24 @@ export const DEFAULT_FORM_VALUES = {
   knowsSocialSecurity: 'no', // 'yes' | 'no'
   socialSecurityBenefit: '',
   returnRate: '0.07',
+  retirementLifestyle: '1', // retirement spending vs. today (1 = same)
   otherPretaxBalance: '100000',
   otherRothBalance: '0',
   otherTaxableBalance: '0',
 };
 
+// How much of the gross income is 1099 (self-employment) income.
+function selfEmploymentAmount(values, grossIncome) {
+  if (values.incomeType === '1099') return Number.isFinite(grossIncome) ? grossIncome : 0;
+  if (values.incomeType === 'both') return blankAsZero(values.selfEmploymentIncome);
+  return 0;
+}
+
 export function toCompareInputs(values, year) {
+  const grossIncome = parseNumber(values.grossIncome);
   return {
-    grossIncome: parseNumber(values.grossIncome),
+    grossIncome,
+    selfEmploymentIncome: selfEmploymentAmount(values, grossIncome),
     filingStatus: values.filingStatus,
     currentAge: parseNumber(values.currentAge),
     retirementAge: parseNumber(values.retirementAge),
@@ -44,6 +56,7 @@ export function toCompareInputs(values, year) {
     knowsSocialSecurity: values.knowsSocialSecurity === 'yes',
     socialSecurityBenefit: parseNumber(values.socialSecurityBenefit),
     returnRate: Number(values.returnRate),
+    retirementLifestyle: Number(values.retirementLifestyle),
     otherPretaxBalance: blankAsZero(values.otherPretaxBalance),
     otherRothBalance: blankAsZero(values.otherRothBalance),
     otherTaxableBalance: blankAsZero(values.otherTaxableBalance),

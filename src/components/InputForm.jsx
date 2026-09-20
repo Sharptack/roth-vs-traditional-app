@@ -9,7 +9,28 @@ const RETURN_OPTIONS = [
   { value: '0.09', label: '9%' },
 ];
 
+const INCOME_TYPE_OPTIONS = [
+  { value: 'w2', label: 'W-2 (employee)' },
+  { value: '1099', label: '1099 (self-employed)' },
+  { value: 'both', label: 'Both W-2 and 1099' },
+];
+
+const LIFESTYLE_OPTIONS = [
+  { value: '0.8', label: '20% lower than today' },
+  { value: '0.9', label: '10% lower than today' },
+  { value: '1', label: 'Same as today' },
+  { value: '1.1', label: '10% higher than today' },
+  { value: '1.25', label: '25% higher than today' },
+  { value: '1.5', label: '50% higher than today' },
+  { value: '2', label: '100% higher than today' },
+];
+
 const returnLabel = (value) => RETURN_OPTIONS.find((o) => o.value === value)?.label ?? value;
+// Short form for the Assumptions summary: "same", "25% higher", "20% lower".
+const lifestyleLabel = (value) =>
+  value === '1'
+    ? 'same'
+    : (LIFESTYLE_OPTIONS.find((o) => o.value === value)?.label ?? value).replace(' than today', '');
 
 function Field({ label, hint, children, id }) {
   return (
@@ -112,6 +133,25 @@ export default function InputForm({ values, onChange }) {
           value={values.grossIncome}
           onChange={set('grossIncome')}
         />
+        <SelectInput
+          label="Type of income"
+          hint={
+            values.incomeType === 'w2'
+              ? undefined
+              : 'Self-employment tax replaces FICA on 1099 income (and half of it is deductible). Enter 1099 income as net earnings, after business expenses.'
+          }
+          value={values.incomeType}
+          onChange={set('incomeType')}
+          options={INCOME_TYPE_OPTIONS}
+        />
+        {values.incomeType === 'both' && (
+          <CurrencyInput
+            label="How much of your gross income is 1099?"
+            hint="The rest is treated as W-2 wages."
+            value={values.selfEmploymentIncome}
+            onChange={set('selfEmploymentIncome')}
+          />
+        )}
         <SelectInput
           label="Filing status"
           value={values.filingStatus}
@@ -218,7 +258,8 @@ export default function InputForm({ values, onChange }) {
 
       <details className="details assumptions">
         <summary>
-          Assumptions: {returnLabel(values.returnRate)} expected annual investment return
+          Assumptions: {returnLabel(values.returnRate)} expected annual investment return,{' '}
+          {lifestyleLabel(values.retirementLifestyle)} retirement lifestyle
         </summary>
         <div className="details-body">
           <SelectInput
@@ -227,6 +268,13 @@ export default function InputForm({ values, onChange }) {
             value={values.returnRate}
             onChange={set('returnRate')}
             options={RETURN_OPTIONS}
+          />
+          <SelectInput
+            label="Expected retirement lifestyle"
+            hint="How much you expect to spend each year in retirement compared with what you spend today. If you expect your earnings, and your spending, to rise before you retire, choose a higher number. That raises your retirement income number and can push you into a higher bracket in retirement."
+            value={values.retirementLifestyle}
+            onChange={set('retirementLifestyle')}
+            options={LIFESTYLE_OPTIONS}
           />
         </div>
       </details>

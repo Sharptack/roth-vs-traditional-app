@@ -45,17 +45,23 @@ export function getMarginalRate(taxableIncome, filingStatus, year) {
 }
 
 // Convenience for Section 1: gross income -> deduction, taxable income, tax,
-// marginal rate, effective rate.
-export function calculateTaxFromGross(grossIncome, filingStatus, year) {
+// marginal rate, effective rate. `adjustments` are above-the-line deductions taken
+// before the standard deduction (e.g. half of self-employment tax).
+export function calculateTaxFromGross(grossIncome, filingStatus, year, adjustments = 0) {
   const { dataYear, standardDeduction } = getFilingData(filingStatus, year);
-  const taxableIncome = Math.max(0, grossIncome - standardDeduction);
+  const taxableIncome = Math.max(0, grossIncome - adjustments - standardDeduction);
   const tax = calculateTax(taxableIncome, filingStatus, year);
   // Marginal rate is judged on the signed figure so income under the standard
   // deduction reports 0%, not 10%.
-  const marginalRate = getMarginalRate(grossIncome - standardDeduction, filingStatus, year);
+  const marginalRate = getMarginalRate(
+    grossIncome - adjustments - standardDeduction,
+    filingStatus,
+    year,
+  );
   return {
     dataYear,
     standardDeduction,
+    adjustments,
     taxableIncome,
     tax,
     marginalRate,

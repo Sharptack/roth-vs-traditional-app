@@ -54,6 +54,33 @@ describe('InputForm', () => {
     expect(mainForm).not.toContain('Expected annual investment return');
   });
 
+  it('has a type-of-income dropdown under gross income, and the 1099 amount only for "both"', () => {
+    const iGross = html.indexOf('Total gross income (annual)');
+    const iType = html.indexOf('Type of income');
+    const iFiling = html.indexOf('Filing status');
+    expect(iGross).toBeLessThan(iType);
+    expect(iType).toBeLessThan(iFiling);
+    expect(html).toContain('W-2 (employee)');
+    expect(html).toContain('1099 (self-employed)');
+    expect(html).toContain('Both W-2 and 1099');
+    expect(html).not.toContain('How much of your gross income is 1099?');
+    const both = renderToStaticMarkup(
+      <InputForm values={{ ...DEFAULT_FORM_VALUES, incomeType: 'both' }} onChange={() => {}} />,
+    );
+    expect(both).toContain('How much of your gross income is 1099?');
+    expect(both).toContain('Self-employment tax replaces FICA');
+  });
+
+  it('puts the retirement lifestyle in Assumptions, with a plain-language summary', () => {
+    const assumptions = html.slice(html.indexOf('class="details assumptions"'));
+    expect(assumptions).toContain('Expected retirement lifestyle');
+    expect(assumptions).toContain('7% expected annual investment return, same retirement lifestyle');
+    const higher = renderToStaticMarkup(
+      <InputForm values={{ ...DEFAULT_FORM_VALUES, retirementLifestyle: '1.25' }} onChange={() => {}} />,
+    );
+    expect(higher).toContain('25% higher retirement lifestyle');
+  });
+
   it('hides the SS benefit input when the answer is No, and shows the estimate disclaimer', () => {
     expect(html).not.toContain('Annual gross Social Security benefit');
     expect(html).toContain('Estimated — see');
@@ -73,7 +100,8 @@ describe('ResultsSummary', () => {
     for (const text of [
       'Retirement income number',
       'Marginal rate while working',
-      'Effective rate in retirement',
+      'Effective rate on these withdrawals',
+      'Overall effective rate in retirement',
       'Current possible contribution',
       'Value of a single contribution at retirement',
       'After-tax value of that contribution',
@@ -98,14 +126,73 @@ describe('ResultsSummary', () => {
   });
 
 
-  it('shows the retirement number as its own hero line, with the rates after it', () => {
+  it('gives the retirement number its own section, with a note on what it means', () => {
     const html = render();
-    const hero = html.indexOf('class="hero"');
-    const marginal = html.indexOf('Marginal rate while working');
-    const effective = html.indexOf('Effective rate in retirement');
-    expect(hero).toBeGreaterThan(-1);
-    expect(hero).toBeLessThan(marginal);
-    expect(marginal).toBeLessThan(effective);
+    const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
+    expect(sec1).toContain('Retirement income number</h2>');
+    expect(sec1).toContain('class="hero"');
+    expect(sec1).toContain('What this number is:');
+    expect(sec1).toContain('the after-tax amount you need each year in retirement');
+    expect(sec1).toContain('the amount you actually');
+    // the rates are NOT in this section any more
+    expect(sec1).not.toContain('Marginal rate while working');
+    expect(sec1).not.toContain('Effective rate');
+  });
+
+  it('puts the tax rates at the top of the section after Roth vs. Traditional', () => {
+    const html = render();
+    const sec2 = html.indexOf('id="sec2"');
+    const sec3 = html.slice(html.indexOf('id="sec3"'));
+    const rates = sec3.indexOf('Your tax rates');
+    const table = sec3.indexOf('Same lifestyle, two portfolios');
+    expect(html.indexOf('Marginal rate while working')).toBeGreaterThan(sec2);
+    expect(rates).toBeGreaterThan(-1);
+    expect(rates).toBeLessThan(table);
+    expect(sec3.indexOf('Marginal rate while working')).toBeLessThan(table);
+    expect(sec3.indexOf('Effective rate on these withdrawals')).toBeLessThan(table);
+    expect(sec3.indexOf('Overall effective rate in retirement')).toBeLessThan(table);
+  });
+
+  it('labels the rates precisely, and defines the overall rate as total tax over gross income', () => {
+    const html = render();
+    expect(html).toContain('Extra tax caused by this account&#x27;s withdrawals ÷ those withdrawals');
+    expect(html).toContain('Total tax ÷ total gross income');
+    expect(html).not.toContain('Effective rate in retirement</div>');
+    expect(html).toContain('Overall effective rate (');
+  });
+
+  it('shows the Social Security benefit used under the rates, not in the retirement number section', () => {
+    const html = render();
+    const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
+    const sec3 = html.slice(html.indexOf('id="sec3"'));
+    expect(sec1).not.toContain('Social Security benefit used');
+    expect(sec3).toContain('Social Security benefit used');
+  });
+
+  it('shows the contribution-limit warning in the Roth vs. Traditional section', () => {
+    const html = render({ savings: '22000' });
+    const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec3"'));
+    expect(sec2).toContain('at/near the 2025 401(k) contribution limit');
+  });
+
+  it('scales the number and says so when a different retirement lifestyle is chosen', () => {
+    const html = render({ retirementLifestyle: '1.25' });
+    expect(html).toContain('scaled by');
+    expect(html).toContain('+25%');
+    expect(html).toContain('Adjustment for your expected retirement lifestyle (+25%)');
+    expect(html).toContain('Spending today');
+    const lower = render({ retirementLifestyle: '0.8' });
+    expect(lower).toContain('−20%');
+    expect(lower).toContain('lower than today');
+    // nothing about an adjustment when the lifestyle is unchanged
+    expect(render()).not.toContain('Adjustment for your expected retirement lifestyle');
+  });
+
+  it('shows self-employment tax in the budget when there is 1099 income', () => {
+    const html = render({ incomeType: '1099' });
+    expect(html).toContain('FICA and self-employment tax');
+    expect(html).toContain('Half of your self-employment tax');
+    expect(render()).not.toContain('self-employment tax');
   });
 
   it('has a dropdown showing how the retirement number is calculated, including FICA', () => {
@@ -118,9 +205,9 @@ describe('ResultsSummary', () => {
 
   it('has a dropdown showing how the effective rate is calculated', () => {
     const html = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '20000', otherPretaxBalance: '0' });
-    expect(html).toContain('How is the effective rate calculated?');
+    expect(html).toContain('How are the retirement rates calculated?');
     expect(html).toContain('Extra tax caused by the withdrawal');
-    expect(html).toContain('Why it can be higher than your tax bracket');
+    expect(html).toContain('Why the rate on these withdrawals can be higher than your tax bracket');
   });
 
   it('explains when no withdrawal is needed from this account', () => {
@@ -138,10 +225,11 @@ describe('ResultsSummary', () => {
     expect(html).not.toContain('Total income before tax');
   });
 
-  it('rewords the rates note and drops the old sentence', () => {
+  it('explains how the three rates fit together, and drops the old sentence', () => {
     const html = render();
-    expect(html).toContain('Why two different rates?');
+    expect(html).toContain('How the rates fit together.');
     expect(html).not.toContain('different kinds of rate on purpose');
+    expect(html).not.toContain('Why two different rates?');
   });
 
   it('puts the Pre-tax and Roth contribution amounts in the comparison table, not in Section 1', () => {
@@ -163,12 +251,24 @@ describe('ResultsSummary', () => {
     expect(html).not.toContain('before this account');
   });
 
-  it('has the simple view without Social Security, using the marginal rate', () => {
+  it('has the retirement-years-without-Social-Security section, using the blended rate', () => {
     const html = render();
-    expect(html).toContain('Simple view: the same comparison without Social Security');
-    expect(html).toContain('Marginal rate in retirement (bracket of the last dollar)');
-    expect(html).toContain('Tax rate on the withdrawal');
+    expect(html).toContain('Retirement years without Social Security');
+    expect(html).not.toContain('Simple view');
+    expect(html).toContain('the blended rate: the extra tax they cause, divided by the');
+    expect(html).toContain('Effective rate on the withdrawal');
+    expect(html).toContain('Bracket the last dollar falls in (for reference)');
     expect(html).toContain('the effect of Social Security');
+    // the old marginal-vs-marginal headline and the "stricter rule of thumb" remark are gone
+    expect(html).not.toContain('stricter rule of thumb');
+    expect(html).not.toContain('Marginal rate in retirement (bracket of the last dollar)');
+  });
+
+  it('explains that a higher retirement lifestyle can favor Roth, in that section', () => {
+    // gross 60k saved 5k, 2x lifestyle: retirement bracket (22%) exceeds today\'s (12%)
+    const html = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0', retirementLifestyle: '2' });
+    expect(html).toContain('you expect to spend more in retirement than you do');
+    expect(html).toContain('That is how');
   });
 
   it('explains the forced-draw case in the simple view when other accounts already cover the need', () => {
@@ -193,6 +293,12 @@ describe('ResultsSummary', () => {
       { knowsSocialSecurity: 'yes', socialSecurityBenefit: '60000' },
       { currentAge: '64', retirementAge: '65' },
       { currentType: 'roth', accountType: 'ira', savings: '7000' },
+      { incomeType: '1099' },
+      { incomeType: 'both', selfEmploymentIncome: '40000' },
+      { incomeType: 'both', selfEmploymentIncome: '' },
+      { retirementLifestyle: '2' },
+      { retirementLifestyle: '0.8' },
+      { grossIncome: '2000000', incomeType: '1099', filingStatus: 'mfj' },
     ];
     for (const c of cases) {
       const html = render(c);
