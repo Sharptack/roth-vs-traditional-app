@@ -95,12 +95,11 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - **Page layout (3 sections):** (1) "Retirement income number" alone — hero value, note "the after-tax
   amount you need each year in retirement to keep the same lifestyle you have while working; the amount you
   actually spend", "How is this calculated?" dropdown; (2) "Roth vs. Traditional" (verdict, contribution-limit
-  alert, table, dropdown "Retirement years without Social Security"); (3) "Total portfolio tax comparison",
-  which opens with "Your tax rates" (marginal now; effective rate on these withdrawals; overall effective
-  rate; "How are the retirement rates calculated?" dropdown; note; SS benefit used) and then the portfolio
-  table + "Show the calculation" dropdown. Interpretation note: the user asked for the rates "at the top of
-  the next section below Roth vs. Traditional" — implemented as the top of the portfolio section, not a
-  separate card. The effective-rate dropdown defines "this account" (the account the contributions build)
+  alert, table, dropdown "Retirement years without Social Security"), which **opens with "Your tax rates"**
+  (marginal now; effective rate on these withdrawals; overall effective rate; "How are the retirement rates
+  calculated?" dropdown; note; SS benefit used) — the user clarified the rates go at the top of the Roth vs.
+  Traditional section, i.e. the section right below the retirement number; (3) "Total portfolio tax
+  comparison" (table + "Show the calculation" dropdown), no rates. The effective-rate dropdown defines "this account" (the account the contributions build)
   vs "other income" (SS + other balances) and walks Steps 1–3.
 - Rate naming: "Effective rate on these withdrawals" = extra tax caused by this account's withdrawals ÷
   those withdrawals (the number that drives the comparison). "Overall effective rate" = total tax ÷ gross
@@ -150,8 +149,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
-- 2026-09-20 — Round 3: retirement number is its own section; rates moved to the top of the portfolio
-  section and renamed (effective rate on these withdrawals; new overall effective rate = total tax ÷ gross
+- 2026-09-20 — Round 3: retirement number is its own section; rates at the top of the Roth vs. Traditional
+  section (first placed in the portfolio section by mistake, then corrected) and renamed (effective rate on these withdrawals; new overall effective rate = total tax ÷ gross
   income); "Simple view" renamed "Retirement years without Social Security" and now headlines the blended
   rate; W-2 / 1099 income type with self-employment tax (verified vs IRS Topic 554); retirement-lifestyle
   assumption (0.8–2×); effective-rate dropdown wording; 242 tests.

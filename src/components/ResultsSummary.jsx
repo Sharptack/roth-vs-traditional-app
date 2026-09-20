@@ -304,6 +304,9 @@ function RothVsPretax({ result }) {
   return (
     <section className="card" aria-labelledby="sec2">
       <h2 id="sec2">Roth vs. Traditional</h2>
+
+      <TaxRates result={result} />
+
       <p className="verdict">{winnerText(result)}</p>
 
       {limitCheck.atLimit && <p className="alert">{limitCheck.message}</p>}
@@ -377,7 +380,7 @@ function RothVsPretax({ result }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Section 3 — Tax rates + total portfolio tax comparison              */
+/* Tax rates (top of section 2) and total portfolio comparison (3)      */
 /* ------------------------------------------------------------------ */
 
 function EffectiveRateMath({ result }) {
@@ -671,10 +674,6 @@ function PortfolioComparison({ result }) {
   return (
     <section className="card" aria-labelledby="sec3">
       <h2 id="sec3">Total portfolio tax comparison</h2>
-
-      <TaxRates result={result} />
-
-      <h3 className="subhead">Same lifestyle, two portfolios</h3>
       <p className="hint">
         Same after-tax lifestyle in both columns, funded from your whole portfolio (this account
         plus your other balances, grown to retirement) together with Social Security.

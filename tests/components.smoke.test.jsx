@@ -139,18 +139,28 @@ describe('ResultsSummary', () => {
     expect(sec1).not.toContain('Effective rate');
   });
 
-  it('puts the tax rates at the top of the section after Roth vs. Traditional', () => {
+  it('puts the tax rates at the top of the Roth vs. Traditional section, below the retirement number', () => {
     const html = render();
-    const sec2 = html.indexOf('id="sec2"');
-    const sec3 = html.slice(html.indexOf('id="sec3"'));
-    const rates = sec3.indexOf('Your tax rates');
-    const table = sec3.indexOf('Same lifestyle, two portfolios');
-    expect(html.indexOf('Marginal rate while working')).toBeGreaterThan(sec2);
-    expect(rates).toBeGreaterThan(-1);
-    expect(rates).toBeLessThan(table);
-    expect(sec3.indexOf('Marginal rate while working')).toBeLessThan(table);
-    expect(sec3.indexOf('Effective rate on these withdrawals')).toBeLessThan(table);
-    expect(sec3.indexOf('Overall effective rate in retirement')).toBeLessThan(table);
+    const sec2Start = html.indexOf('id="sec2"');
+    const sec3Start = html.indexOf('id="sec3"');
+    const sec2 = html.slice(sec2Start, sec3Start);
+    const sec3 = html.slice(sec3Start);
+    const firstTable = sec2.indexOf('<table');
+    const verdict = sec2.indexOf('class="verdict"');
+    // all three rates come before the verdict and the comparison table
+    for (const label of ['Your tax rates', 'Marginal rate while working', 'Effective rate on these withdrawals', 'Overall effective rate in retirement']) {
+      const at = sec2.indexOf(label);
+      expect(at, label).toBeGreaterThan(-1);
+      expect(at, label).toBeLessThan(verdict);
+      expect(at, label).toBeLessThan(firstTable);
+    }
+    // ...and the heading is the first thing in the section
+    expect(sec2.indexOf('Your tax rates')).toBeLessThan(sec2.indexOf('Current possible contribution'));
+    // the portfolio section no longer carries them
+    expect(sec3).not.toContain('Your tax rates');
+    expect(sec3).not.toContain('Marginal rate while working');
+    // the retirement number section stays rate-free and comes first
+    expect(html.indexOf('id="sec1"')).toBeLessThan(sec2Start);
   });
 
   it('labels the rates precisely, and defines the overall rate as total tax over gross income', () => {
@@ -164,9 +174,9 @@ describe('ResultsSummary', () => {
   it('shows the Social Security benefit used under the rates, not in the retirement number section', () => {
     const html = render();
     const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
-    const sec3 = html.slice(html.indexOf('id="sec3"'));
+    const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec3"'));
     expect(sec1).not.toContain('Social Security benefit used');
-    expect(sec3).toContain('Social Security benefit used');
+    expect(sec2).toContain('Social Security benefit used');
   });
 
   it('shows the contribution-limit warning in the Roth vs. Traditional section', () => {
