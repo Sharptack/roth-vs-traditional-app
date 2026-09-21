@@ -165,6 +165,17 @@ describe('ResultsSummary', () => {
     expect(html.indexOf('id="sec1"')).toBeLessThan(sec2Start);
   });
 
+  it('keeps "How the rates fit together" inside the rates dropdown, not loose on the page', () => {
+    const html = render();
+    const start = html.indexOf('How are the retirement rates calculated?');
+    const dropdown = html.slice(start, html.indexOf('</details>', start));
+    expect(dropdown).toContain('How the rates fit together.');
+    // exactly one copy on the whole page, and it is the one inside the dropdown
+    expect(html.split('How the rates fit together.').length - 1).toBe(1);
+    // it comes before the step-by-step explanation
+    expect(dropdown.indexOf('How the rates fit together.')).toBeLessThan(dropdown.indexOf('Step 1: income from everything except this account'));
+  });
+
   it('labels the rates precisely, and defines the overall rate as total tax over gross income', () => {
     const html = render();
     expect(html).toContain('Extra tax caused by this account&#x27;s withdrawals ÷ those withdrawals');

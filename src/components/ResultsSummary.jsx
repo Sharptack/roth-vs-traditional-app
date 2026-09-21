@@ -395,6 +395,18 @@ function EffectiveRateMath({ result }) {
     <details className="details">
       <summary>How are the retirement rates calculated?</summary>
       <div className="details-body">
+          <p className="note">
+            <strong>How the rates fit together.</strong> Your <strong>marginal rate</strong> is the tax
+            on your next dollar of income today, which is exactly what a Pre-tax contribution saves you.
+            The <strong>effective rate on these withdrawals</strong> is the tax caused by the
+            withdrawals from this account, as a share of those withdrawals, including the extra tax
+            that appears when Social Security benefits become taxable. That is the rate that matters
+            for the Roth vs. Pre-tax choice: Pre-tax comes out ahead when it is lower than your
+            marginal rate today, and Roth when it is higher. Your{' '}
+            <strong>overall effective rate</strong> is simply all the tax you owe in retirement divided
+            by all the gross income you receive, Social Security and every account included.
+          </p>
+
         <p>
           <strong>&ldquo;This account&rdquo;</strong> is the account your contributions are building.
           Everything else &mdash; Social Security plus withdrawals from the other retirement balances
@@ -534,18 +546,6 @@ function TaxRates({ result }) {
         />
       </div>
       <EffectiveRateMath result={result} />
-
-      <p className="note">
-        <strong>How the rates fit together.</strong> Your <strong>marginal rate</strong> is the tax
-        on your next dollar of income today, which is exactly what a Pre-tax contribution saves you.
-        The <strong>effective rate on these withdrawals</strong> is the tax caused by the
-        withdrawals from this account, as a share of those withdrawals, including the extra tax
-        that appears when Social Security benefits become taxable. That is the rate that matters
-        for the Roth vs. Pre-tax choice: Pre-tax comes out ahead when it is lower than your
-        marginal rate today, and Roth when it is higher. Your{' '}
-        <strong>overall effective rate</strong> is simply all the tax you owe in retirement divided
-        by all the gross income you receive, Social Security and every account included.
-      </p>
 
       <dl className="facts">
         <div>

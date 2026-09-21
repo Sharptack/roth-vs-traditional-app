@@ -109,8 +109,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   amount you need each year in retirement to keep the same lifestyle you have while working; the amount you
   actually spend", "How is this calculated?" dropdown; (2) "Roth vs. Traditional" (verdict, contribution-limit
   alert, table, dropdown "Retirement years without Social Security"), which **opens with "Your tax rates"**
-  (marginal now; effective rate on these withdrawals; overall effective rate; "How are the retirement rates
-  calculated?" dropdown; note; SS benefit used) — the user clarified the rates go at the top of the Roth vs.
+  (marginal now; effective rate on these withdrawals; overall effective rate; SS benefit used; and the "How are
+  the retirement rates calculated?" dropdown, which begins with the "How the rates fit together" note) — the user clarified the rates go at the top of the Roth vs.
   Traditional section, i.e. the section right below the retirement number; (3) "Total portfolio tax
   comparison" (table + "Show the calculation" dropdown), no rates. The effective-rate dropdown defines "this account" (the account the contributions build)
   vs "other income" (SS + other balances) and walks Steps 1–3.
