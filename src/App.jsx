@@ -27,6 +27,14 @@ import './App.css';
  * - Employer match modeling: the match amount, and the match-optimization math
  *   when Roth contributions alone can't capture the full match.
  * - Contributions that change over time (e.g. raises).
+ * - Taxable-account "tax drag": ongoing tax on dividends/interest and any
+ *   turnover-driven gains during the GROWTH phase (distinct from the capital-
+ *   gains tax already modeled at withdrawal), which lowers the account's
+ *   effective compounding rate. Discussed with the user 2026-09-22 and
+ *   explicitly deferred — highly holding-dependent (roughly 0.1-0.5%/year for
+ *   a low-turnover index fund, 1%+ for higher-turnover or bond-heavy
+ *   holdings), so if built, keep it as its own adjustable, clearly-labeled
+ *   assumption on the taxable bucket only — never folded into returnRate.
  * - Graphs / charts.
  * - PDF client report export.
  * - A backend (saved scenarios, client database, user accounts).
