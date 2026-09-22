@@ -129,6 +129,12 @@ export default function InputForm({ values, onChange }) {
       <fieldset>
         <legend>About you</legend>
 
+        <CurrencyInput
+          label="Total gross income (annual)"
+          value={values.grossIncome}
+          onChange={set('grossIncome')}
+        />
+
         <details className="details lifestyle-assumption">
           <summary>
             Will you earn more later?
@@ -154,11 +160,6 @@ export default function InputForm({ values, onChange }) {
           </div>
         </details>
 
-        <CurrencyInput
-          label="Total gross income (annual)"
-          value={values.grossIncome}
-          onChange={set('grossIncome')}
-        />
         <SelectInput
           label="Type of income"
           hint={

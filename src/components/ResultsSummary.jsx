@@ -98,6 +98,11 @@ function RetirementNumberSection({ result }) {
     <section className="card" aria-labelledby="sec1">
       <h2 id="sec1">Retirement income number</h2>
 
+      <div className="hero">
+        <div className="hero-value">{$(retirementNeed.target)}</div>
+        <div className="hero-sub">After-tax income per year</div>
+      </div>
+
       <dl className="facts lead-facts">
         <div>
           <dt>Social Security benefit used</dt>
@@ -120,11 +125,6 @@ function RetirementNumberSection({ result }) {
           <dd>{$(portfolioNeed)} / year</dd>
         </div>
       </dl>
-
-      <div className="hero">
-        <div className="hero-value">{$(retirementNeed.target)}</div>
-        <div className="hero-sub">After-tax income per year</div>
-      </div>
 
       <p className="note">
         <strong>What this number is:</strong> the after-tax amount you need each year in retirement
@@ -154,21 +154,6 @@ function RetirementNumberSection({ result }) {
 /* ------------------------------------------------------------------ */
 /* Section 2 — Roth vs. Traditional                                     */
 /* ------------------------------------------------------------------ */
-
-function winnerText(result) {
-  const { winner, afterTaxIncomeDifference } = result.comparison;
-  const now = formatPercent(result.rates.marginalNow);
-  const later = formatPercent(result.rates.effectiveRetirement);
-  if (winner === 'even') {
-    return `About even. Your marginal rate now (${now}) and the effective rate on these withdrawals in retirement (${later}) are nearly the same, so the tax treatment washes out.`;
-  }
-  const name = winner === 'pretax' ? 'Pre-tax (Traditional)' : 'Roth';
-  const why =
-    winner === 'pretax'
-      ? `the effective rate on these withdrawals in retirement (${later}) is lower than your marginal rate now (${now}), so the deduction today is worth more than the tax you'll pay later.`
-      : `the effective rate on these withdrawals in retirement (${later}) is higher than your marginal rate now (${now}), so paying tax now on the contribution beats paying it later on the withdrawal.`;
-  return `${name} comes out ahead by about ${$(afterTaxIncomeDifference)} of after-tax income per year, because ${why}`;
-}
 
 function yearsWithoutSSVerdict(result) {
   const s = result.withoutSocialSecurity;
@@ -330,13 +315,9 @@ function RothVsPretax({ result }) {
 
       <TaxRates result={result} />
 
-      <p className="verdict">{winnerText(result)}</p>
-
       {limitCheck.atLimit && <p className="alert">{limitCheck.message}</p>}
 
-      <p className="hint table-caption">
-        The table below just turns that gap into dollars, using this year&rsquo;s contribution.
-      </p>
+      <h3 className="subhead">Comparison table</h3>
 
       <div className="table-wrap">
         <table>
@@ -550,29 +531,11 @@ function EffectiveRateMath({ result }) {
   );
 }
 
-// The one-line read: which side the gap between the two rates leans toward.
-function rateLeanText(rates) {
-  const now = formatPercent(rates.marginalNow);
-  const later = formatPercent(rates.effectiveRetirement);
-  const diff = rates.effectiveRetirement - rates.marginalNow;
-  if (Math.abs(diff) < 0.005) {
-    return `About the same as your marginal rate now (${later} vs. ${now}) — it's close either way.`;
-  }
-  return diff < 0
-    ? `Lower than your marginal rate now (${later} vs. ${now}) — Pre-tax is most likely better.`
-    : `Higher than your marginal rate now (${later} vs. ${now}) — Roth is most likely better.`;
-}
-
 function TaxRates({ result }) {
   const { rates } = result;
   return (
     <div className="tax-rates">
       <h3 className="subhead">Your tax rates</h3>
-      <p className="rate-lead">
-        <strong>The number that matters most</strong> is your effective rate on these
-        withdrawals, compared with your marginal rate today. It&rsquo;s the gap between the two
-        that decides Roth vs. Pre-tax.
-      </p>
 
       <div className="rate-pair">
         <div className="rate-pair-item">
@@ -587,12 +550,6 @@ function TaxRates({ result }) {
           <div className="stat-sub">The rate that decides Roth vs. Pre-tax</div>
         </div>
       </div>
-      <p className="rate-verdict">{rateLeanText(rates)}</p>
-
-      <p className="hint rate-side-note">
-        Overall effective rate in retirement (all tax ÷ all income, for reference only):{' '}
-        {formatPercent(rates.overallEffectiveRetirement)}
-      </p>
 
       <EffectiveRateMath result={result} />
     </div>
@@ -636,7 +593,11 @@ function PortfolioMath({ result }) {
         ss.annualBenefit > 0 ? `${formatPercent(p.taxableSS / ss.annualBenefit, 0)} of benefit` : '',
     },
     {
-      label: `Taxable income (Pre-tax withdrawals + taxable Social Security − ${$(std)} standard deduction)`,
+      label: 'Adjusted gross income, AGI (Pre-tax + taxable-account withdrawals + taxable Social Security)',
+      get: (p) => $(p.withdrawals.pretax + p.withdrawals.taxable + p.taxableSS),
+    },
+    {
+      label: `Ordinary taxable income (Pre-tax withdrawals + taxable Social Security − ${$(std)} standard deduction)`,
       get: (p) => $(p.ordinaryTaxableIncome),
     },
     { label: 'Federal income tax', get: (p) => $(p.ordinaryTax) },

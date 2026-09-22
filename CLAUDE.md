@@ -12,7 +12,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (270 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (271 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -185,6 +185,19 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-22 — Round 4 UI cleanup: moved 'Will you earn more later?' directly below gross income
+  (was above it); moved Social Security benefit + 'Income needed from your portfolio' to directly
+  below the hero retirement number, above 'How is this calculated?' (was above the hero); removed the
+  explanatory lead sentence ('The number that matters most...'), the rate-lean verdict sentence, the
+  Section 2 winnerText verdict paragraph, and the table caption — the calculator stays numbers-first,
+  explanatory prose lives in ARTICLE.md only. The overall effective rate no longer has an outer
+  reference line; it exists only inside the 'How are the retirement rates calculated?' dropdown
+  (value + explanation, both already there). Added an 'Adjusted gross income, AGI' row (Pre-tax +
+  taxable-account withdrawals + taxable Social Security) to the Section 3 calculation dropdown, between
+  'Taxable part of Social Security' and the (renamed) 'Ordinary taxable income' row — renamed from
+  'Taxable income' to avoid confusion with the new AGI row (this model's ordinary taxable income
+  deliberately excludes the capital-gains component, which is taxed separately — do not "simplify"
+  this to AGI − standard deduction, that would overstate it). 271 tests.
 - 2026-09-22 — Capital gains: replaced the flat 15% LTCG rate with the real 0%/15%/20% brackets, stacked
   on top of ordinary income (see the dedicated section above). UI: highlighted "Effective rate on these
   withdrawals" as the number that matters (paired with marginal rate, gap-lean sentence), de-emphasized
