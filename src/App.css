@@ -663,3 +663,94 @@ th.win .th-sub {
     font-size: 1.5rem;
   }
 }
+
+/* ---------- highlighted rate pair (Section 2) ---------- */
+
+.rate-lead {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.rate-pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.rate-pair-item {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.rate-pair-item .stat-value {
+  font-size: 1.5rem;
+}
+
+.rate-pair-item.highlight {
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  padding: 14px 16px;
+}
+
+.rate-pair-item.highlight .stat-value {
+  font-size: 2rem;
+  color: var(--accent);
+}
+
+.rate-pair-vs {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.rate-verdict {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.rate-side-note {
+  margin: 8px 0 0;
+}
+
+.table-caption {
+  margin: 12px 0 8px;
+}
+
+.lead-facts {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 520px) {
+  .rate-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .rate-pair-vs {
+    justify-self: center;
+    padding: 2px 0;
+  }
+
+  .rate-pair-item.highlight .stat-value {
+    font-size: 1.75rem;
+  }
+}
+
+/* ---------- lifestyle assumption dropdown (top of income section) ---------- */
+
+.lifestyle-assumption {
+  margin-bottom: 16px;
+}
+
+.lifestyle-assumption .details-body {
+  background: var(--bg);
+}
+
+.lifestyle-assumption .details-body > p {
+  margin: 0 0 12px;
+}

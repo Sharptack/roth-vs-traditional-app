@@ -1,4 +1,3 @@
-import { LTCG_RATE } from '../lib/constants.js';
 import { formatCurrency, formatPercent } from '../lib/format.js';
 
 const $ = (n) => formatCurrency(n);
@@ -91,12 +90,36 @@ function RetirementNumberMath({ result }) {
 }
 
 function RetirementNumberSection({ result }) {
-  const { retirementNeed } = result;
+  const { retirementNeed, socialSecurity } = result;
   const adjusted = retirementNeed.lifestyleFactor !== 1;
   const direction = retirementNeed.lifestyleFactor > 1 ? 'higher' : 'lower';
+  const portfolioNeed = Math.max(0, retirementNeed.target - socialSecurity.annualBenefit);
   return (
     <section className="card" aria-labelledby="sec1">
       <h2 id="sec1">Retirement income number</h2>
+
+      <dl className="facts lead-facts">
+        <div>
+          <dt>Social Security benefit used</dt>
+          <dd>
+            {$(socialSecurity.annualBenefit)} / year
+            {socialSecurity.estimated && (
+              <span className="dim">
+                {' '}
+                — Estimated — see{' '}
+                <a href="https://www.ssa.gov" target="_blank" rel="noreferrer">
+                  ssa.gov
+                </a>{' '}
+                for a precise figure
+              </span>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Income needed from your portfolio</dt>
+          <dd>{$(portfolioNeed)} / year</dd>
+        </div>
+      </dl>
 
       <div className="hero">
         <div className="hero-value">{$(retirementNeed.target)}</div>
@@ -311,6 +334,10 @@ function RothVsPretax({ result }) {
 
       {limitCheck.atLimit && <p className="alert">{limitCheck.message}</p>}
 
+      <p className="hint table-caption">
+        The table below just turns that gap into dollars, using this year&rsquo;s contribution.
+      </p>
+
       <div className="table-wrap">
         <table>
           <thead>
@@ -523,48 +550,51 @@ function EffectiveRateMath({ result }) {
   );
 }
 
+// The one-line read: which side the gap between the two rates leans toward.
+function rateLeanText(rates) {
+  const now = formatPercent(rates.marginalNow);
+  const later = formatPercent(rates.effectiveRetirement);
+  const diff = rates.effectiveRetirement - rates.marginalNow;
+  if (Math.abs(diff) < 0.005) {
+    return `About the same as your marginal rate now (${later} vs. ${now}) — it's close either way.`;
+  }
+  return diff < 0
+    ? `Lower than your marginal rate now (${later} vs. ${now}) — Pre-tax is most likely better.`
+    : `Higher than your marginal rate now (${later} vs. ${now}) — Roth is most likely better.`;
+}
+
 function TaxRates({ result }) {
-  const { rates, socialSecurity } = result;
+  const { rates } = result;
   return (
     <div className="tax-rates">
       <h3 className="subhead">Your tax rates</h3>
-      <div className="stats three">
-        <Stat
-          label="Marginal rate while working"
-          value={formatPercent(rates.marginalNow)}
-          sub="Tax on your next dollar today"
-        />
-        <Stat
-          label="Effective rate on these withdrawals"
-          value={formatPercent(rates.effectiveRetirement)}
-          sub="Extra tax caused by this account's withdrawals ÷ those withdrawals"
-        />
-        <Stat
-          label="Overall effective rate in retirement"
-          value={formatPercent(rates.overallEffectiveRetirement)}
-          sub="Total tax ÷ total gross income"
-        />
-      </div>
-      <EffectiveRateMath result={result} />
+      <p className="rate-lead">
+        <strong>The number that matters most</strong> is your effective rate on these
+        withdrawals, compared with your marginal rate today. It&rsquo;s the gap between the two
+        that decides Roth vs. Pre-tax.
+      </p>
 
-      <dl className="facts">
-        <div>
-          <dt>Social Security benefit used</dt>
-          <dd>
-            {$(socialSecurity.annualBenefit)} / year
-            {socialSecurity.estimated && (
-              <span className="dim">
-                {' '}
-                — Estimated — see{' '}
-                <a href="https://www.ssa.gov" target="_blank" rel="noreferrer">
-                  ssa.gov
-                </a>{' '}
-                for a precise figure
-              </span>
-            )}
-          </dd>
+      <div className="rate-pair">
+        <div className="rate-pair-item">
+          <div className="stat-label">Marginal rate while working</div>
+          <div className="stat-value">{formatPercent(rates.marginalNow)}</div>
+          <div className="stat-sub">Tax on your next dollar today</div>
         </div>
-      </dl>
+        <div className="rate-pair-vs">vs</div>
+        <div className="rate-pair-item highlight">
+          <div className="stat-label">Effective rate on these withdrawals</div>
+          <div className="stat-value">{formatPercent(rates.effectiveRetirement)}</div>
+          <div className="stat-sub">The rate that decides Roth vs. Pre-tax</div>
+        </div>
+      </div>
+      <p className="rate-verdict">{rateLeanText(rates)}</p>
+
+      <p className="hint rate-side-note">
+        Overall effective rate in retirement (all tax ÷ all income, for reference only):{' '}
+        {formatPercent(rates.overallEffectiveRetirement)}
+      </p>
+
+      <EffectiveRateMath result={result} />
     </div>
   );
 }
@@ -611,8 +641,12 @@ function PortfolioMath({ result }) {
     },
     { label: 'Federal income tax', get: (p) => $(p.ordinaryTax) },
     {
-      label: `Capital gains tax (${formatPercent(LTCG_RATE, 0)} of taxable-account withdrawals)`,
+      label: 'Capital gains tax (real 0% / 15% / 20% brackets, on top of ordinary income)',
       get: (p) => $(p.capitalGainsTax),
+      sub: (p) =>
+        p.withdrawals.taxable > 0
+          ? `${formatPercent(p.capitalGainsTax / p.withdrawals.taxable)} of the taxable withdrawal`
+          : '',
     },
     { label: 'Total tax', kind: 'total', get: (p) => $(p.totalTaxPaid) },
     {
@@ -629,7 +663,10 @@ function PortfolioMath({ result }) {
           Each scenario draws the same share of every account (scaled until the after-tax income
           matches your target). Social Security is added on top and is taxed under the IRS
           combined-income rules, using your Pre-tax and taxable-account withdrawals as the
-          &ldquo;other income.&rdquo;
+          &ldquo;other income.&rdquo; Taxable-account withdrawals are treated as capital gain and
+          taxed at the real 0% / 15% / 20% capital-gains rates, stacked on top of your ordinary
+          income &mdash; not a flat rate, so a withdrawal can be partly or fully tax-free when your
+          other income is modest.
         </p>
         <div className="table-wrap">
           <table className="calc-table">

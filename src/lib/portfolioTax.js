@@ -10,8 +10,9 @@
 //   3. At each step: taxable SS comes from the IRS combined-income formula using
 //      (scaled pretax + scaled taxable withdrawal) as "other income"; ordinary
 //      tax is applied to (scaled pretax + taxable SS - standard deduction); the
-//      capital gains tax is (scaled taxable withdrawal * flat LTCG rate).
-//      (All in retirementTaxStack.js, shared with incomeNeed.js.)
+//      capital gains tax is the scaled taxable withdrawal run through the real
+//      0%/15%/20% capital-gains brackets, stacked on top of ordinary income —
+//      not a flat rate. (All in retirementTaxStack.js, shared with incomeNeed.js.)
 //
 // A scale factor above 1 means the 4% baseline is not enough to fund the target
 // (k * 4% of the portfolio is being drawn per year); below 1 means it more than
@@ -23,7 +24,7 @@
 // Roth draws). No RMD rules are modeled either.
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { solveMonotonicIncreasing } from './solver.js';
-import { WITHDRAWAL_RATE, LTCG_RATE } from './constants.js';
+import { WITHDRAWAL_RATE } from './constants.js';
 
 export function solvePortfolioWithdrawal(
   targetAfterTaxIncome,
@@ -31,7 +32,7 @@ export function solvePortfolioWithdrawal(
   ssBenefit,
   filingStatus,
   year,
-  { withdrawalRate = WITHDRAWAL_RATE, ltcgRate = LTCG_RATE } = {},
+  { withdrawalRate = WITHDRAWAL_RATE } = {},
 ) {
   const balances = {
     pretax: Math.max(0, buckets.pretax || 0),
@@ -58,7 +59,6 @@ export function solvePortfolioWithdrawal(
       ssBenefit,
       filingStatus,
       year,
-      ltcgRate,
     });
     return {
       withdrawals: w,

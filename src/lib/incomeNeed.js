@@ -28,7 +28,6 @@
 // size and never touches this stack.
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { solveMonotonicIncreasing } from './solver.js';
-import { LTCG_RATE } from './constants.js';
 
 // Size of the probe withdrawal used to read an incremental tax rate when the
 // other sources already cover the whole target (so G = 0 and 0/0 is undefined).
@@ -42,7 +41,6 @@ export function solveGrossWithdrawal({
   otherTaxableWithdrawal = 0,
   filingStatus,
   year,
-  ltcgRate = LTCG_RATE,
 }) {
   const stack = (g) =>
     calculateRetirementTax({
@@ -51,7 +49,6 @@ export function solveGrossWithdrawal({
       ssBenefit,
       filingStatus,
       year,
-      ltcgRate,
     });
 
   const afterTaxIncome = (g) =>

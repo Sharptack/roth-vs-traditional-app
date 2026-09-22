@@ -12,7 +12,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (250 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (270 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -38,9 +38,10 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   shim was blocked until the Xcode license was accepted (now fine); use `node -e` for scripted edits.
 
 ## Code map
-- `src/data/`: `taxBrackets.js` (2025, 2026), `ficaRates.js` (also owns the SS wage base),
+- `src/data/`: `taxBrackets.js` (2025, 2026), `capitalGainsBrackets.js` (0%/15%/20% LTCG brackets),
+  `ficaRates.js` (also owns the SS wage base),
   `ssBendPoints.js` (+ FRA table by birth year), `ssTaxThresholds.js` (fixed by law), `contributionLimits.js`.
-- `src/lib/`: `taxCalculations` (progressive tax, marginal rate; accepts above-the-line adjustments), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
+- `src/lib/`: `taxCalculations` (progressive tax, marginal rate; accepts above-the-line adjustments), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
   (IRS combined-income formula), `socialSecurity` (simplified benefit estimator), `retirementTaxStack`
   (shared tax on a retirement income stack), `solver` (monotonic binary search), `incomeNeed`
   (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
@@ -75,7 +76,14 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 3. Social Security: user-entered benefit, or a simplified estimate (AIME = income capped at wage base / 12,
    bend-point PIA, claiming age = retirement age clamped to 62–70, FRA from birth year = year − age).
 4. Other balances grow at the chosen return to retirement; 4% of each is withdrawn. Pre-tax = ordinary
-   income; Roth = tax-free; taxable = flat 15% and counts toward SS "other income".
+   income; Roth = tax-free; taxable = treated as long-term capital gain, taxed via the REAL 0%/15%/20%
+   LTCG brackets (capitalGainsTax.js), stacked ON TOP of ordinary taxable income (grossOrdinaryIncome =
+   pretax withdrawal + taxable SS; unused standard-deduction room shelters gains too — see the function's
+   doc comment for the derivation). Counts toward SS "other income". NOT a flat rate: a modest-income
+   retiree can pay 0% on some or all of a taxable-account withdrawal, and a bigger Pre-tax withdrawal can
+   push a FIXED taxable-account withdrawal into a higher LTCG bracket (a real, correct cross-account
+   effect — see incomeNeed.test.js's "capital gains stack on top of ordinary income" tests for a clean,
+   isolated, hand-verified example). NIIT (3.8%) is not modeled.
 5. **Effective rate on these withdrawals** (`rates.effectiveRetirement`; `incomeNeed`): binary-search the gross withdrawal G from *this* account
    so total after-tax income = need. Rate = (extra tax caused by G) / G, i.e. incremental blended rate
    including the Social Security phase-in. If other sources already cover the need (G = 0), the rate is
@@ -97,6 +105,16 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
     PROPERTY (tested): when this account is needed (gross-up > 0) and lifestyle <= 1, effective <= marginal
     later <= marginal now, so this view can only tie or favor Pre-tax. Roth can win when (a) other accounts'
     *forced* 4% draws already exceed the need (existing balances set the bracket), or (b) lifestyle > 1.
+
+## Capital gains: corrected from a flat rate (2026-09-22)
+Originally implemented per spec as a flat 15% (`LTCG_RATE` in constants.js). The user flagged that real
+LTCG brackets include a 0% tier based on income, which this missed. Fixed: `capitalGainsTax.js` +
+`data/capitalGainsBrackets.js`, wired into `retirementTaxStack.js`; `LTCG_RATE`/`ltcgRate` removed
+everywhere. 2025 thresholds fetched directly from IRS Topic 409; 2026 thresholds corroborated via
+secondary sources (CNBC, Kiplinger) — the IRS Rev. Proc. 2025-32 PDF wasn't machine-readable, re-verify
+against it when convenient. This resolved one of the two model quirks discussed with the user on
+2026-09-21 (the flat-rate one); the other (effective rate measured on the gap-filling slice, applied to
+the whole account) is still open — see "Known limitations."
 
 ## Decisions and deviations from the original spec (deliberate)
 - **SS taxability:** the spec's "$6,000 (Single) / $12,000 (MFJ)" was wrong. The IRS worksheet uses half the
@@ -140,6 +158,11 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - The lifestyle factor is one multiplier on the need. It does not model contributions made at a *higher
   future* marginal rate when earnings rise (marginal-now stays today's), which would offset it toward
   Pre-tax; time-varying contributions are a future feature.
+- The PROPERTY test in compare.test.js ("no-SS retirement bracket never exceeds today's") no longer
+  asserts effective <= marginal — capital-gains bracket-stacking can push the blended effective rate
+  above the ordinary marginal rate when a taxable balance is present (real effect, see above). The
+  "Roth (almost) never wins" half of the property is checked empirically over a grid, not proven.
+- NIIT (3.8% on investment income above $200k/$250k MFJ) is not modeled.
 - 1099: income entered is *net* earnings; QBI deduction, solo-401(k)/SEP not modeled; MFJ couples treated as
   one earner (single wage base).
 - Full "maxing out" side-account comparison and a Roth/Traditional split are future features (the app warns
@@ -162,6 +185,14 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-22 — Capital gains: replaced the flat 15% LTCG rate with the real 0%/15%/20% brackets, stacked
+  on top of ordinary income (see the dedicated section above). UI: highlighted "Effective rate on these
+  withdrawals" as the number that matters (paired with marginal rate, gap-lean sentence), de-emphasized
+  the overall effective rate to a reference line; moved Social Security benefit + a new "Income needed
+  from your portfolio" figure into the retirement-number section, above the hero; moved the retirement-
+  lifestyle assumption into its own dropdown ("Will you earn more later?") at the top of the income
+  section, aimed explicitly at people who expect to earn more later; added a one-line caption above the
+  Section 2 table noting it illustrates the rate gap. 270 tests.
 - 2026-09-20 — Article is now an in-app page: `#/how-it-works` renders ARTICLE.md (marked + ?raw), linked
   from the header and footer with a back link; wording fixed (no "Section 3", current dropdown names). Round 3
   moved the rates to the top of Roth vs. Traditional. 250 tests.

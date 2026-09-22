@@ -31,7 +31,6 @@ import {
   ACCOUNT_TYPES,
   CONTRIBUTION_TYPES,
   FILING_STATUSES,
-  LTCG_RATE,
   WITHDRAWAL_RATE,
 } from './constants.js';
 
@@ -177,7 +176,7 @@ export function compareRothVsTraditional(inputs) {
   const otherWithdrawals = {
     pretaxGross: WITHDRAWAL_RATE * grown.pretax, // fully taxable, stacks as ordinary income
     roth: WITHDRAWAL_RATE * grown.roth, // tax-free
-    taxableGross: WITHDRAWAL_RATE * grown.taxable, // flat LTCG rate
+    taxableGross: WITHDRAWAL_RATE * grown.taxable, // treated as capital gain, taxed via real LTCG brackets
   };
   // NOTE: no RMD sequencing or tax-efficient withdrawal ordering is modeled —
   // all accounts are treated as drawn simultaneously.
@@ -193,7 +192,6 @@ export function compareRothVsTraditional(inputs) {
     otherTaxableWithdrawal: otherWithdrawals.taxableGross,
     filingStatus,
     year,
-    ltcgRate: LTCG_RATE,
   });
   const effectiveRateRetirement = grossUp.retirementEffectiveTaxRate;
 
@@ -267,7 +265,6 @@ export function compareRothVsTraditional(inputs) {
     otherTaxableWithdrawal: otherWithdrawals.taxableGross,
     filingStatus,
     year,
-    ltcgRate: LTCG_RATE,
   });
   // Signed taxable income at the top of the stack: with no Social Security it is
   // just pre-tax withdrawals minus the standard deduction (negative = still sheltered).

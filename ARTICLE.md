@@ -44,7 +44,7 @@ Many tools ask you to guess your retirement tax bracket. Guessing is hard, and s
 
 Then it asks what it would take to produce that much after-tax income in retirement:
 
-- Your other accounts (Pre-tax, Roth, taxable) are grown to your retirement age at your expected return, and 4% of each is drawn as income. Pre-tax money is taxed as ordinary income, Roth is tax-free, and taxable-account withdrawals are taxed at a flat assumed 15% capital gains rate.
+- Your other accounts (Pre-tax, Roth, taxable) are grown to your retirement age at your expected return, and 4% of each is drawn as income. Pre-tax money is taxed as ordinary income, Roth is tax-free, and taxable-account withdrawals are treated as long-term capital gain and taxed at the real 0% / 15% / 20% capital-gains rates — not a flat rate. Those rates stack on top of your ordinary income, the same way tax brackets do, so a withdrawal can be partly or fully tax-free when your other retirement income is modest, and a bigger withdrawal from a Pre-tax account can push a taxable-account withdrawal into a higher capital-gains bracket.
 - Social Security comes next, either the benefit you enter or a simplified estimate.
 - Finally, a search finds how much has to come out of *this* account to fill the remaining gap. The tax on that withdrawal, stacked on everything else, gives the effective rate.
 

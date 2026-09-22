@@ -26,7 +26,7 @@ const LIFESTYLE_OPTIONS = [
 ];
 
 const returnLabel = (value) => RETURN_OPTIONS.find((o) => o.value === value)?.label ?? value;
-// Short form for the Assumptions summary: "same", "25% higher", "20% lower".
+// Short form for a dropdown summary: "same", "25% higher", "20% lower".
 const lifestyleLabel = (value) =>
   value === '1'
     ? 'same'
@@ -128,6 +128,32 @@ export default function InputForm({ values, onChange }) {
     <form className="card input-form" onSubmit={(e) => e.preventDefault()} noValidate>
       <fieldset>
         <legend>About you</legend>
+
+        <details className="details lifestyle-assumption">
+          <summary>
+            Will you earn more later?
+            {values.retirementLifestyle !== '1' && (
+              <> ({lifestyleLabel(values.retirementLifestyle)} retirement lifestyle)</>
+            )}
+          </summary>
+          <div className="details-body">
+            <p>
+              This is for people whose income &mdash; and spending &mdash; is likely to grow a lot
+              before they retire, typically people earlier in their careers who are lower earners
+              right now. If that&rsquo;s you, your retirement lifestyle may end up well above what
+              you spend today, which raises your retirement income number and can push your
+              retirement tax bracket higher, an effect that favors Roth.
+            </p>
+            <SelectInput
+              label="Expected retirement lifestyle"
+              hint="How much you expect to spend each year in retirement compared with what you spend today."
+              value={values.retirementLifestyle}
+              onChange={set('retirementLifestyle')}
+              options={LIFESTYLE_OPTIONS}
+            />
+          </div>
+        </details>
+
         <CurrencyInput
           label="Total gross income (annual)"
           value={values.grossIncome}
@@ -257,10 +283,7 @@ export default function InputForm({ values, onChange }) {
       </fieldset>
 
       <details className="details assumptions">
-        <summary>
-          Assumptions: {returnLabel(values.returnRate)} expected annual investment return,{' '}
-          {lifestyleLabel(values.retirementLifestyle)} retirement lifestyle
-        </summary>
+        <summary>Assumptions: {returnLabel(values.returnRate)} expected annual investment return</summary>
         <div className="details-body">
           <SelectInput
             label="Expected annual investment return"
@@ -268,13 +291,6 @@ export default function InputForm({ values, onChange }) {
             value={values.returnRate}
             onChange={set('returnRate')}
             options={RETURN_OPTIONS}
-          />
-          <SelectInput
-            label="Expected retirement lifestyle"
-            hint="How much you expect to spend each year in retirement compared with what you spend today. If you expect your earnings, and your spending, to rise before you retire, choose a higher number. That raises your retirement income number and can push you into a higher bracket in retirement."
-            value={values.retirementLifestyle}
-            onChange={set('retirementLifestyle')}
-            options={LIFESTYLE_OPTIONS}
           />
         </div>
       </details>

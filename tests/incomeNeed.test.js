@@ -125,19 +125,24 @@ describe('solveGrossWithdrawal — stacked on other retirement income (HAND CALC
     expect(r.retirementEffectiveTaxRate).toBeLessThan(0.22);
   });
 
-  it('other taxable-account income is taxed at the flat LTCG rate and counts toward SS taxability', () => {
-    // other taxable 40,000: CG tax = 6,000. SS 20,000, combined = 40,000 + 10,000 = 50,000
+  it('other taxable-account income is taxed via the real capital-gains brackets and counts toward SS taxability', () => {
+    // other taxable 40,000, SS 20,000. combined = 40,000 + 10,000 = 50,000
     //   taxable SS = min(17,000, 4,500 + 0.85 x 16,000 = 18,100) = 17,000
-    //   ordinary T = 17,000 - 15,750 = 1,250 -> tax 125
-    //   net(G=0) = 40,000 + 20,000 - 6,000 - 125 = 53,875
+    //   ordinary T = 17,000 - 15,750 = 1,250 -> ordinary tax 125
+    //   capital gains: grossOrdinaryIncome = 0 (pretax) + 17,000 (taxable SS) = 17,000
+    //     total taxable income = 17,000 + 40,000 - 15,750 = 41,250, under the $48,350
+    //     0% threshold (single, 2025) the WHOLE way, so CG tax = $0 (not a flat 15%).
+    //   net(G=0) = 40,000 + 20,000 - 0 - 125 = 59,875
     const r = solveGrossWithdrawal({
       ...base,
-      targetAfterTaxIncome: 53875,
+      targetAfterTaxIncome: 59875,
       ssBenefit: 20000,
       otherTaxableWithdrawal: 40000,
     });
     expect(r.grossWithdrawal).toBe(0);
-    expect(r.afterTaxFromOtherSources).toBeCloseTo(53875, 6);
+    expect(r.afterTaxFromOtherSources).toBeCloseTo(59875, 6);
+    expect(r.baseStack.capitalGainsTax).toBe(0);
+    expect(r.baseStack.ordinaryTax).toBeCloseTo(125, 6);
   });
 
   it('Roth withdrawals from other accounts never change the tax stack', () => {
@@ -206,5 +211,48 @@ describe('solveGrossWithdrawal — solver properties', () => {
       expect(r.retirementEffectiveTaxRate).toBeGreaterThanOrEqual(0);
       expect(r.retirementEffectiveTaxRate).toBeLessThan(0.37 * 1.85);
     }
+  });
+});
+
+describe('solveGrossWithdrawal — capital gains stack on top of ordinary income (HAND CALC)', () => {
+  // Capital gains brackets apply to TOTAL taxable income (ordinary + gains), with gains
+  // stacked on top. That means withdrawing more from THIS account can push a fixed
+  // taxable-account withdrawal from the 0% capital-gains bracket into the 15% bracket —
+  // a real cost that a flat capital-gains rate would miss entirely.
+  it('a withdrawal fully sheltered from ordinary tax can still cost 15%, by using up deduction room that would have sheltered gains (HAND CALC)', () => {
+    // No SS, other taxable withdrawal $300,000 (single, 2025; standard deduction $15,750;
+    // gains brackets 0% <= 48,350, 15% 48,350–533,400).
+    //   G = 0: total taxable = 300,000 - 15,750 = 284,250. Gains stack [0, 284,250]:
+    //     0% x 48,350 + 15% x (284,250 - 48,350 = 235,900) = 35,385
+    //   G = 10,000: G alone is fully sheltered by the deduction (10,000 < 15,750), so it adds
+    //     $0 of ORDINARY tax — but it uses up $10,000 of deduction room that used to shelter
+    //     gains. total taxable = 310,000 - 15,750 = 294,250. Gains stack [0, 294,250]:
+    //     15% x (294,250 - 48,350 = 245,900) = 36,885
+    //   extra tax caused by G = 36,885 - 35,385 = 1,500  ->  effective rate = 1,500 / 10,000 = 15%,
+    //   even though G's own ordinary bracket is 0% (still under the standard deduction).
+    //   net(G=10,000) = 10,000 + 300,000 - 36,885 = 273,115
+    const r = solveGrossWithdrawal({
+      filingStatus: 'single',
+      year: 2025,
+      targetAfterTaxIncome: 273115,
+      otherTaxableWithdrawal: 300000,
+    });
+    expect(r.grossWithdrawal).toBeCloseTo(10000, 0);
+    expect(r.baseStack.capitalGainsTax).toBeCloseTo(35385, 1);
+    expect(r.baseStack.ordinaryTax).toBe(0);
+    expect(r.solutionStack.capitalGainsTax).toBeCloseTo(36885, 1);
+    expect(r.solutionStack.ordinaryTax).toBe(0);
+    expect(r.totalTaxPaid).toBeCloseTo(36885, 1);
+    expect(r.retirementEffectiveTaxRate).toBeCloseTo(0.15, 3);
+  });
+
+  it('with no other taxable-account balance, this interaction disappears (baseline sanity check)', () => {
+    const r = solveGrossWithdrawal({
+      filingStatus: 'single',
+      year: 2025,
+      targetAfterTaxIncome: 20000,
+    });
+    expect(r.baseStack.capitalGainsTax).toBe(0);
+    expect(r.solutionStack.capitalGainsTax).toBe(0);
   });
 });

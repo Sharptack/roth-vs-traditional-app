@@ -386,11 +386,19 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
     expect(withSS.grossUp.grossWithdrawal).toBeLessThan(s.grossUp.grossWithdrawal);
   });
 
-  it('PROPERTY: when this account is needed to fill the gap, the no-SS retirement bracket never exceeds today\'s, so Roth never wins', () => {
+  it('PROPERTY: when this account is needed to fill the gap, the no-SS retirement bracket never exceeds today\'s, so Roth (almost) never wins', () => {
     // Reason: when withdrawals from this account are needed (gross-up > 0), total pre-tax income Y solves
     // net(Y) = need. Need <= today's take-home, so Y < today's gross income; brackets are monotone, so
     // marginal later <= marginal now. (Not true when other accounts' forced 4% draws already exceed the
     // need: see the next test.)
+    //
+    // NOTE ON THE EFFECTIVE RATE: we do NOT also assert effective <= marginal here. Capital gains
+    // brackets stack on top of ordinary income (capitalGainsTax.js), so a bigger withdrawal from THIS
+    // account can push a fixed taxable-account withdrawal from the 0% gains bracket into the 15% one.
+    // That extra tax is real and gets counted as 'extra tax caused by this withdrawal,' so the blended
+    // effective rate CAN exceed this account's own ordinary marginal rate when a taxable balance is
+    // present (see incomeNeed.test.js's capital-gains-stacking tests for a clean, isolated example).
+    // Empirically it still doesn't flip the verdict to Roth across this grid (checked below).
     for (const filingStatus of ['single', 'mfj']) {
       for (const grossIncome of [30000, 60000, 100000, 180000, 400000]) {
         for (const savings of [0, 5000, 20000]) {
@@ -407,9 +415,6 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
             const label = JSON.stringify({ filingStatus, grossIncome, savings, otherPretaxBalance });
             if (!(q.withoutSocialSecurity.grossUp.grossWithdrawal > 0)) continue; // other accounts already cover the need
             expect(q.withoutSocialSecurity.marginalRateRetirement, label).toBeLessThanOrEqual(q.rates.marginalNow);
-            expect(q.withoutSocialSecurity.effectiveRateRetirement, label).toBeLessThanOrEqual(
-              q.withoutSocialSecurity.marginalRateRetirement + 1e-9,
-            );
             expect(q.withoutSocialSecurity.comparison.winner, label).not.toBe('roth');
           }
         }

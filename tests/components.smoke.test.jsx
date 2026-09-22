@@ -73,14 +73,21 @@ describe('InputForm', () => {
     expect(both).toContain('Self-employment tax replaces FICA');
   });
 
-  it('puts the retirement lifestyle in Assumptions, with a plain-language summary', () => {
+  it('puts the retirement lifestyle in its own dropdown at the top of "About you", aimed at future higher earners', () => {
+    const aboutYou = html.slice(html.indexOf('About you'), html.indexOf('Total gross income'));
+    expect(aboutYou).toContain('Will you earn more later?');
+    expect(aboutYou).toContain('class="details lifestyle-assumption"');
+    expect(aboutYou).toContain('typically people earlier in their careers');
+    expect(aboutYou).toContain('Expected retirement lifestyle');
+    // the return-rate Assumptions dropdown no longer mentions lifestyle
     const assumptions = html.slice(html.indexOf('class="details assumptions"'));
-    expect(assumptions).toContain('Expected retirement lifestyle');
-    expect(assumptions).toContain('7% expected annual investment return, same retirement lifestyle');
+    expect(assumptions).toContain('7% expected annual investment return');
+    expect(assumptions).not.toContain('retirement lifestyle');
+    expect(assumptions).not.toContain('Expected retirement lifestyle');
     const higher = renderToStaticMarkup(
       <InputForm values={{ ...DEFAULT_FORM_VALUES, retirementLifestyle: '1.25' }} onChange={() => {}} />,
     );
-    expect(higher).toContain('25% higher retirement lifestyle');
+    expect(higher).toContain('Will you earn more later? (25% higher retirement lifestyle)');
   });
 
   it('hides the SS benefit input when the answer is No, and shows the estimate disclaimer', () => {
@@ -176,20 +183,37 @@ describe('ResultsSummary', () => {
     expect(dropdown.indexOf('How the rates fit together.')).toBeLessThan(dropdown.indexOf('Step 1: income from everything except this account'));
   });
 
-  it('labels the rates precisely, and defines the overall rate as total tax over gross income', () => {
+  it('highlights the effective rate on withdrawals as the number that matters, paired with the marginal rate', () => {
     const html = render();
-    expect(html).toContain('Extra tax caused by this account&#x27;s withdrawals ÷ those withdrawals');
-    expect(html).toContain('Total tax ÷ total gross income');
-    expect(html).not.toContain('Effective rate in retirement</div>');
+    expect(html).toContain('The number that matters most');
+    expect(html).toContain('class="rate-pair-item highlight"');
+    // the highlighted pair holds exactly marginal-now and effective-on-withdrawals
+    const pair = html.slice(html.indexOf('class="rate-pair"'), html.indexOf('class="rate-verdict"'));
+    expect(pair).toContain('Marginal rate while working');
+    expect(pair).toContain('Effective rate on these withdrawals');
+    expect(pair).not.toContain('Overall effective rate');
+    // the overall rate is a plain reference line, not a highlighted stat
+    expect(html).toContain('class="hint rate-side-note"');
+    expect(html).toContain('Overall effective rate in retirement (all tax ÷ all income, for reference only)');
+    expect(html).toContain('total tax ÷'); // still explained in the dropdown
     expect(html).toContain('Overall effective rate (');
   });
 
-  it('shows the Social Security benefit used under the rates, not in the retirement number section', () => {
+  it('states which side the rate gap leans toward, right under the highlighted pair', () => {
+    const proTraditional = render(); // default: effective (18.5%) > marginal (12%) for MFJ... check actual default (single, 22%/22.2%)
+    expect(proTraditional).toContain('rate-verdict');
+    expect(proTraditional).toMatch(/(Pre-tax is most likely better|Roth is most likely better|close either way)/);
+  });
+
+  it('shows the Social Security benefit used and the portfolio need in the retirement number section, above the hero number', () => {
     const html = render();
     const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
     const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec3"'));
-    expect(sec1).not.toContain('Social Security benefit used');
-    expect(sec2).toContain('Social Security benefit used');
+    expect(sec1).toContain('Social Security benefit used');
+    expect(sec1).toContain('Income needed from your portfolio');
+    expect(sec1.indexOf('Social Security benefit used')).toBeLessThan(sec1.indexOf('class="hero"'));
+    // it is no longer duplicated next to the rates
+    expect(sec2).not.toContain('Social Security benefit used');
   });
 
   it('shows the contribution-limit warning in the Roth vs. Traditional section', () => {

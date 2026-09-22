@@ -8,13 +8,14 @@
 //     (Roth withdrawals are tax-free and are NOT part of combined income.)
 //   - Ordinary tax applies to (pre-tax withdrawals + taxable Social Security
 //     - standard deduction), through the progressive brackets.
-//   - Taxable-account withdrawals are taxed at a flat assumed capital gains
-//     rate (LTCG_RATE), in addition to ordinary tax. Simplification: the whole
-//     withdrawal is treated as gain, and it does not push ordinary income into
-//     higher brackets.
+//   - Taxable-account withdrawals are treated as entirely long-term capital
+//     gain and taxed via the REAL 0% / 15% / 20% capital-gains brackets,
+//     stacked on top of ordinary income (see capitalGainsTax.js) — NOT a flat
+//     rate. Many retirees with modest other income pay 0% on some or all of a
+//     taxable-account withdrawal.
 import { calculateTax, getStandardDeduction } from './taxCalculations.js';
 import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
-import { LTCG_RATE } from './constants.js';
+import { calculateCapitalGainsTax } from './capitalGainsTax.js';
 
 export function calculateRetirementTax({
   pretaxWithdrawal = 0,
@@ -22,7 +23,6 @@ export function calculateRetirementTax({
   ssBenefit = 0,
   filingStatus,
   year,
-  ltcgRate = LTCG_RATE,
 }) {
   const taxableSS = calculateTaxableSocialSecurity(
     pretaxWithdrawal + taxableWithdrawal,
@@ -30,12 +30,17 @@ export function calculateRetirementTax({
     filingStatus,
     year,
   );
-  const ordinaryTaxableIncome = Math.max(
-    0,
-    pretaxWithdrawal + taxableSS - getStandardDeduction(filingStatus, year),
-  );
+  const standardDeduction = getStandardDeduction(filingStatus, year);
+  const grossOrdinaryIncome = pretaxWithdrawal + taxableSS;
+  const ordinaryTaxableIncome = Math.max(0, grossOrdinaryIncome - standardDeduction);
   const ordinaryTax = calculateTax(ordinaryTaxableIncome, filingStatus, year);
-  const capitalGainsTax = taxableWithdrawal * ltcgRate;
+  const capitalGainsTax = calculateCapitalGainsTax(
+    grossOrdinaryIncome,
+    taxableWithdrawal,
+    standardDeduction,
+    filingStatus,
+    year,
+  );
   return {
     taxableSS,
     ordinaryTaxableIncome,
