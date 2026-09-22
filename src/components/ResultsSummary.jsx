@@ -307,7 +307,7 @@ function YearsWithoutSocialSecurity({ result }) {
 }
 
 function RothVsPretax({ result }) {
-  const { lumpSum, annuity, contribution, comparison, limitCheck } = result;
+  const { lumpSum, annuity, contribution, contributionSplit, comparison, limitCheck } = result;
   const win = (side) => (comparison.winner === side ? 'win' : '');
   return (
     <section className="card" aria-labelledby="sec2">
@@ -338,8 +338,22 @@ function RothVsPretax({ result }) {
                 Current possible contribution
                 <span className="th-sub">Per year, at the same take-home cost</span>
               </th>
-              <td>{$(contribution.roth)}</td>
-              <td>{$(contribution.pretax)}</td>
+              <td>
+                {$(contribution.roth)}
+                {contributionSplit.roth.excessToTaxable > 0 && (
+                  <span className="th-sub">
+                    {$(contributionSplit.roth.toAccount)} to the account, rest to taxable
+                  </span>
+                )}
+              </td>
+              <td>
+                {$(contribution.pretax)}
+                {contributionSplit.pretax.excessToTaxable > 0 && (
+                  <span className="th-sub">
+                    {$(contributionSplit.pretax.toAccount)} to the account, rest to taxable
+                  </span>
+                )}
+              </td>
             </tr>
             <tr>
               <th scope="row">

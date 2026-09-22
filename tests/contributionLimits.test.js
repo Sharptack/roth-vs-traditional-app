@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkContributionLimit } from '../src/lib/contributionLimits.js';
+import { checkContributionLimit, splitAtContributionLimit } from '../src/lib/contributionLimits.js';
 
 describe('checkContributionLimit (2025: 401(k) $23,500, IRA $7,000)', () => {
   it('flags at exactly 90% of the 401(k) limit ($21,150)', () => {
@@ -30,8 +30,13 @@ describe('checkContributionLimit (2025: 401(k) $23,500, IRA $7,000)', () => {
     expect(message).toContain('Roth contributions shelter more real after-tax wealth than Traditional');
     expect(checkContributionLimit(7000, 'ira', 2025).message).toContain('2025 IRA contribution limit of $7,000');
   });
-  it('an over-the-limit message says so', () => {
-    expect(checkContributionLimit(30000, '401k', 2025).message).toContain('above the 2025 401(k)');
+  it('an over-the-limit message says so, names the exact excess, and explains it goes to taxable', () => {
+    // 30,000 - 23,500 = 6,500 excess
+    const { message } = checkContributionLimit(30000, '401k', 2025);
+    expect(message).toContain('above the 2025 401(k)');
+    expect(message).toContain('extra $6,500/year');
+    expect(message).toContain("can't legally go into a 401(k)");
+    expect(message).toContain('taxable investment account');
   });
   it('uses the newest data on file for a later year, and says which year that was', () => {
     // 2030 is beyond the data, so the 2026 limits apply and the message says 2026
@@ -61,5 +66,53 @@ describe('checkContributionLimit (2026: 401(k) $24,500, IRA $7,500)', () => {
   });
   it('2025 limits are still available for 2025', () => {
     expect(checkContributionLimit(1000, '401k', 2025).limit).toBe(23500);
+  });
+});
+
+describe('splitAtContributionLimit (2025: 401(k) $23,500, IRA $7,000)', () => {
+  it('under the limit: everything goes to the account, no excess', () => {
+    const r = splitAtContributionLimit(10000, '401k', 2025);
+    expect(r.toAccount).toBe(10000);
+    expect(r.excessToTaxable).toBe(0);
+    expect(r.limit).toBe(23500);
+  });
+  it('exactly at the limit: everything fits, no excess', () => {
+    const r = splitAtContributionLimit(23500, '401k', 2025);
+    expect(r.toAccount).toBe(23500);
+    expect(r.excessToTaxable).toBe(0);
+  });
+  it('over the limit: caps at the limit, the rest is the excess (HAND CALC)', () => {
+    // 30,000 - 23,500 = 6,500
+    const r = splitAtContributionLimit(30000, '401k', 2025);
+    expect(r.toAccount).toBe(23500);
+    expect(r.excessToTaxable).toBe(6500);
+    expect(r.toAccount + r.excessToTaxable).toBe(30000);
+  });
+  it('uses the IRA limit for IRAs (HAND CALC)', () => {
+    // 10,000 - 7,000 = 3,000
+    const r = splitAtContributionLimit(10000, 'ira', 2025);
+    expect(r.toAccount).toBe(7000);
+    expect(r.excessToTaxable).toBe(3000);
+  });
+  it('a zero or negative amount has nothing to split', () => {
+    expect(splitAtContributionLimit(0, '401k', 2025)).toMatchObject({ toAccount: 0, excessToTaxable: 0 });
+    expect(splitAtContributionLimit(-500, '401k', 2025)).toMatchObject({ toAccount: 0, excessToTaxable: 0 });
+  });
+  it('uses the 2026 limits ($24,500 / $7,500) for 2026 (HAND CALC)', () => {
+    // 25,000 - 24,500 = 500
+    const r = splitAtContributionLimit(25000, '401k', 2026);
+    expect(r.toAccount).toBe(24500);
+    expect(r.excessToTaxable).toBe(500);
+    expect(r.year).toBe(2026);
+  });
+  it('agrees with checkContributionLimit on the limit itself', () => {
+    for (const [accountType, year] of [['401k', 2025], ['ira', 2025], ['401k', 2026], ['ira', 2026]]) {
+      expect(splitAtContributionLimit(1, accountType, year).limit).toBe(
+        checkContributionLimit(1, accountType, year).limit,
+      );
+    }
+  });
+  it('rejects an unknown account type', () => {
+    expect(() => splitAtContributionLimit(1000, '403b', 2025)).toThrow(/account type/i);
   });
 });

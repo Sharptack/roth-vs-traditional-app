@@ -12,7 +12,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (271 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (286 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -41,7 +41,9 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - `src/data/`: `taxBrackets.js` (2025, 2026), `capitalGainsBrackets.js` (0%/15%/20% LTCG brackets),
   `ficaRates.js` (also owns the SS wage base),
   `ssBendPoints.js` (+ FRA table by birth year), `ssTaxThresholds.js` (fixed by law), `contributionLimits.js`.
-- `src/lib/`: `taxCalculations` (progressive tax, marginal rate; accepts above-the-line adjustments), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
+- `src/lib/`: `taxCalculations` (progressive tax, marginal rate; accepts above-the-line adjustments), `contributionLimits`
+  (`checkContributionLimit` = the UI warning; `splitAtContributionLimit` = caps a contribution at the IRS
+  limit and returns the excess, shared `getLimit` lookup so the two never disagree), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
   (IRS combined-income formula), `socialSecurity` (simplified benefit estimator), `retirementTaxStack`
   (shared tax on a retirement income stack), `solver` (monotonic binary search), `incomeNeed`
   (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
@@ -90,8 +92,21 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    read from a $1,000 probe withdrawal. Also `rates.overallEffectiveRetirement` = total tax on the whole
    first-year retirement stack / total gross income (Social Security + every withdrawal incl. Roth) —
    labelled "Overall effective rate in retirement"; `retirementOverall` holds the two amounts.
-6. Paycheck equivalents: Roth R = P·(1−t); Pre-tax P = R/(1−t), t = current marginal rate.
-7. Section 2 compares annuity FV of R vs P; Pre-tax after-tax value uses (1 − effective rate).
+6. Paycheck equivalents: Roth R = P·(1−t); Pre-tax P = R/(1−t), t = current marginal rate. R and P
+   (`result.contribution`) stay the UNCAPPED equivalents for display. Each is then independently run
+   through `splitAtContributionLimit` (same account type, same numeric limit for either tax
+   treatment) -> `result.contributionSplit.{roth,pretax}.{toAccount,excessToTaxable}`. Everything that
+   COMPOUNDS (lump sum, annuity, Section 3 buckets) uses `toAccount`; `excessToTaxable` becomes its
+   own annuity stream added to that scenario's TAXABLE bucket only (Roth's excess and Pre-tax's excess
+   differ, since R ≠ P, so each scenario spills over independently — realistic, since a real saver
+   contributing 100% Roth hits the same dollar limit as one contributing 100% Pre-tax). The excess money
+   is then taxed like any other taxable-account money at withdrawal (real LTCG brackets, step 4/8 below).
+7. Section 2 compares annuity FV of capped-R vs capped-P; Pre-tax after-tax value uses (1 − effective
+   rate). Section 2 is deliberately the "this account only" lens — it does NOT show the taxable
+   spillover; that lives in Section 3's portfolio buckets (already visible via the existing bucket
+   breakdown, no new UI needed there). When capping applies, the "Current possible contribution" row
+   gets a small sub-note ("$X to the account, rest to taxable"), and `limitCheck.message` (Section 7,
+   shown as an alert above the table) names the exact excess and explains where it goes.
 8. Section 3 (`portfolioTax`): per scenario (all-Roth / all-Pre-tax), 4% baseline per bucket, one scale
    factor k found by binary search so after-tax income (withdrawals + full SS − tax) = need.
    Taxable SS uses (pretax + taxable withdrawals) as "other income".
@@ -105,6 +120,18 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
     PROPERTY (tested): when this account is needed (gross-up > 0) and lifestyle <= 1, effective <= marginal
     later <= marginal now, so this view can only tie or favor Pre-tax. Roth can win when (a) other accounts'
     *forced* 4% draws already exceed the need (existing balances set the bracket), or (b) lifestyle > 1.
+
+## Contribution limits: excess now defaults to taxable (2026-09-22)
+Previously `savings`/R/P compounded at their full entered value regardless of the IRS limit — a
+$50,000 "401(k)" contribution would compound as if it all fit. Fixed: `splitAtContributionLimit` caps
+each of R and P at the limit for the selected `accountType`/year; the excess grows as an additional
+taxable-account annuity, one per scenario (see the model section above). The limit DATA was already
+year-keyed and extensible (`data/contributionLimits.js`) — no change needed there, just the missing
+behavior that used it. `checkContributionLimit`'s over-limit message now names the exact dollar excess
+and explains the redirect, instead of saying "a fuller comparison is planned." Resolves the "excess
+contribution" half of the "maxing out" future-enhancement item; the other half (investing a Traditional
+filer's tax SAVINGS from staying at-but-not-over the limit) is still unmodeled — see App.jsx and
+ARTICLE.md's "Why maxing out changes the math," which now distinguishes the two.
 
 ## Capital gains: corrected from a flat rate (2026-09-22)
 Originally implemented per spec as a flat 15% (`LTCG_RATE` in constants.js). The user flagged that real
@@ -185,6 +212,15 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-22 — Contribution limits: excess above the limit now defaults to a taxable account,
+  independently per Roth/Pre-tax scenario (splitAtContributionLimit); Section 2 table shows a capping
+  sub-note; limitCheck message names the exact excess. ARTICLE.md and the future-enhancements comment
+  now distinguish "excess over the limit" (modeled) from "invest the Traditional deduction's tax
+  savings at the limit" (still future work). 286 tests. Tax-drag / inefficiency of ongoing taxable-
+  account growth (dividends/turnover taxed annually, on top of the withdrawal-time capital-gains tax
+  already modeled) was discussed with the user and intentionally NOT built pending their direction —
+  see the conversation; if picked up later, keep it as an explicit, separately-labeled assumption
+  (e.g. a haircut on the taxable bucket's return), not folded silently into `returnRate`.
 - 2026-09-22 — Round 4 UI cleanup: moved 'Will you earn more later?' directly below gross income
   (was above it); moved Social Security benefit + 'Income needed from your portfolio' to directly
   below the hero retirement number, above 'How is this calculated?' (was above the hero); removed the

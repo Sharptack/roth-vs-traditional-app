@@ -25,7 +25,7 @@ import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solveGrossWithdrawal } from './incomeNeed.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
-import { checkContributionLimit } from './contributionLimits.js';
+import { checkContributionLimit, splitAtContributionLimit } from './contributionLimits.js';
 import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
 import {
   ACCOUNT_TYPES,
@@ -167,6 +167,18 @@ export function compareRothVsTraditional(inputs) {
   // 7. Contribution limit check (on the amount as entered)
   const limitCheck = checkContributionLimit(savings, accountType, year);
 
+  // Neither R nor P can legally exceed the IRS limit for this account type (the
+  // limit is the same dollar figure whether the account is Roth or Traditional).
+  // Anything above it is modeled as an additional contribution to a taxable
+  // account instead — split independently for each hypothetical scenario, so
+  // "all-Roth" and "all-Pre-tax" each realistically hit the same wall on their
+  // own terms. contribution.roth/.pretax (above) stay the UNCAPPED paycheck
+  // equivalents for display ("what would this cost in the other type"); the
+  // capped amounts below are what actually compounds inside the account.
+  const rothSplit = splitAtContributionLimit(R, accountType, year);
+  const pretaxSplit = splitAtContributionLimit(P, accountType, year);
+  const contributionSplit = { roth: rothSplit, pretax: pretaxSplit };
+
   // 4. Other accounts: grow to retirement, then take 4% from each
   const grown = {
     pretax: futureValueLumpSum(inputs.otherPretaxBalance, returnRate, years),
@@ -207,21 +219,27 @@ export function compareRothVsTraditional(inputs) {
   const overallEffectiveRateRetirement =
     retirementGrossIncome > 0 ? grossUp.solutionStack.totalTax / retirementGrossIncome : 0;
 
-  // 9. Calculation 1 — a single lump-sum contribution
+  // 9. Calculation 1 — a single lump-sum contribution (capped at the IRS limit)
   const lumpSum = {
     roth: {
-      futureValue: futureValueLumpSum(R, returnRate, years),
+      futureValue: futureValueLumpSum(rothSplit.toAccount, returnRate, years),
     },
     pretax: {
-      futureValueGross: futureValueLumpSum(P, returnRate, years),
+      futureValueGross: futureValueLumpSum(pretaxSplit.toAccount, returnRate, years),
     },
   };
   lumpSum.roth.afterTaxValue = lumpSum.roth.futureValue; // Roth is tax-free
   lumpSum.pretax.afterTaxValue = lumpSum.pretax.futureValueGross * (1 - effectiveRateRetirement);
 
-  // 10. Calculation 2 — ongoing annual contributions
-  const annuityRothFV = futureValueAnnuity(R, returnRate, years);
-  const annuityPretaxFV = futureValueAnnuity(P, returnRate, years);
+  // 10. Calculation 2 — ongoing annual contributions (capped at the IRS limit)
+  const annuityRothFV = futureValueAnnuity(rothSplit.toAccount, returnRate, years);
+  const annuityPretaxFV = futureValueAnnuity(pretaxSplit.toAccount, returnRate, years);
+  // The excess beyond the limit, growing in a taxable account instead — one
+  // stream per scenario, since a Roth-only saver and a Pre-tax-only saver spill
+  // over by different amounts (R and P differ once converted at the same
+  // take-home cost).
+  const excessRothTaxableFV = futureValueAnnuity(rothSplit.excessToTaxable, returnRate, years);
+  const excessPretaxTaxableFV = futureValueAnnuity(pretaxSplit.excessToTaxable, returnRate, years);
   const annuity = {
     roth: {
       futureValue: annuityRothFV,
@@ -235,10 +253,19 @@ export function compareRothVsTraditional(inputs) {
     },
   };
 
-  // 11. Full-portfolio tax comparison
+  // 11. Full-portfolio tax comparison. Each scenario's taxable bucket picks up
+  // its own excess-over-the-limit contributions (0 when nothing was capped).
   const scenarioBuckets = {
-    roth: { pretax: grown.pretax, roth: grown.roth + annuityRothFV, taxable: grown.taxable },
-    pretax: { pretax: grown.pretax + annuityPretaxFV, roth: grown.roth, taxable: grown.taxable },
+    roth: {
+      pretax: grown.pretax,
+      roth: grown.roth + annuityRothFV,
+      taxable: grown.taxable + excessRothTaxableFV,
+    },
+    pretax: {
+      pretax: grown.pretax + annuityPretaxFV,
+      roth: grown.roth,
+      taxable: grown.taxable + excessPretaxTaxableFV,
+    },
   };
   const portfolio = {};
   for (const scenario of ['roth', 'pretax']) {
@@ -340,6 +367,7 @@ export function compareRothVsTraditional(inputs) {
       grossIncome: retirementGrossIncome,
     },
     contribution,
+    contributionSplit,
     limitCheck,
     grown,
     otherWithdrawals,

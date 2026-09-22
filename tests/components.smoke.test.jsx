@@ -444,3 +444,26 @@ describe('ArticlePage', () => {
     expect(html).not.toContain('How is the effective rate calculated?');
   });
 });
+
+describe('ResultsSummary — excess contributions default to taxable', () => {
+  it('shows no capping note when savings is under the limit', () => {
+    const html = render({ savings: '10000' });
+    expect(html).not.toContain('to the account, rest to taxable');
+  });
+
+  it('shows a per-column capping note and updates the limit-check alert when over the limit', () => {
+    const html = render({ grossIncome: '150000', savings: '30000', currentType: 'pretax', accountType: '401k' });
+    expect(html).toContain('to the account, rest to taxable');
+    expect(html).toContain('extra $');
+    expect(html).toContain('taxable investment account');
+  });
+
+  it('reflects the extra taxable growth in the Section 3 bucket breakdown (Pre-tax scenario spills over, Roth does not)', () => {
+    const html = render({ grossIncome: '150000', savings: '30000', currentType: 'pretax', accountType: '401k' });
+    const sec3 = html.slice(html.indexOf('id="sec3"'));
+    // Pre-tax scenario: $30,000 caps at $23,500, so $6,500/yr spills into taxable -> nonzero taxable bucket.
+    expect(sec3).toContain('Taxable $613,995');
+    // Roth scenario: $22,800 equivalent fits under the cap, so its taxable bucket is untouched.
+    expect(sec3).toContain('Taxable $0');
+  });
+});

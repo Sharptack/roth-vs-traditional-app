@@ -5,6 +5,7 @@ import {
   validateInputs,
 } from '../src/lib/compare.js';
 import { estimateSocialSecurityBenefit } from '../src/lib/socialSecurity.js';
+import { futureValueAnnuity as futureValueAnnuityRef } from '../src/lib/growthCalculations.js';
 
 const baseInputs = {
   grossIncome: 100000,
@@ -614,5 +615,89 @@ describe('validation of the new inputs', () => {
     expect(validateInputs({ ...baseInputs, retirementLifestyle: 0.4 }).join(' ')).toMatch(/lifestyle/i);
     expect(validateInputs({ ...baseInputs, retirementLifestyle: 3.5 }).join(' ')).toMatch(/lifestyle/i);
     expect(validateInputs({ ...baseInputs, retirementLifestyle: 1.5 })).toEqual([]);
+  });
+});
+
+describe('contribution limits: excess above the IRS limit defaults to a taxable account', () => {
+  // Single, 2025, $150,000 gross (24% marginal), 35 -> 65 (30y, 7%), 401(k) limit $23,500.
+  // No other balances, no Social Security, so the portfolio's taxable bucket starts at 0 and
+  // any nonzero taxable balance in the scenarios below comes entirely from the excess.
+  const base = {
+    ...baseInputs,
+    grossIncome: 150000,
+    debtPayments: 0,
+    otherPretaxBalance: 0,
+    knowsSocialSecurity: true,
+    socialSecurityBenefit: 0,
+  };
+
+  it('currently Pre-tax, savings $30,000: Pre-tax spills $6,500/year into taxable, Roth fits entirely (HAND CALC)', () => {
+    // P = 30,000 (currentType pretax); R = 30,000 x (1 - 0.24) = 22,800.
+    // 401(k) limit $23,500: P is capped at 23,500 (excess 6,500); R (22,800) fits with no excess.
+    // Annuity factor (1.07^30 - 1)/0.07 = 94.460786...
+    const r = compareRothVsTraditional({ ...base, savings: 30000, currentType: 'pretax' });
+    expect(r.rates.marginalNow).toBe(0.24);
+    expect(r.contribution.pretax).toBe(30000);
+    expect(r.contribution.roth).toBeCloseTo(22800, 6);
+
+    expect(r.contributionSplit.pretax.toAccount).toBe(23500);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBe(6500);
+    expect(r.contributionSplit.roth.toAccount).toBeCloseTo(22800, 6);
+    expect(r.contributionSplit.roth.excessToTaxable).toBe(0);
+
+    // The account itself grows from the CAPPED contribution, not the raw $30,000.
+    expect(r.annuity.pretax.futureValue).toBeCloseTo(2219828.48, 1);
+    expect(r.annuity.roth.futureValue).toBeCloseTo(2153705.93, 1);
+
+    // The excess shows up as taxable-bucket growth in the Pre-tax scenario only.
+    expect(r.portfolio.pretax.buckets.taxable).toBeCloseTo(613995.11, 1);
+    expect(r.portfolio.roth.buckets.taxable).toBeCloseTo(0, 6);
+    expect(r.portfolio.pretax.buckets.pretax).toBeCloseTo(2219828.48, 1);
+    expect(r.portfolio.roth.buckets.roth).toBeCloseTo(2153705.93, 1);
+
+    // The limit-check warning names the exact excess and explains where it goes.
+    expect(r.limitCheck.overLimit).toBe(true);
+    expect(r.limitCheck.message).toContain('extra $6,500/year');
+    expect(r.limitCheck.message).toContain('taxable investment account');
+  });
+
+  it('currently Roth, savings $40,000: both scenarios spill over, by different amounts (HAND CALC)', () => {
+    // R = 40,000 (currentType roth); P = 40,000 / (1 - 0.24) = 52,631.58.
+    // Roth capped at 23,500 (excess 16,500); Pre-tax capped at 23,500 (excess 29,131.58).
+    const r = compareRothVsTraditional({ ...base, savings: 40000, currentType: 'roth' });
+    expect(r.contribution.roth).toBe(40000);
+    expect(r.contribution.pretax).toBeCloseTo(52631.58, 1);
+
+    expect(r.contributionSplit.roth.toAccount).toBe(23500);
+    expect(r.contributionSplit.roth.excessToTaxable).toBe(16500);
+    expect(r.contributionSplit.pretax.toAccount).toBe(23500);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBeCloseTo(29131.58, 1);
+
+    // Both accounts grow identically (both capped at the same limit)...
+    expect(r.annuity.roth.futureValue).toBeCloseTo(2219828.48, 1);
+    expect(r.annuity.pretax.futureValue).toBeCloseTo(2219828.48, 1);
+    // ...but the taxable spillover differs, since P > R at the same take-home cost.
+    expect(r.portfolio.roth.buckets.taxable).toBeCloseTo(1558602.97, 1);
+    expect(r.portfolio.pretax.buckets.taxable).toBeCloseTo(2751791.85, 1);
+    expect(r.portfolio.pretax.buckets.taxable).toBeGreaterThan(r.portfolio.roth.buckets.taxable);
+  });
+
+  it('under the limit: nothing changes from the pre-cap behavior (backward-compatible)', () => {
+    const r = compareRothVsTraditional({ ...base, savings: 10000, currentType: 'pretax' });
+    expect(r.contributionSplit.pretax.excessToTaxable).toBe(0);
+    expect(r.contributionSplit.roth.excessToTaxable).toBe(0);
+    expect(r.annuity.pretax.futureValue).toBeCloseTo(
+      futureValueAnnuityRef(r.contribution.pretax, 0.07, 30),
+      1,
+    );
+    expect(r.portfolio.roth.buckets.taxable).toBe(0);
+    expect(r.portfolio.pretax.buckets.taxable).toBe(0);
+  });
+
+  it('respects the IRA limit ($7,000 for 2025) instead of the 401(k) limit when accountType is ira', () => {
+    const r = compareRothVsTraditional({ ...base, savings: 10000, currentType: 'pretax', accountType: 'ira' });
+    expect(r.contributionSplit.pretax.toAccount).toBe(7000);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBe(3000);
+    expect(r.limitCheck.limit).toBe(7000);
   });
 });
