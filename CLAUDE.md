@@ -12,7 +12,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (286 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (313 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -48,9 +48,16 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   (shared tax on a retirement income stack), `solver` (monotonic binary search), `incomeNeed`
   (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
   `contributionLimits`, `compare` (orchestrator; single source of every UI number), `constants`
-  (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`.
-- `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`, `ArticlePage.jsx` (renders ARTICLE.md). `src/lib/route.js`: hash routing helper. `src/App.jsx` holds state and the
-  "Future enhancements" comment block. `tests/` mirrors `src/lib` plus `components.smoke.test.jsx`.
+  (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`,
+  `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
+  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line).
+- `src/data/scenarioBatches.js`: the hand-picked scenario batches charted on the scenarios page (income,
+  savings-rate, balance, age-50, and lifestyle sweeps) — plain data, no compare.js calls.
+- `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`, `ArticlePage.jsx` (renders ARTICLE.md),
+  `ScenariosPage.jsx` (the scenario charts — see below), `charts/LineChart.jsx`, `charts/ScatterChart.jsx`,
+  `charts/palette.js` (fixed categorical color + shape order, assigned by series identity). `src/lib/route.js`:
+  hash routing helper. `src/App.jsx` holds state and the "Future enhancements" comment block. `tests/`
+  mirrors `src/lib` plus `components.smoke.test.jsx`.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -63,6 +70,38 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Because it is public, the article must not mention UI section numbers ("Section 3") or renamed labels; smoke
   tests fail on "Section N", "Simple view" and the old dropdown title. Keep the two effective rates named as in
   the app.
+
+## Scenario charts ("Test the theory" page, added 2026-09-22)
+- Route: `#/scenarios`, same hidden/mounted pattern as the article (`App.jsx`'s `useRoute`, generalized to
+  "anything other than calculator" leaves/scroll-restores). Linked from the header and footer next to
+  "How this works".
+- What it's for: charts the calculator's core theory — that the **rate gap** (`rates.marginalNow −
+  rates.effectiveRetirement`, i.e. marginal rate while working minus "Effective rate on these withdrawals")
+  predicts which side wins — across a set of hand-picked scenarios, so the relationship can be eyeballed
+  instead of taken on faith.
+- Data flow: `src/data/scenarioBatches.js` (plain data: a `base` input object per batch + one or more
+  `series`, each a list of `{x, overrides}` points) → `src/lib/scenarios.js`'s `runAllBatches` merges
+  `base + overrides` and calls `compareRothVsTraditional` per point, extracting `gap` and `advantagePct`
+  (Roth's after-tax annuity withdrawal vs. Pre-tax's, as a % — the Section-2 "this account only" lens) →
+  `ScenariosPage.jsx` renders one `LineChart` per batch (x = the swept variable, y = gap) plus one combined
+  `ScatterChart` (x = gap, y = advantagePct, color+shape by batch, an OLS trend line from `src/lib/regression.js`).
+  No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
+- The five batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
+  estimated Social Security, 401(k) — the limit never binds at these income/savings levels): income sweep
+  at a fixed 10% savings rate (age 35→65, incomes $50k–$300k); the same income sweep at 5%/10%/20% savings
+  rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k; the same income
+  sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; and a lifestyle sweep (1×→2×, i.e. "spending
+  20/40/60/80/100% more in retirement") at incomes $30k/$50k/$75k/$100k/$150k. Extending or adding a batch
+  is a data-only change in `scenarioBatches.js` — no chart code changes needed.
+- Charts are hand-rolled inline SVG (`src/components/charts/`), not a charting library — the app has no chart
+  dependency, and these are simple line/scatter plots. `LineChart`/`ScatterChart` are generic (series/points
+  in, chart out); `chartScale.js` (linear scale + "nice" tick axis rounding) and `regression.js` (OLS) are the
+  only new pure-function additions, both hand-verified in tests. Category color + shape are assigned by fixed
+  order (`charts/palette.js`, CSS vars `--series-1..5` in `App.css`, light/dark), never by rank; the scatter
+  layers shape on top of color since a 5th categorical color isn't guaranteed distinguishable against every
+  other color once every point can be adjacent to every other point (see the dataviz skill's "all-pairs" note).
+  Every chart has a hover/focus tooltip and a "Show the numbers" `<details>` table underneath as the
+  non-interactive fallback.
 
 ## The model (as built)
 1. Current tax: income tax on (gross − half of any self-employment tax − standard deduction) + payroll tax:
@@ -212,6 +251,14 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-22 — New "Test the theory" scenario-charts page (`#/scenarios`, linked from the header/footer):
+  charts the rate gap (marginal now − effective on withdrawals) across five hand-picked scenario batches
+  (income; income × savings rate; income × existing balance at 35; income × existing balance at 50; and
+  retirement lifestyle × income), plus a combined scatter of gap vs. Roth's after-tax advantage with an
+  OLS trend line, to visually test whether the gap predicts the winner. New pure modules: `src/lib/scenarios.js`
+  (runs `src/data/scenarioBatches.js` through the existing `compare.js`, no new financial logic),
+  `src/lib/chartScale.js`, `src/lib/regression.js` — all hand-verified in tests before the UI was built.
+  Charts are hand-rolled inline SVG (`src/components/charts/`), no new dependency. 313 tests.
 - 2026-09-22 — Contribution limits: excess above the limit now defaults to a taxable account,
   independently per Roth/Pre-tax scenario (splitAtContributionLimit); Section 2 table shows a capping
   sub-note; limitCheck message names the exact excess. ARTICLE.md and the future-enhancements comment

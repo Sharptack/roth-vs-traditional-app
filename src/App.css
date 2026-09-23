@@ -11,6 +11,13 @@
   --alert-bg: #fff6e0;
   --alert-line: #e2b93b;
   --radius: 12px;
+  /* Fixed categorical order for chart series (scenarios page) — assign by
+     identity, never by rank. Validated as a set for adjacent-pair CVD safety. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
   color-scheme: light dark;
 }
 
@@ -27,6 +34,11 @@
     --win-text: #7fd39b;
     --alert-bg: #3a3116;
     --alert-line: #a8862b;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
   }
 }
 
@@ -753,4 +765,168 @@ th.win .th-sub {
 
 .lifestyle-assumption .details-body > p {
   margin: 0 0 12px;
+}
+
+/* ---------- scenario charts ("Test the theory" page) ---------- */
+
+.scenarios-page {
+  padding-top: 8px;
+}
+
+.scenarios-page > .back-link:last-child {
+  margin: 16px 0 0;
+}
+
+.scenarios-intro {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.scenarios-intro h1 {
+  margin: 0 0 12px;
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+.scenarios-intro p {
+  line-height: 1.6;
+}
+
+.scenarios-intro p:last-child {
+  margin-bottom: 0;
+}
+
+.scenario-batches {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chart-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chart {
+  position: relative;
+  width: 100%;
+}
+
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-gridline {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart-zeroline {
+  stroke: var(--dim);
+  stroke-width: 1.5;
+}
+
+.chart-crosshair {
+  stroke: var(--dim);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-trendline {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.chart-tick {
+  fill: var(--dim);
+  font-size: 11px;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  min-width: 140px;
+}
+
+.chart-tooltip-header {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.chart-tooltip-key {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.chart-tooltip-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tooltip-label {
+  color: var(--dim);
+}
+
+.chart-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--dim);
+}
+
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-swatch {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.scenario-summary {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 520px) {
+  .scenarios-intro {
+    padding: 16px;
+  }
+
+  .chart-tooltip {
+    font-size: 0.78rem;
+    min-width: 120px;
+  }
 }

@@ -5,8 +5,10 @@ import ArticlePage from '../src/components/ArticlePage.jsx';
 import articleMarkdown from '../ARTICLE.md?raw';
 import InputForm from '../src/components/InputForm.jsx';
 import ResultsSummary from '../src/components/ResultsSummary.jsx';
+import ScenariosPage from '../src/components/ScenariosPage.jsx';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from '../src/lib/formInputs.js';
+import { SCENARIO_BATCHES } from '../src/data/scenarioBatches.js';
 
 // Smoke tests: the real components render without throwing, and show the
 // labels the spec calls for. (Numbers are verified in the lib tests.)
@@ -405,9 +407,17 @@ describe('App', () => {
     expect(html).toContain('class="page-footer"');
   });
 
-  it('shows the calculator (not the article) by default', () => {
+  it('links to the "Test the theory" scenarios page from the header and the footer', () => {
+    const html = renderToStaticMarkup(<App />);
+    const links = html.match(/href="#\/scenarios"/g) ?? [];
+    expect(links.length).toBe(2);
+    expect(html).toContain('Test the theory');
+  });
+
+  it('shows the calculator (not the article or the scenarios page) by default', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).not.toContain('Back to the calculator');
+    expect(html).not.toContain('Test the theory: does the rate gap predict the winner?');
     expect(html).not.toMatch(/<div hidden/); // the calculator wrapper is visible
   });
 });
@@ -442,6 +452,35 @@ describe('ArticlePage', () => {
     expect(html).not.toMatch(/Section \d/);
     expect(html).not.toContain('Simple view');
     expect(html).not.toContain('How is the effective rate calculated?');
+  });
+});
+
+describe('ScenariosPage', () => {
+  const html = renderToStaticMarkup(<ScenariosPage />);
+
+  it('renders without throwing, with the intro and a back link at top and bottom', () => {
+    expect(html).toContain('Test the theory: does the rate gap predict the winner?');
+    const back = html.match(/href="#\/"/g) ?? [];
+    expect(back.length).toBe(2);
+    expect(html).toContain('Back to the calculator');
+    expect(html).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('renders every scenario batch with its title and a chart', () => {
+    for (const batch of SCENARIO_BATCHES) {
+      expect(html).toContain(batch.title);
+    }
+    expect((html.match(/class="chart-svg"/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1); // + the combined scatter
+  });
+
+  it('renders the combined scatter with a trend-line summary sentence', () => {
+    expect(html).toContain('Does the gap predict the winner?');
+    expect(html).toContain('Trend line:');
+    expect(html).toMatch(/r² = -?\d\.\d\d\)/);
+  });
+
+  it('has a "Show the numbers" table for each batch', () => {
+    expect((html.match(/Show the numbers/g) ?? []).length).toBe(SCENARIO_BATCHES.length);
   });
 });
 

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ArticlePage from './components/ArticlePage.jsx';
 import InputForm from './components/InputForm.jsx';
 import ResultsSummary from './components/ResultsSummary.jsx';
+import ScenariosPage from './components/ScenariosPage.jsx';
 import { compareRothVsTraditional } from './lib/compare.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
-import { ARTICLE_HASH, routeFromHash } from './lib/route.js';
+import { ARTICLE_HASH, SCENARIOS_HASH, routeFromHash } from './lib/route.js';
 import './App.css';
 
 /*
@@ -27,6 +28,10 @@ import './App.css';
  * - Employer match modeling: the match amount, and the match-optimization math
  *   when Roth contributions alone can't capture the full match.
  * - Contributions that change over time (e.g. raises).
+ * - A wider range of pre-set scenarios on the "Test the theory" page (#/scenarios) —
+ *   it currently covers income, savings rate, existing balances, age, and
+ *   retirement lifestyle, each swept one at a time; married filing jointly and
+ *   1099 income aren't represented there yet.
  * - Taxable-account "tax drag": ongoing tax on dividends/interest and any
  *   turnover-driven gains during the GROWTH phase (distinct from the capital-
  *   gains tax already modeled at withdrawal), which lowers the account's
@@ -35,7 +40,6 @@ import './App.css';
  *   a low-turnover index fund, 1%+ for higher-turnover or bond-heavy
  *   holdings), so if built, keep it as its own adjustable, clearly-labeled
  *   assumption on the taxable bucket only — never folded into returnRate.
- * - Graphs / charts.
  * - PDF client report export.
  * - A backend (saved scenarios, client database, user accounts).
  * - A Simple/Advanced mode split.
@@ -56,7 +60,7 @@ function useRoute() {
   useEffect(() => {
     const onHashChange = () => {
       const next = routeFromHash(window.location.hash);
-      if (next === 'article') calculatorScroll.current = window.scrollY;
+      if (next !== 'calculator') calculatorScroll.current = window.scrollY;
       setRoute(next);
     };
     window.addEventListener('hashchange', onHashChange);
@@ -68,7 +72,7 @@ function useRoute() {
       firstRender.current = false;
       return;
     }
-    window.scrollTo(0, route === 'article' ? 0 : calculatorScroll.current);
+    window.scrollTo(0, route === 'calculator' ? calculatorScroll.current : 0);
   }, [route]);
 
   return route;
@@ -101,6 +105,10 @@ export default function App() {
             <a href={ARTICLE_HASH}>How this works &rarr;</a> The reasoning behind the numbers, in
             plain language.
           </p>
+          <p className="header-links">
+            <a href={SCENARIOS_HASH}>Test the theory &rarr;</a> See the rate gap charted across a
+            range of income, savings, and balance scenarios.
+          </p>
           <p className="disclaimer">Estimates only — not tax or financial advice.</p>
         </header>
 
@@ -111,10 +119,13 @@ export default function App() {
 
         <footer className="page-footer">
           <a href={ARTICLE_HASH}>How this works</a>
+          {' · '}
+          <a href={SCENARIOS_HASH}>Test the theory</a>
         </footer>
       </div>
 
       {route === 'article' && <ArticlePage />}
+      {route === 'scenarios' && <ScenariosPage />}
     </div>
   );
 }
