@@ -164,8 +164,12 @@ export function compareRothVsTraditional(inputs) {
   const contribution = calculatePaycheckEquivalents(savings, currentType, marginalRateNow);
   const { roth: R, pretax: P } = contribution;
 
-  // 7. Contribution limit check (on the amount as entered)
-  const limitCheck = checkContributionLimit(savings, accountType, year);
+  // 7. Contribution limit check (on the amount as entered). Includes any
+  // catch-up contribution the saver's CURRENT age qualifies for — like the
+  // base limit and tax brackets elsewhere, this is a snapshot at today's age,
+  // held constant across the whole projection (it does not model aging into,
+  // or out of, a catch-up tier over a multi-decade horizon).
+  const limitCheck = checkContributionLimit(savings, accountType, year, currentAge);
 
   // Neither R nor P can legally exceed the IRS limit for this account type (the
   // limit is the same dollar figure whether the account is Roth or Traditional).
@@ -175,9 +179,27 @@ export function compareRothVsTraditional(inputs) {
   // own terms. contribution.roth/.pretax (above) stay the UNCAPPED paycheck
   // equivalents for display ("what would this cost in the other type"); the
   // capped amounts below are what actually compounds inside the account.
-  const rothSplit = splitAtContributionLimit(R, accountType, year);
-  const pretaxSplit = splitAtContributionLimit(P, accountType, year);
+  const rothSplit = splitAtContributionLimit(R, accountType, year, currentAge);
+  const pretaxSplit = splitAtContributionLimit(P, accountType, year, currentAge);
   const contributionSplit = { roth: rothSplit, pretax: pretaxSplit };
+
+  // 10 (hoisted). This account's own future value doesn't depend on the tax
+  // solve below, so it's computed early and its natural 4% annual withdrawal
+  // is fed into the gross-up solver as the withdrawal size to measure the
+  // rate on — see the `probeSize` note in incomeNeed.js. Without this, the
+  // solver falls back to a fixed, arbitrary $1,000 probe whenever other
+  // income already covers the target (gross-up = $0), which can read a very
+  // different — and confusingly unstable — rate than the size this account
+  // will actually be asked to deliver.
+  const annuityRothFV = futureValueAnnuity(rothSplit.toAccount, returnRate, years);
+  const annuityPretaxFV = futureValueAnnuity(pretaxSplit.toAccount, returnRate, years);
+  const accountPretaxAnnualWithdrawal = WITHDRAWAL_RATE * annuityPretaxFV;
+  // The excess beyond the limit, growing in a taxable account instead — one
+  // stream per scenario, since a Roth-only saver and a Pre-tax-only saver spill
+  // over by different amounts (R and P differ once converted at the same
+  // take-home cost).
+  const excessRothTaxableFV = futureValueAnnuity(rothSplit.excessToTaxable, returnRate, years);
+  const excessPretaxTaxableFV = futureValueAnnuity(pretaxSplit.excessToTaxable, returnRate, years);
 
   // 4. Other accounts: grow to retirement, then take 4% from each
   const grown = {
@@ -204,6 +226,7 @@ export function compareRothVsTraditional(inputs) {
     otherTaxableWithdrawal: otherWithdrawals.taxableGross,
     filingStatus,
     year,
+    probeSize: accountPretaxAnnualWithdrawal,
   });
   const effectiveRateRetirement = grossUp.retirementEffectiveTaxRate;
 
@@ -231,15 +254,8 @@ export function compareRothVsTraditional(inputs) {
   lumpSum.roth.afterTaxValue = lumpSum.roth.futureValue; // Roth is tax-free
   lumpSum.pretax.afterTaxValue = lumpSum.pretax.futureValueGross * (1 - effectiveRateRetirement);
 
-  // 10. Calculation 2 — ongoing annual contributions (capped at the IRS limit)
-  const annuityRothFV = futureValueAnnuity(rothSplit.toAccount, returnRate, years);
-  const annuityPretaxFV = futureValueAnnuity(pretaxSplit.toAccount, returnRate, years);
-  // The excess beyond the limit, growing in a taxable account instead — one
-  // stream per scenario, since a Roth-only saver and a Pre-tax-only saver spill
-  // over by different amounts (R and P differ once converted at the same
-  // take-home cost).
-  const excessRothTaxableFV = futureValueAnnuity(rothSplit.excessToTaxable, returnRate, years);
-  const excessPretaxTaxableFV = futureValueAnnuity(pretaxSplit.excessToTaxable, returnRate, years);
+  // 10. Calculation 2 — ongoing annual contributions (capped at the IRS limit;
+  // FVs were hoisted above, before the gross-up solve — see the comment there)
   const annuity = {
     roth: {
       futureValue: annuityRothFV,
@@ -292,6 +308,7 @@ export function compareRothVsTraditional(inputs) {
     otherTaxableWithdrawal: otherWithdrawals.taxableGross,
     filingStatus,
     year,
+    probeSize: accountPretaxAnnualWithdrawal,
   });
   // Signed taxable income at the top of the stack: with no Social Security it is
   // just pre-tax withdrawals minus the standard deduction (negative = still sheltered).

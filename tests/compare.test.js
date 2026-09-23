@@ -6,6 +6,7 @@ import {
 } from '../src/lib/compare.js';
 import { estimateSocialSecurityBenefit } from '../src/lib/socialSecurity.js';
 import { futureValueAnnuity as futureValueAnnuityRef } from '../src/lib/growthCalculations.js';
+import { solveGrossWithdrawal } from '../src/lib/incomeNeed.js';
 
 const baseInputs = {
   grossIncome: 100000,
@@ -699,5 +700,115 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     expect(r.contributionSplit.pretax.toAccount).toBe(7000);
     expect(r.contributionSplit.pretax.excessToTaxable).toBe(3000);
     expect(r.limitCheck.limit).toBe(7000);
+  });
+});
+
+describe('contribution limits: catch-up contributions raise the cap at age 50+ (HAND CALC)', () => {
+  // Single, 2025, $150,000 gross, 401(k), $28,000 saved Pre-tax (so P = savings = 28,000
+  // directly, since currentType is already pretax). Base 401(k) limit is $23,500.
+  const base = {
+    ...baseInputs,
+    grossIncome: 150000,
+    savings: 28000,
+    currentType: 'pretax',
+    accountType: '401k',
+    retirementAge: 65,
+  };
+
+  it('at 45 (under 50): no catch-up, $28,000 exceeds the $23,500 base limit -> $4,500 spills to taxable', () => {
+    const r = compareRothVsTraditional({ ...base, currentAge: 45 });
+    expect(r.limitCheck.limit).toBe(23500);
+    expect(r.limitCheck.catchUp).toBe(0);
+    expect(r.limitCheck.overLimit).toBe(true);
+    expect(r.contributionSplit.pretax.toAccount).toBe(23500);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBe(4500);
+  });
+
+  it('at 55 (50-59 catch-up): limit rises to $31,000 ($23,500 + $7,500), so $28,000 fits with no excess', () => {
+    const r = compareRothVsTraditional({ ...base, currentAge: 55 });
+    expect(r.limitCheck.limit).toBe(31000);
+    expect(r.limitCheck.catchUp).toBe(7500);
+    expect(r.limitCheck.overLimit).toBe(false);
+    expect(r.contributionSplit.pretax.toAccount).toBe(28000);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBe(0);
+  });
+
+  it('at 62 (60-63 enhanced catch-up): limit rises further to $34,750 ($23,500 + $11,250)', () => {
+    const r = compareRothVsTraditional({ ...base, savings: 33000, currentAge: 62 });
+    expect(r.limitCheck.limit).toBe(34750);
+    expect(r.limitCheck.catchUp).toBe(11250);
+    expect(r.contributionSplit.pretax.toAccount).toBe(33000);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBe(0);
+  });
+
+  it('the over-limit message names the catch-up amount when one applies', () => {
+    const r = compareRothVsTraditional({ ...base, savings: 36000, currentAge: 55 });
+    // limit 31,000; 36,000 - 31,000 = 5,000 excess
+    expect(r.limitCheck.message).toContain('$7,500 catch-up contribution for being 50 or older');
+    expect(r.limitCheck.message).toContain('extra $5,000/year');
+  });
+});
+
+describe('effective-rate probe size: stable and consistent when other income already covers the need', () => {
+  // Single, 2025, $60,000 gross (12% marginal), SS $40,000 (known), $15,000 saved Pre-tax,
+  // no other account balances. SS alone already covers modest targets, so the gross-up is
+  // always $0 here — only the PROBE used to report a rate differs from the old fixed $1,000.
+  const base = {
+    ...baseInputs,
+    grossIncome: 60000,
+    savings: 15000,
+    currentType: 'pretax',
+    knowsSocialSecurity: true,
+    socialSecurityBenefit: 40000,
+    otherPretaxBalance: 0,
+  };
+
+  it('the reported rate is now measured on the account\'s own withdrawal, not a fixed $1,000 (HAND CALC)', () => {
+    // P = $15,000 (currentType pretax). Annuity FV = 15,000 x 94.460786 = 1,416,911.79.
+    // Account's own 4% annual withdrawal = 56,676.47 — that is the probe size used.
+    // combined income at that probe = 56,676.47 + 0.5 x 40,000 = 76,676.47, well past the
+    //   $34,000 85%-taxable threshold, so taxableSS caps at 0.85 x 40,000 = $34,000.
+    // ordinary taxable income = 56,676.47 + 34,000 - 15,750 = 74,926.47
+    // tax = 1,192.50 + 4,386 + 22% x (74,926.47 - 48,475 = 26,451.47) = 11,397.82
+    // rate = 11,397.82 / 56,676.47 = 0.20110...
+    const r = compareRothVsTraditional({ ...base, debtPayments: 0 });
+    expect(r.grossUp.grossWithdrawal).toBe(0);
+    expect(r.annuity.pretax.annualWithdrawal).toBeCloseTo(56676.47, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.201103, 4);
+    // A fixed $1,000 probe on this same "other income" stack would have read 0% — completely
+    // hiding the real cost, because $1,000 never leaves the SS 0%-taxable zone.
+    const oldStyleProbe = solveGrossWithdrawal({
+      targetAfterTaxIncome: r.retirementNeed.target,
+      ssBenefit: 40000,
+      filingStatus: 'single',
+      year: 2025,
+    });
+    expect(oldStyleProbe.retirementEffectiveTaxRate).toBe(0);
+  });
+
+  it('PROPERTY: the rate stays IDENTICAL as the target need drops further, as long as G stays 0', () => {
+    // This is the exact confusion reported: previously, lowering the need (e.g. an expense
+    // going away) could change the reported rate, because it changed WHERE a fixed $1,000
+    // probe landed relative to the target. Now the probe is tied to the account's own size,
+    // which does not depend on the target at all, so the rate cannot move just because the
+    // need dropped (only a change in other income or the account's own size can move it).
+    const rates = [0, 5000, 10000, 15000].map((debtPayments) => {
+      const r = compareRothVsTraditional({ ...base, debtPayments });
+      expect(r.grossUp.grossWithdrawal).toBe(0); // stays in the "other income covers it" regime
+      return r.rates.effectiveRetirement;
+    });
+    for (const rate of rates) expect(rate).toBeCloseTo(rates[0], 10);
+  });
+
+  it('the same fix applies to "Retirement years without Social Security"', () => {
+    const withoutSS = (debtPayments) =>
+      compareRothVsTraditional({ ...base, debtPayments, otherPretaxBalance: 2000000 })
+        .withoutSocialSecurity;
+    // A large other-Pre-tax balance covers the no-SS need on its own -> G = 0 in both cases.
+    const a = withoutSS(0);
+    const b = withoutSS(5000);
+    expect(a.grossUp.grossWithdrawal).toBe(0);
+    expect(b.grossUp.grossWithdrawal).toBe(0);
+    expect(a.effectiveRateRetirement).toBeCloseTo(b.effectiveRateRetirement, 10);
   });
 });

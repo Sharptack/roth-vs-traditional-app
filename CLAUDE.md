@@ -12,7 +12,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (313 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (341 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -43,7 +43,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `ssBendPoints.js` (+ FRA table by birth year), `ssTaxThresholds.js` (fixed by law), `contributionLimits.js`.
 - `src/lib/`: `taxCalculations` (progressive tax, marginal rate; accepts above-the-line adjustments), `contributionLimits`
   (`checkContributionLimit` = the UI warning; `splitAtContributionLimit` = caps a contribution at the IRS
-  limit and returns the excess, shared `getLimit` lookup so the two never disagree), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
+  limit and returns the excess; both take an optional `age` for catch-up contributions; shared `getLimit`
+  lookup so the two never disagree), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
   (IRS combined-income formula), `socialSecurity` (simplified benefit estimator), `retirementTaxStack`
   (shared tax on a retirement income stack), `solver` (monotonic binary search), `incomeNeed`
   (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
@@ -128,13 +129,22 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 5. **Effective rate on these withdrawals** (`rates.effectiveRetirement`; `incomeNeed`): binary-search the gross withdrawal G from *this* account
    so total after-tax income = need. Rate = (extra tax caused by G) / G, i.e. incremental blended rate
    including the Social Security phase-in. If other sources already cover the need (G = 0), the rate is
-   read from a $1,000 probe withdrawal. Also `rates.overallEffectiveRetirement` = total tax on the whole
+   read from a **probe withdrawal sized to this account's own natural 4% withdrawal**
+   (`compare.js` computes the account's annuity FV *before* calling `solveGrossWithdrawal` and passes it
+   in as `probeSize`, specifically so the rate reported matches the size of withdrawal it actually gets
+   applied to elsewhere — see "Effective-rate probe size" below; `solveGrossWithdrawal` falls back to a
+   fixed $1,000 probe only if no `probeSize` is given). The result also exposes `probeSize`, `probeStack`
+   and `probeExtraTax` (the actual arithmetic behind the G = 0 rate) so the UI can show real numbers
+   instead of a misleading "$0 ÷ $0" — `solutionStack`/`totalTaxPaid` correctly stay at $0 when G = 0
+   (nothing is actually withdrawn); the probe fields are a separate, explicitly-hypothetical calculation.
+   Also `rates.overallEffectiveRetirement` = total tax on the whole
    first-year retirement stack / total gross income (Social Security + every withdrawal incl. Roth) —
    labelled "Overall effective rate in retirement"; `retirementOverall` holds the two amounts.
 6. Paycheck equivalents: Roth R = P·(1−t); Pre-tax P = R/(1−t), t = current marginal rate. R and P
    (`result.contribution`) stay the UNCAPPED equivalents for display. Each is then independently run
-   through `splitAtContributionLimit` (same account type, same numeric limit for either tax
-   treatment) -> `result.contributionSplit.{roth,pretax}.{toAccount,excessToTaxable}`. Everything that
+   through `splitAtContributionLimit(amount, accountType, year, currentAge)` — `currentAge` (a snapshot,
+   not projected forward) unlocks any IRS catch-up contribution the saver already qualifies for (same
+   numeric limit for either tax treatment) -> `result.contributionSplit.{roth,pretax}.{toAccount,excessToTaxable}`. Everything that
    COMPOUNDS (lump sum, annuity, Section 3 buckets) uses `toAccount`; `excessToTaxable` becomes its
    own annuity stream added to that scenario's TAXABLE bucket only (Roth's excess and Pre-tax's excess
    differ, since R ≠ P, so each scenario spills over independently — realistic, since a real saver
@@ -159,6 +169,51 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
     PROPERTY (tested): when this account is needed (gross-up > 0) and lifestyle <= 1, effective <= marginal
     later <= marginal now, so this view can only tie or favor Pre-tax. Roth can win when (a) other accounts'
     *forced* 4% draws already exceed the need (existing balances set the bracket), or (b) lifestyle > 1.
+
+## Catch-up contributions (2026-09-23)
+`data/contributionLimits.js` entries changed shape from a plain number to `{ base, catchUp50,
+catchUp60to63 }` (401(k) only has `catchUp60to63`; IRA has no enhanced tier). `getLimit(accountType,
+year, age)` in `lib/contributionLimits.js` computes `base + catchUpAmount(entry, age)`: 0 below 50;
+`catchUp60to63` for ages exactly 60-63 if the entry has one (SECURE 2.0's enhanced 401(k) tier —
+REPLACES, not adds to, the standard catch-up for those four ages only); `catchUp50` otherwise for 50+.
+`age` is optional on both `checkContributionLimit` and `splitAtContributionLimit` (omit or pass < 50 for
+the base limit only — fully backward compatible, all pre-existing calls/tests unchanged). `compare.js`
+passes `currentAge` (a snapshot at today's age, same simplification as the base limit and tax brackets
+elsewhere — does NOT model aging into a higher tier partway through a multi-decade projection).
+2025: 401(k) $7,500 catch-up / $11,250 for ages 60-63; IRA $1,000. 2026: 401(k) $8,000 / $11,250
+(60-63 tier unchanged); IRA $1,100. Sources: IRS Notice 2024-80 and the "401(k) limit increases to
+$24,500 for 2026..." newsroom announcement (both re-confirmed 2026-09-23). The over/at-limit message in
+`checkContributionLimit` now names the catch-up amount when one applies ("...that includes a $7,500
+catch-up contribution for being 50 or older"). No UI code changes were needed beyond wiring `currentAge`
+through — the Section 2 capping sub-note and the limit alert already read from these functions.
+
+## Effective-rate probe size (2026-09-23)
+Bug report: lowering the retirement need (e.g. an expense going away) made the reported "Effective rate
+on these withdrawals" go UP, which looked backwards. Root cause: whenever other income already covers
+the target (gross-up G = 0), the OLD code read the rate from a fixed, arbitrary $1,000 probe withdrawal
+— completely unrelated to the size of the withdrawal that rate then gets APPLIED to elsewhere (the
+account's own 4% annual withdrawal, often tens of thousands of dollars). Right near a Social Security
+phase-in threshold this $1,000 sliver can land in a completely different, sometimes much CALMER (lower-
+rate) part of the stack than a realistically-sized withdrawal would — see incomeNeed.test.js's "a tiny
+$1,000 (default) probe reads 0%... a $20,000 probe... correctly reads 7.12%" for a hand-verified,
+side-by-side demonstration of exactly this gap. So crossing G = 0 didn't change the rate smoothly; it
+just swapped which arbitrary thing was being measured.
+Fix: `solveGrossWithdrawal` now accepts an optional `probeSize` (falls back to $1,000 if omitted, so
+callers that don't supply it — e.g. isolated `incomeNeed.test.js` calls — are unaffected). `compare.js`
+hoists the account's own annuity FV computation to BEFORE the gross-up solve (it never depended on the
+solve's result anyway) and passes `WITHDRAWAL_RATE * annuityPretaxFV` in as `probeSize` for both the
+main `grossUp` and the `withoutSocialSecurity` `noSsGrossUp` calls. PROPERTY (tested): the reported rate
+is now provably STABLE — it cannot change just because the target dropped further, as long as G stays 0
+(only a change in other income or the account's own size can move it); see compare.test.js's "the rate
+stays IDENTICAL as the target need drops further."
+Also fixed a related DISPLAY bug surfaced while investigating: the "How are the retirement rates
+calculated?" and "Retirement years without Social Security" dropdowns showed a literal "$0 ÷ $0" style
+formula next to the G = 0 rate, because `solutionStack`/`extraTax` correctly stay at $0 (nothing is
+really withdrawn) while the rate itself came from the invisible probe. `solveGrossWithdrawal` now always
+returns `probeSize`, `probeStack` and `probeExtraTax` too, and both dropdowns branch on `withdrawalNeeded`
+to show the REAL probe arithmetic ("$14,126 ÷ $56,676") instead. This did NOT touch the separate, still-
+open "Known limitations" item about the G > 0 case (rate measured on the gap-filling withdrawal, applied
+to the account's full 4% withdrawal) — that's a different mechanism and remains unresolved.
 
 ## Contribution limits: excess now defaults to taxable (2026-09-22)
 Previously `savings`/R/P compounded at their full entered value regardless of the IRS limit — a
@@ -216,11 +271,14 @@ the whole account) is still open — see "Known limitations."
 
 ## Known limitations / open items
 - The effective rate is measured on the *gap-filling* withdrawal G but Section 2 applies it to the account's
-  full 4% withdrawal. For large accounts this overstates tax a bit (default MFJ case: 18.5% vs ~17.4%).
-  Offered to the user as an optional refinement; not changed.
+  full 4% withdrawal (this is the G > 0 case; the separate G = 0 probe-size issue was fixed 2026-09-23 —
+  see "Effective-rate probe size" above). For large accounts this overstates tax a bit (default MFJ case:
+  18.5% vs ~17.4%). Offered to the user as an optional refinement; not changed.
 - Not modeled: state tax, 65+ additional standard deduction and the temporary senior deduction (both
-  would lower retirement tax), RMDs, employer match, raises, tax-efficient withdrawal order, IRA phase-outs
-  and catch-up contributions, self-employment tax, two-earner couples' separate wage bases.
+  would lower retirement tax), RMDs, employer match, raises, tax-efficient withdrawal order, IRA phase-outs,
+  self-employment tax, two-earner couples' separate wage bases. (Catch-up contributions ARE now modeled —
+  see "Catch-up contributions" above — but only as a snapshot at today's age, not aging into a tier over
+  a multi-decade projection.)
 - The lifestyle factor is one multiplier on the need. It does not model contributions made at a *higher
   future* marginal rate when earnings rise (marginal-now stays today's), which would offset it toward
   Pre-tax; time-varying contributions are a future feature.
@@ -242,6 +300,8 @@ the whole account) is still open — see "Known limitations."
   2025 $1,226 / $7,391 and 2026 $1,286 / $7,749; 2025 wage base $176,100.
 - SS taxability thresholds ($25k/$34k Single, $32k/$44k MFJ) are statutory; not fetched.
 - Self-employment tax (12.4% + 2.9%, 92.35%, $400 minimum, half deductible): IRS Topic 554, checked 2026-09-20.
+- Catch-up contributions (401(k) $7,500/2025, $8,000/2026; 60-63 enhanced tier $11,250 both years; IRA
+  $1,000/2025, $1,100/2026): IRS Notice 2024-80 and the 2026 401(k)/IRA newsroom announcement, checked 2026-09-23.
 - Every data file names its sources in comments. Re-verify each January when new-year data is added.
 
 ## Checking the UI without a browser session
@@ -251,6 +311,14 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-23 — Two fixes reported by the user. (1) Catch-up contributions (age 50+, and SECURE 2.0's
+  enhanced 60-63 401(k) tier) now raise the IRS limit used everywhere (contribution split, limit-check
+  alert), keyed off `currentAge`. (2) The "Effective rate on these withdrawals" no longer jumps around
+  confusingly when other income already covers the need (G = 0): the probe withdrawal used to read the
+  rate is now sized to the account's own natural 4% withdrawal (stable, hand-verified) instead of a fixed,
+  arbitrary $1,000 — see the two dedicated sections above for the full detail. Also fixed a "$0 ÷ $0"
+  display bug found while investigating: the two rate-calculation dropdowns now show the real probe
+  arithmetic instead of a formula that didn't match the value shown. 341 tests.
 - 2026-09-22 — New "Test the theory" scenario-charts page (`#/scenarios`, linked from the header/footer):
   charts the rate gap (marginal now − effective on withdrawals) across five hand-picked scenario batches
   (income; income × savings rate; income × existing balance at 35; income × existing balance at 50; and

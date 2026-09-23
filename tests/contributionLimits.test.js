@@ -116,3 +116,85 @@ describe('splitAtContributionLimit (2025: 401(k) $23,500, IRA $7,000)', () => {
     expect(() => splitAtContributionLimit(1000, '403b', 2025)).toThrow(/account type/i);
   });
 });
+
+describe('checkContributionLimit / splitAtContributionLimit — catch-up contributions (age 50+)', () => {
+  // 2025: 401(k) base $23,500, +$7,500 catch-up (50-59, 64+), +$11,250 catch-up (60-63).
+  //       IRA base $7,000, +$1,000 catch-up (50+, all ages, no enhanced tier).
+  it('under 50: limit is just the base, same as before', () => {
+    expect(checkContributionLimit(20000, '401k', 2025, 45).limit).toBe(23500);
+    expect(checkContributionLimit(20000, '401k', 2025, 45).catchUp).toBe(0);
+  });
+
+  it('50-59: 401(k) limit is base + $7,500 = $31,000 (HAND CALC)', () => {
+    const r = checkContributionLimit(28000, '401k', 2025, 55);
+    expect(r.limit).toBe(31000);
+    expect(r.catchUp).toBe(7500);
+    expect(r.base).toBe(23500);
+    expect(r.overLimit).toBe(false); // 28,000 < 31,000
+  });
+
+  it('60-63: 401(k) gets the ENHANCED catch-up, $23,500 + $11,250 = $34,750, not the standard $31,000', () => {
+    const r62 = checkContributionLimit(32000, '401k', 2025, 62);
+    expect(r62.limit).toBe(34750);
+    expect(r62.catchUp).toBe(11250);
+    expect(r62.overLimit).toBe(false); // 32,000 < 34,750 (would be over the standard $31,000)
+  });
+
+  it('exactly 60 and exactly 63 both get the enhanced tier; 59 and 64 do not (boundary HAND CALC)', () => {
+    expect(checkContributionLimit(1, '401k', 2025, 59).limit).toBe(31000); // standard $7,500
+    expect(checkContributionLimit(1, '401k', 2025, 60).limit).toBe(34750); // enhanced
+    expect(checkContributionLimit(1, '401k', 2025, 63).limit).toBe(34750); // enhanced
+    expect(checkContributionLimit(1, '401k', 2025, 64).limit).toBe(31000); // back to standard
+  });
+
+  it('IRA has no enhanced 60-63 tier: 50+ is always base + $1,000 (HAND CALC)', () => {
+    expect(checkContributionLimit(1, 'ira', 2025, 55).limit).toBe(8000);
+    expect(checkContributionLimit(1, 'ira', 2025, 62).limit).toBe(8000); // same as 55, no 60-63 boost
+    expect(checkContributionLimit(1, 'ira', 2025, 70).limit).toBe(8000);
+  });
+
+  it('2026: 401(k) catch-up rises to $8,000 (50-59/64+) but the 60-63 tier stays $11,250 (HAND CALC)', () => {
+    expect(checkContributionLimit(1, '401k', 2026, 55).limit).toBe(32500); // 24,500 + 8,000
+    expect(checkContributionLimit(1, '401k', 2026, 61).limit).toBe(35750); // 24,500 + 11,250
+  });
+
+  it('2026: IRA catch-up rises to $1,100 (HAND CALC)', () => {
+    expect(checkContributionLimit(1, 'ira', 2026, 55).limit).toBe(8600); // 7,500 + 1,100
+  });
+
+  it('age omitted (undefined) behaves exactly like age 0: base limit only', () => {
+    const withAge = checkContributionLimit(20000, '401k', 2025, 0);
+    const noAge = checkContributionLimit(20000, '401k', 2025);
+    expect(noAge).toEqual(withAge);
+    expect(noAge.limit).toBe(23500);
+  });
+
+  it('the over-limit message names the catch-up when one applies (HAND CALC)', () => {
+    // 55-year-old, 401(k), limit 31,000, contributing 35,000 -> excess 4,000
+    const { message } = checkContributionLimit(35000, '401k', 2025, 55);
+    expect(message).toContain('$31,000');
+    expect(message).toContain('$7,500 catch-up contribution for being 50 or older');
+    expect(message).toContain('extra $4,000/year');
+  });
+
+  it('the at-limit (not over) message also names the catch-up', () => {
+    const { message } = checkContributionLimit(30000, '401k', 2025, 55); // 30,000 >= 90% of 31,000
+    expect(message).toContain("$31,000 (that includes a $7,500 catch-up");
+  });
+
+  it('splitAtContributionLimit respects catch-up too (HAND CALC)', () => {
+    // 62-year-old contributing $40,000 to a 401(k): limit 34,750, excess 5,250.
+    const r = splitAtContributionLimit(40000, '401k', 2025, 62);
+    expect(r.toAccount).toBe(34750);
+    expect(r.excessToTaxable).toBe(5250);
+    expect(r.catchUp).toBe(11250);
+  });
+
+  it('splitAtContributionLimit and checkContributionLimit agree on the limit for the same age', () => {
+    for (const age of [30, 50, 55, 60, 63, 64, 70]) {
+      expect(splitAtContributionLimit(1, '401k', 2025, age).limit).toBe(
+        checkContributionLimit(1, '401k', 2025, age).limit,
+      );
+    }
+  });
+});

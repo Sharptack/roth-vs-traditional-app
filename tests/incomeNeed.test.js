@@ -256,3 +256,74 @@ describe('solveGrossWithdrawal — capital gains stack on top of ordinary income
     expect(r.solutionStack.capitalGainsTax).toBe(0);
   });
 });
+
+describe('solveGrossWithdrawal — probeSize (the reported rate when G = 0 should match the withdrawal it will be applied to)', () => {
+  // Single, 2025, SS $40,000, no other pretax/taxable income, target $30,000 (well under
+  // what SS alone delivers after tax, so G = 0 in every case below — only probeSize differs).
+  const base = { targetAfterTaxIncome: 30000, ssBenefit: 40000, filingStatus: 'single', year: 2025 };
+
+  it('a tiny $1,000 (default) probe reads 0%, because it never leaves the SS 0%-taxable zone (HAND CALC)', () => {
+    // combined income at g=1,000: 1,000 + 0.5 x 40,000 = 21,000, under the $25,000 threshold
+    // -> 0% of SS taxable -> ordinaryTaxableIncome 0 (well under the $15,750 deduction) -> $0 tax.
+    const r = solveGrossWithdrawal(base); // probeSize defaults to 1,000
+    expect(r.grossWithdrawal).toBe(0);
+    expect(r.retirementEffectiveTaxRate).toBe(0);
+  });
+
+  it('a $10,000 probe ALSO reads 0%, even though it crosses into the 50% SS phase-in tier (HAND CALC)', () => {
+    // combined at g=10,000: 10,000 + 20,000 = 30,000 (in the 50% tier, between 25k and 34k)
+    // -> taxableSS = min(0.5 x (30,000-25,000)=2,500, 0.5 x 40,000) = 2,500
+    // -> ordinaryTaxableIncome = max(0, 10,000 + 2,500 - 15,750) = 0 (still under the deduction) -> $0 tax
+    const r = solveGrossWithdrawal({ ...base, probeSize: 10000 });
+    expect(r.retirementEffectiveTaxRate).toBe(0);
+  });
+
+  it('a $20,000 probe — closer to a real account withdrawal — correctly reads 7.12%, NOT 0% (HAND CALC)', () => {
+    // combined at g=20,000: 20,000 + 20,000 = 40,000 (past the $34,000 85% threshold)
+    // -> taxableSS = min(0.85 x 40,000=34,000, 0.85 x (40,000-34,000=6,000) + 4,500 = 9,600) = 9,600
+    // -> ordinaryTaxableIncome = 20,000 + 9,600 - 15,750 = 13,850 (now positive)
+    // -> tax = 10% x 11,925 + 12% x (13,850-11,925=1,925) = 1,192.50 + 231 = 1,423.50
+    // -> rate = 1,423.50 / 20,000... wait, rate = (probe - gained)/probe where gained = probe - tax
+    //    i.e. rate = tax / probe = 1,423.50 / 20,000 = 0.071175 = 7.1175%
+    const r = solveGrossWithdrawal({ ...base, probeSize: 20000 });
+    expect(r.retirementEffectiveTaxRate).toBeCloseTo(0.071175, 6);
+  });
+
+  it('this demonstrates exactly the confusing case a $1,000 probe can hide: a small, arbitrary probe', () => {
+    // can silently understate the true cost of the withdrawal size the rate actually gets applied
+    // to elsewhere (compare.js applies it to the account's own 4% annual withdrawal).
+    const tiny = solveGrossWithdrawal({ ...base, probeSize: 1000 });
+    const realistic = solveGrossWithdrawal({ ...base, probeSize: 20000 });
+    expect(tiny.retirementEffectiveTaxRate).toBe(0);
+    expect(realistic.retirementEffectiveTaxRate).toBeGreaterThan(0.07);
+  });
+
+  it('exposes the actual probe arithmetic (probeStack/probeExtraTax), not just the rate (HAND CALC)', () => {
+    // Same scenario as the $20,000-probe case above: tax on the probe = 1,423.50.
+    const r = solveGrossWithdrawal({ ...base, probeSize: 20000 });
+    expect(r.probeSize).toBe(20000);
+    expect(r.baseStack.totalTax).toBe(0);
+    expect(r.probeStack.totalTax).toBeCloseTo(1423.5, 1);
+    expect(r.probeExtraTax).toBeCloseTo(1423.5, 1);
+    expect(r.probeExtraTax / r.probeSize).toBeCloseTo(r.retirementEffectiveTaxRate, 10);
+    // solutionStack correctly stays at $0 (literally nothing is withdrawn) — it must
+    // never be confused with the probe, which is hypothetical.
+    expect(r.solutionStack.totalTax).toBe(0);
+    expect(r.totalTaxPaid).toBe(0);
+  });
+
+  it('a zero or negative probeSize falls back to the $1,000 default rather than dividing by zero', () => {
+    expect(() => solveGrossWithdrawal({ ...base, probeSize: 0 })).not.toThrow();
+    expect(solveGrossWithdrawal({ ...base, probeSize: 0 }).retirementEffectiveTaxRate).toBe(
+      solveGrossWithdrawal(base).retirementEffectiveTaxRate,
+    );
+  });
+
+  it('probeSize is irrelevant (has no effect) once G > 0 — only the G = 0 fallback uses it', () => {
+    const bigTarget = { ...base, targetAfterTaxIncome: 90000 }; // forces G > 0
+    const a = solveGrossWithdrawal({ ...bigTarget, probeSize: 1000 });
+    const b = solveGrossWithdrawal({ ...bigTarget, probeSize: 50000 });
+    expect(a.grossWithdrawal).toBeGreaterThan(0);
+    expect(a.retirementEffectiveTaxRate).toBeCloseTo(b.retirementEffectiveTaxRate, 10);
+  });
+});

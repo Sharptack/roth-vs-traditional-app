@@ -93,6 +93,8 @@ But the IRS limit is a limit on *dollars in the account*, not on take-home cost.
 
 Roth shelters more real value at the limit. The Traditional saver does keep about $5,390 in take-home pay that the Roth saver didn't, and they could invest it in a regular taxable account, but the growth there is taxed along the way and the tax-free treatment is lost.
 
+If you're 50 or older, your limit is higher than the base figure above: the IRS lets you add a catch-up contribution on top, and if you're 60 through 63 specifically, an even bigger one under a newer rule. The calculator applies whichever one you qualify for automatically, based on your current age.
+
 The calculator **warns you when your savings are at or near the limit** (90% or more). If you enter more than the limit allows, it now handles the extra automatically: the amount above the limit can't legally go into that account, so it's modeled as flowing into a taxable investment account instead, growing alongside your other balances and taxed at the real capital-gains rates when withdrawn. You'll see that reflected in the total portfolio comparison below.
 
 That covers *contributing more than the limit*. It does not yet cover the subtler version of "maxing out" described above: contributing exactly at the limit (no excess) and asking what to do with the *extra take-home pay* a Traditional filer keeps from paying less tax today. Comparing "Traditional at the limit, with that tax savings invested in a taxable side account" against "Roth at the same limit" is still a planned future feature. Until then, treat the Roth-vs-Traditional result as leaning a little too Traditional-friendly when you're contributing at, but not over, the limit.

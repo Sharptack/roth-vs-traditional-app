@@ -29,9 +29,16 @@
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { solveMonotonicIncreasing } from './solver.js';
 
-// Size of the probe withdrawal used to read an incremental tax rate when the
-// other sources already cover the whole target (so G = 0 and 0/0 is undefined).
-const PROBE_WITHDRAWAL = 1000;
+// Fallback size of the probe withdrawal used to read an incremental tax rate
+// when the other sources already cover the whole target (so G = 0 and 0/0 is
+// undefined). Callers that know the size of the withdrawal this rate will
+// actually be APPLIED to (e.g. compare.js applies it to the account's own 4%
+// annual withdrawal) should pass that in as `probeSize` instead — measuring a
+// tiny, arbitrary $1,000 probe when the real withdrawal is much bigger (or
+// smaller) can read a noticeably different blended rate than the real
+// withdrawal would face, which is confusing when only the *target* changes
+// (see incomeNeed.test.js's "probe size" tests for a worked example).
+const DEFAULT_PROBE_WITHDRAWAL = 1000;
 
 export function solveGrossWithdrawal({
   targetAfterTaxIncome,
@@ -41,6 +48,7 @@ export function solveGrossWithdrawal({
   otherTaxableWithdrawal = 0,
   filingStatus,
   year,
+  probeSize = DEFAULT_PROBE_WITHDRAWAL,
 }) {
   const stack = (g) =>
     calculateRetirementTax({
@@ -66,18 +74,28 @@ export function solveGrossWithdrawal({
   );
 
   const remainingAfterTaxNeed = Math.max(0, targetAfterTaxIncome - afterTaxFromOtherSources);
+  const baseStack = stack(0);
+
+  // Whenever other sources already cover the target (G = 0), the rate is read
+  // from a hypothetical withdrawal of `probeSize` instead (a fallback of
+  // $1,000 if the caller didn't specify a size) — see the comment on
+  // DEFAULT_PROBE_WITHDRAWAL above. `probeStack`/`probeExtraTax` are exposed
+  // (always, not just when G = 0) so the UI can show the actual arithmetic
+  // behind the rate instead of a misleading "$0 ÷ $0" when no withdrawal is
+  // literally needed — solutionStack correctly stays at $0 extra tax in that
+  // case (nothing is really being withdrawn), but the RATE shown up top comes
+  // from this probe, so the two should never be presented as the same thing.
+  const probeSizeUsed = probeSize > 0 ? probeSize : DEFAULT_PROBE_WITHDRAWAL;
+  const probeStack = stack(probeSizeUsed);
+  const probeExtraTax = probeStack.totalTax - baseStack.totalTax;
 
   let retirementEffectiveTaxRate;
   if (grossWithdrawal > 0) {
     retirementEffectiveTaxRate = (grossWithdrawal - remainingAfterTaxNeed) / grossWithdrawal;
   } else {
-    // Other sources already cover the target, so no withdrawal is required.
-    // Report the rate an incremental withdrawal WOULD face on top of that stack.
-    const gained = afterTaxIncome(PROBE_WITHDRAWAL) - afterTaxFromOtherSources;
-    retirementEffectiveTaxRate = (PROBE_WITHDRAWAL - gained) / PROBE_WITHDRAWAL;
+    retirementEffectiveTaxRate = probeExtraTax / probeSizeUsed;
   }
 
-  const baseStack = stack(0);
   const solutionStack = stack(grossWithdrawal);
   return {
     grossWithdrawal,
@@ -94,5 +112,11 @@ export function solveGrossWithdrawal({
     // (Used by the UI to show its work.)
     baseStack,
     solutionStack,
+    // The hypothetical probe withdrawal actually used to derive the rate when
+    // grossWithdrawal is 0 (harmless/unused otherwise — solutionStack already
+    // reflects the real, actual withdrawal in that case).
+    probeSize: probeSizeUsed,
+    probeStack,
+    probeExtraTax,
   };
 }

@@ -210,21 +210,43 @@ function YearsWithoutSocialSecurity({ result }) {
             value={$(s.grossUp.grossWithdrawal)}
             kind="sub"
           />
-          <Row
-            label={`Taxable income after the ${$(std)} standard deduction`}
-            value={$(s.taxableIncomeAtTop)}
-            kind="sub"
-          />
-          <Row
-            label="Extra tax caused by this account's withdrawal"
-            value={$(extraTax)}
-            kind="total"
-          />
-          <Row
-            label={`Effective rate on these withdrawals (${$(extraTax)} ÷ ${$(s.grossUp.grossWithdrawal)})`}
-            value={formatPercent(s.effectiveRateRetirement)}
-            kind="total"
-          />
+          {withdrawalNeeded ? (
+            <>
+              <Row
+                label={`Taxable income after the ${$(std)} standard deduction`}
+                value={$(s.taxableIncomeAtTop)}
+                kind="sub"
+              />
+              <Row
+                label="Extra tax caused by this account's withdrawal"
+                value={$(extraTax)}
+                kind="total"
+              />
+              <Row
+                label={`Effective rate on these withdrawals (${$(extraTax)} ÷ ${$(s.grossUp.grossWithdrawal)})`}
+                value={formatPercent(s.effectiveRateRetirement)}
+                kind="total"
+              />
+            </>
+          ) : (
+            <>
+              <Row
+                label="This account's own natural withdrawal (4% of its projected value)"
+                value={$(s.grossUp.probeSize)}
+                kind="sub"
+              />
+              <Row
+                label="Extra tax that withdrawal would cause"
+                value={$(s.grossUp.probeExtraTax)}
+                kind="sub"
+              />
+              <Row
+                label={`Effective rate on these withdrawals (${$(s.grossUp.probeExtraTax)} ÷ ${$(s.grossUp.probeSize)})`}
+                value={formatPercent(s.effectiveRateRetirement)}
+                kind="total"
+              />
+            </>
+          )}
           <Row
             label="Bracket the last dollar falls in (for reference)"
             value={formatPercent(s.marginalRateRetirement, 0)}
@@ -406,7 +428,7 @@ function RothVsPretax({ result }) {
 /* ------------------------------------------------------------------ */
 
 function EffectiveRateMath({ result }) {
-  const { grossUp: g, otherWithdrawals: o, socialSecurity: ss, retirementNeed, rates } = result;
+  const { grossUp: g, otherWithdrawals: o, socialSecurity: ss, retirementNeed, rates, annuity } = result;
   const std = result.current.standardDeduction;
   const withdrawalNeeded = g.grossWithdrawal > 0;
   const extraTax = g.solutionStack.totalTax - g.baseStack.totalTax;
@@ -514,7 +536,24 @@ function EffectiveRateMath({ result }) {
               />
             </>
           ) : (
-            <Row label="Withdrawal needed from this account" value="$0" kind="total" />
+            <>
+              <Row label="Withdrawal needed from this account" value="$0" kind="total" />
+              <Row
+                label="Step 3: what a withdrawal from it would cost, if you took one"
+                kind="heading"
+              />
+              <Row
+                label="This account's own natural withdrawal (4% of its projected value)"
+                value={$(g.probeSize)}
+                kind="sub"
+              />
+              <Row label="Extra tax that withdrawal would cause" value={$(g.probeExtraTax)} kind="sub" />
+              <Row
+                label={`Effective rate on these withdrawals (${$(g.probeExtraTax)} ÷ ${$(g.probeSize)})`}
+                value={formatPercent(rates.effectiveRetirement)}
+                kind="total"
+              />
+            </>
           )}
           <Row
             label={`Overall effective rate (${$(overall.totalTax)} total tax ÷ ${$(overall.grossIncome)} gross income)`}
@@ -536,8 +575,10 @@ function EffectiveRateMath({ result }) {
         {!withdrawalNeeded && (
           <p className="note">
             Your other income already covers the retirement income number, so no withdrawal from
-            this account is needed. The rate shown is what an extra withdrawal <em>would</em> be
-            taxed at on top of that income.
+            this account is needed. The rate shown is what this account&rsquo;s own natural
+            withdrawal &mdash; {$(annuity.pretax.annualWithdrawal)}, 4% of its projected value
+            &mdash; <em>would</em> be taxed at on top of that income, since that is the size a
+            withdrawal from it would actually be.
           </p>
         )}
       </div>

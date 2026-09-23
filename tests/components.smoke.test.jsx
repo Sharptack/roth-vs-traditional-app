@@ -299,6 +299,19 @@ describe('ResultsSummary', () => {
     expect(html).toContain('no withdrawal from');
   });
 
+  it('shows the actual probe arithmetic instead of "$0 ÷ $0" when no withdrawal is needed', () => {
+    const html = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '90000' });
+    expect(html).toContain('own natural withdrawal (4% of its projected value)');
+    expect(html).not.toContain('÷ $0)');
+  });
+
+  it('names the catch-up contribution in the limit alert for a 50+ saver over the base limit', () => {
+    const html = render({ currentAge: '55', grossIncome: '150000', savings: '30000', accountType: '401k', currentType: 'pretax' });
+    expect(html).toContain('catch-up contribution for being 50 or older');
+    expect(html).toContain('$31,000');
+  });
+
+
   it('shows Social Security in the portfolio comparison, with a calculation dropdown', () => {
     const html = render();
     expect(html).toContain('Social Security benefit');
