@@ -155,33 +155,44 @@ describe('ResultsSummary', () => {
     expect(sec1).not.toContain('Effective rate');
   });
 
-  it('puts the tax rates at the top of the Roth vs. Traditional section, below the retirement number', () => {
+  it('opens the Roth vs. Traditional section with "The comparison" of rates, then the dollar trade-off', () => {
     const html = render();
     const sec2Start = html.indexOf('id="sec2"');
     const sec3Start = html.indexOf('id="sec3"');
     const sec2 = html.slice(sec2Start, sec3Start);
     const sec3 = html.slice(sec3Start);
     const firstTable = sec2.indexOf('<table');
-    const comparisonLabel = sec2.indexOf('Comparison table');
-    for (const label of ['Your tax rates', 'Marginal rate while working', 'Effective rate on these withdrawals']) {
+    const dollarsLabel = sec2.indexOf('The trade-off in dollars');
+    for (const label of ['The comparison: your tax rate now vs. later', 'Marginal rate while working', 'Effective rate on these withdrawals']) {
       const at = sec2.indexOf(label);
       expect(at, label).toBeGreaterThan(-1);
-      expect(at, label).toBeLessThan(comparisonLabel);
+      expect(at, label).toBeLessThan(dollarsLabel);
       expect(at, label).toBeLessThan(firstTable);
     }
-    // ...and the heading is the first thing in the section
-    expect(sec2.indexOf('Your tax rates')).toBeLessThan(sec2.indexOf('Current possible contribution'));
-    // the "Comparison table" label sits right before the table, after the rates
-    expect(comparisonLabel).toBeGreaterThan(-1);
-    expect(comparisonLabel).toBeLessThan(firstTable);
+    // the dollars heading sits right before the table, after the rates
+    expect(dollarsLabel).toBeGreaterThan(-1);
+    expect(dollarsLabel).toBeLessThan(firstTable);
+    // the table walks: what you put in -> what it grows to -> what you keep, with a Difference column
+    const table = sec2.slice(firstTable);
+    const putIn = table.indexOf('What you put in');
+    const grows = table.indexOf('What it grows to');
+    const keep = table.indexOf('What you keep after tax');
+    expect(putIn).toBeGreaterThan(-1);
+    expect(grows).toBeGreaterThan(putIn);
+    expect(keep).toBeGreaterThan(grows);
+    expect(table.indexOf('Current possible contribution')).toBeLessThan(grows);
+    expect(table.indexOf('Total value of account')).toBeLessThan(keep);
+    expect(table.indexOf('Total value of account')).toBeGreaterThan(grows);
+    expect(table).toContain('Difference');
+    expect(table).toContain('Pre-tax +$2,200'); // $10,000 Pre-tax vs $7,800 Roth
     // the portfolio section no longer carries the rates
-    expect(sec3).not.toContain('Your tax rates');
+    expect(sec3).not.toContain('The comparison');
     expect(sec3).not.toContain('Marginal rate while working');
     // the retirement number section stays rate-free and comes first
     expect(html.indexOf('id="sec1"')).toBeLessThan(sec2Start);
   });
 
-  it('drops the old verdict sentence and table caption in favor of a plain "Comparison table" label', () => {
+  it('has no dollar verdict sentence or table caption above the table', () => {
     const html = render();
     expect(html).not.toContain('class="verdict"');
     // the Roth-vs-Traditional headline verdict is gone (but the separate
@@ -192,7 +203,56 @@ describe('ResultsSummary', () => {
     expect(beforeDropdown).not.toContain('the tax treatment washes out');
     expect(html).not.toContain('table-caption');
     expect(html).not.toContain('turns that gap into dollars');
-    expect(html).toContain('Comparison table');
+  });
+
+  it('shows one rule-of-thumb lean line under the rates, above the rates dropdown', () => {
+    // no Social Security, no other accounts: 11.3% later vs 22% now -> leans Pre-tax
+    const html = render({ otherPretaxBalance: '0', debtPayments: '0', knowsSocialSecurity: 'yes', socialSecurityBenefit: '0' });
+    const lean = html.indexOf('class="rate-lean"');
+    expect(lean).toBeGreaterThan(html.indexOf('class="rate-pair"'));
+    expect(lean).toBeLessThan(html.indexOf('How are the retirement rates calculated?'));
+    expect(html).toContain('Tends to favor Pre-tax (Traditional).');
+    expect(html).toContain('Rule of thumb: when your rate in retirement is lower than your marginal rate while working');
+    // a 2x lifestyle at $60k pushes the retirement rate above 12%: leans Roth
+    const roth = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0', retirementLifestyle: '2' });
+    expect(roth).toContain('Tends to favor Roth.');
+    // the defaults land in the Social Security phase-in: 22.2% later vs 22% now
+    expect(render()).toContain('About even.');
+  });
+
+  it('shows the Pre-tax deduction in the retirement-number calculation, and says so for Roth', () => {
+    const html = render({ savings: '10000', currentType: 'pretax' });
+    const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
+    expect(sec1).toContain('Step 1: federal income tax');
+    expect(sec1).toContain('Pre-tax savings for retirement (not taxed now)');
+    expect(sec1).toContain('Taxable income');
+    expect(sec1).toContain('Your savings are Pre-tax, so they come out before income tax');
+    const roth = render({ savings: '10000', currentType: 'roth' });
+    const rothSec1 = roth.slice(roth.indexOf('id="sec1"'), roth.indexOf('id="sec2"'));
+    expect(rothSec1).not.toContain('Pre-tax savings for retirement (not taxed now)');
+    expect(rothSec1).toContain('Your savings are Roth, so they come out after income tax');
+  });
+
+  it('shows capital-gains tax in the rate calculation, and explains when the withdrawal pushes gains up', () => {
+    // A large taxable balance plus existing Pre-tax money: this account's withdrawal pushes gains out of 0%.
+    const html = render({ otherTaxableBalance: '150000', otherPretaxBalance: '100000' });
+    const start = html.indexOf('How are the retirement rates calculated?');
+    const dropdown = html.slice(start, html.indexOf('</details>', start));
+    expect(dropdown).toContain('Capital-gains tax on taxable-account withdrawals');
+    expect(dropdown).toContain('of which extra capital-gains tax');
+    expect(dropdown).toContain('Capital gains pushed into a higher bracket.');
+    // ...and nothing about capital gains when there is no taxable account
+    const none = render({ otherTaxableBalance: '0' });
+    expect(none).not.toContain('Capital-gains tax on taxable-account withdrawals');
+  });
+
+  it('explains that other Pre-tax accounts are taxed first and push the rate up', () => {
+    const html = render({ otherPretaxBalance: '100000' });
+    expect(html).toContain('What sets the rate on these withdrawals');
+    expect(html).toContain('Income that&rsquo;s taxed first.'.replace('&rsquo;', '’'));
+    expect(html).toContain('from your other Pre-tax accounts');
+    const none = render({ otherPretaxBalance: '0', otherTaxableBalance: '0', knowsSocialSecurity: 'yes', socialSecurityBenefit: '0' });
+    expect(none).toContain('Other Pre-tax accounts would change this');
   });
 
   it('keeps "How the rates fit together" inside the rates dropdown, not loose on the page', () => {
@@ -291,7 +351,8 @@ describe('ResultsSummary', () => {
     const html = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '20000', otherPretaxBalance: '0' });
     expect(html).toContain('How are the retirement rates calculated?');
     expect(html).toContain('Extra tax caused by the withdrawal');
-    expect(html).toContain('Why the rate on these withdrawals can be higher than your tax bracket');
+    expect(html).toContain('The Social Security phase-in.');
+    expect(html).toContain('That is why this rate can be higher than your tax');
   });
 
   it('explains when no withdrawal is needed from this account', () => {

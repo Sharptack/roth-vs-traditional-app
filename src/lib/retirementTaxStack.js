@@ -43,6 +43,7 @@ export function calculateRetirementTax({
   );
   return {
     taxableSS,
+    grossOrdinaryIncome, // before the standard deduction
     ordinaryTaxableIncome,
     ordinaryTax,
     capitalGainsTax,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { solveGrossWithdrawal } from '../src/lib/incomeNeed.js';
+import { explainWithdrawalRate, solveGrossWithdrawal } from '../src/lib/incomeNeed.js';
 
 const base = { filingStatus: 'single', year: 2025 };
 
@@ -325,5 +325,74 @@ describe('solveGrossWithdrawal — probeSize (the reported rate when G = 0 shoul
     const b = solveGrossWithdrawal({ ...bigTarget, probeSize: 50000 });
     expect(a.grossWithdrawal).toBeGreaterThan(0);
     expect(a.retirementEffectiveTaxRate).toBeCloseTo(b.retirementEffectiveTaxRate, 10);
+  });
+});
+
+describe('explainWithdrawalRate — what sets the effective rate (2026 single, HAND CALC)', () => {
+  // 2026 single: standard deduction 16,100; brackets 10% to 12,400, 12% to 50,400.
+  // Capital gains 0% up to 49,450 of taxable income, then 15%.
+  const explain = (args) => {
+    const g = solveGrossWithdrawal({ filingStatus: 'single', year: 2026, ...args });
+    return { g, d: explainWithdrawalRate(g, { otherPretaxWithdrawal: args.otherPretaxWithdrawal ?? 0, filingStatus: 'single', year: 2026 }) };
+  };
+
+  it('other Pre-tax income is taxed first, so the withdrawal starts in a higher bracket', () => {
+    // Other Pre-tax 20,000, target 0 (G = 0) -> read on a 10,000 probe.
+    //   before: 20,000 - 16,100 = 3,900 taxable -> tax 390; whole deduction used; next dollar 10%
+    //   after:  30,000 - 16,100 = 13,900 -> 1,240 + 12% x 1,500 = 1,420; last dollar 12%
+    //   extra tax 1,030 -> rate 10.3%
+    const { g, d } = explain({ targetAfterTaxIncome: 0, otherPretaxWithdrawal: 20000, probeSize: 10000 });
+    expect(d.hypothetical).toBe(true);
+    expect(d.withdrawal).toBe(10000);
+    expect(d.ordinaryIncomeBefore).toBe(20000);
+    expect(d.deductionUsedBefore).toBe(16100);
+    expect(d.startBracket).toBe(0.1);
+    expect(d.endBracket).toBe(0.12);
+    expect(d.extraOrdinaryTax).toBeCloseTo(1030, 6);
+    expect(d.extraCapitalGainsTax).toBe(0);
+    expect(d.extraTax).toBeCloseTo(1030, 6);
+    expect(g.retirementEffectiveTaxRate).toBeCloseTo(0.103, 10);
+  });
+
+  it('with nothing taxed first, the withdrawal starts under the standard deduction (0%)', () => {
+    // No other income, target 20,000 after tax. In the 10% bracket: net = T + 16,100 - 0.1 T = 20,000
+    //   T = 3,900 / 0.9 = 4,333.33;  G = 20,433.33;  extra tax = 433.33
+    const { d } = explain({ targetAfterTaxIncome: 20000 });
+    expect(d.hypothetical).toBe(false);
+    expect(d.withdrawal).toBeCloseTo(20433.33, 1);
+    expect(d.ordinaryIncomeBefore).toBe(0);
+    expect(d.deductionUsedBefore).toBe(0);
+    expect(d.startBracket).toBe(0);
+    expect(d.endBracket).toBe(0.1);
+    expect(d.extraTax).toBeCloseTo(433.33, 1);
+  });
+
+  it('the withdrawal pushes taxable-account gains from 0% into 15%, and that tax counts', () => {
+    // Other Pre-tax 16,100 (fills the deduction exactly), taxable-account withdrawal 45,000, probe 10,000.
+    //   before: ordinary taxable 0; gains stack 0 -> 45,000, all under 49,450 -> 0 gains tax
+    //   after:  ordinary taxable 10,000 -> tax 1,000; gains stack 10,000 -> 55,000:
+    //           39,450 at 0%, 5,550 at 15% = 832.50
+    //   extra tax 1,832.50 -> rate 18.325% on a withdrawal whose own bracket is 10%
+    const { g, d } = explain({
+      targetAfterTaxIncome: 0,
+      otherPretaxWithdrawal: 16100,
+      otherTaxableWithdrawal: 45000,
+      probeSize: 10000,
+    });
+    expect(d.startBracket).toBe(0.1);
+    expect(d.endBracket).toBe(0.1);
+    expect(d.extraOrdinaryTax).toBeCloseTo(1000, 6);
+    expect(d.extraCapitalGainsTax).toBeCloseTo(832.5, 6);
+    expect(g.retirementEffectiveTaxRate).toBeCloseTo(0.18325, 10);
+  });
+
+  it('reports the Social Security the withdrawal pulls into taxable income', () => {
+    // SS 20,000, no other income, probe 20,000. Before: combined 10,000 < 25,000 -> 0 taxable.
+    //   After: combined 20,000 + 10,000 = 30,000 -> 50% x (30,000 - 25,000) = 2,500 taxable
+    //   ordinary 22,500 - 16,100 = 6,400 -> tax 640
+    const { d } = explain({ targetAfterTaxIncome: 0, ssBenefit: 20000, probeSize: 20000 });
+    expect(d.taxableSSBefore).toBe(0);
+    expect(d.extraTaxableSS).toBeCloseTo(2500, 6);
+    expect(d.extraTax).toBeCloseTo(640, 6);
   });
 });

@@ -936,3 +936,63 @@ th.win .th-sub {
     min-width: 120px;
   }
 }
+
+/* ---------- Roth vs. Traditional: rate lean, grouped comparison table ---------- */
+
+.rate-lean {
+  margin: 4px 0 12px;
+}
+
+.rate-lean p {
+  margin: 0 0 4px;
+}
+
+.rate-lean .hint {
+  margin: 0;
+}
+
+.compare-table tbody th {
+  width: 34%;
+}
+
+.compare-table .group-row th {
+  padding: 14px 8px 6px;
+  border-bottom: 2px solid var(--line);
+  font-weight: 700;
+  text-align: left;
+  width: auto;
+}
+
+.compare-table tbody:first-of-type .group-row th {
+  padding-top: 8px;
+}
+
+.compare-table .diff {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.drivers {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.drivers li {
+  margin-bottom: 6px;
+}
+
+.drivers li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 520px) {
+  .compare-table th,
+  .compare-table td {
+    padding: 8px 4px;
+    font-size: 0.85rem;
+  }
+
+  .compare-table .diff {
+    font-size: 0.78rem;
+  }
+}

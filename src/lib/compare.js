@@ -23,7 +23,7 @@
 import { calculateTaxFromGross, getMarginalRate } from './taxCalculations.js';
 import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
-import { solveGrossWithdrawal } from './incomeNeed.js';
+import { explainWithdrawalRate, solveGrossWithdrawal } from './incomeNeed.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
 import { checkContributionLimit, splitAtContributionLimit } from './contributionLimits.js';
 import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
@@ -95,6 +95,17 @@ export function validateInputs(inputs) {
   return errors;
 }
 
+// Which way the two headline rates lean, before any dollars are compared:
+// Pre-tax when the effective rate on this account's withdrawals is below the
+// marginal rate while working, Roth when above. Within half a percentage point
+// the two are called "even". This is the rule of thumb, not the verdict: the
+// dollar comparison can differ, e.g. when the contribution limit caps one side.
+export function leanFromRates(marginalNow, effectiveRetirement) {
+  const gap = marginalNow - effectiveRetirement;
+  if (Math.abs(gap) < EVEN_TOLERANCE) return 'even';
+  return gap > 0 ? 'pretax' : 'roth';
+}
+
 function winnerOf(rothValue, pretaxValue) {
   const larger = Math.max(rothValue, pretaxValue);
   if (larger === 0 || Math.abs(rothValue - pretaxValue) / larger < EVEN_TOLERANCE) return 'even';
@@ -117,6 +128,11 @@ export function compareRothVsTraditional(inputs) {
   // income): it comes out of every paycheck but stops when you retire, so it must
   // not be counted as spending you need to replace. Half of any self-employment
   // tax is deducted before income tax.
+  //
+  // Savings that are currently Pre-tax are deducted before income tax too (but
+  // not before FICA: 401(k)/IRA deferrals are still payroll-taxed wages). Only the
+  // part that fits under the IRS limit is deductible; anything above it is
+  // modeled as going to a taxable account (see step 7), so it is not deducted.
   const selfEmploymentIncome = inputs.selfEmploymentIncome ?? 0;
   const lifestyleFactor = inputs.retirementLifestyle ?? 1;
   const fica = calculateEmploymentTaxes({
@@ -125,14 +141,29 @@ export function compareRothVsTraditional(inputs) {
     filingStatus,
     year,
   });
-  const current = calculateTaxFromGross(
+  const pretaxDeduction =
+    currentType === 'pretax'
+      ? splitAtContributionLimit(savings, accountType, year, currentAge).toAccount
+      : 0;
+  const withContribution = calculateTaxFromGross(
+    grossIncome,
+    filingStatus,
+    year,
+    fica.selfEmployment.deduction + pretaxDeduction,
+  );
+  // Income tax as if the savings were NOT deducted, i.e. the top of your pay
+  // before any Pre-tax contribution comes off it. Its marginal rate is the rate
+  // a Pre-tax contribution saves (and a Roth contribution pays), so it is the
+  // "marginal rate while working" whichever way the savings are held today.
+  const withoutContribution = calculateTaxFromGross(
     grossIncome,
     filingStatus,
     year,
     fica.selfEmployment.deduction,
   );
+  const marginalRateNow = withoutContribution.marginalRate;
+  const current = { ...withContribution, marginalRate: marginalRateNow, pretaxDeduction };
   const afterTaxCurrentIncome = grossIncome - current.tax - fica.total;
-  const marginalRateNow = current.marginalRate;
 
   // 2. Social Security benefit (known, or estimated)
   let socialSecurity;
@@ -229,6 +260,14 @@ export function compareRothVsTraditional(inputs) {
     probeSize: accountPretaxAnnualWithdrawal,
   });
   const effectiveRateRetirement = grossUp.retirementEffectiveTaxRate;
+  // What sets that rate: where the withdrawal lands in the brackets, how much
+  // Social Security it pulls into taxable income, and how much capital-gains
+  // tax it adds by pushing taxable-account gains into a higher bracket.
+  const rateDrivers = explainWithdrawalRate(grossUp, {
+    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
+    filingStatus,
+    year,
+  });
 
   // Overall effective rate in retirement: all tax owed on the whole first-year
   // retirement stack (with this account's withdrawal) divided by the gross income
@@ -320,6 +359,11 @@ export function compareRothVsTraditional(inputs) {
     annuity.pretax.annualWithdrawal * (1 - noSsGrossUp.retirementEffectiveTaxRate);
   const withoutSocialSecurity = {
     grossUp: noSsGrossUp,
+    rateDrivers: explainWithdrawalRate(noSsGrossUp, {
+      otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
+      filingStatus,
+      year,
+    }),
     marginalRateRetirement: noSsMarginalRate,
     effectiveRateRetirement: noSsGrossUp.retirementEffectiveTaxRate,
     taxableIncomeAtTop: Math.max(0, noSsTopOfStack),
@@ -361,7 +405,13 @@ export function compareRothVsTraditional(inputs) {
       // The budget walk from gross income to the retirement income number.
       breakdown: {
         grossIncome,
+        pretaxDeduction,
+        standardDeduction: current.standardDeduction,
+        taxableIncome: current.taxableIncome,
         incomeTax: current.tax,
+        // Income tax had the savings not been deducted (equal to incomeTax
+        // when nothing is Pre-tax); the difference is the tax the deduction saves.
+        incomeTaxWithoutPretaxDeduction: withoutContribution.tax,
         fica: fica.total,
         selfEmploymentTax: fica.selfEmployment.tax,
         selfEmploymentDeduction: fica.selfEmployment.deduction,
@@ -370,6 +420,7 @@ export function compareRothVsTraditional(inputs) {
         debtPayments,
         otherExpenses,
         savings,
+        currentType,
       },
     },
     // effectiveRetirement = tax caused by THIS account's withdrawals / those withdrawals.
@@ -378,7 +429,10 @@ export function compareRothVsTraditional(inputs) {
       marginalNow: marginalRateNow,
       effectiveRetirement: effectiveRateRetirement,
       overallEffectiveRetirement: overallEffectiveRateRetirement,
+      // 'pretax' | 'roth' | 'even' — the rule-of-thumb lean from the two rates above.
+      lean: leanFromRates(marginalRateNow, effectiveRateRetirement),
     },
+    rateDrivers,
     retirementOverall: {
       totalTax: grossUp.solutionStack.totalTax,
       grossIncome: retirementGrossIncome,

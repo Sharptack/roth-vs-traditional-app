@@ -28,6 +28,7 @@
 // size and never touches this stack.
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { solveMonotonicIncreasing } from './solver.js';
+import { getMarginalRate, getStandardDeduction } from './taxCalculations.js';
 
 // Fallback size of the probe withdrawal used to read an incremental tax rate
 // when the other sources already cover the whole target (so G = 0 and 0/0 is
@@ -118,5 +119,46 @@ export function solveGrossWithdrawal({
     probeSize: probeSizeUsed,
     probeStack,
     probeExtraTax,
+  };
+}
+
+// Breaks the effective rate from solveGrossWithdrawal into the things that set
+// it, for the UI to explain. Reads the withdrawal the rate was actually measured
+// on: the real gross-up G, or the probe withdrawal when G = 0 (`hypothetical`).
+//
+//   startBracket / endBracket  ordinary bracket of the withdrawal's first and last
+//                              dollar (0 while still under the standard deduction).
+//                              Income already on the stack (other Pre-tax
+//                              withdrawals + taxable Social Security) is taxed
+//                              first, so it decides where the withdrawal starts.
+//   deductionUsedBefore        how much of the standard deduction that income uses.
+//   extraTaxableSS             Social Security the withdrawal pulls into taxable income.
+//   extraOrdinaryTax / extraCapitalGainsTax
+//                              the two parts of the extra tax. Capital-gains tax rises
+//                              because gains are stacked on top of ordinary income: more
+//                              ordinary income pushes a fixed taxable-account withdrawal
+//                              into a higher capital-gains bracket.
+export function explainWithdrawalRate(grossUp, { otherPretaxWithdrawal = 0, filingStatus, year }) {
+  const hypothetical = !(grossUp.grossWithdrawal > 0);
+  const withdrawal = hypothetical ? grossUp.probeSize : grossUp.grossWithdrawal;
+  const before = grossUp.baseStack;
+  const after = hypothetical ? grossUp.probeStack : grossUp.solutionStack;
+  const standardDeduction = getStandardDeduction(filingStatus, year);
+  const extraOrdinaryTax = after.ordinaryTax - before.ordinaryTax;
+  const extraCapitalGainsTax = after.capitalGainsTax - before.capitalGainsTax;
+  return {
+    hypothetical,
+    withdrawal,
+    standardDeduction,
+    otherPretaxWithdrawal,
+    taxableSSBefore: before.taxableSS,
+    ordinaryIncomeBefore: before.grossOrdinaryIncome,
+    deductionUsedBefore: Math.min(standardDeduction, before.grossOrdinaryIncome),
+    startBracket: getMarginalRate(before.grossOrdinaryIncome - standardDeduction, filingStatus, year),
+    endBracket: getMarginalRate(after.grossOrdinaryIncome - standardDeduction, filingStatus, year),
+    extraTaxableSS: after.taxableSS - before.taxableSS,
+    extraOrdinaryTax,
+    extraCapitalGainsTax,
+    extraTax: extraOrdinaryTax + extraCapitalGainsTax,
   };
 }

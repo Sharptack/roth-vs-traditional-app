@@ -12,7 +12,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (341 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (355 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -105,7 +105,12 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   non-interactive fallback.
 
 ## The model (as built)
-1. Current tax: income tax on (gross − half of any self-employment tax − standard deduction) + payroll tax:
+1. Current tax: income tax on (gross − half of any self-employment tax − **Pre-tax savings, if
+   `currentType` is pretax, capped at the IRS limit** − standard deduction) + payroll tax (Pre-tax savings do
+   NOT reduce FICA). The **marginal rate is read BEFORE the Pre-tax deduction** (the rate on the top dollars of
+   pay, i.e. what a Pre-tax contribution saves and a Roth one pays), so it is the same whichever way the
+   savings are held today. `breakdown` carries `pretaxDeduction`, `standardDeduction`, `taxableIncome`,
+   `incomeTaxWithoutPretaxDeduction` for the Section 1 dropdown's "Step 1: federal income tax". Then:
    **FICA** on the W-2 part, **self-employment tax** on the 1099 part (12.4% + 2.9% on 92.35% of net
    earnings; SS part limited by wage-base room left by W-2 wages; none under $400; Additional Medicare on
    the combined total). Marginal rate = rate of the bracket the next dollar falls in (0% if below the
@@ -140,6 +145,13 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    Also `rates.overallEffectiveRetirement` = total tax on the whole
    first-year retirement stack / total gross income (Social Security + every withdrawal incl. Roth) —
    labelled "Overall effective rate in retirement"; `retirementOverall` holds the two amounts.
+   `result.rateDrivers` (and `withoutSocialSecurity.rateDrivers`) = `explainWithdrawalRate` in incomeNeed.js:
+   start/end ordinary bracket of the withdrawal the rate was measured on (G or the probe), how much of the
+   standard deduction other income (other Pre-tax draws + taxable SS) uses first, extra taxable SS, and the
+   extra tax split into ordinary vs. capital-gains (gains stacked on top get pushed up a bracket). The rate
+   ALREADY included the capital-gains push (totalTax includes it); this only exposes it for the UI.
+   `rates.lean` = `leanFromRates(marginalNow, effectiveRetirement)`: pretax/roth, "even" within 0.5 points —
+   the rule-of-thumb line under the rates (not the dollar verdict; the contribution cap can make them differ).
 6. Paycheck equivalents: Roth R = P·(1−t); Pre-tax P = R/(1−t), t = current marginal rate. R and P
    (`result.contribution`) stay the UNCAPPED equivalents for display. Each is then independently run
    through `splitAtContributionLimit(amount, accountType, year, currentAge)` — `currentAge` (a snapshot,
@@ -246,8 +258,12 @@ the whole account) is still open — see "Known limitations."
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
 - **Page layout (3 sections):** (1) "Retirement income number" alone — hero value, note "the after-tax
   amount you need each year in retirement to keep the same lifestyle you have while working; the amount you
-  actually spend", "How is this calculated?" dropdown; (2) "Roth vs. Traditional" (verdict, contribution-limit
-  alert, table, dropdown "Retirement years without Social Security"), which **opens with "Your tax rates"**
+  actually spend", "How is this calculated?" dropdown; (2) "Roth vs. Traditional" (contribution-limit
+  alert, table, dropdown "Retirement years without Social Security"), which **opens with "The comparison: your
+  tax rate now vs. later"** (rate pair, then a one-line "Tends to favor …" lean + rule-of-thumb hint — re-added
+  2026-09-25 at the user's request after Round 4 had removed a lean sentence), then **"The trade-off in dollars"**:
+  one table with Roth / Pre-tax / Difference columns and three row groups ("What you put in", "What it grows
+  to", "What you keep after tax") so the layout shows "Pre-tax puts in more, but is taxed later". Before that:
   (marginal now; effective rate on these withdrawals; overall effective rate; SS benefit used; and the "How are
   the retirement rates calculated?" dropdown, which begins with the "How the rates fit together" note) — the user clarified the rates go at the top of the Roth vs.
   Traditional section, i.e. the section right below the retirement number; (3) "Total portfolio tax
@@ -311,6 +327,19 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 — Five user adjustments. (1) MODEL FIX: Pre-tax savings (capped at the IRS limit) are now
+  deducted before income tax when computing today's take-home pay, so the retirement income number rises for
+  Pre-tax savers (default 2025 case: need 68,901 -> 71,101; a Pre-tax saver and the equivalent Roth saver now
+  get the same need). Marginal rate still read before the deduction. The Section 1 dropdown gained "Step 1:
+  federal income tax" showing the deduction, standard deduction, taxable income and tax saved. All affected
+  hand-verified tests were re-derived by hand (all matched the code first time). (2) The rate dropdowns split
+  tax into ordinary + capital-gains rows and show "…of which extra capital-gains tax" (the math already
+  counted it). (3) The old "Why the rate … can be higher than your tax bracket" note became "What sets the rate
+  on these withdrawals": income taxed first (other Pre-tax accounts + taxable SS -> start bracket), SS
+  phase-in, capital-gains push. (4) Section 2 regrouped: "The comparison" rates, then "The trade-off in
+  dollars" table with a Difference column and put-in / grows-to / keep groups. (5) "Tends to favor …" lean
+  line under the rates. Note the app defaults now read "About even" (22.0% vs 22.2%, SS phase-in). ARTICLE.md
+  example updated. 355 tests.
 - 2026-09-25 — Scenario-charts page polish: renamed "Test the theory" -> "Visualization" everywhere (header/footer
   links, page title, h1, comments; the page text now says "rule of thumb" instead of "theory"); every chart now has
   a titled Y axis ("Rate gap (percentage points)" on the line charts, "Roth advantage (% of Pre-tax income)" on the
