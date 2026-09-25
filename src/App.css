@@ -767,7 +767,7 @@ th.win .th-sub {
   margin: 0 0 12px;
 }
 
-/* ---------- scenario charts ("Test the theory" page) ---------- */
+/* ---------- scenario charts ("Visualization" page) ---------- */
 
 .scenarios-page {
   padding-top: 8px;
@@ -848,6 +848,12 @@ th.win .th-sub {
 .chart-tick {
   fill: var(--dim);
   font-size: 11px;
+}
+
+.chart-axis-title {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .chart-tooltip {

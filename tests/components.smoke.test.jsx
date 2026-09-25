@@ -420,17 +420,17 @@ describe('App', () => {
     expect(html).toContain('class="page-footer"');
   });
 
-  it('links to the "Test the theory" scenarios page from the header and the footer', () => {
+  it('links to the "Visualization" scenarios page from the header and the footer', () => {
     const html = renderToStaticMarkup(<App />);
     const links = html.match(/href="#\/scenarios"/g) ?? [];
     expect(links.length).toBe(2);
-    expect(html).toContain('Test the theory');
+    expect(html).toContain('Visualization');
   });
 
   it('shows the calculator (not the article or the scenarios page) by default', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).not.toContain('Back to the calculator');
-    expect(html).not.toContain('Test the theory: does the rate gap predict the winner?');
+    expect(html).not.toContain('Visualization: does the rate gap predict the winner?');
     expect(html).not.toMatch(/<div hidden/); // the calculator wrapper is visible
   });
 });
@@ -472,7 +472,7 @@ describe('ScenariosPage', () => {
   const html = renderToStaticMarkup(<ScenariosPage />);
 
   it('renders without throwing, with the intro and a back link at top and bottom', () => {
-    expect(html).toContain('Test the theory: does the rate gap predict the winner?');
+    expect(html).toContain('Visualization: does the rate gap predict the winner?');
     const back = html.match(/href="#\/"/g) ?? [];
     expect(back.length).toBe(2);
     expect(html).toContain('Back to the calculator');

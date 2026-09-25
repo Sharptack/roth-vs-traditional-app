@@ -10,6 +10,8 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 const formatGapPoints = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)} pts`;
 const formatAdvantagePct = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
+// Axis ticks drop the "pts" unit (the axis title carries it): +15.0 pts -> +15
+const formatGapTick = (v) => `${v >= 0 ? '+' : '−'}${Number(Math.abs(v * 100).toFixed(1))}`;
 const formatCompactCurrency = (v) => `$${(v / 1000).toFixed(0)}k`;
 const formatMultiplierX = (v) => `${v.toFixed(1)}×`;
 
@@ -38,10 +40,18 @@ function BatchChart({ batch }) {
       <h2>{batch.title}</h2>
       <p className="hint">{batch.description}</p>
       <p className="hint">
-        Y axis: rate gap (marginal rate while working &minus; effective rate on these withdrawals in
-        retirement). A positive gap tends to favor Pre-tax; a negative gap tends to favor Roth.
+        Rate gap = marginal rate while working &minus; effective rate on these withdrawals in retirement.
+        A positive gap tends to favor Pre-tax; a negative gap tends to favor Roth.
       </p>
-      <LineChart series={series} xTicks={xTicks} formatX={(x) => formatX(batch, x)} formatY={formatGapPoints} />
+      <LineChart
+        series={series}
+        xTicks={xTicks}
+        formatX={(x) => formatX(batch, x)}
+        formatY={formatGapPoints}
+        formatYTick={formatGapTick}
+        xLabel={batch.xLabel}
+        yLabel="Rate gap (percentage points)"
+      />
       <details className="details">
         <summary>Show the numbers</summary>
         <div className="details-body">
@@ -76,7 +86,7 @@ function BatchChart({ batch }) {
 export default function ScenariosPage() {
   useEffect(() => {
     const previous = document.title;
-    document.title = 'Test the theory — Roth vs. Pre-Tax Calculator';
+    document.title = 'Visualization — Roth vs. Pre-Tax Calculator';
     return () => {
       document.title = previous;
     };
@@ -95,11 +105,11 @@ export default function ScenariosPage() {
       <BackLink />
 
       <div className="scenarios-intro">
-        <h1>Test the theory: does the rate gap predict the winner?</h1>
+        <h1>Visualization: does the rate gap predict the winner?</h1>
         <p>
           The calculator&rsquo;s comparison boils down to one number: the <strong>rate gap</strong> &mdash; your
           marginal tax rate while working, minus the effective rate you&rsquo;d actually pay on this
-          account&rsquo;s withdrawals in retirement. The theory: the higher that gap, the more Pre-tax should
+          account&rsquo;s withdrawals in retirement. The rule of thumb: the higher that gap, the more Pre-tax should
           come out ahead; the lower (more negative) the gap, the more Roth should come out ahead.
         </p>
         <p>
@@ -121,8 +131,8 @@ export default function ScenariosPage() {
           <h2>Does the gap predict the winner?</h2>
           <p className="hint">
             Every point above, combined: X axis is the rate gap; Y axis is how much more (or less) after-tax
-            annual income Roth produces than Pre-tax, as a percentage of the Pre-tax amount. If the theory
-            holds, points should trend down and to the right &mdash; a bigger gap (Pre-tax favored) paired with
+            annual income Roth produces than Pre-tax, as a percentage of the Pre-tax amount. If the rule of
+            thumb holds, points should trend down and to the right &mdash; a bigger gap (Pre-tax favored) paired with
             a bigger Roth shortfall, and vice versa.
           </p>
           <ScatterChart
@@ -131,6 +141,9 @@ export default function ScenariosPage() {
             regression={regression}
             formatX={formatGapPoints}
             formatY={formatAdvantagePct}
+            formatXTick={formatGapTick}
+            xLabel="Rate gap (percentage points)"
+            yLabel="Roth advantage (% of Pre-tax income)"
           />
           {regression && (
             <p className="scenario-summary hint">

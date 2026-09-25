@@ -4,7 +4,7 @@ import { SERIES_COLORS, SERIES_SHAPES } from './palette.js';
 
 const WIDTH = 640;
 const HEIGHT = 400;
-const MARGIN = { top: 16, right: 20, bottom: 40, left: 56 };
+const MARGIN = { top: 16, right: 20, bottom: 58, left: 72 };
 
 function padDomain(min, max, fraction) {
   const span = max - min || Math.abs(max) || 1;
@@ -48,7 +48,17 @@ export function LegendIcon({ shape, color }) {
 // Hand-rolled SVG scatter: one point per scenario, colored + shaped by which
 // batch it came from, with a fitted trend line to visualize whether the rate
 // gap actually predicts the Roth/Pre-tax advantage.
-export default function ScatterChart({ points, batches, regression, formatX, formatY }) {
+export default function ScatterChart({
+  points,
+  batches,
+  regression,
+  formatX,
+  formatY,
+  formatXTick = formatX,
+  formatYTick = formatY,
+  xLabel,
+  yLabel,
+}) {
   const clipId = useId();
   const [hoverIdx, setHoverIdx] = useState(null);
 
@@ -86,15 +96,29 @@ export default function ScatterChart({ points, batches, regression, formatX, for
             <g key={`ygrid-${t}`}>
               <line x1={plotLeft} x2={plotRight} y1={yScale(t)} y2={yScale(t)} className="chart-gridline" />
               <text x={plotLeft - 8} y={yScale(t)} className="chart-tick chart-tick-y" textAnchor="end" dominantBaseline="middle">
-                {formatY(t)}
+                {formatYTick(t)}
               </text>
             </g>
           ))}
           {xTicksList.map((t) => (
             <text key={`xtick-${t}`} x={xScale(t)} y={plotBottom + 20} className="chart-tick chart-tick-x" textAnchor="middle">
-              {formatX(t)}
+              {formatXTick(t)}
             </text>
           ))}
+          {xLabel && (
+            <text x={(plotLeft + plotRight) / 2} y={HEIGHT - 10} className="chart-axis-title" textAnchor="middle">
+              {xLabel}
+            </text>
+          )}
+          {yLabel && (
+            <text
+              transform={`translate(16, ${(plotTop + plotBottom) / 2}) rotate(-90)`}
+              className="chart-axis-title"
+              textAnchor="middle"
+            >
+              {yLabel}
+            </text>
+          )}
           {yDomainMin < 0 && yDomainMax > 0 && (
             <line x1={plotLeft} x2={plotRight} y1={yScale(0)} y2={yScale(0)} className="chart-zeroline" />
           )}

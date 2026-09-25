@@ -72,7 +72,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   tests fail on "Section N", "Simple view" and the old dropdown title. Keep the two effective rates named as in
   the app.
 
-## Scenario charts ("Test the theory" page, added 2026-09-22)
+## Scenario charts ("Visualization" page, added 2026-09-22; renamed 2026-09-25)
 - Route: `#/scenarios`, same hidden/mounted pattern as the article (`App.jsx`'s `useRoute`, generalized to
   "anything other than calculator" leaves/scroll-restores). Linked from the header and footer next to
   "How this works".
@@ -89,9 +89,9 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
 - The five batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
   estimated Social Security, 401(k) — the limit never binds at these income/savings levels): income sweep
-  at a fixed 10% savings rate (age 35→65, incomes $50k–$300k); the same income sweep at 5%/10%/20% savings
+  at a fixed 10% savings rate (age 35→65, 12 incomes from $40k to $300k); the same income sweep at 5%/10%/20% savings
   rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k; the same income
-  sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; and a lifestyle sweep (1×→2×, i.e. "spending
+  sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; and a lifestyle sweep (1×→2× in 0.1 steps, i.e. "spending
   20/40/60/80/100% more in retirement") at incomes $30k/$50k/$75k/$100k/$150k. Extending or adding a batch
   is a data-only change in `scenarioBatches.js` — no chart code changes needed.
 - Charts are hand-rolled inline SVG (`src/components/charts/`), not a charting library — the app has no chart
@@ -311,6 +311,13 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 — Scenario-charts page polish: renamed "Test the theory" -> "Visualization" everywhere (header/footer
+  links, page title, h1, comments; the page text now says "rule of thumb" instead of "theory"); every chart now has
+  a titled Y axis ("Rate gap (percentage points)" on the line charts, "Roth advantage (% of Pre-tax income)" on the
+  scatter) and a titled X axis, with unit-free tick labels (+15, not "+15.0 pts"); more data points: 12 incomes
+  ($40k-$300k, was 6) and lifestyle in 0.1 steps 1.0x-2.0x (was 0.2 steps), so the scatter now has 199 points.
+  `LineChart` labels only round x values (via `niceTicks`) once there are more than 8 points, so labels do not collide.
+  341 tests.
 - 2026-09-23 — Two fixes reported by the user. (1) Catch-up contributions (age 50+, and SECURE 2.0's
   enhanced 60-63 401(k) tier) now raise the IRS limit used everywhere (contribution split, limit-check
   alert), keyed off `currentAge`. (2) The "Effective rate on these withdrawals" no longer jumps around
@@ -319,7 +326,7 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   arbitrary $1,000 — see the two dedicated sections above for the full detail. Also fixed a "$0 ÷ $0"
   display bug found while investigating: the two rate-calculation dropdowns now show the real probe
   arithmetic instead of a formula that didn't match the value shown. 341 tests.
-- 2026-09-22 — New "Test the theory" scenario-charts page (`#/scenarios`, linked from the header/footer):
+- 2026-09-22 — New scenario-charts page (originally titled "Test the theory", renamed "Visualization" on 2026-09-25) (`#/scenarios`, linked from the header/footer):
   charts the rate gap (marginal now − effective on withdrawals) across five hand-picked scenario batches
   (income; income × savings rate; income × existing balance at 35; income × existing balance at 50; and
   retirement lifestyle × income), plus a combined scatter of gap vs. Roth's after-tax advantage with an

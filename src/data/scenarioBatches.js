@@ -1,8 +1,8 @@
-// Scenario batches for the "Test the theory" page (#/scenarios). Each batch sweeps
+// Scenario batches for the "Visualization" page (#/scenarios). Each batch sweeps
 // one variable while holding the rest fixed, feeding compareRothVsTraditional
 // (via src/lib/scenarios.js) so the page can chart how the rate gap — marginal
 // rate now minus the effective rate on this account's withdrawals in retirement —
-// behaves as that variable moves. The theory under test: a bigger (more positive)
+// behaves as that variable moves. The idea being tested: a bigger (more positive)
 // gap should favor Pre-tax; a bigger negative gap should favor Roth.
 //
 // Shared, unstated assumptions across every batch: single filer, all W-2 income,
@@ -28,7 +28,12 @@ const BASE = {
   otherTaxableBalance: 0,
 };
 
-export const INCOMES = [50000, 75000, 100000, 150000, 200000, 300000];
+export const INCOMES = [
+  40000, 50000, 60000, 75000, 90000, 100000, 125000, 150000, 175000, 200000, 250000, 300000,
+];
+
+// Retirement lifestyle multipliers, 1x (same as today) to 2x in 0.1 steps.
+export const LIFESTYLES = Array.from({ length: 11 }, (_, i) => Number((1 + i / 10).toFixed(1)));
 
 const bySavingsRate = (income, rate) => ({
   grossIncome: income,
@@ -116,7 +121,7 @@ export const SCENARIO_BATCHES = [
     series: [30000, 50000, 75000, 100000, 150000].map((income) => ({
       key: `income${income}`,
       label: `$${(income / 1000).toFixed(0)}k income`,
-      points: [1, 1.2, 1.4, 1.6, 1.8, 2].map((lifestyle) => ({
+      points: LIFESTYLES.map((lifestyle) => ({
         x: lifestyle,
         overrides: { ...bySavingsRate(income, 0.1), retirementLifestyle: lifestyle },
       })),

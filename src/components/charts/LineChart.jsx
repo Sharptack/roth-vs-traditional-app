@@ -4,7 +4,7 @@ import { SERIES_COLORS } from './palette.js';
 
 const WIDTH = 640;
 const HEIGHT = 320;
-const MARGIN = { top: 16, right: 20, bottom: 40, left: 56 };
+const MARGIN = { top: 16, right: 20, bottom: 58, left: 72 };
 
 function padDomain(min, max, fraction) {
   const span = max - min || Math.abs(max) || 1;
@@ -15,7 +15,7 @@ function padDomain(min, max, fraction) {
 // (values need not be evenly spaced — incomes, e.g., are plotted at their real
 // dollar position), a crosshair + one tooltip listing every series at that x,
 // and a legend when there's more than one series (see the dataviz skill).
-export default function LineChart({ series, xTicks, formatX, formatY }) {
+export default function LineChart({ series, xTicks, formatX, formatY, formatYTick = formatY, xLabel, yLabel }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
   const plotLeft = MARGIN.left;
@@ -40,6 +40,15 @@ export default function LineChart({ series, xTicks, formatX, formatY }) {
   const yDomainMax = Math.max(yPadMax, yTicksList[yTicksList.length - 1]);
   const yScale = linearScale([yDomainMin, yDomainMax], [plotBottom, plotTop]);
 
+  // Every data point gets a marker and a hover column, but with many points the x labels
+  // would collide, so label only round values (or every point when there are few).
+  const labelTicks =
+    xTicks.length > 8
+      ? niceTicks(Math.min(...xTicks), Math.max(...xTicks), 6).filter(
+          (t) => t >= Math.min(...xTicks) && t <= Math.max(...xTicks),
+        )
+      : xTicks;
+
   const hoveredX = hoverIndex === null ? null : xPixels[hoverIndex];
 
   return (
@@ -56,7 +65,7 @@ export default function LineChart({ series, xTicks, formatX, formatY }) {
                 textAnchor="end"
                 dominantBaseline="middle"
               >
-                {formatY(t)}
+                {formatYTick(t)}
               </text>
             </g>
           ))}
@@ -64,11 +73,26 @@ export default function LineChart({ series, xTicks, formatX, formatY }) {
             <line x1={plotLeft} x2={plotRight} y1={yScale(0)} y2={yScale(0)} className="chart-zeroline" />
           )}
 
-          {xTicks.map((x) => (
+          {labelTicks.map((x) => (
             <text key={`xtick-${x}`} x={xScale(x)} y={plotBottom + 20} className="chart-tick chart-tick-x" textAnchor="middle">
               {formatX(x)}
             </text>
           ))}
+
+          {xLabel && (
+            <text x={(plotLeft + plotRight) / 2} y={HEIGHT - 10} className="chart-axis-title" textAnchor="middle">
+              {xLabel}
+            </text>
+          )}
+          {yLabel && (
+            <text
+              transform={`translate(16, ${(plotTop + plotBottom) / 2}) rotate(-90)`}
+              className="chart-axis-title"
+              textAnchor="middle"
+            >
+              {yLabel}
+            </text>
+          )}
 
           {hoveredX !== null && (
             <line x1={hoveredX} x2={hoveredX} y1={plotTop} y2={plotBottom} className="chart-crosshair" />

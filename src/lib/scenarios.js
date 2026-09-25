@@ -1,12 +1,12 @@
 // Runs the scenario batches (src/data/scenarioBatches.js) through the same
 // compareRothVsTraditional engine the calculator uses, and extracts the numbers
-// the "Test the theory" page charts. Pure and framework-free — no new financial
+// the "Visualization" page charts. Pure and framework-free — no new financial
 // logic lives here, just wiring and extraction on top of already-tested compare.js.
 import { compareRothVsTraditional } from './compare.js';
 
 // One scenario's inputs -> the point the charts need.
 //   gap            = marginal rate now − effective rate on this account's
-//                     withdrawals in retirement (the theory's predictor)
+//                     withdrawals in retirement (the predictor being tested)
 //   advantagePct   = how much more (or less) after-tax annual income Roth
 //                     produces than Pre-tax, as a % of the Pre-tax figure
 //                     (the "did Roth actually win" outcome, Section 2's lens)

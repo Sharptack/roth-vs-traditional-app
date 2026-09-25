@@ -28,7 +28,7 @@ import './App.css';
  * - Employer match modeling: the match amount, and the match-optimization math
  *   when Roth contributions alone can't capture the full match.
  * - Contributions that change over time (e.g. raises).
- * - A wider range of pre-set scenarios on the "Test the theory" page (#/scenarios) —
+ * - A wider range of pre-set scenarios on the "Visualization" page (#/scenarios) —
  *   it currently covers income, savings rate, existing balances, age, and
  *   retirement lifestyle, each swept one at a time; married filing jointly and
  *   1099 income aren't represented there yet.
@@ -106,7 +106,7 @@ export default function App() {
             plain language.
           </p>
           <p className="header-links">
-            <a href={SCENARIOS_HASH}>Test the theory &rarr;</a> See the rate gap charted across a
+            <a href={SCENARIOS_HASH}>Visualization &rarr;</a> See the rate gap charted across a
             range of income, savings, and balance scenarios.
           </p>
           <p className="disclaimer">Estimates only — not tax or financial advice.</p>
@@ -120,7 +120,7 @@ export default function App() {
         <footer className="page-footer">
           <a href={ARTICLE_HASH}>How this works</a>
           {' · '}
-          <a href={SCENARIOS_HASH}>Test the theory</a>
+          <a href={SCENARIOS_HASH}>Visualization</a>
         </footer>
       </div>
 

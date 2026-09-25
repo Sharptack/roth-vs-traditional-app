@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
 import { flattenForScatter, runAllBatches, runScenarioBatch, runScenarioPoint } from '../src/lib/scenarios.js';
-import { INCOMES, SCENARIO_BATCHES } from '../src/data/scenarioBatches.js';
+import { INCOMES, LIFESTYLES, SCENARIO_BATCHES } from '../src/data/scenarioBatches.js';
 
 const base = {
   filingStatus: 'single',
@@ -131,7 +131,7 @@ describe('the real SCENARIO_BATCHES data', () => {
 
     expect(byKey.lifestyleSweep.series).toHaveLength(5);
     for (const series of byKey.lifestyleSweep.series) {
-      expect(series.points).toHaveLength(6);
+      expect(series.points).toHaveLength(LIFESTYLES.length);
     }
 
     const flat = flattenForScatter(runs);
