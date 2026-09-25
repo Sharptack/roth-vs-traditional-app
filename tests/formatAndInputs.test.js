@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatCurrency, formatPercent, formatMultiple } from '../src/lib/format.js';
+import { formatCurrency, formatDelta, formatMultiple, formatPercent, formatValue } from '../src/lib/format.js';
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from '../src/lib/formInputs.js';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
 
@@ -104,5 +104,23 @@ describe('W-2 / 1099 and lifestyle inputs', () => {
   });
   it('the lifestyle selection is converted to a multiplier', () => {
     expect(inputsFor({ retirementLifestyle: '1.25' }).retirementLifestyle).toBe(1.25);
+  });
+});
+
+describe('formatValue / formatDelta', () => {
+  it('formats values by kind', () => {
+    expect(formatValue(1234.4, 'currency')).toBe('$1,234');
+    expect(formatValue(0.11337, 'percent')).toBe('11.3%');
+    expect(formatValue(0.22, 'bracket')).toBe('22%');
+    expect(formatValue('Roth', 'text')).toBe('Roth');
+  });
+  it('formats changes: dollars, percentage points, and no change', () => {
+    expect(formatDelta(14070, 'currency')).toBe('+$14,070');
+    expect(formatDelta(-500.2, 'currency')).toBe('−$500');
+    expect(formatDelta(0.01958, 'percent')).toBe('+2.0 pts');
+    expect(formatDelta(-0.1, 'bracket')).toBe('−10 pts');
+    expect(formatDelta(0.0001, 'percent')).toBe('no change');
+    expect(formatDelta(0.3, 'currency')).toBe('no change');
+    expect(formatDelta(null, 'currency')).toBe('');
   });
 });

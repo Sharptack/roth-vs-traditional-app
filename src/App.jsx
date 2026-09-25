@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ArticlePage from './components/ArticlePage.jsx';
 import InputForm from './components/InputForm.jsx';
 import ResultsSummary from './components/ResultsSummary.jsx';
+import ScenarioCompare from './components/ScenarioCompare.jsx';
 import ScenariosPage from './components/ScenariosPage.jsx';
 import { compareRothVsTraditional } from './lib/compare.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
@@ -80,15 +81,23 @@ function useRoute() {
 
 export default function App() {
   const [values, setValues] = useState(DEFAULT_FORM_VALUES);
+  // "Compare a change": the form values pinned as the baseline (null = not comparing).
+  // Kept in memory only, so a reload clears it.
+  const [baselineValues, setBaselineValues] = useState(null);
   const route = useRoute();
 
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
 
   // Results update live: recomputed on every input change, no submit button.
-  const result = useMemo(
-    () => compareRothVsTraditional(toCompareInputs(values, CURRENT_YEAR)),
-    [values],
-  );
+  const current = useMemo(() => {
+    const inputs = toCompareInputs(values, CURRENT_YEAR);
+    return { inputs, result: compareRothVsTraditional(inputs) };
+  }, [values]);
+  const baseline = useMemo(() => {
+    if (!baselineValues) return null;
+    const inputs = toCompareInputs(baselineValues, CURRENT_YEAR);
+    return { inputs, result: compareRothVsTraditional(inputs) };
+  }, [baselineValues]);
 
   return (
     <div className="page">
@@ -114,7 +123,14 @@ export default function App() {
 
         <main>
           <InputForm values={values} onChange={handleChange} />
-          <ResultsSummary result={result} />
+          <ScenarioCompare
+            baseline={baseline}
+            current={current}
+            onStart={() => setBaselineValues(values)}
+            onRebase={() => setBaselineValues(values)}
+            onStop={() => setBaselineValues(null)}
+          />
+          <ResultsSummary result={current.result} />
         </main>
 
         <footer className="page-footer">

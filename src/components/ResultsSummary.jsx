@@ -1,4 +1,5 @@
-import { formatCurrency, formatPercent } from '../lib/format.js';
+import { formatCurrency, formatPercent, formatValue } from '../lib/format.js';
+import { effectiveRateSteps } from '../lib/rateSteps.js';
 
 const $ = (n) => formatCurrency(n);
 const minus = (n) => `−${formatCurrency(n)}`;
@@ -26,6 +27,13 @@ function Row({ label, value, kind = '' }) {
       <span>{value}</span>
     </div>
   );
+}
+
+// One row from a shared step list (lib/rateSteps.js): its label, plus the
+// scenario's own arithmetic in brackets when there is some.
+export function StepRow({ row }) {
+  const label = row.detail ? `${row.label} (${row.detail})` : row.label;
+  return <Row label={label} value={row.kind === 'heading' ? undefined : formatValue(row.value, row.format)} kind={row.kind} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -511,23 +519,6 @@ function RothVsPretax({ result }) {
 /* Tax rates (top of section 2) and total portfolio comparison (3)      */
 /* ------------------------------------------------------------------ */
 
-// Tax rows for one retirement stack: split into ordinary income tax and
-// capital-gains tax when there are taxable-account withdrawals, one row otherwise.
-function TaxRows({ stack, hasGains, totalLabel }) {
-  if (!hasGains) return <Row label={totalLabel} value={$(stack.totalTax)} kind="sub" />;
-  return (
-    <>
-      <Row label="Income tax on ordinary income" value={$(stack.ordinaryTax)} kind="sub" />
-      <Row
-        label="Capital-gains tax on taxable-account withdrawals (0% / 15% / 20%, stacked on top of ordinary income)"
-        value={$(stack.capitalGainsTax)}
-        kind="sub"
-      />
-      <Row label={totalLabel} value={$(stack.totalTax)} kind="sub" />
-    </>
-  );
-}
-
 // Splits the extra tax into its two parts, when capital gains are involved.
 function ExtraTaxSplit({ d }) {
   if (!(d.extraCapitalGainsTax > 0.5)) return null;
@@ -618,12 +609,8 @@ function RateDrivers({ d }) {
 }
 
 function EffectiveRateMath({ result }) {
-  const { grossUp: g, otherWithdrawals: o, socialSecurity: ss, retirementNeed, rates, annuity } = result;
-  const d = result.rateDrivers;
-  const std = result.current.standardDeduction;
-  const withdrawalNeeded = g.grossWithdrawal > 0;
-  const hasGains = o.taxableGross > 0;
-  const overall = result.retirementOverall;
+  const { annuity } = result;
+  const withdrawalNeeded = result.grossUp.grossWithdrawal > 0;
 
   return (
     <details className="details">
@@ -665,94 +652,9 @@ function EffectiveRateMath({ result }) {
         </ol>
 
         <div className="calc">
-          <Row label="Step 1: income from everything except this account" kind="heading" />
-          <Row label="Social Security benefit" value={$(ss.annualBenefit)} kind="sub" />
-          <Row label="Other Pre-tax accounts (4% withdrawal)" value={$(o.pretaxGross)} kind="sub" />
-          {o.roth > 0 && <Row label="Other Roth accounts (4%, tax-free)" value={$(o.roth)} kind="sub" />}
-          {hasGains && (
-            <Row label="Other taxable accounts (4% withdrawal)" value={$(o.taxableGross)} kind="sub" />
-          )}
-          <Row
-            label="Taxable part of Social Security (IRS combined-income rules)"
-            value={$(g.baseStack.taxableSS)}
-            kind="sub"
-          />
-          <Row
-            label={`Taxable income after the ${$(std)} standard deduction`}
-            value={$(g.baseStack.ordinaryTaxableIncome)}
-            kind="sub"
-          />
-          <TaxRows stack={g.baseStack} hasGains={hasGains} totalLabel="Tax on that income" />
-          <Row
-            label="After-tax income from other sources"
-            value={$(g.afterTaxFromOtherSources)}
-            kind="total"
-          />
-
-          <Row label="Step 2: what this account has to supply" kind="heading" />
-          <Row label="Retirement income number" value={$(retirementNeed.target)} kind="sub" />
-          <Row
-            label={`Still needed from this account, after tax (${$(retirementNeed.target)} − ${$(g.afterTaxFromOtherSources)})`}
-            value={$(g.remainingAfterTaxNeed)}
-            kind="sub"
-          />
-          {withdrawalNeeded ? (
-            <>
-              <Row
-                label="Pre-tax withdrawal that delivers that amount after tax"
-                value={$(g.grossWithdrawal)}
-                kind="total"
-              />
-              <Row label="Step 3: add that withdrawal and re-do the tax" kind="heading" />
-              <Row
-                label="Taxable part of Social Security"
-                value={$(g.solutionStack.taxableSS)}
-                kind="sub"
-              />
-              <Row
-                label="Taxable income after the standard deduction"
-                value={$(g.solutionStack.ordinaryTaxableIncome)}
-                kind="sub"
-              />
-              <TaxRows stack={g.solutionStack} hasGains={hasGains} totalLabel="Total tax" />
-              <Row
-                label={`Extra tax caused by the withdrawal (${$(g.solutionStack.totalTax)} − ${$(g.baseStack.totalTax)})`}
-                value={$(d.extraTax)}
-                kind="total"
-              />
-              <ExtraTaxSplit d={d} />
-              <Row
-                label={`Effective rate on these withdrawals (${$(d.extraTax)} ÷ ${$(g.grossWithdrawal)})`}
-                value={formatPercent(rates.effectiveRetirement)}
-                kind="total"
-              />
-            </>
-          ) : (
-            <>
-              <Row label="Withdrawal needed from this account" value="$0" kind="total" />
-              <Row
-                label="Step 3: what a withdrawal from it would cost, if you took one"
-                kind="heading"
-              />
-              <Row
-                label="This account's own natural withdrawal (4% of its projected value)"
-                value={$(g.probeSize)}
-                kind="sub"
-              />
-              <Row label="Extra tax that withdrawal would cause" value={$(g.probeExtraTax)} kind="sub" />
-              <ExtraTaxSplit d={d} />
-              <Row
-                label={`Effective rate on these withdrawals (${$(g.probeExtraTax)} ÷ ${$(g.probeSize)})`}
-                value={formatPercent(rates.effectiveRetirement)}
-                kind="total"
-              />
-            </>
-          )}
-          <Row
-            label={`Overall effective rate (${$(overall.totalTax)} total tax ÷ ${$(overall.grossIncome)} gross income)`}
-            value={formatPercent(rates.overallEffectiveRetirement)}
-            kind="total"
-          />
+          {effectiveRateSteps(result).map((row) => (
+            <StepRow key={row.key} row={row} />
+          ))}
         </div>
 
         {!withdrawalNeeded && (
@@ -764,7 +666,7 @@ function EffectiveRateMath({ result }) {
             withdrawal from it would actually be.
           </p>
         )}
-        <RateDrivers d={d} />
+        <RateDrivers d={result.rateDrivers} />
       </div>
     </details>
   );

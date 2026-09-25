@@ -9,10 +9,32 @@ after-tax wealth? Bracket-aware, budget-driven ("top-down") model. No backend. O
 Plain-language explainer in `ARTICLE.md`: must match actual behavior (update it when behavior changes), and it
 is **also the public "How this works" page** — see "Article page" below.
 
+## Audience and direction (set by the user 2026-09-25)
+- **Audience: internal tool for financial advisors**, not the general public. Advisor-level density and
+  terminology are fine; showing more of the working (step-by-step math, side-by-side comparisons) is a feature.
+  A pared-down public/consumer Roth-vs-Traditional calculator may be split off later as a separate thing.
+- **Desktop-first.** Design for desktop widths. Phone should not break (no horizontal page scroll), but
+  phone polish is not a goal unless the user asks; a separate mobile look may or may not come later. Don't let
+  phone constraints limit a desktop layout (e.g. a wider page or a form-beside-results layout is fair game).
+- **End goal: a suite of calculators** sharing one set of client inputs, with an "aggregate" page showing all
+  calculators as blocks (inputs on that page; click a block to open that calculator and its outputs). This app
+  is calculator #1. Implications for how we build now, without restructuring prematurely:
+  - Keep ALL financial logic pure in `src/lib` (already true) so another calculator or the aggregate page can
+    import it.
+  - Keep one plain input object (`formInputs.js`: form strings -> `toCompareInputs`) as the shared shape; new
+    inputs go there, not into component state.
+  - Express explanations and outputs as data (e.g. `rateSteps.js` rows) rather than JSX-only, so the same
+    numbers can feed comparisons, summaries and an aggregate page.
+  - Don't build the multi-calculator shell (routing, shared input store, aggregate page) until a second
+    calculator exists; note ideas here instead.
+- **Exposure check:** the GitHub repo is public and the Netlify site is open to anyone with the link, and
+  ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
+  proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
+
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (355 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (372 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -52,6 +74,11 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`,
   `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
   `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line).
+- `rateSteps.js`: the "How are the retirement rates calculated?" walk-through as data rows
+  (`effectiveRateSteps`, `rateDriverRows`), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
+  scenario comparison — one source for both. `scenarioCompare.js`: `changedInputs`, `headlineRows`,
+  `alignRows` (line up two row lists by key, deltas), `compareScenarios`. `format.js` also has
+  `formatValue`/`formatDelta` (rates change in "pts").
 - `src/data/scenarioBatches.js`: the hand-picked scenario batches charted on the scenarios page (income,
   savings-rate, balance, age-50, and lifestyle sweeps) — plain data, no compare.js calls.
 - `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`, `ArticlePage.jsx` (renders ARTICLE.md),
@@ -103,6 +130,19 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   other color once every point can be adjacent to every other point (see the dataviz skill's "all-pairs" note).
   Every chart has a hover/focus tooltip and a "Show the numbers" `<details>` table underneath as the
   non-interactive fallback.
+
+## "Compare a change" (added 2026-09-25)
+- On the calculator page, between the form and the results (`ScenarioCompare.jsx`). "Compare a change" pins
+  the current form values as a baseline (`App.jsx` `baselineValues`, memory only: reload clears it); the user
+  then edits the normal form. The panel shows: "What changed" (inputs that differ, auto-detected), a headline
+  table (retirement number, SS, both rates, lean, contributions, after-tax income, winner) with Baseline /
+  With your change / Change, and — open by default, because the user called it the most important part —
+  "How the rates are calculated, side by side" (every rate step + "What sets the rate" facts, each side with
+  its own arithmetic under the value). Buttons: "Make this the new baseline", "Stop comparing".
+- Any number of inputs may change at once (the "What changed" list makes that visible) — chosen over a
+  one-variable picker so no second form is needed.
+- Possible next steps (not built): also compare the retirement-number walk and the portfolio section; remember
+  the baseline across reloads; named/saved scenarios (would need storage — see the backend future item).
 
 ## The model (as built)
 1. Current tax: income tax on (gross − half of any self-employment tax − **Pre-tax savings, if
@@ -321,12 +361,16 @@ the whole account) is still open — see "Known limitations."
 - Every data file names its sources in comments. Re-verify each January when new-year data is added.
 
 ## Checking the UI without a browser session
+Desktop width is the primary check (see "Audience and direction"); phone width only needs to not break.
 Headless Chrome works: `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new
 --virtual-time-budget=6000 --window-size=W,H --screenshot=out.png URL`. Window width has a minimum, so to
 check true phone width, load the app in an iframe of width 390 inside a wrapper page and measure
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 — "Compare a change" (pin a baseline, edit, see both side by side incl. the rate calculation step
+  by step). The rate-calculation dropdown now renders from `lib/rateSteps.js` rows (shared with the comparison).
+  Recorded the new direction: internal advisor tool, desktop-first, future multi-calculator suite. 372 tests.
 - 2026-09-25 — Five user adjustments. (1) MODEL FIX: Pre-tax savings (capped at the IRS limit) are now
   deducted before income tax when computing today's take-home pay, so the retirement income number rises for
   Pre-tax savers (default 2025 case: need 68,901 -> 71,101; a Pre-tax saver and the equivalent Roth saver now

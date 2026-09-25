@@ -23,3 +23,23 @@ export function formatMultiple(value, decimals = 2) {
   if (!Number.isFinite(value)) return '—';
   return `${value.toFixed(decimals)}×`;
 }
+
+// A value by kind: 'currency' | 'percent' | 'bracket' (whole-number rate) | 'text'.
+export function formatValue(value, format) {
+  if (format === 'currency') return formatCurrency(value);
+  if (format === 'percent') return formatPercent(value);
+  if (format === 'bracket') return formatPercent(value, 0);
+  return value ?? '';
+}
+
+// A change between two values: "+$14,070", "−$500", "+2.0 pts", "+2 pts".
+// Rates change by percentage points. Zero shows as "no change".
+export function formatDelta(delta, format) {
+  if (delta === null || delta === undefined || !Number.isFinite(delta)) return '';
+  const points = format === 'percent' || format === 'bracket';
+  const decimals = format === 'bracket' ? 0 : 1;
+  const size = points ? Math.abs(delta * 100).toFixed(decimals) : Math.abs(delta).toFixed(0);
+  if (Number(size) === 0) return 'no change';
+  const sign = delta > 0 ? '+' : '−';
+  return points ? `${sign}${size} pts` : `${sign}${formatCurrency(Math.abs(delta))}`;
+}

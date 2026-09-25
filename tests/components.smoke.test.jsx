@@ -5,6 +5,7 @@ import ArticlePage from '../src/components/ArticlePage.jsx';
 import articleMarkdown from '../ARTICLE.md?raw';
 import InputForm from '../src/components/InputForm.jsx';
 import ResultsSummary from '../src/components/ResultsSummary.jsx';
+import ScenarioCompare from '../src/components/ScenarioCompare.jsx';
 import ScenariosPage from '../src/components/ScenariosPage.jsx';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from '../src/lib/formInputs.js';
@@ -578,5 +579,66 @@ describe('ResultsSummary — excess contributions default to taxable', () => {
     expect(sec3).toContain('Taxable $613,995');
     // Roth scenario: $22,800 equivalent fits under the cap, so its taxable bucket is untouched.
     expect(sec3).toContain('Taxable $0');
+  });
+});
+
+describe('ScenarioCompare', () => {
+  const scenario = (overrides = {}) => {
+    const inputs = toCompareInputs({ ...DEFAULT_FORM_VALUES, ...overrides }, 2025);
+    return { inputs, result: compareRothVsTraditional(inputs) };
+  };
+  const noop = () => {};
+
+  it('offers "Compare a change" when there is no baseline', () => {
+    const html = renderToStaticMarkup(
+      <ScenarioCompare baseline={null} current={scenario()} onStart={noop} onRebase={noop} onStop={noop} />,
+    );
+    expect(html).toContain('Compare a change');
+    expect(html).not.toContain('With your change');
+  });
+
+  it('shows what changed, the headline side by side, and the rate calculation side by side', () => {
+    const html = renderToStaticMarkup(
+      <ScenarioCompare
+        baseline={scenario()}
+        current={scenario({ grossIncome: '130000' })}
+        onStart={noop}
+        onRebase={noop}
+        onStop={noop}
+      />,
+    );
+    expect(html).toContain('What changed');
+    expect(html).toContain('$100,000');
+    expect(html).toContain('$130,000');
+    expect(html).toContain('With your change');
+    expect(html).toContain('Retirement income number');
+    expect(html).toContain('How the rates are calculated, side by side');
+    expect(html).toContain('Step 1: income from everything except this account');
+    expect(html).toContain('Extra tax caused by the withdrawal');
+    expect(html).toContain('Bracket of its last dollar');
+    expect(html).toContain('Make this the new baseline');
+    expect(html).toContain('Stop comparing');
+    expect(html).toMatch(/\+\$[\d,]+/); // a signed dollar change
+    expect(html).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('says nothing changed yet right after pinning', () => {
+    const html = renderToStaticMarkup(
+      <ScenarioCompare baseline={scenario()} current={scenario()} onStart={noop} onRebase={noop} onStop={noop} />,
+    );
+    expect(html).toContain('Nothing yet. Change any input above.');
+  });
+
+  it('asks for valid inputs instead of comparing when the current inputs are invalid', () => {
+    const html = renderToStaticMarkup(
+      <ScenarioCompare
+        baseline={scenario()}
+        current={scenario({ retirementAge: '30' })}
+        onStart={noop}
+        onRebase={noop}
+        onStop={noop}
+      />,
+    );
+    expect(html).toContain('Fix the inputs above to see the comparison.');
   });
 });

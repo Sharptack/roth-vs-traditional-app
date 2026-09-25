@@ -996,3 +996,86 @@ th.win .th-sub {
     font-size: 0.78rem;
   }
 }
+
+/* ---------- "Compare a change" (scenario comparison) ---------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.button {
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.button.secondary {
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.9rem;
+  padding: 6px 12px;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compare-card {
+  border: 2px solid var(--accent);
+}
+
+.compare-start {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.compare-start .hint {
+  margin: 0;
+  flex: 1;
+  min-width: 220px;
+}
+
+.compare-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.compare-head h2 {
+  margin: 0;
+}
+
+.compare-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scenario-table .total-row th,
+.scenario-table .total-row td {
+  font-weight: 700;
+}
+
+.changes-table tbody th {
+  width: 34%;
+}
+
+.scenario-table + .table-wrap,
+.table-wrap + .table-wrap {
+  margin-top: 16px;
+}
