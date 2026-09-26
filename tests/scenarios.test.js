@@ -271,7 +271,11 @@ describe('runHeatmap (the break-even maps)', () => {
     const cell = balanceMap.rows.find((r) => r.value === 1000000).cells.find((c) => c.income === 50000);
     expect(cell.advantagePct).toBeGreaterThan(0);
     expect(cell.winner).toBe('roth');
-    // ...while with no existing balance Pre-tax wins at every income
-    for (const c of balanceMap.rows.find((r) => r.value === 0).cells) expect(c.advantagePct).toBeLessThan(0);
+    // ...while with no existing balance Pre-tax wins at every income up to $300k; at $500k the later rate (about
+    // 28%) is close to today's 35% and the two are about even (Roth +0.4% in 2026)
+    for (const c of balanceMap.rows.find((r) => r.value === 0).cells) {
+      if (c.income <= 300000) expect(c.advantagePct).toBeLessThan(0);
+      else expect(Math.abs(c.advantagePct)).toBeLessThan(1);
+    }
   });
 });

@@ -10,7 +10,7 @@
 // retirement, 7% expected return, Social Security estimated (not user-entered),
 // same 1× retirement lifestyle unless a batch is explicitly sweeping it, and a
 // 401(k) account. The IRS limit DOES bind at higher incomes and savings rates (2026:
-// 18 of 199 points, e.g. 10% of $300k = $30,000 vs. a $24,500 limit): the calculator
+// 113 of 467 points, e.g. 10% of $300k = $30,000 vs. a $24,500 limit): the calculator
 // then puts the rest of the same take-home cost in a taxable account, so the Roth-
 // advantage numbers at those points include that taxable side.
 
@@ -32,7 +32,7 @@ const BASE = {
 };
 
 export const INCOMES = [
-  40000, 50000, 60000, 75000, 90000, 100000, 125000, 150000, 175000, 200000, 250000, 300000,
+  25000, 40000, 50000, 60000, 75000, 90000, 100000, 125000, 150000, 175000, 200000, 250000, 300000, 500000,
 ];
 
 // Retirement lifestyle multipliers, 1x (same as today) to 2x in 0.1 steps.
@@ -127,7 +127,7 @@ export const SCENARIO_BATCHES = [
     xLabel: 'Existing Pre-tax balance today',
     xType: 'currency',
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
-    series: [40000, 75000, 100000, 150000, 300000].map((income) => ({
+    series: [25000, 75000, 150000, 300000, 500000].map((income) => ({
       key: `income${income}`,
       label: '$' + (income / 1000).toFixed(0) + 'k income',
       points: PRETAX_BALANCES.map((balance) => ({
@@ -144,7 +144,7 @@ export const SCENARIO_BATCHES = [
     xLabel: 'Existing taxable balance today',
     xType: 'currency',
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
-    series: [40000, 60000, 100000, 150000, 300000].map((income) => ({
+    series: [25000, 60000, 150000, 300000, 500000].map((income) => ({
       key: `income${income}`,
       label: '$' + (income / 1000).toFixed(0) + 'k income',
       points: TAXABLE_BALANCES.map((balance) => ({
@@ -178,7 +178,7 @@ export const SCENARIO_BATCHES = [
     xLabel: 'Retirement lifestyle vs. today',
     xType: 'multiple',
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
-    series: [30000, 50000, 75000, 100000, 150000].map((income) => ({
+    series: [25000, 50000, 75000, 150000, 500000].map((income) => ({
       key: `income${income}`,
       label: `$${(income / 1000).toFixed(0)}k income`,
       points: LIFESTYLES.map((lifestyle) => ({
@@ -195,7 +195,7 @@ export const SCENARIO_BATCHES = [
     xLabel: 'Retirement age',
     xType: 'age',
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
-    series: [50000, 75000, 100000, 150000, 250000].map((income) => ({
+    series: [25000, 50000, 100000, 150000, 500000].map((income) => ({
       key: `income${income}`,
       label: '$' + (income / 1000).toFixed(0) + 'k income',
       points: RETIREMENT_AGES.map((age) => ({

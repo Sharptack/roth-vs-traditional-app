@@ -117,11 +117,11 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `ScatterChart` (x = gap, y = advantagePct, color+shape by batch, an OLS trend line from `src/lib/regression.js`).
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
 - The nine batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
-  estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 18 of 199 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
-  at a fixed 10% savings rate (age 35→65, 12 incomes from $40k to $300k); the same income sweep at 5%/10%/20%/30% savings
+  estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 113 of 467 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
+  at a fixed 10% savings rate (age 35→65, 14 incomes from $25k to $500k); the same income sweep at 5%/10%/20%/30% savings
   rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k/$500k; the same income
   sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; and a lifestyle sweep (1×→2× in 0.1 steps, i.e. "spending
-  20/40/60/80/100% more in retirement") at incomes $30k/$50k/$75k/$100k/$150k; and a retirement-age sweep (55-70, age 35, 10% saved, incomes $50k/$75k/$100k/$150k/$250k; flat before 62 because Social Security is estimated as if claimed at 62 for earlier retirees; the 59½ early-withdrawal penalty is not modeled). Extending or adding a batch
+  20/40/60/80/100% more in retirement") at incomes $25k/$50k/$75k/$150k/$500k; and a retirement-age sweep (55-70, age 35, 10% saved, incomes $25k/$50k/$100k/$150k/$500k; flat before 62 because Social Security is estimated as if claimed at 62 for earlier retirees; the 59½ early-withdrawal penalty is not modeled). Extending or adding a batch
   is a data-only change in `scenarioBatches.js` — no chart code changes needed.
 - Charts are hand-rolled inline SVG (`src/components/charts/`), not a charting library — the app has no chart
   dependency, and these are simple line/scatter plots. `LineChart`/`ScatterChart` are generic (series/points
@@ -456,6 +456,16 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-26 (b) — Added a $500k income at the top end of every income axis (14 incomes, $25k-$500k) and as a line in the
+  income-as-lines charts, which were trimmed to 5 lines each (lifestyle $25k/$50k/$75k/$150k/$500k; existing Pre-tax and taxable
+  balance: $25k/$75k-or-$60k/$150k/$300k/$500k; retirement age $25k/$50k/$100k/$150k/$500k), so the sixth series colour was
+  removed again. At $500k with no existing balance the two are about even (Roth +0.4%: later rate 28% vs. 35% now), so "Pre-tax
+  wins at every income with no balance" now holds only up to $300k. Over-limit points (113 of 467) are where the rate gap
+  predicts least (r² 0.53 vs. 0.98 for the rest): the gap covers only the account's withdrawals, not the taxable side. 434 tests.
+- 2026-09-26 — Added a $25k income to every Visualization chart that has income: as an x-axis point (the income sweeps, MFJ sweep and both
+  break-even maps: 13 incomes, $25k-$300k) and as a line in the lifestyle, existing Pre-tax balance, existing taxable balance and
+  retirement-age charts (now 6 lines each, so the sixth series colour `--series-6` is back). At $25k the marginal rate is 10% and
+  the later rate 0%, so Pre-tax wins by 10% with no existing balance. Rates that round to zero now print "0.0%" (not "-0.0%"). 434 tests.
 - 2026-09-25 (m) — Layout: inputs become a list of collapsible sections with one-line summaries, beside the results
   (sticky left column on desktop); the four results cards collapse too, showing their headline when closed. New
   `lib/sectionSummaries.js` (hand-checked tests) and `components/Collapsible.jsx`. No model change. 434 tests.

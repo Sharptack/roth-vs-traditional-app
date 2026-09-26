@@ -44,12 +44,18 @@ export default function LineChart({ series, xTicks, formatX, formatY, formatYTic
 
   // Every data point gets a marker and a hover column, but with many points the x labels
   // would collide, so label only round values (or every point when there are few).
-  const labelTicks =
+  const roundTicks =
     xTicks.length > 6
       ? niceTicks(Math.min(...xTicks), Math.max(...xTicks), 6).filter(
           (t) => t >= Math.min(...xTicks) && t <= Math.max(...xTicks),
         )
       : xTicks;
+  // Always label the first point too, when there is room next to the first round label.
+  const firstX = Math.min(...xTicks);
+  const labelTicks =
+    roundTicks.includes(firstX) || (roundTicks.length > 0 && Math.abs(xScale(roundTicks[0]) - xScale(firstX)) < 44)
+      ? roundTicks
+      : [firstX, ...roundTicks];
 
   const hoveredX = hoverIndex === null ? null : xPixels[hoverIndex];
 

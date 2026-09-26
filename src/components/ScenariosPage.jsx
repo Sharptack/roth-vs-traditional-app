@@ -15,7 +15,8 @@ const formatAdvantagePct = (v) => `${sign(v)}${Math.abs(v).toFixed(1)}%`;
 // Axis ticks drop the unit (the axis title carries it): +15.0 pts -> +15
 const formatGapTick = (v) => (v === 0 ? '0' : `${sign(v)}${Number(Math.abs(v * 100).toFixed(1))}`);
 const formatAdvantageTick = (v) => (v === 0 ? '0%' : `${sign(v)}${Number(Math.abs(v).toFixed(1))}%`);
-const formatRate = (v) => `${(v * 100).toFixed(1)}%`;
+// Rates that round to zero print as 0.0%, never "-0.0%".
+const formatRate = (v) => (Math.abs(v * 100) < 0.05 ? '0.0%' : `${(v * 100).toFixed(1)}%`);
 const formatRateTick = (v) => `${Number((v * 100).toFixed(1))}%`;
 const formatCompactCurrency = (v) => {
   if (v === 0) return '$0';

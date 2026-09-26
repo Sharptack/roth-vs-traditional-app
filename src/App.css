@@ -1426,9 +1426,9 @@ th.win .th-sub {
 
 .heatmap {
   table-layout: fixed;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   border-collapse: separate;
-  border-spacing: 2px;
+  border-spacing: 1px;
 }
 
 .heatmap th,
