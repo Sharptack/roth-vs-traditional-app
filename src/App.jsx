@@ -14,13 +14,6 @@ import './App.css';
 /*
  * Future enhancements (explicitly out of scope for this version)
  *
- * - "Maxing out" side-account comparison, the subtler half of the limit story:
- *   when contributing AT the IRS limit (no excess), model the after-tax value
- *   of (Traditional contribution + the tax SAVINGS from that deduction invested
- *   in a taxable side account) against a Roth contribution at the same limit.
- *   (Contributing MORE than the limit is now handled: the excess is modeled as
- *   flowing into a taxable account automatically — see compare.js's
- *   contributionSplit / splitAtContributionLimit.)
  * - Optimal split between Roth and Traditional ("straddling brackets"), rather
  *   than only comparing the pure extremes.
  * - Tax-efficient withdrawal sequencing across accounts (vs. the simplified

@@ -18,8 +18,8 @@ export function runScenarioPoint(base, overrides, year) {
   }
   const { marginalNow, effectiveRetirement } = result.rates;
   const gap = marginalNow - effectiveRetirement;
-  const rothAfterTax = result.annuity.roth.afterTaxWithdrawal;
-  const pretaxAfterTax = result.annuity.pretax.afterTaxWithdrawal;
+  const rothAfterTax = result.annuity.roth.totalAfterTaxIncome;
+  const pretaxAfterTax = result.annuity.pretax.totalAfterTaxIncome;
   const advantagePct = pretaxAfterTax !== 0 ? ((rothAfterTax - pretaxAfterTax) / pretaxAfterTax) * 100 : 0;
 
   return {

@@ -148,18 +148,19 @@ export default function InputForm({ values, onChange, title, baseValues, namePre
 
         <details className="details lifestyle-assumption">
           <summary>
-            Will you earn more later?
+            Will you earn more or less later?
             {values.retirementLifestyle !== '1' && (
               <> ({lifestyleLabel(values.retirementLifestyle)} retirement lifestyle)</>
             )}
           </summary>
           <div className="details-body">
             <p>
-              This is for people whose income &mdash; and spending &mdash; is likely to grow a lot
-              before they retire, typically people earlier in their careers who are lower earners
-              right now. If that&rsquo;s you, your retirement lifestyle may end up well above what
-              you spend today, which raises your retirement income number and can push your
-              retirement tax bracket higher, an effect that favors Roth.
+              Use this if your income &mdash; and spending &mdash; is likely to change a lot before
+              you retire. People earlier in their careers often expect to earn and spend more later:
+              a higher retirement lifestyle raises your retirement income number and can push your
+              retirement tax bracket higher, which favors Roth. Others expect to spend less in
+              retirement, for example with a paid-off home or a planned downsize: a lower lifestyle
+              lowers the retirement bracket, which favors Pre-tax.
             </p>
             <SelectInput
               label="Expected retirement lifestyle"
@@ -230,10 +231,10 @@ export default function InputForm({ values, onChange, title, baseValues, namePre
       </fieldset>
 
       <fieldset>
-        <legend>Your retirement savings</legend>
+        <legend>Future Contributions</legend>
         <CurrencyInput
           label="Savings for retirement (annual)"
-          hint="The amount you're currently contributing to retirement accounts each year, or the amount you're considering."
+          hint="The amount you're currently contributing to retirement accounts each year, or the amount you're considering. These are your Future Contributions: what you save from now until retirement."
           value={values.savings}
           onChange={set('savings')}
           changed={isChanged('savings')}
@@ -288,22 +289,25 @@ export default function InputForm({ values, onChange, title, baseValues, namePre
       </fieldset>
 
       <fieldset>
-        <legend>Other retirement account balances</legend>
-        <p className="hint">Current balances, not counting the savings above.</p>
+        <legend>Existing Accounts</legend>
+        <p className="hint">
+          What you already have saved today. Your Future Contributions (the savings above) are kept
+          separate.
+        </p>
         <CurrencyInput
-          label="Total value of other Pre-tax accounts"
+          label="Existing Pre-tax accounts (total value)"
           value={values.otherPretaxBalance}
           onChange={set('otherPretaxBalance')}
           changed={isChanged('otherPretaxBalance')}
         />
         <CurrencyInput
-          label="Total value of other Roth accounts"
+          label="Existing Roth accounts (total value)"
           value={values.otherRothBalance}
           onChange={set('otherRothBalance')}
           changed={isChanged('otherRothBalance')}
         />
         <CurrencyInput
-          label="Total value of other taxable investment accounts"
+          label="Existing taxable investment accounts (total value)"
           value={values.otherTaxableBalance}
           onChange={set('otherTaxableBalance')}
           changed={isChanged('otherTaxableBalance')}

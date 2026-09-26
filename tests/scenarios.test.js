@@ -28,8 +28,8 @@ describe('runScenarioPoint', () => {
     const point = runScenarioPoint(base, overrides, 2025);
     expect(point.marginalNow).toBe(direct.rates.marginalNow);
     expect(point.effectiveRetirement).toBe(direct.rates.effectiveRetirement);
-    expect(point.rothAfterTax).toBe(direct.annuity.roth.afterTaxWithdrawal);
-    expect(point.pretaxAfterTax).toBe(direct.annuity.pretax.afterTaxWithdrawal);
+    expect(point.rothAfterTax).toBe(direct.annuity.roth.totalAfterTaxIncome);
+    expect(point.pretaxAfterTax).toBe(direct.annuity.pretax.totalAfterTaxIncome);
     expect(point.winner).toBe(direct.comparison.winner);
   });
 

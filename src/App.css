@@ -964,6 +964,41 @@ th.win .th-sub {
   font-size: 0.85rem;
 }
 
+/* The trade-off table: each group is its own clearly separated block. */
+.tradeoff-table .group-row th {
+  background: var(--accent-soft);
+  border-top: 12px solid var(--card);
+  border-bottom: none;
+  padding: 8px 10px;
+}
+
+.tradeoff-table tbody:first-of-type .group-row th {
+  border-top: none;
+  padding-top: 8px;
+}
+
+.tradeoff-table .total-row th,
+.tradeoff-table .total-row td,
+.sum-table .total-row th,
+.sum-table .total-row td {
+  font-weight: 700;
+  border-top: 2px solid var(--line);
+}
+
+/* ---------- Portfolio summary (Existing + Future Contributions = total) ---------- */
+.sum-table tbody th {
+  width: 40%;
+}
+
+.sum-table .op {
+  width: 1.5em;
+  padding-right: 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--dim);
+  text-align: center;
+}
+
 .drivers {
   margin: 6px 0 0;
   padding-left: 20px;
@@ -1136,4 +1171,22 @@ th.win .th-sub {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
+}
+
+/* Equal-width value columns so Roth and Pre-tax line up. */
+.tradeoff-table,
+.sum-table {
+  table-layout: fixed;
+}
+
+.tradeoff-table thead th.row-head {
+  width: 40%;
+}
+
+.sum-table thead th.op {
+  width: 1.8em;
+}
+
+.sum-table thead th.row-head {
+  width: 38%;
 }

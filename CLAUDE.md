@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (382 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (388 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -207,22 +207,25 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    ALREADY included the capital-gains push (totalTax includes it); this only exposes it for the UI.
    `rates.lean` = `leanFromRates(marginalNow, effectiveRetirement)`: pretax/roth, "even" within 0.5 points —
    the rule-of-thumb line under the rates (not the dollar verdict; the contribution cap can make them differ).
-6. Paycheck equivalents: Roth R = P·(1−t); Pre-tax P = R/(1−t), t = current marginal rate. R and P
-   (`result.contribution`) stay the UNCAPPED equivalents for display. Each is then independently run
-   through `splitAtContributionLimit(amount, accountType, year, currentAge)` — `currentAge` (a snapshot,
-   not projected forward) unlocks any IRS catch-up contribution the saver already qualifies for (same
-   numeric limit for either tax treatment) -> `result.contributionSplit.{roth,pretax}.{toAccount,excessToTaxable}`. Everything that
-   COMPOUNDS (lump sum, annuity, Section 3 buckets) uses `toAccount`; `excessToTaxable` becomes its
-   own annuity stream added to that scenario's TAXABLE bucket only (Roth's excess and Pre-tax's excess
-   differ, since R ≠ P, so each scenario spills over independently — realistic, since a real saver
-   contributing 100% Roth hits the same dollar limit as one contributing 100% Pre-tax). The excess money
-   is then taxed like any other taxable-account money at withdrawal (real LTCG brackets, step 4/8 below).
-7. Section 2 compares annuity FV of capped-R vs capped-P; Pre-tax after-tax value uses (1 − effective
-   rate). Section 2 is deliberately the "this account only" lens — it does NOT show the taxable
-   spillover; that lives in Section 3's portfolio buckets (already visible via the existing bucket
-   breakdown, no new UI needed there). When capping applies, the "Current possible contribution" row
-   gets a small sub-note ("$X to the account, rest to taxable"), and `limitCheck.message` (Section 7,
-   shown as an alert above the table) names the exact excess and explains where it goes.
+6. **Same take-home cost, then the limit** (`splitAtTakeHome` in compare.js, reworked 2026-09-25c). Take-home
+   cost C: currently Roth -> C = savings; currently Pre-tax -> C = min(savings, limit)·(1−t) + max(0, savings −
+   limit) (only the part under the limit is deducted; matches the need calc). Roth scenario: min(C, limit) to the
+   account, rest of C to taxable. Pre-tax scenario: min(C/(1−t), limit) to the account (costs that·(1−t)), rest
+   of C to taxable — at the limit that rest is the tax the Pre-tax contribution saved, invested. `limit` =
+   `limitCheck.limit` (includes catch-up at `currentAge`, a snapshot). -> `result.contributionSplit` =
+   { takeHomeCost, roth/pretax: { toAccount, excessToTaxable } }; `result.contribution.{roth,pretax}` = toAccount +
+   excessToTaxable (everything that scenario puts away). OLD model (before 2026-09-25c) capped the uncapped
+   equivalents R and P separately, so the Pre-tax excess was P − limit in PRE-TAX-sized dollars: overstated by
+   1/(1−t), and a currently-Pre-tax saver over the limit got an understated Roth equivalent. `calculatePaycheckEquivalents`
+   is still exported (used inside the split).
+7. **The taxable side is part of Future Contributions everywhere.** `annuity.{roth,pretax}.side` = { contribution,
+   futureValue, annualWithdrawal (4%), taxRate, afterTaxWithdrawal }; taxRate = extra tax the side's 4% withdrawal
+   causes when stacked (as capital gain, via `calculateRetirementTax`) on SS + Existing Accounts' 4% withdrawals +
+   (Pre-tax scenario) the account's own 4% withdrawal, ÷ that withdrawal. `annuity.X.totalFutureValue`,
+   `totalAfterTaxIncome`; `lumpSum.X.side`, `totalFutureValue`, `totalAfterTaxValue`. `comparison` (the Section 2
+   winner), `headlineRows` and `scenarios.js` use the totals. `withoutSocialSecurity.annuity.X.side` = same side
+   with SS 0; its winner uses totals too. The account-only fields (`futureValue`, `afterTaxWithdrawal`) are
+   unchanged. Section 3 buckets get the side FV in the taxable bucket (unchanged mechanism, corrected amounts).
 8. Section 3 (`portfolioTax`): per scenario (all-Roth / all-Pre-tax), 4% baseline per bucket, one scale
    factor k found by binary search so after-tax income (withdrawals + full SS − tax) = need.
    Also `atBaseline` (k = 1): after-tax income each portfolio delivers at a plain 4% from every bucket,
@@ -284,7 +287,7 @@ to show the REAL probe arithmetic ("$14,126 ÷ $56,676") instead. This did NOT t
 open "Known limitations" item about the G > 0 case (rate measured on the gap-filling withdrawal, applied
 to the account's full 4% withdrawal) — that's a different mechanism and remains unresolved.
 
-## Contribution limits: excess now defaults to taxable (2026-09-22)
+## Contribution limits: excess now defaults to taxable (2026-09-22; amounts corrected 2026-09-25c, see model step 6)
 Previously `savings`/R/P compounded at their full entered value regardless of the IRS limit — a
 $50,000 "401(k)" contribution would compound as if it all fit. Fixed: `splitAtContributionLimit` caps
 each of R and P at the limit for the selected `accountType`/year; the excess grows as an additional
@@ -313,22 +316,28 @@ the whole account) is still open — see "Known limitations."
   same as the SS estimator.
 - Section 3 has an extra **"Withdrawal rate needed"** row and a note: a higher tax bill is not a verdict
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
-- **Page layout (3 sections):** (1) "Retirement income number" alone — hero value, note "the after-tax
-  amount you need each year in retirement to keep the same lifestyle you have while working; the amount you
-  actually spend", "How is this calculated?" dropdown; (2) "Roth vs. Traditional" (contribution-limit
-  alert, table, dropdown "Retirement years without Social Security"), which **opens with "The comparison: your
-  tax rate now vs. later"** (rate pair, then a one-line "Tends to favor …" lean + rule-of-thumb hint — re-added
-  2026-09-25 at the user's request after Round 4 had removed a lean sentence), then (reworked 2026-09-25b) two tables with Roth / Pre-tax / Difference columns: **"Pre-tax builds a bigger
-  account…"** (current possible contribution, value of a single contribution, "Total future value of your
-  contributions" = this account only, not other balances; + a "Why is the Pre-tax account bigger?" dropdown) and
-  **"…but does it leave more after tax?"** (annual 4% withdrawal, tax rate, after-tax income, after-tax value of
-  a single contribution). The lean line is just the phrase ("Tends to favor Roth" / "About even"): the user
-  removed the sentence restating the rates and the rule-of-thumb hint. Before that:
-  (marginal now; effective rate on these withdrawals; overall effective rate; SS benefit used; and the "How are
-  the retirement rates calculated?" dropdown, which begins with the "How the rates fit together" note) — the user clarified the rates go at the top of the Roth vs.
-  Traditional section, i.e. the section right below the retirement number; (3) "Total portfolio tax
-  comparison" (table + "Show the calculation" dropdown), no rates. The effective-rate dropdown defines "this account" (the account the contributions build)
-  vs "other income" (SS + other balances) and walks Steps 1–3.
+- **Page layout:** (0) **"Your portfolio at retirement"** summary card (added 2026-09-25c, above Section 1):
+  Existing Accounts grown (+ Pre-tax/Roth/taxable breakdown) + Future Contributions grown (incl. taxable side) =
+  Total future portfolio value, one column per scenario ("If Future Contributions go Roth / Pre-tax"), with
+  +/= operator column; totals equal `portfolio.X.totalValue` (tested). (1) "Retirement income number" alone —
+  hero value, SS + income-needed-from-portfolio facts, note, "How is this calculated?" dropdown. (2) "Roth vs.
+  Traditional": opens with "The comparison: your tax rate now vs. later" (rate pair, then ONLY the short lean
+  phrase "Tends to favor Roth" / "About even" — user removed the explanatory sentence and rule-of-thumb hint),
+  the "How are the retirement rates calculated?" dropdown (begins with "How the rates fit together"), the limit
+  alert, then **"The trade-off in dollars"**: ONE table, Roth / Pre-tax only (no Difference column — user found it
+  cluttered), three shaded group rows: "What you put in" (current possible contribution), "A single year's
+  contribution" (value at retirement, after-tax value directly under it), "Contributing every year until
+  retirement" (Future Contributions at retirement, after-tax income it generates). No "Tax on withdrawals" row
+  (redundant with the rate pair). Cells show "incl. $X in a taxable account (over the IRS limit)" when a side
+  exists. Then "Why is the Pre-tax side bigger?" dropdown (+ an "At the IRS limit." paragraph when a side
+  exists) and "Retirement years without Social Security". (3) "Total portfolio tax comparison" (table incl.
+  "After-tax income at a 4% withdrawal" + "Show the calculation" dropdown), no rates.
+- **Terminology (user, 2026-09-25c):** the savings being decided on = **"Future Contributions"** (capitalized);
+  all other retirement/investment balances collectively = **"Existing Accounts"**. Never "this account",
+  "other accounts/balances" or "other income" (for SS + existing) in the UI or ARTICLE.md; smoke tests enforce
+  "this account" is absent from the results, form and article. Form fieldsets are titled "Future
+  Contributions" and "Existing Accounts". (The IRS combined-income "other income" in the portfolio math note
+  is a tax term and stays.)
 - Rate naming: "Effective rate on these withdrawals" = extra tax caused by this account's withdrawals ÷
   those withdrawals (the number that drives the comparison). "Overall effective rate" = total tax ÷ gross
   income. Do not call the former just "effective rate in retirement".
@@ -365,8 +374,9 @@ the whole account) is still open — see "Known limitations."
 - NIIT (3.8% on investment income above $200k/$250k MFJ) is not modeled.
 - 1099: income entered is *net* earnings; QBI deduction, solo-401(k)/SEP not modeled; MFJ couples treated as
   one earner (single wage base).
-- Full "maxing out" side-account comparison and a Roth/Traditional split are future features (the app warns
-  at >= 90% of the contribution limit).
+- A Roth/Traditional split is a future feature (the app warns at >= 90% of the contribution limit). The
+  "maxing out" side account IS modeled since 2026-09-25c (see model steps 6–7). Its tax uses the same
+  whole-account caveat as the main rate, and the marginal rate t is applied to the whole excess.
 
 ## Data provenance (checked 2026-09-19)
 - Verified on irs.gov: 2025 and 2026 brackets, 2026 standard deduction, FICA rates, Additional Medicare
@@ -388,6 +398,15 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (c) — (1) MODEL FIX, contribution limit: both scenarios now cost the same take-home pay and whatever
+  doesn't fit under the limit goes to a taxable account (`splitAtTakeHome`); at the limit with Roth savings, the
+  Pre-tax side invests the tax it saves (e.g. $23,500 at 24% -> $5,640/yr). Old code overstated the Pre-tax
+  spillover by 1/(1−t). The taxable side now counts in Section 2 (totals, capital-gains-taxed) and the verdict.
+  Three new hand-verified compare tests (all matched first run). (2) Terminology "Future Contributions" /
+  "Existing Accounts" across the UI and ARTICLE.md; new "Your portfolio at retirement" summary card above
+  Section 1. (3) "Will you earn more or less later?" with both directions explained. (4) The trade-off table is one
+  grouped table again, no Difference column, no "Tax on withdrawals" row. ARTICLE.md's maxing-out section
+  rewritten (no longer "planned"). App.jsx future item removed. 388 tests.
 - 2026-09-25 — Round of five: (1) lean line trimmed to the short phrase; (2) Section 3's "Tax paid is not the whole
   story" note replaced by a real figure, "After-tax income at a 4% withdrawal" per scenario (`portfolioTax`
   `atBaseline`, hand-verified), with the leader highlighted; ARTICLE.md updated; (3) retirement lifestyle

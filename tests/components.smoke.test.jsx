@@ -36,9 +36,9 @@ describe('InputForm', () => {
       'Account type these savings are held in',
       'Do you know your Social Security benefit?',
       'Expected annual investment return',
-      'Total value of other Pre-tax accounts',
-      'Total value of other Roth accounts',
-      'Total value of other taxable investment accounts',
+      'Existing Pre-tax accounts (total value)',
+      'Existing Roth accounts (total value)',
+      'Existing taxable investment accounts (total value)',
     ]) {
       expect(html).toContain(label);
     }
@@ -76,16 +76,17 @@ describe('InputForm', () => {
     expect(both).toContain('Self-employment tax replaces FICA');
   });
 
-  it('puts the retirement lifestyle in its own dropdown directly below gross income, aimed at future higher earners', () => {
+  it('puts the retirement lifestyle in its own dropdown directly below gross income, for earning more or less later', () => {
     const grossIncomeIdx = html.indexOf('Total gross income');
-    const lifestyleIdx = html.indexOf('Will you earn more later?');
+    const lifestyleIdx = html.indexOf('Will you earn more or less later?');
     const typeIdx = html.indexOf('Type of income');
     expect(grossIncomeIdx).toBeGreaterThan(-1);
     expect(lifestyleIdx).toBeGreaterThan(grossIncomeIdx);
     expect(typeIdx).toBeGreaterThan(lifestyleIdx);
     const block = html.slice(grossIncomeIdx, typeIdx);
     expect(block).toContain('class="details lifestyle-assumption"');
-    expect(block).toContain('typically people earlier in their careers');
+    expect(block).toContain('People earlier in their careers often expect to earn and spend more later');
+    expect(block).toContain('Others expect to spend less in');
     expect(block).toContain('Expected retirement lifestyle');
     // the return-rate Assumptions dropdown no longer mentions lifestyle
     const assumptions = html.slice(html.indexOf('class="details assumptions"'));
@@ -95,7 +96,7 @@ describe('InputForm', () => {
     const higher = renderToStaticMarkup(
       <InputForm values={{ ...DEFAULT_FORM_VALUES, retirementLifestyle: '1.25' }} onChange={() => {}} />,
     );
-    expect(higher).toContain('Will you earn more later? (25% higher retirement lifestyle)');
+    expect(higher).toContain('Will you earn more or less later? (25% higher retirement lifestyle)');
   });
 
   it('hides the SS benefit input when the answer is No, and shows the estimate disclaimer', () => {
@@ -120,9 +121,12 @@ describe('ResultsSummary', () => {
       'Effective rate on these withdrawals',
       'Overall effective rate',
       'Current possible contribution',
-      'Value of a single contribution at retirement',
-      'After-tax value of a single contribution',
-      'Total future value of your contributions',
+      'A single year’s contribution',
+      'Value at retirement',
+      'After-tax value',
+      'Future Contributions at retirement',
+      'After-tax income it generates',
+      'Your portfolio at retirement',
       'After-tax income at a 4% withdrawal',
       'After-tax income',
       'All-Roth scenario',
@@ -164,28 +168,30 @@ describe('ResultsSummary', () => {
     const sec2 = html.slice(sec2Start, sec3Start);
     const sec3 = html.slice(sec3Start);
     const firstTable = sec2.indexOf('<table');
-    const biggerLabel = sec2.indexOf('Pre-tax builds a bigger account');
-    const afterTaxLabel = sec2.indexOf('but does it leave more after tax?');
+    const dollarsLabel = sec2.indexOf('The trade-off in dollars');
     for (const label of ['The comparison: your tax rate now vs. later', 'Marginal rate while working', 'Effective rate on these withdrawals', 'How are the retirement rates calculated?']) {
       const at = sec2.indexOf(label);
       expect(at, label).toBeGreaterThan(-1);
-      expect(at, label).toBeLessThan(biggerLabel);
+      expect(at, label).toBeLessThan(dollarsLabel);
       expect(at, label).toBeLessThan(firstTable);
     }
-    // two tables: the account (contribution + future value), then what it leaves after tax
-    expect(biggerLabel).toBeLessThan(firstTable);
-    const accountTable = sec2.slice(firstTable, afterTaxLabel);
-    expect(accountTable).toContain('Current possible contribution');
-    expect(accountTable).toContain('Total future value of your contributions');
-    expect(accountTable).toContain('Difference');
-    expect(accountTable).toContain('Pre-tax +$2,200'); // $10,000 Pre-tax vs $7,800 Roth
-    expect(accountTable).toContain('Why is the Pre-tax account bigger?');
-    expect(accountTable).not.toContain('After-tax income');
-    const afterTaxTable = sec2.slice(afterTaxLabel, sec2.indexOf('Retirement years without Social Security'));
-    expect(afterTaxTable).toContain('<table');
-    expect(afterTaxTable).toContain('Tax on withdrawals');
-    expect(afterTaxTable).toContain('After-tax income');
-    expect(afterTaxTable).not.toContain('Current possible contribution');
+    expect(dollarsLabel).toBeLessThan(firstTable);
+    // one table, three groups, each value next to what it becomes after tax; no Difference column
+    const table = sec2.slice(firstTable, sec2.indexOf('</table>', firstTable));
+    const putIn = table.indexOf('What you put in');
+    const single = table.indexOf('A single year’s contribution');
+    const every = table.indexOf('Contributing every year until retirement');
+    expect(putIn).toBeGreaterThan(-1);
+    expect(single).toBeGreaterThan(putIn);
+    expect(every).toBeGreaterThan(single);
+    expect(table.indexOf('Current possible contribution')).toBeLessThan(single);
+    expect(table.indexOf('Value at retirement')).toBeGreaterThan(single);
+    expect(table.indexOf('After-tax value')).toBeLessThan(every);
+    expect(table.indexOf('Future Contributions at retirement')).toBeGreaterThan(every);
+    expect(table.indexOf('After-tax income it generates')).toBeGreaterThan(table.indexOf('Future Contributions at retirement'));
+    expect(table).not.toContain('Difference');
+    expect(table).not.toContain('Tax on withdrawals');
+    expect(sec2).toContain('Why is the Pre-tax side bigger?');
     // the portfolio section no longer carries the rates
     expect(sec3).not.toContain('The comparison');
     expect(sec3).not.toContain('Marginal rate while working');
@@ -253,9 +259,9 @@ describe('ResultsSummary', () => {
     const html = render({ otherPretaxBalance: '100000' });
     expect(html).toContain('What sets the rate on these withdrawals');
     expect(html).toContain('Income that&rsquo;s taxed first.'.replace('&rsquo;', '’'));
-    expect(html).toContain('from your other Pre-tax accounts');
+    expect(html).toContain('from your Pre-tax Existing Accounts');
     const none = render({ otherPretaxBalance: '0', otherTaxableBalance: '0', knowsSocialSecurity: 'yes', socialSecurityBenefit: '0' });
-    expect(none).toContain('Other Pre-tax accounts would change this');
+    expect(none).toContain('Pre-tax Existing\n        Accounts would change this'.replace(/\s+/g, ' '));
   });
 
   it('keeps "How the rates fit together" inside the rates dropdown, not loose on the page', () => {
@@ -266,7 +272,7 @@ describe('ResultsSummary', () => {
     // exactly one copy on the whole page, and it is the one inside the dropdown
     expect(html.split('How the rates fit together.').length - 1).toBe(1);
     // it comes before the step-by-step explanation
-    expect(dropdown.indexOf('How the rates fit together.')).toBeLessThan(dropdown.indexOf('Step 1: income from everything except this account'));
+    expect(dropdown.indexOf('How the rates fit together.')).toBeLessThan(dropdown.indexOf('Step 1: income from Social Security and Existing Accounts'));
   });
 
   it('highlights the effective rate on withdrawals in a paired box with the marginal rate, no explanatory lead-in', () => {
@@ -365,7 +371,7 @@ describe('ResultsSummary', () => {
 
   it('shows the actual probe arithmetic instead of "$0 ÷ $0" when no withdrawal is needed', () => {
     const html = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '90000' });
-    expect(html).toContain('own natural withdrawal (4% of its projected value)');
+    expect(html).toContain('own natural withdrawal (4% of their projected value)');
     expect(html).not.toContain('÷ $0)');
   });
 
@@ -402,12 +408,15 @@ describe('ResultsSummary', () => {
     expect(sec2).toContain('cost you the same take-home pay');
   });
 
-  it('explains what "this account" and "other income" mean in the effective-rate dropdown', () => {
+  it('explains what "Future Contributions" and "Existing Accounts" mean in the effective-rate dropdown', () => {
     const html = render();
-    expect(html).toContain('the account your contributions are building');
-    expect(html).toContain('Step 1: income from everything except this account');
-    expect(html).toContain('Step 2: what this account has to supply');
-    expect(html).toContain('Still needed from this account, after tax');
+    expect(html).toContain('<strong>Future Contributions</strong> are the savings you make from now until retirement');
+    expect(html).toContain('<strong>Existing Accounts</strong>');
+    expect(html).toContain('Step 1: income from Social Security and Existing Accounts');
+    expect(html).toContain('Step 2: what Future Contributions have to supply');
+    expect(html).toContain('Still needed from Future Contributions, after tax');
+    // the old "this account" wording is gone from the results
+    expect(html).not.toMatch(/this account/i);
     expect(html).not.toContain('Gap left after other sources');
     expect(html).not.toContain('before this account');
   });
@@ -434,7 +443,7 @@ describe('ResultsSummary', () => {
 
   it('explains the forced-draw case in the simple view when other accounts already cover the need', () => {
     const html = render({ grossIncome: '30000', savings: '0', otherPretaxBalance: '1500000' });
-    expect(html).toContain('your other accounts alone already produce more taxable');
+    expect(html).toContain('your Existing Accounts alone already produce more taxable');
   });
 
   it('lists validation errors instead of results for bad input', () => {
@@ -564,23 +573,25 @@ describe('ScenariosPage', () => {
 describe('ResultsSummary — excess contributions default to taxable', () => {
   it('shows no capping note when savings is under the limit', () => {
     const html = render({ savings: '10000' });
-    expect(html).not.toContain('to the account, rest to taxable');
+    expect(html).not.toContain('in a taxable account (over the IRS limit)');
   });
 
   it('shows a per-column capping note and updates the limit-check alert when over the limit', () => {
     const html = render({ grossIncome: '150000', savings: '30000', currentType: 'pretax', accountType: '401k' });
-    expect(html).toContain('to the account, rest to taxable');
+    expect(html).toContain('incl. $6,500 in a taxable account (over the IRS limit)');
+    expect(html).toContain('incl. $860 in a taxable account (over the IRS limit)');
+    expect(html).toContain('At the IRS limit.');
     expect(html).toContain('extra $');
     expect(html).toContain('taxable investment account');
   });
 
-  it('reflects the extra taxable growth in the Section 3 bucket breakdown (Pre-tax scenario spills over, Roth does not)', () => {
+  it('reflects the taxable spillover in the Section 3 bucket breakdown, in both scenarios', () => {
     const html = render({ grossIncome: '150000', savings: '30000', currentType: 'pretax', accountType: '401k' });
     const sec3 = html.slice(html.indexOf('id="sec3"'));
     // Pre-tax scenario: $30,000 caps at $23,500, so $6,500/yr spills into taxable -> nonzero taxable bucket.
     expect(sec3).toContain('Taxable $613,995');
-    // Roth scenario: $22,800 equivalent fits under the cap, so its taxable bucket is untouched.
-    expect(sec3).toContain('Taxable $0');
+    // Roth scenario: the same take-home ($24,360) is $860 over the cap -> 860 x 94.4607862.
+    expect(sec3).toContain('Taxable $81,236');
   });
 });
 
@@ -615,7 +626,7 @@ describe('ScenarioCompare', () => {
     expect(html).toContain('With your change');
     expect(html).toContain('Retirement income number');
     expect(html).toContain('How the rates are calculated, side by side');
-    expect(html).toContain('Step 1: income from everything except this account');
+    expect(html).toContain('Step 1: income from Social Security and Existing Accounts');
     expect(html).toContain('Extra tax caused by the withdrawal');
     expect(html).toContain('Bracket of its last dollar');
     expect(html).toContain('Reset changes');
@@ -664,5 +675,53 @@ describe('Round 2026-09-25b adjustments', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain('Copy inputs to share');
     expect(html.indexOf('Copy inputs to share')).toBeGreaterThan(html.indexOf('Compare a change'));
+  });
+});
+
+describe('Future Contributions vs. Existing Accounts', () => {
+  it('shows the portfolio summary first: Existing Accounts + Future Contributions = total', () => {
+    const html = render();
+    const block = html.slice(html.indexOf('id="sec-summary"'), html.indexOf('id="sec1"'));
+    expect(html.indexOf('id="sec-summary"')).toBeGreaterThan(-1);
+    const existing = block.indexOf('Existing Accounts, grown to retirement');
+    const future = block.indexOf('Future Contributions, grown to retirement');
+    const total = block.indexOf('Total future portfolio value');
+    expect(existing).toBeGreaterThan(-1);
+    expect(future).toBeGreaterThan(existing);
+    expect(total).toBeGreaterThan(future);
+    expect(block).toContain('>+</td>');
+    expect(block).toContain('>=</td>');
+    expect(block).toContain('If Future Contributions go Roth');
+    expect(block).toContain('If Future Contributions go Pre-tax');
+  });
+
+  it('the summary numbers add up to the portfolio section totals', () => {
+    const r = compareRothVsTraditional(toCompareInputs({ ...DEFAULT_FORM_VALUES, savings: '23500', currentType: 'roth' }, 2025));
+    const existing = r.grown.pretax + r.grown.roth + r.grown.taxable;
+    for (const k of ['roth', 'pretax']) {
+      expect(existing + r.annuity[k].totalFutureValue).toBeCloseTo(r.portfolio[k].totalValue, 6);
+    }
+  });
+
+  it('at the limit with Roth savings, the Pre-tax side shows its tax savings in a taxable account', () => {
+    const html = render({ grossIncome: '150000', savings: '23500', currentType: 'roth' });
+    // 23,500 x 24% = 5,640 a year of tax saved, invested
+    expect(html).toContain('incl. $5,640 in a taxable account (over the IRS limit)');
+    expect(html).toContain('At the IRS limit.');
+    expect(html).toContain('Plus the taxable account (over the IRS limit)');
+  });
+
+  it('labels the form sections Future Contributions and Existing Accounts', () => {
+    const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
+    expect(html).toContain('<legend>Future Contributions</legend>');
+    expect(html).toContain('<legend>Existing Accounts</legend>');
+    expect(html).not.toMatch(/this account|other retirement account/i);
+  });
+
+  it('the article uses the same terms and no longer calls the at-limit case unmodeled', () => {
+    expect(articleMarkdown).toContain('**Future Contributions**');
+    expect(articleMarkdown).toContain('**Existing Accounts**');
+    expect(articleMarkdown).not.toMatch(/this account/i);
+    expect(articleMarkdown).not.toContain('still a planned future feature');
   });
 });

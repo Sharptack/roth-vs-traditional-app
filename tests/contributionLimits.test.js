@@ -27,7 +27,7 @@ describe('checkContributionLimit (2025: 401(k) $23,500, IRA $7,000)', () => {
   it('the message names the year, account type and limit', () => {
     const { message } = checkContributionLimit(23000, '401k', 2025);
     expect(message).toContain("You're at/near the 2025 401(k) contribution limit of $23,500.");
-    expect(message).toContain('Roth contributions shelter more real after-tax wealth than Traditional');
+    expect(message).toContain('the rest of the same take-home pay goes to a taxable account');
     expect(checkContributionLimit(7000, 'ira', 2025).message).toContain('2025 IRA contribution limit of $7,000');
   });
   it('an over-the-limit message says so, names the exact excess, and explains it goes to taxable', () => {

@@ -25,6 +25,7 @@ import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { explainWithdrawalRate, solveGrossWithdrawal } from './incomeNeed.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
+import { calculateRetirementTax } from './retirementTaxStack.js';
 import { checkContributionLimit, splitAtContributionLimit } from './contributionLimits.js';
 import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
 import {
@@ -46,6 +47,35 @@ export function calculatePaycheckEquivalents(amount, currentType, marginalRate) 
     return { roth: amount, pretax: amount / (1 - marginalRate) };
   }
   return { pretax: amount, roth: amount * (1 - marginalRate) };
+}
+
+// Splits the savings into what goes in the account and what spills over to a
+// taxable account, for each scenario, at the SAME take-home cost C:
+//   currently Roth:    C = savings (all after-tax)
+//   currently Pre-tax: C = min(savings, limit) x (1 - t) + max(0, savings - limit)
+//                      (only the part under the limit is deducted; the rest is after-tax money)
+//   Roth scenario:    min(C, limit) to the account, the rest of C to taxable
+//   Pre-tax scenario: min(C / (1 - t), limit) to the account, costing that x (1 - t);
+//                     the rest of C to taxable. At the limit, that remainder is the tax
+//                     the Pre-tax contribution saved, invested in a taxable account.
+// -> { takeHomeCost, roth: { toAccount, excessToTaxable }, pretax: { toAccount, excessToTaxable } }
+export function splitAtTakeHome(savings, currentType, marginalRate, limit) {
+  const S = Math.max(0, savings);
+  const keep = 1 - marginalRate;
+  const takeHomeCost = currentType === 'roth' ? S : Math.min(S, limit) * keep + Math.max(0, S - limit);
+  const rothToAccount = Math.min(takeHomeCost, limit);
+  // Exact when the Pre-tax side fits: the saver's own Pre-tax savings, or the Roth savings grossed up.
+  const pretaxUncapped =
+    currentType === 'pretax' && S <= limit ? S : calculatePaycheckEquivalents(takeHomeCost, 'roth', marginalRate).pretax;
+  const pretaxToAccount = Math.min(pretaxUncapped, limit);
+  return {
+    takeHomeCost,
+    roth: { toAccount: rothToAccount, excessToTaxable: takeHomeCost - rothToAccount },
+    pretax: {
+      toAccount: pretaxToAccount,
+      excessToTaxable: pretaxUncapped <= limit ? 0 : takeHomeCost - pretaxToAccount * keep,
+    },
+  };
 }
 
 export function validateInputs(inputs) {
@@ -191,10 +221,6 @@ export function compareRothVsTraditional(inputs) {
   const needBeforeLifestyle = Math.max(0, rawNeed);
   const targetAfterTaxIncome = needBeforeLifestyle * lifestyleFactor;
 
-  // 8. Paycheck-equivalent contribution (both forms, regardless of current type)
-  const contribution = calculatePaycheckEquivalents(savings, currentType, marginalRateNow);
-  const { roth: R, pretax: P } = contribution;
-
   // 7. Contribution limit check (on the amount as entered). Includes any
   // catch-up contribution the saver's CURRENT age qualifies for — like the
   // base limit and tax brackets elsewhere, this is a snapshot at today's age,
@@ -202,17 +228,17 @@ export function compareRothVsTraditional(inputs) {
   // or out of, a catch-up tier over a multi-decade horizon).
   const limitCheck = checkContributionLimit(savings, accountType, year, currentAge);
 
-  // Neither R nor P can legally exceed the IRS limit for this account type (the
-  // limit is the same dollar figure whether the account is Roth or Traditional).
-  // Anything above it is modeled as an additional contribution to a taxable
-  // account instead — split independently for each hypothetical scenario, so
-  // "all-Roth" and "all-Pre-tax" each realistically hit the same wall on their
-  // own terms. contribution.roth/.pretax (above) stay the UNCAPPED paycheck
-  // equivalents for display ("what would this cost in the other type"); the
-  // capped amounts below are what actually compounds inside the account.
-  const rothSplit = splitAtContributionLimit(R, accountType, year, currentAge);
-  const pretaxSplit = splitAtContributionLimit(P, accountType, year, currentAge);
-  const contributionSplit = { roth: rothSplit, pretax: pretaxSplit };
+  // 8. Both forms at the same take-home cost. Neither can legally exceed the IRS
+  // limit (the same dollar figure for Roth or Traditional); what doesn't fit goes
+  // to a taxable account, independently per scenario (see splitAtTakeHome).
+  // contribution.roth/.pretax = everything that scenario puts away per year
+  // (account + taxable side); the split says where it goes.
+  const contributionSplit = splitAtTakeHome(savings, currentType, marginalRateNow, limitCheck.limit);
+  const { roth: rothSplit, pretax: pretaxSplit } = contributionSplit;
+  const contribution = {
+    roth: rothSplit.toAccount + rothSplit.excessToTaxable,
+    pretax: pretaxSplit.toAccount + pretaxSplit.excessToTaxable,
+  };
 
   // 10 (hoisted). This account's own future value doesn't depend on the tax
   // solve below, so it's computed early and its natural 4% annual withdrawal
@@ -308,6 +334,49 @@ export function compareRothVsTraditional(inputs) {
     },
   };
 
+  // 10b. The taxable side of Future Contributions (what didn't fit under the limit).
+  // Its 4% withdrawal is taxed as capital gain, stacked on top of everything else
+  // taxable in that scenario's first retirement year: Social Security, Existing
+  // Accounts' 4% withdrawals, and (Pre-tax scenario) the account's own 4% withdrawal.
+  // Rate = the extra tax it causes / the withdrawal.
+  const sideTaxRate = (withdrawal, accountPretaxWithdrawal, ss) => {
+    if (!(withdrawal > 0)) return 0;
+    const stack = (extra) =>
+      calculateRetirementTax({
+        pretaxWithdrawal: otherWithdrawals.pretaxGross + accountPretaxWithdrawal,
+        taxableWithdrawal: otherWithdrawals.taxableGross + extra,
+        ssBenefit: ss,
+        filingStatus,
+        year,
+      }).totalTax;
+    return (stack(withdrawal) - stack(0)) / withdrawal;
+  };
+  const sideFor = (scenario, split, fv, ss) => {
+    const annualWithdrawal = WITHDRAWAL_RATE * fv;
+    const taxRate = sideTaxRate(annualWithdrawal, scenario === 'pretax' ? accountPretaxAnnualWithdrawal : 0, ss);
+    return {
+      contribution: split.excessToTaxable,
+      futureValue: fv,
+      annualWithdrawal,
+      taxRate,
+      afterTaxWithdrawal: annualWithdrawal * (1 - taxRate),
+    };
+  };
+  for (const [scenario, split, fv] of [
+    ['roth', rothSplit, excessRothTaxableFV],
+    ['pretax', pretaxSplit, excessPretaxTaxableFV],
+  ]) {
+    const a = annuity[scenario];
+    a.side = sideFor(scenario, split, fv, ssBenefit);
+    a.totalFutureValue = a.futureValue + a.side.futureValue;
+    a.totalAfterTaxIncome = a.afterTaxWithdrawal + a.side.afterTaxWithdrawal;
+    const l = lumpSum[scenario];
+    const lumpSideFV = futureValueLumpSum(split.excessToTaxable, returnRate, years);
+    l.side = { futureValue: lumpSideFV, afterTaxValue: lumpSideFV * (1 - a.side.taxRate) };
+    l.totalFutureValue = (l.futureValue ?? l.futureValueGross) + lumpSideFV;
+    l.totalAfterTaxValue = l.afterTaxValue + l.side.afterTaxValue;
+  }
+
   // 11. Full-portfolio tax comparison. Each scenario's taxable bucket picks up
   // its own excess-over-the-limit contributions (0 when nothing was capped).
   const scenarioBuckets = {
@@ -357,6 +426,13 @@ export function compareRothVsTraditional(inputs) {
   const noSsPretaxAtMarginal = annuity.pretax.annualWithdrawal * (1 - noSsMarginalRate);
   const noSsPretaxAtEffective =
     annuity.pretax.annualWithdrawal * (1 - noSsGrossUp.retirementEffectiveTaxRate);
+  // The taxable side again, with no Social Security in the stack.
+  const noSsSide = {
+    roth: sideFor('roth', rothSplit, excessRothTaxableFV, 0),
+    pretax: sideFor('pretax', pretaxSplit, excessPretaxTaxableFV, 0),
+  };
+  const noSsRothTotal = annuity.roth.afterTaxWithdrawal + noSsSide.roth.afterTaxWithdrawal;
+  const noSsPretaxTotal = noSsPretaxAtEffective + noSsSide.pretax.afterTaxWithdrawal;
   const withoutSocialSecurity = {
     grossUp: noSsGrossUp,
     rateDrivers: explainWithdrawalRate(noSsGrossUp, {
@@ -368,15 +444,21 @@ export function compareRothVsTraditional(inputs) {
     effectiveRateRetirement: noSsGrossUp.retirementEffectiveTaxRate,
     taxableIncomeAtTop: Math.max(0, noSsTopOfStack),
     annuity: {
-      roth: { afterTaxWithdrawal: annuity.roth.afterTaxWithdrawal },
+      roth: {
+        afterTaxWithdrawal: annuity.roth.afterTaxWithdrawal,
+        side: noSsSide.roth,
+        totalAfterTaxIncome: noSsRothTotal,
+      },
       pretax: {
         afterTaxWithdrawal: noSsPretaxAtEffective, // at the blended rate (the headline)
         afterTaxWithdrawalAtMarginal: noSsPretaxAtMarginal, // reference only
+        side: noSsSide.pretax,
+        totalAfterTaxIncome: noSsPretaxTotal,
       },
     },
     comparison: {
-      winner: winnerOf(annuity.roth.afterTaxWithdrawal, noSsPretaxAtEffective),
-      afterTaxIncomeDifference: Math.abs(annuity.roth.afterTaxWithdrawal - noSsPretaxAtEffective),
+      winner: winnerOf(noSsRothTotal, noSsPretaxTotal),
+      afterTaxIncomeDifference: Math.abs(noSsRothTotal - noSsPretaxTotal),
     },
   };
 
@@ -445,11 +527,12 @@ export function compareRothVsTraditional(inputs) {
     grossUp,
     lumpSum,
     annuity,
-    // Section 2 verdict: who ends up with more after-tax annual income.
+    // Section 2 verdict: which Future Contributions (account + taxable side) end up
+    // with more after-tax annual income.
     comparison: {
-      winner: winnerOf(annuity.roth.afterTaxWithdrawal, annuity.pretax.afterTaxWithdrawal),
+      winner: winnerOf(annuity.roth.totalAfterTaxIncome, annuity.pretax.totalAfterTaxIncome),
       afterTaxIncomeDifference: Math.abs(
-        annuity.roth.afterTaxWithdrawal - annuity.pretax.afterTaxWithdrawal,
+        annuity.roth.totalAfterTaxIncome - annuity.pretax.totalAfterTaxIncome,
       ),
     },
     portfolio,

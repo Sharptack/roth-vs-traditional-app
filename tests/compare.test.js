@@ -645,29 +645,37 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     socialSecurityBenefit: 0,
   };
 
-  it('currently Pre-tax, savings $30,000: Pre-tax spills $6,500/year into taxable, Roth fits entirely (HAND CALC)', () => {
-    // P = 30,000 (currentType pretax); R = 30,000 x (1 - 0.24) = 22,800.
-    // 401(k) limit $23,500: P is capped at 23,500 (excess 6,500); R (22,800) fits with no excess.
-    // Annuity factor (1.07^30 - 1)/0.07 = 94.460786...
+  // Both scenarios cost the SAME take-home pay, C (see splitAtTakeHome in compare.js):
+  //   currently Roth:    C = savings
+  //   currently Pre-tax: C = (part under the limit) x (1 - t) + (part over the limit, never deducted)
+  // Roth puts min(C, limit) in the account; Pre-tax puts min(C / (1 - t), limit), which costs
+  // that x (1 - t). Whatever take-home is left goes to a taxable account (the "taxable side").
+  // Annuity factor (1.07^30 - 1)/0.07 = 94.4607862; lump-sum factor 1.07^30 = 7.6122550.
+
+  it('currently Pre-tax, savings $30,000: both scenarios spill over, Roth by only $860 (HAND CALC)', () => {
+    // C = 23,500 x 0.76 + 6,500 = 17,860 + 6,500 = 24,360 of take-home.
+    // Pre-tax: 23,500 to the account (costs 17,860), 24,360 - 17,860 = 6,500 to taxable.
+    // Roth: 24,360 > 23,500, so 23,500 to the account and 860 to taxable.
+    // (The $6,500 over the limit was never deducted, so it is after-tax money in both.)
     const r = compareRothVsTraditional({ ...base, savings: 30000, currentType: 'pretax' });
     expect(r.rates.marginalNow).toBe(0.24);
-    expect(r.contribution.pretax).toBe(30000);
-    expect(r.contribution.roth).toBeCloseTo(22800, 6);
+    expect(r.contributionSplit.takeHomeCost).toBeCloseTo(24360, 6);
+    expect(r.contribution.pretax).toBeCloseTo(30000, 6); // 23,500 + 6,500
+    expect(r.contribution.roth).toBeCloseTo(24360, 6); // 23,500 + 860
 
     expect(r.contributionSplit.pretax.toAccount).toBe(23500);
-    expect(r.contributionSplit.pretax.excessToTaxable).toBe(6500);
-    expect(r.contributionSplit.roth.toAccount).toBeCloseTo(22800, 6);
-    expect(r.contributionSplit.roth.excessToTaxable).toBe(0);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBeCloseTo(6500, 6);
+    expect(r.contributionSplit.roth.toAccount).toBe(23500);
+    expect(r.contributionSplit.roth.excessToTaxable).toBeCloseTo(860, 6);
 
-    // The account itself grows from the CAPPED contribution, not the raw $30,000.
+    // accounts: 23,500 x 94.4607862 = 2,219,828.48 on both sides
     expect(r.annuity.pretax.futureValue).toBeCloseTo(2219828.48, 1);
-    expect(r.annuity.roth.futureValue).toBeCloseTo(2153705.93, 1);
-
-    // The excess shows up as taxable-bucket growth in the Pre-tax scenario only.
+    expect(r.annuity.roth.futureValue).toBeCloseTo(2219828.48, 1);
+    // taxable sides: 6,500 x 94.4607862 = 613,995.11; 860 x 94.4607862 = 81,236.28
     expect(r.portfolio.pretax.buckets.taxable).toBeCloseTo(613995.11, 1);
-    expect(r.portfolio.roth.buckets.taxable).toBeCloseTo(0, 6);
-    expect(r.portfolio.pretax.buckets.pretax).toBeCloseTo(2219828.48, 1);
-    expect(r.portfolio.roth.buckets.roth).toBeCloseTo(2153705.93, 1);
+    expect(r.portfolio.roth.buckets.taxable).toBeCloseTo(81236.28, 1);
+    expect(r.annuity.pretax.side.futureValue).toBeCloseTo(613995.11, 1);
+    expect(r.annuity.roth.side.futureValue).toBeCloseTo(81236.28, 1);
 
     // The limit-check warning names the exact excess and explains where it goes.
     expect(r.limitCheck.overLimit).toBe(true);
@@ -675,25 +683,74 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     expect(r.limitCheck.message).toContain('taxable investment account');
   });
 
-  it('currently Roth, savings $40,000: both scenarios spill over, by different amounts (HAND CALC)', () => {
-    // R = 40,000 (currentType roth); P = 40,000 / (1 - 0.24) = 52,631.58.
-    // Roth capped at 23,500 (excess 16,500); Pre-tax capped at 23,500 (excess 29,131.58).
-    const r = compareRothVsTraditional({ ...base, savings: 40000, currentType: 'roth' });
-    expect(r.contribution.roth).toBe(40000);
-    expect(r.contribution.pretax).toBeCloseTo(52631.58, 1);
-
+  it('currently Roth AT the limit ($23,500): Pre-tax invests its tax savings, $5,640, in a taxable account (HAND CALC)', () => {
+    // C = 23,500. Roth: all 23,500 fits, nothing to taxable.
+    // Pre-tax: 23,500 / 0.76 = 30,921.05 won't fit; 23,500 goes in (costs 17,860) and the
+    //   tax it saves, 23,500 x 0.24 = 5,640, goes to taxable. (Old model: 30,921.05 - 23,500 = 7,421.05,
+    //   i.e. it invested Pre-tax-sized dollars the saver never had.)
+    // Pre-tax account: FV 2,219,828.48, 4% = 88,793.14 (ordinary income).
+    // Taxable side: FV 5,640 x 94.4607862 = 532,758.83; 4% = 21,310.35.
+    //   Stacked on 88,793.14 of ordinary income: ordinary taxable = 88,793.14 - 15,750 = 73,043.14,
+    //   already above the $48,350 top of the 0% gains bracket, so all of it is taxed at 15%:
+    //   3,196.55 -> after tax 18,113.80.
+    // One year's side contribution: 5,640 x 7.6122550 = 42,933.12; after tax x 0.85 = 36,493.15.
+    const r = compareRothVsTraditional({ ...base, savings: 23500, currentType: 'roth' });
     expect(r.contributionSplit.roth.toAccount).toBe(23500);
-    expect(r.contributionSplit.roth.excessToTaxable).toBe(16500);
+    expect(r.contributionSplit.roth.excessToTaxable).toBe(0);
     expect(r.contributionSplit.pretax.toAccount).toBe(23500);
-    expect(r.contributionSplit.pretax.excessToTaxable).toBeCloseTo(29131.58, 1);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBeCloseTo(5640, 6);
+    expect(r.contribution.pretax).toBeCloseTo(29140, 6);
 
-    // Both accounts grow identically (both capped at the same limit)...
+    const side = r.annuity.pretax.side;
+    expect(side.futureValue).toBeCloseTo(532758.83, 1);
+    expect(side.annualWithdrawal).toBeCloseTo(21310.35, 1);
+    expect(side.taxRate).toBeCloseTo(0.15, 10);
+    expect(side.afterTaxWithdrawal).toBeCloseTo(18113.8, 1);
+    expect(r.annuity.roth.side.futureValue).toBe(0);
+
+    // Totals for Future Contributions = the account + its taxable side.
+    expect(r.annuity.pretax.totalFutureValue).toBeCloseTo(2219828.48 + 532758.83, 1);
+    expect(r.annuity.pretax.totalAfterTaxIncome).toBeCloseTo(r.annuity.pretax.afterTaxWithdrawal + 18113.8, 1);
+    expect(r.annuity.roth.totalAfterTaxIncome).toBeCloseTo(r.annuity.roth.afterTaxWithdrawal, 6);
+    expect(r.lumpSum.pretax.side.futureValue).toBeCloseTo(42933.12, 1);
+    expect(r.lumpSum.pretax.side.afterTaxValue).toBeCloseTo(36493.15, 1);
+    expect(r.lumpSum.pretax.totalAfterTaxValue).toBeCloseTo(r.lumpSum.pretax.afterTaxValue + 36493.15, 1);
+
+    // The verdict uses the totals.
+    const { roth, pretax } = r.annuity;
+    expect(r.comparison.afterTaxIncomeDifference).toBeCloseTo(
+      Math.abs(roth.totalAfterTaxIncome - pretax.totalAfterTaxIncome),
+      6,
+    );
+  });
+
+  it('currently Roth, savings $40,000: both scenarios spill over; Roth spillover is taxed at 0% (HAND CALC)', () => {
+    // C = 40,000. Roth: 23,500 in, 16,500 to taxable.
+    // Pre-tax: 23,500 in (costs 17,860), 40,000 - 17,860 = 22,140 to taxable (old model: 29,131.58).
+    const r = compareRothVsTraditional({ ...base, savings: 40000, currentType: 'roth' });
+    expect(r.contribution.roth).toBeCloseTo(40000, 6);
+    expect(r.contribution.pretax).toBeCloseTo(45640, 6);
+    expect(r.contributionSplit.roth.toAccount).toBe(23500);
+    expect(r.contributionSplit.roth.excessToTaxable).toBeCloseTo(16500, 6);
+    expect(r.contributionSplit.pretax.toAccount).toBe(23500);
+    expect(r.contributionSplit.pretax.excessToTaxable).toBeCloseTo(22140, 6);
+
     expect(r.annuity.roth.futureValue).toBeCloseTo(2219828.48, 1);
     expect(r.annuity.pretax.futureValue).toBeCloseTo(2219828.48, 1);
-    // ...but the taxable spillover differs, since P > R at the same take-home cost.
+    // taxable: 16,500 x 94.4607862 = 1,558,602.97; 22,140 x 94.4607862 = 2,091,361.81
     expect(r.portfolio.roth.buckets.taxable).toBeCloseTo(1558602.97, 1);
-    expect(r.portfolio.pretax.buckets.taxable).toBeCloseTo(2751791.85, 1);
-    expect(r.portfolio.pretax.buckets.taxable).toBeGreaterThan(r.portfolio.roth.buckets.taxable);
+    expect(r.portfolio.pretax.buckets.taxable).toBeCloseTo(2091361.81, 1);
+
+    // Roth side: 4% = 62,344.12 with no ordinary income under it (the account is Roth):
+    //   the 15,750 standard deduction shelters the first gains, 62,344.12 - 15,750 = 46,594.12
+    //   is below $48,350, so it is all in the 0% bracket -> no tax.
+    expect(r.annuity.roth.side.annualWithdrawal).toBeCloseTo(62344.12, 1);
+    expect(r.annuity.roth.side.taxRate).toBe(0);
+    expect(r.annuity.roth.side.afterTaxWithdrawal).toBeCloseTo(62344.12, 1);
+    // Pre-tax side: 4% = 83,654.47 on top of 73,043.14 of ordinary taxable income: all at 15%
+    //   (total 156,697.61 < 533,400) -> tax 12,548.17, after tax 71,106.30.
+    expect(r.annuity.pretax.side.annualWithdrawal).toBeCloseTo(83654.47, 1);
+    expect(r.annuity.pretax.side.afterTaxWithdrawal).toBeCloseTo(71106.3, 1);
   });
 
   it('under the limit: nothing changes from the pre-cap behavior (backward-compatible)', () => {

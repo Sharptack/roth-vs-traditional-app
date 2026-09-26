@@ -61,8 +61,9 @@ export function checkContributionLimit(amount, accountType, year, age) {
     } else {
       message =
         `You're at/near the ${dataYear} ${label} contribution limit of ${formattedLimit}${catchUpNote}. ` +
-        'At the limit, Roth contributions shelter more real after-tax wealth than Traditional, ' +
-        'independent of tax rate.';
+        'Where one side\'s equivalent contribution won\'t fit under the limit (a Pre-tax contribution ' +
+        'costs less take-home pay, so its equivalent is larger), the rest of the same take-home pay goes to a ' +
+        'taxable account instead. Both sides include it.';
     }
   }
   return { atLimit, overLimit, limit, base, catchUp, year: dataYear, message };

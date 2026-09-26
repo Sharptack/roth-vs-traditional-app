@@ -18,7 +18,7 @@ const INPUT_FIELDS = [
   { label: 'Retirement age', get: (i) => i.retirementAge, show: String },
   { label: 'Debt payments that end', get: (i) => i.debtPayments, show: formatCurrency },
   { label: 'Other expenses that end', get: (i) => i.otherExpenses, show: formatCurrency },
-  { label: 'Savings for retirement', get: (i) => i.savings, show: formatCurrency },
+  { label: 'Future Contributions (savings per year)', get: (i) => i.savings, show: formatCurrency },
   { label: 'Savings are currently', get: (i) => i.currentType, show: (v) => CONTRIBUTION_TYPES[v] ?? v },
   { label: 'Account type', get: (i) => i.accountType, show: (v) => ACCOUNT_TYPES[v] ?? v },
   {
@@ -28,9 +28,9 @@ const INPUT_FIELDS = [
   },
   { label: 'Expected return', get: (i) => i.returnRate, show: (v) => formatPercent(v, 0) },
   { label: 'Retirement lifestyle', get: (i) => i.retirementLifestyle ?? 1, show: lifestyleText },
-  { label: 'Other Pre-tax balances', get: (i) => i.otherPretaxBalance, show: formatCurrency },
-  { label: 'Other Roth balances', get: (i) => i.otherRothBalance, show: formatCurrency },
-  { label: 'Other taxable balances', get: (i) => i.otherTaxableBalance, show: formatCurrency },
+  { label: 'Existing Accounts, Pre-tax', get: (i) => i.otherPretaxBalance, show: formatCurrency },
+  { label: 'Existing Accounts, Roth', get: (i) => i.otherRothBalance, show: formatCurrency },
+  { label: 'Existing Accounts, taxable', get: (i) => i.otherTaxableBalance, show: formatCurrency },
 ];
 
 // Every input, labelled and formatted, in form order (for sharing a scenario as text).
@@ -63,8 +63,8 @@ export function headlineRows(result) {
     row('lean', 'Tends to favor', LEAN_TEXT[result.rates.lean], 'text', 'total'),
     row('contributionRoth', 'Contribution per year, Roth', result.contribution.roth, 'currency'),
     row('contributionPretax', 'Contribution per year, Pre-tax', result.contribution.pretax, 'currency'),
-    row('afterTaxRoth', 'After-tax income per year, Roth', result.annuity.roth.afterTaxWithdrawal, 'currency'),
-    row('afterTaxPretax', 'After-tax income per year, Pre-tax', result.annuity.pretax.afterTaxWithdrawal, 'currency'),
+    row('afterTaxRoth', 'After-tax income per year, Roth', result.annuity.roth.totalAfterTaxIncome, 'currency'),
+    row('afterTaxPretax', 'After-tax income per year, Pre-tax', result.annuity.pretax.totalAfterTaxIncome, 'currency'),
     row('winner', 'Comes out ahead', LEAN_TEXT[result.comparison.winner], 'text', 'total'),
   ];
 }

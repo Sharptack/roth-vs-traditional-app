@@ -108,13 +108,13 @@ export default function ScenariosPage() {
         <h1>Visualization: does the rate gap predict the winner?</h1>
         <p>
           The calculator&rsquo;s comparison boils down to one number: the <strong>rate gap</strong> &mdash; your
-          marginal tax rate while working, minus the effective rate you&rsquo;d actually pay on this
-          account&rsquo;s withdrawals in retirement. The rule of thumb: the higher that gap, the more Pre-tax should
+          marginal tax rate while working, minus the effective rate you&rsquo;d actually pay on withdrawals
+          from your Future Contributions in retirement. The rule of thumb: the higher that gap, the more Pre-tax should
           come out ahead; the lower (more negative) the gap, the more Roth should come out ahead.
         </p>
         <p>
           Below, that gap is charted across a series of hand-picked scenarios &mdash; sweeping income, savings
-          rate, existing account balances, age at retirement, and retirement lifestyle one at a time &mdash; to
+          rate, Existing Account balances, age at retirement, and retirement lifestyle one at a time &mdash; to
           see how it actually behaves. Every scenario also runs through the same comparison the calculator
           uses (single filer, W-2 income, estimated Social Security, 7% return, no state tax &mdash; see{' '}
           <a href="#/how-it-works">How this works</a> for the full model). Hover or focus any point for exact
