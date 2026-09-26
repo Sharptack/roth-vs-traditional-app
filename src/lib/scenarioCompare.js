@@ -33,6 +33,11 @@ const INPUT_FIELDS = [
   { label: 'Other taxable balances', get: (i) => i.otherTaxableBalance, show: formatCurrency },
 ];
 
+// Every input, labelled and formatted, in form order (for sharing a scenario as text).
+export function describeInputs(inputs) {
+  return INPUT_FIELDS.map((field) => ({ label: field.label, value: field.show(field.get(inputs)) }));
+}
+
 // The inputs that differ between two compare.js input objects, in form order.
 export function changedInputs(baseline, current) {
   const changes = [];

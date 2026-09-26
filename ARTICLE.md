@@ -78,7 +78,7 @@ There's a pattern to watch for. When the account is needed to fill the gap, your
 
 ## If you expect to spend more, or less, in retirement
 
-The retirement income number assumes you'll live in retirement the way you live now. That won't always be right. If you're early in your career and expect your earnings, and your spending, to rise, your retirement budget may be well above today's, and with it your retirement bracket. That is one of the most common ways Roth wins. Under **Assumptions** you can choose a retirement lifestyle from 20% lower to 100% higher than today's, and the calculator scales the retirement income number to match.
+The retirement income number assumes you'll live in retirement the way you live now. That won't always be right. If you're early in your career and expect your earnings, and your spending, to rise, your retirement budget may be well above today's, and with it your retirement bracket. That is one of the most common ways Roth wins. Under **Assumptions** you can choose a retirement lifestyle from 40% lower to 100% higher than today's, and the calculator scales the retirement income number to match.
 
 One thing it doesn't do: if your earnings rise, the contributions you make in those later years will be deducted at a higher rate than today's marginal rate. That pushes toward Traditional and partly offsets the higher retirement bracket. Modeling contributions that change over time is a planned feature.
 
@@ -112,7 +112,7 @@ Both versions include your other balances grown to retirement. For each, the cal
 
 Two things to keep in mind when reading it:
 
-1. **The tax difference is the cost of the same lifestyle, not a verdict.** The Pre-tax scenario also got a deduction along the way, so it starts with a bigger balance. A higher tax bill can still leave you better off if you're drawing a smaller share of your portfolio to get there. That's why the table shows the withdrawal rate needed. A lower rate means your money is under less strain.
+1. **Bigger portfolio vs. higher tax is the whole question.** The Pre-tax scenario invests the tax it saves today, so it ends up with a bigger portfolio, and pays tax on the way out. The table answers it two ways. Holding your lifestyle fixed, it shows the tax and the withdrawal rate each portfolio needs (a lower rate means less strain on your money). Holding the withdrawal fixed at 4% of every account, it shows the after-tax income each portfolio actually delivers. Whichever portfolio buys more income after tax is the one that came out ahead.
 2. **The withdrawal method is simplified.** Real retirees often choose *which* accounts to draw from first to keep taxes low. This calculator draws proportionally from all of them.
 
 ## What this calculator doesn't capture

@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (372 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (382 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -72,7 +72,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
   `contributionLimits`, `compare` (orchestrator; single source of every UI number), `constants`
   (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`,
-  `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
+  `shareInputs` (form values <-> link query string, plain-text scenario summary — see "Sharing a scenario"), `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
   `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line).
 - `rateSteps.js`: the "How are the retirement rates calculated?" walk-through as data rows
   (`effectiveRateSteps`, `rateDriverRows`), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -148,6 +148,17 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Possible next steps (not built): also compare the retirement-number walk and the portfolio section; remember
   the comparison across reloads; named/saved scenarios (would need storage — see the backend future item).
 
+## Sharing a scenario (added 2026-09-25)
+- "Copy inputs to share" button (`ShareInputs.jsx`, rendered inside the Compare-a-change card) copies plain text:
+  every input (labelled, via `scenarioCompare.describeInputs`), the headline results (`headlineRows`), and a
+  link. When comparing, it adds the changed inputs and the changed side's results. Falls back to a textarea if
+  the clipboard is blocked. Meant for pasting a scenario into a conversation with Claude.
+- The link carries every form value in the query string (`?grossIncome=…`; the compare side as `c.<key>`).
+  `App.jsx` reads it once on load (`valuesFromSearch`; missing keys = defaults, unknown keys ignored). The URL
+  is not rewritten as you type. Query string, not hash, so it coexists with the hash routes.
+- For Claude: to reproduce a pasted scenario, turn the link's query into form values with
+  `valuesFromSearch`, then `toCompareInputs` + `compareRothVsTraditional` (e.g. in a `node -e`/vitest snippet).
+
 ## The model (as built)
 1. Current tax: income tax on (gross − half of any self-employment tax − **Pre-tax savings, if
    `currentType` is pretax, capped at the IRS limit** − standard deduction) + payroll tax (Pre-tax savings do
@@ -161,7 +172,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    standard deduction). Input: `selfEmploymentIncome` = the 1099 part of gross (net earnings).
 2. Retirement income number (after-tax need) = gross − income tax − FICA − debt payments ending −
    other expenses ending − retirement savings (as entered). Floored at 0. Payroll tax is subtracted because
-   it stops at retirement. Then × `retirementLifestyle` (default 1; UI offers 0.8–2): a single multiplier
+   it stops at retirement. Then × `retirementLifestyle` (default 1; UI offers 0.6–2): a single multiplier
    for people who expect to spend more/less in retirement (e.g. rising earnings). Higher lifestyle raises
    the retirement bracket and can favor Roth.
 3. Social Security: user-entered benefit, or a simplified estimate (AIME = income capped at wage base / 12,
@@ -214,6 +225,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    shown as an alert above the table) names the exact excess and explains where it goes.
 8. Section 3 (`portfolioTax`): per scenario (all-Roth / all-Pre-tax), 4% baseline per bucket, one scale
    factor k found by binary search so after-tax income (withdrawals + full SS − tax) = need.
+   Also `atBaseline` (k = 1): after-tax income each portfolio delivers at a plain 4% from every bucket,
+   whatever the need — the "does the bigger Pre-tax portfolio buy more after-tax income?" row.
    Taxable SS uses (pretax + taxable withdrawals) as "other income".
 9. No inflation is modeled: treat the return as a real (after-inflation) return; all dollars are today's.
 10. **Retirement years without Social Security** (`compare.js` -> `withoutSocialSecurity`; UI dropdown
@@ -305,9 +318,12 @@ the whole account) is still open — see "Known limitations."
   actually spend", "How is this calculated?" dropdown; (2) "Roth vs. Traditional" (contribution-limit
   alert, table, dropdown "Retirement years without Social Security"), which **opens with "The comparison: your
   tax rate now vs. later"** (rate pair, then a one-line "Tends to favor …" lean + rule-of-thumb hint — re-added
-  2026-09-25 at the user's request after Round 4 had removed a lean sentence), then **"The trade-off in dollars"**:
-  one table with Roth / Pre-tax / Difference columns and three row groups ("What you put in", "What it grows
-  to", "What you keep after tax") so the layout shows "Pre-tax puts in more, but is taxed later". Before that:
+  2026-09-25 at the user's request after Round 4 had removed a lean sentence), then (reworked 2026-09-25b) two tables with Roth / Pre-tax / Difference columns: **"Pre-tax builds a bigger
+  account…"** (current possible contribution, value of a single contribution, "Total future value of your
+  contributions" = this account only, not other balances; + a "Why is the Pre-tax account bigger?" dropdown) and
+  **"…but does it leave more after tax?"** (annual 4% withdrawal, tax rate, after-tax income, after-tax value of
+  a single contribution). The lean line is just the phrase ("Tends to favor Roth" / "About even"): the user
+  removed the sentence restating the rates and the rule-of-thumb hint. Before that:
   (marginal now; effective rate on these withdrawals; overall effective rate; SS benefit used; and the "How are
   the retirement rates calculated?" dropdown, which begins with the "How the rates fit together" note) — the user clarified the rates go at the top of the Roth vs.
   Traditional section, i.e. the section right below the retirement number; (3) "Total portfolio tax
@@ -372,6 +388,12 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 — Round of five: (1) lean line trimmed to the short phrase; (2) Section 3's "Tax paid is not the whole
+  story" note replaced by a real figure, "After-tax income at a 4% withdrawal" per scenario (`portfolioTax`
+  `atBaseline`, hand-verified), with the leader highlighted; ARTICLE.md updated; (3) retirement lifestyle
+  gains 30%/40% lower; (4) Section 2 split into "Pre-tax builds a bigger account…" and "…but does it leave more
+  after tax?" tables, "Total value of account" renamed "Total future value of your contributions"; (5) "Copy
+  inputs to share" (text + reopen link). 382 tests.
 - 2026-09-25 — "Compare a change" reworked: instead of pinning a baseline and editing the one form, it now opens a
   second full set of inputs beside the main form (changed fields highlighted); the main form stays the baseline.
   Buttons: Reset changes / Use these as my inputs / Stop comparing. 372 tests.

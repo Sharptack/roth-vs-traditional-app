@@ -61,7 +61,7 @@ function CompareTable({ rows, caption }) {
 // "Compare a change": a second set of inputs (rendered by App, beside the main form) starts as
 // a copy of the main inputs. This panel shows the two scenarios side by side: `baseline` is the
 // main form, `current` is the second form (null = not comparing).
-export default function ScenarioCompare({ baseline, current, onStart, onReset, onAdopt, onStop }) {
+export default function ScenarioCompare({ baseline, current, onStart, onReset, onAdopt, onStop, share }) {
   if (!current) {
     return (
       <section className="card compare-card compare-start" aria-label="Compare a change">
@@ -72,6 +72,7 @@ export default function ScenarioCompare({ baseline, current, onStart, onReset, o
           Opens a second set of inputs next to these, starting from the same values. Change any of
           them to see the two side by side, including how the rates are calculated.
         </p>
+        {share}
       </section>
     );
   }
@@ -95,6 +96,8 @@ export default function ScenarioCompare({ baseline, current, onStart, onReset, o
           </button>
         </div>
       </div>
+
+      {share}
 
       {!bothValid && <p className="alert">Fix the inputs above to see the comparison.</p>}
 

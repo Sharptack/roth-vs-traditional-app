@@ -4,8 +4,10 @@ import InputForm from './components/InputForm.jsx';
 import ResultsSummary from './components/ResultsSummary.jsx';
 import ScenarioCompare from './components/ScenarioCompare.jsx';
 import ScenariosPage from './components/ScenariosPage.jsx';
+import ShareInputs from './components/ShareInputs.jsx';
 import { compareRothVsTraditional } from './lib/compare.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
+import { valuesFromSearch } from './lib/shareInputs.js';
 import { ARTICLE_HASH, SCENARIOS_HASH, routeFromHash } from './lib/route.js';
 import './App.css';
 
@@ -49,6 +51,10 @@ import './App.css';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+// A shared link ("Copy inputs to share") carries the inputs in its query string.
+const FROM_LINK =
+  typeof window === 'undefined' ? { values: null, compareValues: null } : valuesFromSearch(window.location.search);
+
 // Which page to show, from the URL hash ("#/how-it-works" = the article). Remembers the
 // calculator's scroll position so coming back from the article puts you where you were.
 function useRoute() {
@@ -80,10 +86,10 @@ function useRoute() {
 }
 
 export default function App() {
-  const [values, setValues] = useState(DEFAULT_FORM_VALUES);
+  const [values, setValues] = useState(FROM_LINK.values ?? DEFAULT_FORM_VALUES);
   // "Compare a change": a second copy of the inputs to edit (null = not comparing). The main
   // inputs are the baseline. Kept in memory only, so a reload clears it.
-  const [compareValues, setCompareValues] = useState(null);
+  const [compareValues, setCompareValues] = useState(FROM_LINK.compareValues);
   const route = useRoute();
 
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
@@ -149,6 +155,7 @@ export default function App() {
               setCompareValues(null);
             }}
             onStop={() => setCompareValues(null)}
+            share={<ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />}
           />
           <ResultsSummary result={current.result} />
         </main>

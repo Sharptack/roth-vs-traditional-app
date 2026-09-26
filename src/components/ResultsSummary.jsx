@@ -382,14 +382,27 @@ function difference(roth, pretax) {
   return `${d > 0 ? 'Pre-tax' : 'Roth'} +${$(Math.abs(d))}`;
 }
 
-function GroupRow({ title, sub }) {
+function DiffCell({ roth, pretax }) {
+  return <td className="diff">{difference(roth, pretax)}</td>;
+}
+
+// Table header shared by the two Section 2 tables.
+function SideHead({ win }) {
   return (
-    <tr className="group-row">
-      <th scope="colgroup" colSpan={4}>
-        {title}
-        {sub && <span className="th-sub">{sub}</span>}
-      </th>
-    </tr>
+    <thead>
+      <tr>
+        <th scope="col" className="row-head"></th>
+        <th scope="col" className={win('roth')}>
+          Roth
+        </th>
+        <th scope="col" className={win('pretax')}>
+          Pre-tax (Traditional)
+        </th>
+        <th scope="col" className="diff">
+          Difference
+        </th>
+      </tr>
+    </thead>
   );
 }
 
@@ -397,6 +410,7 @@ function RothVsPretax({ result }) {
   const { lumpSum, annuity, contribution, contributionSplit, comparison, limitCheck, rates, years } =
     result;
   const win = (side) => (comparison.winner === side ? 'win' : '');
+  const none = () => '';
   return (
     <section className="card" aria-labelledby="sec2">
       <h2 id="sec2">Roth vs. Traditional</h2>
@@ -405,28 +419,16 @@ function RothVsPretax({ result }) {
 
       {limitCheck.atLimit && <p className="alert">{limitCheck.message}</p>}
 
-      <h3 className="subhead">The trade-off in dollars</h3>
-
+      <h3 className="subhead">Pre-tax builds a bigger account&hellip;</h3>
       <div className="table-wrap">
-        <table className="compare-table">
-          <thead>
-            <tr>
-              <th scope="col" className="row-head"></th>
-              <th scope="col" className={win('roth')}>
-                Roth
-              </th>
-              <th scope="col" className={win('pretax')}>
-                Pre-tax (Traditional)
-              </th>
-              <th scope="col" className="diff">
-                Difference
-              </th>
-            </tr>
-          </thead>
+        <table className="compare-table account-table">
+          <SideHead win={none} />
           <tbody>
-            <GroupRow title="What you put in" sub="Per year, for the same take-home pay" />
             <tr>
-              <th scope="row">Current possible contribution</th>
+              <th scope="row">
+                Current possible contribution
+                <span className="th-sub">Per year, for the same take-home pay</span>
+              </th>
               <td>
                 {$(contribution.roth)}
                 {contributionSplit.roth.excessToTaxable > 0 && (
@@ -443,34 +445,62 @@ function RothVsPretax({ result }) {
                   </span>
                 )}
               </td>
-              <td className="diff">{difference(contribution.roth, contribution.pretax)}</td>
+              <DiffCell roth={contribution.roth} pretax={contribution.pretax} />
             </tr>
-          </tbody>
-          <tbody>
-            <GroupRow title="What it grows to" sub={`After ${years} years of growth, before tax`} />
             <tr>
               <th scope="row">
                 Value of a single contribution at retirement
-                <span className="th-sub">One year&rsquo;s contribution, grown</span>
+                <span className="th-sub">One year&rsquo;s contribution, after {years} years of growth</span>
               </th>
               <td>{$(lumpSum.roth.futureValue)}</td>
               <td>{$(lumpSum.pretax.futureValueGross)}</td>
-              <td className="diff">
-                {difference(lumpSum.roth.futureValue, lumpSum.pretax.futureValueGross)}
-              </td>
+              <DiffCell roth={lumpSum.roth.futureValue} pretax={lumpSum.pretax.futureValueGross} />
             </tr>
-            <tr>
+            <tr className="total-row">
               <th scope="row">
-                Total value of account
-                <span className="th-sub">Contributing every year until retirement</span>
+                Total future value of your contributions
+                <span className="th-sub">Contributing every year until retirement, before tax</span>
               </th>
               <td>{$(annuity.roth.futureValue)}</td>
               <td>{$(annuity.pretax.futureValue)}</td>
-              <td className="diff">{difference(annuity.roth.futureValue, annuity.pretax.futureValue)}</td>
+              <DiffCell roth={annuity.roth.futureValue} pretax={annuity.pretax.futureValue} />
             </tr>
           </tbody>
+        </table>
+      </div>
+      <details className="details">
+        <summary>Why is the Pre-tax account bigger?</summary>
+        <div className="details-body">
+          <p>
+            The two contributions cost you the same take-home pay. A Pre-tax dollar comes out of
+            income that would have been taxed at your {formatPercent(rates.marginalNow, 0)} marginal
+            rate, so {$(contribution.pretax)} Pre-tax costs about what {$(contribution.roth)} Roth
+            does: the Pre-tax side invests the tax it saves today. So Pre-tax always builds the
+            bigger account. The question is how much of it you keep: every dollar that comes out is
+            taxed at the effective rate on these withdrawals, while Roth withdrawals are tax-free.
+            Pre-tax leaves more after tax when that rate is below your marginal rate today.
+          </p>
+          <p className="hint">
+            These figures cover only the account your contributions build, not your other balances.
+            Those are in the total portfolio tax comparison below.
+          </p>
+        </div>
+      </details>
+
+      <h3 className="subhead">&hellip;but does it leave more after tax?</h3>
+      <div className="table-wrap">
+        <table className="compare-table">
+          <SideHead win={win} />
           <tbody>
-            <GroupRow title="What you keep after tax" />
+            <tr>
+              <th scope="row">
+                Annual withdrawal
+                <span className="th-sub">4% of the account, before tax</span>
+              </th>
+              <td>{$(annuity.roth.annualWithdrawal)}</td>
+              <td>{$(annuity.pretax.annualWithdrawal)}</td>
+              <DiffCell roth={annuity.roth.annualWithdrawal} pretax={annuity.pretax.annualWithdrawal} />
+            </tr>
             <tr>
               <th scope="row">
                 Tax on withdrawals
@@ -480,35 +510,27 @@ function RothVsPretax({ result }) {
               <td>{formatPercent(rates.effectiveRetirement)}</td>
               <td className="diff">—</td>
             </tr>
-            <tr>
-              <th scope="row">After-tax value of that contribution</th>
-              <td className={win('roth')}>{$(lumpSum.roth.afterTaxValue)}</td>
-              <td className={win('pretax')}>{$(lumpSum.pretax.afterTaxValue)}</td>
-              <td className="diff">
-                {difference(lumpSum.roth.afterTaxValue, lumpSum.pretax.afterTaxValue)}
-              </td>
-            </tr>
-            <tr>
+            <tr className="total-row">
               <th scope="row">
                 After-tax income
-                <span className="th-sub">Per year, from a 4% withdrawal</span>
+                <span className="th-sub">Per year</span>
               </th>
               <td className={win('roth')}>{$(annuity.roth.afterTaxWithdrawal)}</td>
               <td className={win('pretax')}>{$(annuity.pretax.afterTaxWithdrawal)}</td>
-              <td className="diff">
-                {difference(annuity.roth.afterTaxWithdrawal, annuity.pretax.afterTaxWithdrawal)}
-              </td>
+              <DiffCell roth={annuity.roth.afterTaxWithdrawal} pretax={annuity.pretax.afterTaxWithdrawal} />
+            </tr>
+            <tr>
+              <th scope="row">
+                After-tax value of a single contribution
+                <span className="th-sub">One year&rsquo;s contribution, grown and taxed</span>
+              </th>
+              <td className={win('roth')}>{$(lumpSum.roth.afterTaxValue)}</td>
+              <td className={win('pretax')}>{$(lumpSum.pretax.afterTaxValue)}</td>
+              <DiffCell roth={lumpSum.roth.afterTaxValue} pretax={lumpSum.pretax.afterTaxValue} />
             </tr>
           </tbody>
         </table>
       </div>
-      <p className="hint">
-        The two contributions cost you the same take-home pay. A Pre-tax dollar comes out of income
-        that would have been taxed at your {formatPercent(rates.marginalNow, 0)} marginal rate, so{' '}
-        {$(contribution.pretax)} Pre-tax costs about what {$(contribution.roth)} Roth does. Pre-tax
-        amounts at retirement are reduced by the {formatPercent(rates.effectiveRetirement)} effective
-        rate on these withdrawals. Roth withdrawals are tax-free.
-      </p>
 
       <YearsWithoutSocialSecurity result={result} />
     </section>
@@ -672,34 +694,18 @@ function EffectiveRateMath({ result }) {
   );
 }
 
-// One line under the two rates: which way they lean, and the rule of thumb behind it.
+// One short line under the two rates: which way they lean.
+const LEAN_TEXT = {
+  pretax: 'Tends to favor Pre-tax (Traditional)',
+  roth: 'Tends to favor Roth',
+  even: 'About even',
+};
+
 function RateLean({ rates }) {
-  const now = formatPercent(rates.marginalNow);
-  const later = formatPercent(rates.effectiveRetirement);
-  const text = {
-    pretax: [
-      'Tends to favor Pre-tax (Traditional).',
-      `Your rate on these withdrawals (${later}) is lower than your marginal rate while working (${now}).`,
-    ],
-    roth: [
-      'Tends to favor Roth.',
-      `Your rate on these withdrawals (${later}) is higher than your marginal rate while working (${now}).`,
-    ],
-    even: [
-      'About even.',
-      `Your two rates (${now} and ${later}) are within half a percentage point of each other.`,
-    ],
-  }[rates.lean];
   return (
-    <div className="rate-lean">
-      <p>
-        <strong>{text[0]}</strong> {text[1]}
-      </p>
-      <p className="hint">
-        Rule of thumb: when your rate in retirement is lower than your marginal rate while working,
-        Pre-tax tends to come out ahead. When it&rsquo;s higher, Roth does.
-      </p>
-    </div>
+    <p className="rate-lean">
+      <strong>{LEAN_TEXT[rates.lean]}</strong>
+    </p>
   );
 }
 
@@ -842,6 +848,9 @@ function PortfolioComparison({ result }) {
   const short = SCENARIOS.filter((c) => !portfolio[c.key].targetMet);
   const lowerTaxName = taxDifference.lowerTaxScenario === 'roth' ? 'All-Roth' : 'All-Pre-tax';
   const higherTaxName = taxDifference.lowerTaxScenario === 'roth' ? 'All-Pre-tax' : 'All-Roth';
+  // Which scenario's portfolio delivers more after tax at a plain 4% withdrawal.
+  const incomeGap = portfolio.pretax.atBaseline.afterTaxIncome - portfolio.roth.atBaseline.afterTaxIncome;
+  const incomeLeader = Math.abs(incomeGap) < 0.5 ? null : incomeGap > 0 ? 'pretax' : 'roth';
 
   return (
     <section className="card" aria-labelledby="sec3">
@@ -923,6 +932,22 @@ function PortfolioComparison({ result }) {
                 <td key={c.key}>{formatPercent(portfolio[c.key].impliedWithdrawalRate)}</td>
               ))}
             </tr>
+            <tr className="total-row">
+              <th scope="row">
+                After-tax income at a 4% withdrawal
+                <span className="th-sub">
+                  Per year: 4% of every account + Social Security − tax. What each portfolio buys
+                </span>
+              </th>
+              {SCENARIOS.map((c) => (
+                <td key={c.key} className={incomeLeader === c.key ? 'win' : ''}>
+                  {$(portfolio[c.key].atBaseline.afterTaxIncome)}
+                  {incomeLeader === c.key && (
+                    <span className="th-sub">+{$(Math.abs(incomeGap))} a year</span>
+                  )}
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </div>
@@ -938,12 +963,6 @@ function PortfolioComparison({ result }) {
             : `That is the tax cost of getting the identical after-tax lifestyle: the ${lowerTaxName} scenario pays ${$(taxDifference.amount)} less in tax each year than the ${higherTaxName} scenario.`}
         </p>
       </div>
-
-      <p className="hint">
-        Tax paid is not the whole story. The Pre-tax scenario also got a deduction along the way,
-        so it starts with a larger balance. Compare the withdrawal rates: a lower rate means the
-        same lifestyle takes less of your portfolio each year, even if the tax bill is higher.
-      </p>
 
       {short.length > 0 && (
         <p className="alert">

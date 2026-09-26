@@ -121,8 +121,9 @@ describe('ResultsSummary', () => {
       'Overall effective rate',
       'Current possible contribution',
       'Value of a single contribution at retirement',
-      'After-tax value of that contribution',
-      'Total value of account',
+      'After-tax value of a single contribution',
+      'Total future value of your contributions',
+      'After-tax income at a 4% withdrawal',
       'After-tax income',
       'All-Roth scenario',
       'All-Pre-tax scenario',
@@ -163,29 +164,28 @@ describe('ResultsSummary', () => {
     const sec2 = html.slice(sec2Start, sec3Start);
     const sec3 = html.slice(sec3Start);
     const firstTable = sec2.indexOf('<table');
-    const dollarsLabel = sec2.indexOf('The trade-off in dollars');
-    for (const label of ['The comparison: your tax rate now vs. later', 'Marginal rate while working', 'Effective rate on these withdrawals']) {
+    const biggerLabel = sec2.indexOf('Pre-tax builds a bigger account');
+    const afterTaxLabel = sec2.indexOf('but does it leave more after tax?');
+    for (const label of ['The comparison: your tax rate now vs. later', 'Marginal rate while working', 'Effective rate on these withdrawals', 'How are the retirement rates calculated?']) {
       const at = sec2.indexOf(label);
       expect(at, label).toBeGreaterThan(-1);
-      expect(at, label).toBeLessThan(dollarsLabel);
+      expect(at, label).toBeLessThan(biggerLabel);
       expect(at, label).toBeLessThan(firstTable);
     }
-    // the dollars heading sits right before the table, after the rates
-    expect(dollarsLabel).toBeGreaterThan(-1);
-    expect(dollarsLabel).toBeLessThan(firstTable);
-    // the table walks: what you put in -> what it grows to -> what you keep, with a Difference column
-    const table = sec2.slice(firstTable);
-    const putIn = table.indexOf('What you put in');
-    const grows = table.indexOf('What it grows to');
-    const keep = table.indexOf('What you keep after tax');
-    expect(putIn).toBeGreaterThan(-1);
-    expect(grows).toBeGreaterThan(putIn);
-    expect(keep).toBeGreaterThan(grows);
-    expect(table.indexOf('Current possible contribution')).toBeLessThan(grows);
-    expect(table.indexOf('Total value of account')).toBeLessThan(keep);
-    expect(table.indexOf('Total value of account')).toBeGreaterThan(grows);
-    expect(table).toContain('Difference');
-    expect(table).toContain('Pre-tax +$2,200'); // $10,000 Pre-tax vs $7,800 Roth
+    // two tables: the account (contribution + future value), then what it leaves after tax
+    expect(biggerLabel).toBeLessThan(firstTable);
+    const accountTable = sec2.slice(firstTable, afterTaxLabel);
+    expect(accountTable).toContain('Current possible contribution');
+    expect(accountTable).toContain('Total future value of your contributions');
+    expect(accountTable).toContain('Difference');
+    expect(accountTable).toContain('Pre-tax +$2,200'); // $10,000 Pre-tax vs $7,800 Roth
+    expect(accountTable).toContain('Why is the Pre-tax account bigger?');
+    expect(accountTable).not.toContain('After-tax income');
+    const afterTaxTable = sec2.slice(afterTaxLabel, sec2.indexOf('Retirement years without Social Security'));
+    expect(afterTaxTable).toContain('<table');
+    expect(afterTaxTable).toContain('Tax on withdrawals');
+    expect(afterTaxTable).toContain('After-tax income');
+    expect(afterTaxTable).not.toContain('Current possible contribution');
     // the portfolio section no longer carries the rates
     expect(sec3).not.toContain('The comparison');
     expect(sec3).not.toContain('Marginal rate while working');
@@ -206,19 +206,21 @@ describe('ResultsSummary', () => {
     expect(html).not.toContain('turns that gap into dollars');
   });
 
-  it('shows one rule-of-thumb lean line under the rates, above the rates dropdown', () => {
+  it('shows one short lean line under the rates, above the rates dropdown', () => {
     // no Social Security, no other accounts: 11.3% later vs 22% now -> leans Pre-tax
     const html = render({ otherPretaxBalance: '0', debtPayments: '0', knowsSocialSecurity: 'yes', socialSecurityBenefit: '0' });
     const lean = html.indexOf('class="rate-lean"');
     expect(lean).toBeGreaterThan(html.indexOf('class="rate-pair"'));
     expect(lean).toBeLessThan(html.indexOf('How are the retirement rates calculated?'));
-    expect(html).toContain('Tends to favor Pre-tax (Traditional).');
-    expect(html).toContain('Rule of thumb: when your rate in retirement is lower than your marginal rate while working');
+    expect(html).toContain('Tends to favor Pre-tax (Traditional)');
+    // just the lean: no sentence restating the two rates, no rule-of-thumb hint
+    expect(html).not.toContain('Rule of thumb');
+    expect(html).not.toContain('within half a percentage point');
     // a 2x lifestyle at $60k pushes the retirement rate above 12%: leans Roth
     const roth = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0', retirementLifestyle: '2' });
-    expect(roth).toContain('Tends to favor Roth.');
+    expect(roth).toContain('Tends to favor Roth');
     // the defaults land in the Social Security phase-in: 22.2% later vs 22% now
-    expect(render()).toContain('About even.');
+    expect(render()).toContain('About even');
   });
 
   it('shows the Pre-tax deduction in the retirement-number calculation, and says so for Roth', () => {
@@ -640,5 +642,27 @@ describe('ScenarioCompare', () => {
       />,
     );
     expect(html).toContain('Fix the inputs above to see the comparison.');
+  });
+});
+
+describe('Round 2026-09-25b adjustments', () => {
+  it('Section 3 shows after-tax income at a 4% withdrawal, and drops the "not the whole story" note', () => {
+    const html = render();
+    const sec3 = html.slice(html.indexOf('id="sec3"'));
+    expect(sec3).toContain('After-tax income at a 4% withdrawal');
+    expect(sec3).toMatch(/\+\$[\d,]+ a year/); // the larger portfolio's lead
+    expect(html).not.toContain('not the whole story');
+  });
+
+  it('offers 30% and 40% lower retirement lifestyles', () => {
+    const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
+    expect(html).toContain('30% lower than today');
+    expect(html).toContain('40% lower than today');
+  });
+
+  it('App offers "Copy inputs to share" next to Compare a change', () => {
+    const html = renderToStaticMarkup(<App />);
+    expect(html).toContain('Copy inputs to share');
+    expect(html.indexOf('Copy inputs to share')).toBeGreaterThan(html.indexOf('Compare a change'));
   });
 });

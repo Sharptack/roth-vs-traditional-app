@@ -943,14 +943,6 @@ th.win .th-sub {
   margin: 4px 0 12px;
 }
 
-.rate-lean p {
-  margin: 0 0 4px;
-}
-
-.rate-lean .hint {
-  margin: 0;
-}
-
 .compare-table tbody th {
   width: 34%;
 }
@@ -1116,4 +1108,32 @@ th.win .th-sub {
   .input-columns {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ---------- "Copy inputs to share" ---------- */
+.share-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  margin-top: 8px;
+}
+
+.compare-start .share-inputs {
+  margin-top: 0;
+}
+
+.share-inputs .hint {
+  margin: 0;
+}
+
+.share-text {
+  width: 100%;
+  font: 0.85rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
 }

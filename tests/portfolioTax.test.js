@@ -237,3 +237,31 @@ describe('solvePortfolioWithdrawal — solver properties', () => {
     expect(rothHeavy.totalTaxPaid).toBeLessThan(preTaxHeavy.totalTaxPaid);
   });
 });
+
+// What each portfolio delivers after tax at a plain 4% withdrawal from every
+// bucket (scale factor 1), independent of the target. This is the "does the
+// bigger Pre-tax portfolio buy more after-tax income?" figure.
+describe('solvePortfolioWithdrawal — after-tax income at a plain 4% withdrawal', () => {
+  it('Pre-tax + Roth, no SS (HAND CALC)', () => {
+    // 4% of 1,000,000 Pre-tax = 40,000; 4% of 500,000 Roth = 20,000 (tax-free)
+    // ordinary taxable = 40,000 - 15,750 = 24,250
+    // tax = 10% x 11,925 + 12% x (24,250 - 11,925) = 1,192.50 + 1,479.00 = 2,671.50
+    // after tax = 40,000 + 20,000 - 2,671.50 = 57,328.50
+    // (the target, 30,000, doesn't matter to this figure)
+    const r = solvePortfolioWithdrawal(30000, { pretax: 1000000, roth: 500000, taxable: 0 }, 0, 'single', Y);
+    expect(r.atBaseline.totalGrossWithdrawal).toBeCloseTo(60000, 6);
+    expect(r.atBaseline.totalTaxPaid).toBeCloseTo(2671.5, 2);
+    expect(r.atBaseline.afterTaxIncome).toBeCloseTo(57328.5, 2);
+  });
+
+  it('Pre-tax + Social Security in the phase-in band (HAND CALC)', () => {
+    // 4% of 500,000 = 20,000 Pre-tax; SS 20,000
+    // combined income = 20,000 + 20,000 / 2 = 30,000 (between 25,000 and 34,000)
+    // taxable SS = min(0.5 x (30,000 - 25,000), 0.5 x 20,000) = 2,500
+    // ordinary taxable = 20,000 + 2,500 - 15,750 = 6,750 -> tax = 675
+    // after tax = 20,000 + 20,000 - 675 = 39,325
+    const r = solvePortfolioWithdrawal(50000, { pretax: 500000, roth: 0, taxable: 0 }, 20000, 'single', Y);
+    expect(r.atBaseline.totalTaxPaid).toBeCloseTo(675, 2);
+    expect(r.atBaseline.afterTaxIncome).toBeCloseTo(39325, 2);
+  });
+});

@@ -16,6 +16,8 @@ const INCOME_TYPE_OPTIONS = [
 ];
 
 const LIFESTYLE_OPTIONS = [
+  { value: '0.6', label: '40% lower than today' },
+  { value: '0.7', label: '30% lower than today' },
   { value: '0.8', label: '20% lower than today' },
   { value: '0.9', label: '10% lower than today' },
   { value: '1', label: 'Same as today' },

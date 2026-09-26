@@ -80,6 +80,9 @@ export function solvePortfolioWithdrawal(
   const totalGrossWithdrawal =
     result.withdrawals.pretax + result.withdrawals.roth + result.withdrawals.taxable;
   const shortfall = Math.max(0, targetAfterTaxIncome - result.afterTaxIncome);
+  // What the portfolio delivers after tax at a plain 4% from every bucket (k = 1),
+  // whatever the target: compares what a bigger or smaller portfolio actually buys.
+  const base = evaluate(1);
 
   return {
     withdrawals: result.withdrawals,
@@ -98,5 +101,11 @@ export function solvePortfolioWithdrawal(
     targetMet: shortfall < 0.01,
     shortfall,
     impliedWithdrawalRate: totalBalance > 0 ? totalGrossWithdrawal / totalBalance : 0,
+    atBaseline: {
+      withdrawals: base.withdrawals,
+      totalGrossWithdrawal: base.withdrawals.pretax + base.withdrawals.roth + base.withdrawals.taxable,
+      totalTaxPaid: base.tax.totalTax,
+      afterTaxIncome: base.afterTaxIncome,
+    },
   };
 }
