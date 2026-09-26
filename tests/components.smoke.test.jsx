@@ -121,12 +121,11 @@ describe('ResultsSummary', () => {
       'Effective rate on these withdrawals',
       'Overall effective rate',
       'Current possible contribution',
-      'A single year’s contribution',
-      'Value at retirement',
-      'After-tax value',
-      'Future Contributions at retirement',
-      'After-tax income it generates',
       'Your portfolio at retirement',
+      'Total portfolio at retirement',
+      'Future Contributions only: what you keep after tax',
+      'After-tax income from Future Contributions',
+      'A single year’s contribution at retirement',
       'After-tax income at a 4% withdrawal',
       'After-tax income',
       'All-Roth scenario',
@@ -161,42 +160,52 @@ describe('ResultsSummary', () => {
     expect(sec1).not.toContain('Effective rate');
   });
 
-  it('opens the Roth vs. Traditional section with "The comparison" of rates, then the dollar trade-off', () => {
+  it('gives the rates their own Roth vs. Traditional block, followed by one portfolio + trade-off table', () => {
     const html = render();
-    const sec2Start = html.indexOf('id="sec2"');
-    const sec3Start = html.indexOf('id="sec3"');
-    const sec2 = html.slice(sec2Start, sec3Start);
-    const sec3 = html.slice(sec3Start);
-    const firstTable = sec2.indexOf('<table');
-    const dollarsLabel = sec2.indexOf('The trade-off in dollars');
-    for (const label of ['The comparison: your tax rate now vs. later', 'Marginal rate while working', 'Effective rate on these withdrawals', 'How are the retirement rates calculated?']) {
-      const at = sec2.indexOf(label);
-      expect(at, label).toBeGreaterThan(-1);
-      expect(at, label).toBeLessThan(dollarsLabel);
-      expect(at, label).toBeLessThan(firstTable);
+    const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec-portfolio"'));
+    const port = html.slice(html.indexOf('id="sec-portfolio"'), html.indexOf('id="sec3"'));
+    const sec3 = html.slice(html.indexOf('id="sec3"'));
+    // order: retirement number, rates, portfolio, total portfolio tax
+    expect(html.indexOf('id="sec1"')).toBeLessThan(html.indexOf('id="sec2"'));
+    expect(html.indexOf('id="sec2"')).toBeLessThan(html.indexOf('id="sec-portfolio"'));
+    expect(html.indexOf('id="sec-portfolio"')).toBeLessThan(html.indexOf('id="sec3"'));
+    // the rates block holds only the rates: no table
+    for (const label of ['Your tax rate now vs. later', 'Marginal rate while working', 'Effective rate on these withdrawals', 'How are the retirement rates calculated?']) {
+      expect(sec2, label).toContain(label);
     }
-    expect(dollarsLabel).toBeLessThan(firstTable);
-    // one table, three groups, each value next to what it becomes after tax; no Difference column
-    const table = sec2.slice(firstTable, sec2.indexOf('</table>', firstTable));
-    const putIn = table.indexOf('What you put in');
-    const single = table.indexOf('A single year’s contribution');
-    const every = table.indexOf('Contributing every year until retirement');
-    expect(putIn).toBeGreaterThan(-1);
-    expect(single).toBeGreaterThan(putIn);
-    expect(every).toBeGreaterThan(single);
-    expect(table.indexOf('Current possible contribution')).toBeLessThan(single);
-    expect(table.indexOf('Value at retirement')).toBeGreaterThan(single);
-    expect(table.indexOf('After-tax value')).toBeLessThan(every);
-    expect(table.indexOf('Future Contributions at retirement')).toBeGreaterThan(every);
-    expect(table.indexOf('After-tax income it generates')).toBeGreaterThan(table.indexOf('Future Contributions at retirement'));
+    expect(sec2).not.toContain('Current possible contribution');
+    expect(sec2).not.toContain('class="compare-table');
+    // one table: what goes in -> the total portfolio (existing + future = total) -> Future Contributions only, after tax
+    expect(port.match(/<table/g)?.length).toBe(2); // plus the no-Social-Security dropdown's own table
+    const table = port.slice(port.indexOf('<table'), port.indexOf('</table>'));
+    const order = [
+      'What you put in',
+      'Current possible contribution',
+      'Total portfolio at retirement',
+      'Existing Accounts',
+      'Future Contributions',
+      'Total future portfolio value',
+      'Future Contributions only: what you keep after tax',
+      'After-tax income from Future Contributions',
+      'A single year’s contribution at retirement',
+      '…after tax',
+    ];
+    let at = -1;
+    for (const label of order) {
+      const next = table.indexOf(label, at + 1);
+      expect(next, label).toBeGreaterThan(at);
+      at = next;
+    }
+    expect(table).toContain('>+</span> Future Contributions');
+    expect(table).toContain('>=</span> Total future portfolio value');
+    // no Difference column, no redundant tax-rate row, no second copy of the future value
     expect(table).not.toContain('Difference');
     expect(table).not.toContain('Tax on withdrawals');
-    expect(sec2).toContain('Why is the Pre-tax side bigger?');
+    expect(table).not.toContain('Future Contributions at retirement');
+    expect(port).toContain('Why is the Pre-tax side bigger?');
+    expect(port).toContain('Retirement years without Social Security');
     // the portfolio section no longer carries the rates
-    expect(sec3).not.toContain('The comparison');
     expect(sec3).not.toContain('Marginal rate while working');
-    // the retirement number section stays rate-free and comes first
-    expect(html.indexOf('id="sec1"')).toBeLessThan(sec2Start);
   });
 
   it('has no dollar verdict sentence or table caption above the table', () => {
@@ -681,22 +690,6 @@ describe('Round 2026-09-25b adjustments', () => {
 });
 
 describe('Future Contributions vs. Existing Accounts', () => {
-  it('shows the portfolio summary first: Existing Accounts + Future Contributions = total', () => {
-    const html = render();
-    const block = html.slice(html.indexOf('id="sec-summary"'), html.indexOf('id="sec1"'));
-    expect(html.indexOf('id="sec-summary"')).toBeGreaterThan(-1);
-    const existing = block.indexOf('Existing Accounts, grown to retirement');
-    const future = block.indexOf('Future Contributions, grown to retirement');
-    const total = block.indexOf('Total future portfolio value');
-    expect(existing).toBeGreaterThan(-1);
-    expect(future).toBeGreaterThan(existing);
-    expect(total).toBeGreaterThan(future);
-    expect(block).toContain('>+</td>');
-    expect(block).toContain('>=</td>');
-    expect(block).toContain('If Future Contributions go Roth');
-    expect(block).toContain('If Future Contributions go Pre-tax');
-  });
-
   it('the summary numbers add up to the portfolio section totals', () => {
     const r = compareRothVsTraditional(toCompareInputs({ ...DEFAULT_FORM_VALUES, savings: '23500', currentType: 'roth' }, 2025));
     const existing = r.grown.pretax + r.grown.roth + r.grown.taxable;

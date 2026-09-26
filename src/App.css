@@ -564,9 +564,7 @@ th.win .th-sub {
 }
 
 .tax-rates {
-  margin-bottom: 4px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: 0;
 }
 
 .tax-rates > .subhead:first-child {
@@ -978,25 +976,9 @@ th.win .th-sub {
 }
 
 .tradeoff-table .total-row th,
-.tradeoff-table .total-row td,
-.sum-table .total-row th,
-.sum-table .total-row td {
+.tradeoff-table .total-row td {
   font-weight: 700;
   border-top: 2px solid var(--line);
-}
-
-/* ---------- Portfolio summary (Existing + Future Contributions = total) ---------- */
-.sum-table tbody th {
-  width: 40%;
-}
-
-.sum-table .op {
-  width: 1.5em;
-  padding-right: 0;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--dim);
-  text-align: center;
 }
 
 .drivers {
@@ -1169,8 +1151,7 @@ th.win .th-sub {
 }
 
 /* Equal-width value columns so Roth and Pre-tax line up. */
-.tradeoff-table,
-.sum-table {
+.tradeoff-table {
   table-layout: fixed;
 }
 
@@ -1178,12 +1159,21 @@ th.win .th-sub {
   width: 40%;
 }
 
-.sum-table thead th.op {
-  width: 1.8em;
+/* "+" and "=" in front of the rows that add up to the total portfolio. */
+.tradeoff-table th .op {
+  display: inline-block;
+  width: 1.1em;
+  margin-left: -1.1em;
+  font-weight: 700;
+  color: var(--dim);
 }
 
-.sum-table thead th.row-head {
-  width: 38%;
+.tradeoff-table tbody th {
+  padding-left: 1.6em;
+}
+
+.tradeoff-table .group-row th {
+  padding-left: 10px;
 }
 
 /* "Comparing a change": the retirement income number, and above all the two
