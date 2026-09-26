@@ -1159,22 +1159,6 @@ th.win .th-sub {
   width: 40%;
 }
 
-/* "+" and "=" in front of the rows that add up to the total portfolio. */
-.tradeoff-table th .op {
-  display: inline-block;
-  width: 1.1em;
-  margin-left: -1.1em;
-  font-weight: 700;
-  color: var(--dim);
-}
-
-.tradeoff-table tbody th {
-  padding-left: 1.6em;
-}
-
-.tradeoff-table .group-row th {
-  padding-left: 10px;
-}
 
 /* "Comparing a change": the retirement income number, and above all the two
    rates the decision turns on, stand out from the other headline rows. */

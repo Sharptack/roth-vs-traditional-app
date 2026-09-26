@@ -330,21 +330,19 @@ the whole account) is still open — see "Known limitations."
   same as the SS estimator.
 - Section 3 has an extra **"Withdrawal rate needed"** row and a note: a higher tax bill is not a verdict
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
-- **Page layout (2026-09-25e):** (1) "Retirement income number": hero value, SS + income-needed-from-portfolio
+- **Page layout (2026-09-25g):** (1) "Retirement income number": hero value, SS + income-needed-from-portfolio
   facts, note, "How is this calculated?" dropdown. (2) **"Roth vs. Traditional"** card (`id="sec2"`) holding ONLY the
   rates: "Your tax rate now vs. later" rate pair, the short lean phrase ("Tends to favor Roth" / "About even"; the
   user removed the explanatory sentence and rule-of-thumb hint) and the "How are the retirement rates calculated?"
-  dropdown. (3) **"Your portfolio at retirement"** card (`id="sec-portfolio"`): limit alert, then ONE table (Roth /
-  Pre-tax columns only, no Difference column, no "Tax on withdrawals" row) whose shaded group headings say what
-  each number covers: "What you put in" (current possible contribution); "Total portfolio at retirement"
-  (Existing Accounts with Pre-tax/Roth/taxable breakdown, "+ Future Contributions", "= Total future portfolio
-  value", equal to `portfolio.X.totalValue`); "Future Contributions only: what you keep after tax" (after-tax
-  income from Future Contributions, a single year's contribution at retirement, "...after tax"). The user merged the
-  former "Your portfolio at retirement" summary card and "The trade-off in dollars" table into this to remove
-  redundancy and make total-vs-contributions-only unambiguous. Then "Why is the Pre-tax side bigger?" and
-  "Retirement years without Social Security" dropdowns. (4) "Total portfolio tax comparison" (`id="sec3"`; table
-  incl. "After-tax income at a 4% withdrawal" + "Show the calculation" dropdown), no rates. Cells show "incl. $X in a
-  taxable account (over the IRS limit)" when a taxable side exists.
+  dropdown. (3) **"The trade-off in dollars"** card (`id="sec-tradeoff"`, `TradeOff` component): limit alert, then
+  ONE table (Roth / Pre-tax only, no Difference column, no "Tax on withdrawals" row) with three shaded groups:
+  "What you put in" (current possible contribution); "A single year's contribution" (value at retirement, after-tax
+  value); "Contributing every year until retirement" (Future Contributions at retirement, after-tax income it
+  generates). Future Contributions only. Then "Why is the Pre-tax side bigger?" and "Retirement years without
+  Social Security" dropdowns. (4) "Total portfolio tax comparison" (`id="sec3"`). REJECTED (2026-09-25): a
+  "Your portfolio at retirement" block (Existing Accounts + Future Contributions = total), first as a card above
+  Section 1, then merged into the trade-off table. The user found it muddied things; don't reintroduce it.
+  Cells show "incl. $X in a taxable account (over the IRS limit)" when a taxable side exists.
 - **Terminology (user, 2026-09-25c):** the savings being decided on = **"Future Contributions"** (capitalized);
   all other retirement/investment balances collectively = **"Existing Accounts"**. Never "this account",
   "other accounts/balances" or "other income" (for SS + existing) in the UI or ARTICLE.md; smoke tests enforce
@@ -368,9 +366,6 @@ the whole account) is still open — see "Known limitations."
 - SS wage base lives only in `ficaRates.js`.
 
 ## Known limitations / open items
-- OPEN (user will test first, 2026-09-25): the "Total portfolio tax comparison" section still opens with a
-  "Total future portfolio value" row (+ per-bucket breakdown) that repeats the totals in "Your portfolio at
-  retirement". Options offered: drop the row, or keep only the per-bucket breakdown. Revisit when the user asks.
 - The effective rate is measured on the *gap-filling* withdrawal G but Section 2 applies it to the account's
   full 4% withdrawal (this is the G > 0 case; the separate G = 0 probe-size issue was fixed 2026-09-23 —
   see "Effective-rate probe size" above). For large accounts this overstates tax a bit (default MFJ case:
@@ -414,6 +409,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (g) — Removed "Your portfolio at retirement" (the user found it muddying). The trade-off table is back
+  to its pre-merge form, in its own "The trade-off in dollars" card below the rates. The total-value redundancy
+  item is moot (the total now appears only in the total portfolio tax comparison). 395 tests.
 - 2026-09-25 (f) — "Copy inputs to share" moved to the very bottom of the main inputs card. 395 tests.
 - 2026-09-25 (e) — Layout: the rates get their own "Roth vs. Traditional" card; the portfolio summary and the
   trade-off table merged into one "Your portfolio at retirement" card below it (one table: what you put in -> total

@@ -418,19 +418,15 @@ function RothVsTraditional({ result }) {
   );
 }
 
-// "Your portfolio at retirement": what goes in, the whole portfolio it becomes
-// (Existing Accounts + Future Contributions = total), then what the Future
-// Contributions alone leave after tax. Group headings say which is which.
-function PortfolioAndTradeoff({ result }) {
-  const { lumpSum, annuity, contribution, contributionSplit, comparison, limitCheck, rates, years, grown, portfolio } =
+// The trade-off in dollars: Future Contributions only, in its own block below the rates.
+function TradeOff({ result }) {
+  const { lumpSum, annuity, contribution, contributionSplit, comparison, limitCheck, rates, years } =
     result;
   const win = (side) => (comparison.winner === side ? 'win' : '');
   const anySide = contributionSplit.roth.excessToTaxable > 0 || contributionSplit.pretax.excessToTaxable > 0;
-  const existing = grown.pretax + grown.roth + grown.taxable;
-  const sides = ['roth', 'pretax'];
   return (
-    <section className="card" aria-labelledby="sec-portfolio">
-      <h2 id="sec-portfolio">Your portfolio at retirement</h2>
+    <section className="card" aria-labelledby="sec-tradeoff">
+      <h2 id="sec-tradeoff">The trade-off in dollars</h2>
 
       {limitCheck.atLimit && <p className="alert">{limitCheck.message}</p>}
 
@@ -441,93 +437,62 @@ function PortfolioAndTradeoff({ result }) {
               <th scope="col" className="row-head"></th>
               <th scope="col" className={win('roth')}>
                 Roth
-                <span className="th-sub">Future Contributions go Roth</span>
               </th>
               <th scope="col" className={win('pretax')}>
                 Pre-tax (Traditional)
-                <span className="th-sub">Future Contributions go Pre-tax</span>
               </th>
             </tr>
           </thead>
           <tbody>
-            <GroupRow title="What you put in" sub="Future Contributions, per year, for the same take-home pay" />
+            <GroupRow title="What you put in" />
             <tr>
-              <th scope="row">Current possible contribution</th>
-              {sides.map((k) => (
-                <td key={k}>
-                  {$(contribution[k])}
-                  <SideNote amount={contributionSplit[k].excessToTaxable} />
-                </td>
-              ))}
+              <th scope="row">
+                Current possible contribution
+                <span className="th-sub">Per year, for the same take-home pay</span>
+              </th>
+              <td>
+                {$(contribution.roth)}
+                <SideNote amount={contributionSplit.roth.excessToTaxable} />
+              </td>
+              <td>
+                {$(contribution.pretax)}
+                <SideNote amount={contributionSplit.pretax.excessToTaxable} />
+              </td>
             </tr>
           </tbody>
           <tbody>
-            <GroupRow
-              title="Total portfolio at retirement"
-              sub={`Existing Accounts + Future Contributions, grown for ${years} years, before tax`}
-            />
+            <GroupRow title="A single year&rsquo;s contribution" sub={`Grown for ${years} years`} />
             <tr>
-              <th scope="row">
-                Existing Accounts
-                <span className="th-sub">
-                  Pre-tax {$(grown.pretax)} · Roth {$(grown.roth)} · Taxable {$(grown.taxable)}
-                </span>
-              </th>
-              <td>{$(existing)}</td>
-              <td>{$(existing)}</td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <span className="op" aria-hidden="true">+</span> Future Contributions
-              </th>
-              {sides.map((k) => (
-                <td key={k}>
-                  {$(annuity[k].totalFutureValue)}
-                  <SideNote amount={annuity[k].side.futureValue} />
-                </td>
-              ))}
+              <th scope="row">Value at retirement</th>
+              <td>{$(lumpSum.roth.totalFutureValue)}</td>
+              <td>{$(lumpSum.pretax.totalFutureValue)}</td>
             </tr>
             <tr className="total-row">
-              <th scope="row">
-                <span className="op" aria-hidden="true">=</span> Total future portfolio value
-              </th>
-              {sides.map((k) => (
-                <td key={k}>{$(portfolio[k].totalValue)}</td>
-              ))}
+              <th scope="row">After-tax value</th>
+              <td className={win('roth')}>{$(lumpSum.roth.totalAfterTaxValue)}</td>
+              <td className={win('pretax')}>{$(lumpSum.pretax.totalAfterTaxValue)}</td>
             </tr>
           </tbody>
           <tbody>
-            <GroupRow
-              title="Future Contributions only: what you keep after tax"
-              sub="Pre-tax withdrawals taxed at the effective rate on these withdrawals; Roth is tax-free"
-            />
+            <GroupRow title="Contributing every year until retirement" />
+            <tr>
+              <th scope="row">Future Contributions at retirement</th>
+              <td>
+                {$(annuity.roth.totalFutureValue)}
+                <SideNote amount={annuity.roth.side.futureValue} />
+              </td>
+              <td>
+                {$(annuity.pretax.totalFutureValue)}
+                <SideNote amount={annuity.pretax.side.futureValue} />
+              </td>
+            </tr>
             <tr className="total-row">
               <th scope="row">
-                After-tax income from Future Contributions
+                After-tax income it generates
                 <span className="th-sub">Per year, from a 4% withdrawal</span>
               </th>
-              {sides.map((k) => (
-                <td key={k} className={win(k)}>
-                  {$(annuity[k].totalAfterTaxIncome)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <th scope="row">
-                A single year&rsquo;s contribution at retirement
-                <span className="th-sub">Before tax</span>
-              </th>
-              {sides.map((k) => (
-                <td key={k}>{$(lumpSum[k].totalFutureValue)}</td>
-              ))}
-            </tr>
-            <tr>
-              <th scope="row">&hellip;after tax</th>
-              {sides.map((k) => (
-                <td key={k} className={win(k)}>
-                  {$(lumpSum[k].totalAfterTaxValue)}
-                </td>
-              ))}
+              <td className={win('roth')}>{$(annuity.roth.totalAfterTaxIncome)}</td>
+              <td className={win('pretax')}>{$(annuity.pretax.totalAfterTaxIncome)}</td>
             </tr>
           </tbody>
         </table>
@@ -554,9 +519,8 @@ function PortfolioAndTradeoff({ result }) {
             </p>
           )}
           <p className="hint">
-            Existing Accounts are the same in both columns: the choice only changes your Future
-            Contributions. The after-tax rows cover Future Contributions only; the total portfolio
-            tax comparison below includes everything.
+            These figures cover only your Future Contributions, not your Existing Accounts. The
+            total portfolio tax comparison below includes both.
           </p>
         </div>
       </details>
@@ -565,6 +529,7 @@ function PortfolioAndTradeoff({ result }) {
     </section>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Tax rates (top of section 2) and total portfolio comparison (3)      */
@@ -1026,7 +991,7 @@ export default function ResultsSummary({ result }) {
     <div className="results">
       <RetirementNumberSection result={result} />
       <RothVsTraditional result={result} />
-      <PortfolioAndTradeoff result={result} />
+      <TradeOff result={result} />
       <PortfolioComparison result={result} />
       <p className="disclaimer">
         Estimates only — not tax or financial advice. Based on {result.dataYear} federal tax rules,
