@@ -259,6 +259,19 @@ describe('ResultsSummary', () => {
     expect(none).not.toContain('Capital-gains tax on taxable-account withdrawals');
   });
 
+  it('shows the Net Investment Income Tax when gains pass the MAGI threshold', () => {
+    // High income, a large taxable balance: MAGI is over $200,000 and the withdrawal adds NIIT.
+    const html = render({ grossIncome: '300000', otherPretaxBalance: '300000', otherTaxableBalance: '600000' });
+    const start = html.indexOf('How are the retirement rates calculated?');
+    const dropdown = html.slice(start, html.indexOf('</details>', start));
+    expect(dropdown).toContain('Net Investment Income Tax (3.8% on gains');
+    expect(dropdown).toContain('of which extra Net Investment Income Tax');
+    expect(html).toContain('The Net Investment Income Tax.');
+    expect(html).toContain('the gain also owes the 3.8% Net Investment Income Tax');
+    // ...and none of it for the default (modest-income) case
+    expect(render()).not.toContain('Net Investment Income Tax');
+  });
+
   it('explains that other Pre-tax accounts are taxed first and push the rate up', () => {
     const html = render({ otherPretaxBalance: '100000' });
     expect(html).toContain('What sets the rate on these withdrawals');

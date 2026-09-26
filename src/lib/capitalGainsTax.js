@@ -12,8 +12,10 @@
 // be cheaper than it looks. This calculator now reflects that instead of
 // assuming a flat rate.
 //
-// Not modeled: the Net Investment Income Tax (see the data file).
+// The Net Investment Income Tax (3.8% above a MAGI threshold) is a separate
+// tax on the same gains: calculateNiit below.
 import { CAPITAL_GAINS_BRACKETS } from '../data/capitalGainsBrackets.js';
+import { NIIT_RATES } from '../data/niitRates.js';
 import { getYearData } from './yearLookup.js';
 
 // grossOrdinaryIncome: ordinary income BEFORE the standard deduction (e.g.
@@ -55,4 +57,15 @@ export function calculateCapitalGainsTax(
     bottom = upTo;
   }
   return tax;
+}
+
+// Net Investment Income Tax: rate x the smaller of net investment income and
+// MAGI above the filing-status threshold (see data/niitRates.js).
+// magi: modified AGI, including the investment income itself.
+export function calculateNiit(magi, netInvestmentIncome, filingStatus, year) {
+  const { data } = getYearData(NIIT_RATES, year);
+  const threshold = data.threshold[filingStatus];
+  if (threshold === undefined) throw new Error(`Unknown filing status: ${filingStatus}`);
+  const base = Math.min(Math.max(0, netInvestmentIncome), Math.max(0, magi - threshold));
+  return data.rate * base;
 }

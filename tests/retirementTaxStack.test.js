@@ -32,3 +32,49 @@ describe('calculateRetirementTax — taxable-account cost basis', () => {
     expect(all.taxableSS).toBeCloseTo(2500, 6);
   });
 });
+
+// NIIT (3.8%) on taxable-account gains once MAGI passes $200,000 Single / $250,000 MFJ.
+// MAGI = Pre-tax withdrawals + taxable Social Security + gains (Roth and cost basis excluded).
+describe('calculateRetirementTax — Net Investment Income Tax', () => {
+  it('adds 3.8% on gains above the threshold, on top of capital-gains tax (HAND CALC)', () => {
+    // Pre-tax 200,000; taxable withdrawal 60,000 at 50% gains -> 30,000 of gain.
+    // ordinary taxable = 200,000 - 15,750 = 184,250, already past the 0% gains bracket (48,350)
+    //   -> all 30,000 of gain at 15% = 4,500
+    // MAGI = 200,000 + 30,000 = 230,000 -> excess 30,000; NII 30,000 -> 3.8% x 30,000 = 1,140
+    const r = calculateRetirementTax({ pretaxWithdrawal: 200000, taxableWithdrawal: 60000, taxableGainShare: 0.5, filingStatus: 'single', year: Y });
+    expect(r.magi).toBeCloseTo(230000, 6);
+    expect(r.capitalGainsTax).toBeCloseTo(4500, 2);
+    expect(r.niit).toBeCloseTo(1140, 2);
+    expect(r.totalTax).toBeCloseTo(r.ordinaryTax + 4500 + 1140, 2);
+  });
+
+  it('a bigger Pre-tax withdrawal exposes a fixed gain to NIIT (HAND CALC)', () => {
+    // gains 30,000 (all-gain withdrawal)
+    // Pre-tax 150,000: MAGI 180,000 < 200,000 -> 0
+    // Pre-tax 190,000: MAGI 220,000 -> excess 20,000 < 30,000 -> 3.8% x 20,000 = 760
+    const low = calculateRetirementTax({ pretaxWithdrawal: 150000, taxableWithdrawal: 30000, filingStatus: 'single', year: Y });
+    const high = calculateRetirementTax({ pretaxWithdrawal: 190000, taxableWithdrawal: 30000, filingStatus: 'single', year: Y });
+    expect(low.niit).toBe(0);
+    expect(high.niit).toBeCloseTo(760, 2);
+  });
+
+  it('taxable Social Security counts toward MAGI (HAND CALC)', () => {
+    // Pre-tax 180,000; gains 20,000; SS 40,000.
+    // combined = 200,000 + 20,000 = 220,000, far past 34,000 -> taxable SS = 85% x 40,000 = 34,000
+    // MAGI = 180,000 + 34,000 + 20,000 = 234,000 -> excess 34,000; NII 20,000 -> 3.8% x 20,000 = 760
+    // (without SS, MAGI would be 200,000 -> no NIIT)
+    const r = calculateRetirementTax({ pretaxWithdrawal: 180000, taxableWithdrawal: 20000, ssBenefit: 40000, filingStatus: 'single', year: Y });
+    expect(r.taxableSS).toBeCloseTo(34000, 6);
+    expect(r.magi).toBeCloseTo(234000, 6);
+    expect(r.niit).toBeCloseTo(760, 2);
+    const noSS = calculateRetirementTax({ pretaxWithdrawal: 180000, taxableWithdrawal: 20000, filingStatus: 'single', year: Y });
+    expect(noSS.niit).toBe(0);
+  });
+
+  it('returned cost basis is not in MAGI', () => {
+    // Pre-tax 190,000; taxable 100,000 at 10% gains -> 10,000 gain; MAGI 200,000 -> 0
+    const r = calculateRetirementTax({ pretaxWithdrawal: 190000, taxableWithdrawal: 100000, taxableGainShare: 0.1, filingStatus: 'single', year: Y });
+    expect(r.magi).toBeCloseTo(200000, 6);
+    expect(r.niit).toBe(0);
+  });
+});

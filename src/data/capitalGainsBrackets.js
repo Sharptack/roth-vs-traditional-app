@@ -19,8 +19,8 @@
 //     Single: 0% <= $49,450; 15% $49,450–$545,500; 20% above.
 //     MFJ: 0% <= $98,900; 15% $98,900–$613,700; 20% above.
 //
-// NOT modeled: the Net Investment Income Tax (an extra 3.8% on investment
-// income above $200,000 Single / $250,000 MFJ of modified AGI).
+// The Net Investment Income Tax (an extra 3.8% on investment income above
+// $200,000 Single / $250,000 MFJ of modified AGI) is in niitRates.js.
 export const CAPITAL_GAINS_BRACKETS = {
   2025: {
     single: [

@@ -219,7 +219,7 @@ describe('solveGrossWithdrawal — capital gains stack on top of ordinary income
   // stacked on top. That means withdrawing more from THIS account can push a fixed
   // taxable-account withdrawal from the 0% capital-gains bracket into the 15% bracket —
   // a real cost that a flat capital-gains rate would miss entirely.
-  it('a withdrawal fully sheltered from ordinary tax can still cost 15%, by using up deduction room that would have sheltered gains (HAND CALC)', () => {
+  it('a withdrawal fully sheltered from ordinary tax can still cost 15% (+3.8% NIIT), by using up deduction room that would have sheltered gains (HAND CALC)', () => {
     // No SS, other taxable withdrawal $300,000 (single, 2025; standard deduction $15,750;
     // gains brackets 0% <= 48,350, 15% 48,350–533,400).
     //   G = 0: total taxable = 300,000 - 15,750 = 284,250. Gains stack [0, 284,250]:
@@ -228,13 +228,18 @@ describe('solveGrossWithdrawal — capital gains stack on top of ordinary income
     //     $0 of ORDINARY tax — but it uses up $10,000 of deduction room that used to shelter
     //     gains. total taxable = 310,000 - 15,750 = 294,250. Gains stack [0, 294,250]:
     //     15% x (294,250 - 48,350 = 245,900) = 36,885
-    //   extra tax caused by G = 36,885 - 35,385 = 1,500  ->  effective rate = 1,500 / 10,000 = 15%,
+    //   extra capital-gains tax caused by G = 36,885 - 35,385 = 1,500 (15% of G),
     //   even though G's own ordinary bracket is 0% (still under the standard deduction).
-    //   net(G=10,000) = 10,000 + 300,000 - 36,885 = 273,115
+    // NIIT (3.8% x the smaller of gains and MAGI above 200,000): G also raises MAGI.
+    //   G = 0:      MAGI 300,000 -> excess 100,000 (< 300,000 of gains) -> 3,800
+    //   G = 10,000: MAGI 310,000 -> excess 110,000 -> 4,180   (extra 380 = 3.8% of G)
+    //   total tax: G = 0 -> 35,385 + 3,800 = 39,185; G = 10,000 -> 36,885 + 4,180 = 41,065
+    //   extra tax = 1,500 + 380 = 1,880  ->  effective rate = 1,880 / 10,000 = 18.8%
+    //   net(G=10,000) = 10,000 + 300,000 - 41,065 = 268,935
     const r = solveGrossWithdrawal({
       filingStatus: 'single',
       year: 2025,
-      targetAfterTaxIncome: 273115,
+      targetAfterTaxIncome: 268935,
       otherTaxableWithdrawal: 300000,
     });
     expect(r.grossWithdrawal).toBeCloseTo(10000, 0);
@@ -242,8 +247,10 @@ describe('solveGrossWithdrawal — capital gains stack on top of ordinary income
     expect(r.baseStack.ordinaryTax).toBe(0);
     expect(r.solutionStack.capitalGainsTax).toBeCloseTo(36885, 1);
     expect(r.solutionStack.ordinaryTax).toBe(0);
-    expect(r.totalTaxPaid).toBeCloseTo(36885, 1);
-    expect(r.retirementEffectiveTaxRate).toBeCloseTo(0.15, 3);
+    expect(r.baseStack.niit).toBeCloseTo(3800, 1);
+    expect(r.solutionStack.niit).toBeCloseTo(4180, 1);
+    expect(r.totalTaxPaid).toBeCloseTo(41065, 1);
+    expect(r.retirementEffectiveTaxRate).toBeCloseTo(0.188, 3);
   });
 
   it('with no other taxable-account balance, this interaction disappears (baseline sanity check)', () => {

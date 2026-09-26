@@ -22,8 +22,8 @@ const money = (key, label, value, kind = 'sub', detail) => ({
   ...(detail ? { detail } : {}),
 });
 
-// Tax on one retirement stack: split into ordinary + capital-gains tax when there
-// are taxable-account withdrawals, one row otherwise.
+// Tax on one retirement stack: split into ordinary + capital-gains tax (+ NIIT, when
+// owed) when there are taxable-account withdrawals, one row otherwise.
 function taxRows(prefix, stack, hasGains, totalLabel) {
   if (!hasGains) return [money(`${prefix}Tax`, totalLabel, stack.totalTax)];
   return [
@@ -33,13 +33,16 @@ function taxRows(prefix, stack, hasGains, totalLabel) {
       'Capital-gains tax on taxable-account withdrawals (0% / 15% / 20%, stacked on top of ordinary income)',
       stack.capitalGainsTax,
     ),
+    ...(stack.niit > 0.5 ? [money(`${prefix}Niit`, NIIT_LABEL, stack.niit)] : []),
     money(`${prefix}Tax`, totalLabel, stack.totalTax),
   ];
 }
 
-// The extra tax split into its two parts, when capital gains are involved.
+const NIIT_LABEL = 'Net Investment Income Tax (3.8% on gains, above $200,000 / $250,000 joint MAGI)';
+
+// The extra tax split into its parts, when capital gains are involved.
 function extraTaxSplitRows(d) {
-  if (!(d.extraCapitalGainsTax > 0.5)) return [];
+  if (!(d.extraCapitalGainsTax > 0.5 || d.extraNiit > 0.5)) return [];
   return [
     money('extraOrdinaryTax', '…of which extra income tax', d.extraOrdinaryTax),
     money(
@@ -47,6 +50,9 @@ function extraTaxSplitRows(d) {
       '…of which extra capital-gains tax (gains pushed into a higher bracket)',
       d.extraCapitalGainsTax,
     ),
+    ...(d.extraNiit > 0.5
+      ? [money('extraNiit', '…of which extra Net Investment Income Tax (more gains over the MAGI threshold)', d.extraNiit)]
+      : []),
   ];
 }
 
@@ -153,5 +159,6 @@ export function rateDriverRows(result) {
     { key: 'driverEnd', label: 'Bracket of its last dollar', value: d.endBracket, format: 'bracket', kind: 'sub' },
     money('driverSS', 'Social Security it pulls into taxable income', d.extraTaxableSS),
     money('driverGains', 'Capital-gains tax it adds', d.extraCapitalGainsTax),
+    money('driverNiit', 'Net Investment Income Tax it adds', d.extraNiit),
   ];
 }

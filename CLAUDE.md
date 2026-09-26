@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (395 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (408 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -61,12 +61,12 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 
 ## Code map
 - `src/data/`: `taxBrackets.js` (2025, 2026), `capitalGainsBrackets.js` (0%/15%/20% LTCG brackets),
-  `ficaRates.js` (also owns the SS wage base),
+  `ficaRates.js` (also owns the SS wage base), `niitRates.js` (NIIT rate + MAGI thresholds),
   `ssBendPoints.js` (+ FRA table by birth year), `ssTaxThresholds.js` (fixed by law), `contributionLimits.js`.
 - `src/lib/`: `taxCalculations` (progressive tax, marginal rate; accepts above-the-line adjustments), `contributionLimits`
   (`checkContributionLimit` = the UI warning; `splitAtContributionLimit` = caps a contribution at the IRS
   limit and returns the excess; both take an optional `age` for catch-up contributions; shared `getLimit`
-  lookup so the two never disagree), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
+  lookup so the two never disagree), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below; also `calculateNiit`), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
   (IRS combined-income formula), `socialSecurity` (simplified benefit estimator), `retirementTaxStack`
   (shared tax on a retirement income stack), `solver` (monotonic binary search), `incomeNeed`
   (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
@@ -199,7 +199,12 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    retiree can pay 0% on some or all of a taxable-account withdrawal, and a bigger Pre-tax withdrawal can
    push a FIXED taxable-account withdrawal into a higher LTCG bracket (a real, correct cross-account
    effect — see incomeNeed.test.js's "capital gains stack on top of ordinary income" tests for a clean,
-   isolated, hand-verified example). NIIT (3.8%) is not modeled.
+   isolated, hand-verified example). **NIIT** (added 2026-09-25h): 3.8% × min(gains, MAGI − $200k Single /
+   $250k MFJ); MAGI = Pre-tax withdrawals + taxable SS + gains (Roth and returned basis excluded).
+   `calculateRetirementTax` returns `magi` and `niit` and includes it in `totalTax`, so every rate, the
+   side account and Section 3 pick it up. Cross-account effect like the LTCG push: Pre-tax withdrawals are
+   not investment income but raise MAGI, exposing more gains (`rateDrivers.extraNiit`). Retirement only:
+   the model has no investment income during working years.
 5. **Effective rate on these withdrawals** (`rates.effectiveRetirement`; `incomeNeed`): binary-search the gross withdrawal G from *this* account
    so total after-tax income = need. Rate = (extra tax caused by G) / G, i.e. incremental blended rate
    including the Social Security phase-in. If other sources already cover the need (G = 0), the rate is
@@ -372,7 +377,7 @@ the whole account) is still open — see "Known limitations."
   18.5% vs ~17.4%). Offered to the user as an optional refinement; not changed.
 - Not modeled: state tax, 65+ additional standard deduction and the temporary senior deduction (both
   would lower retirement tax), RMDs, employer match, raises, tax-efficient withdrawal order, IRA phase-outs,
-  self-employment tax, two-earner couples' separate wage bases. (Catch-up contributions ARE now modeled —
+  two-earner couples' separate wage bases. (Catch-up contributions ARE now modeled —
   see "Catch-up contributions" above — but only as a snapshot at today's age, not aging into a tier over
   a multi-decade projection.)
 - The lifestyle factor is one multiplier on the need. It does not model contributions made at a *higher
@@ -382,9 +387,11 @@ the whole account) is still open — see "Known limitations."
   asserts effective <= marginal — capital-gains bracket-stacking can push the blended effective rate
   above the ordinary marginal rate when a taxable balance is present (real effect, see above). The
   "Roth (almost) never wins" half of the property is checked empirically over a grid, not proven.
-- NIIT (3.8% on investment income above $200k/$250k MFJ) is not modeled.
-- 1099: income entered is *net* earnings; QBI deduction, solo-401(k)/SEP not modeled; MFJ couples treated as
-  one earner (single wage base).
+- 1099: self-employment tax IS modeled (see model step 1). Still simplified: income entered is *net*
+  earnings (after business expenses); the 20% QBI deduction is not modeled (it would lower today's taxable
+  income and can lower the marginal rate, tilting toward Roth for eligible owners); solo-401(k)/SEP limits
+  are not modeled (the employee 401(k) limit is used, too low for someone who can also make the employer
+  contribution); MFJ couples treated as one earner (single wage base).
 - A Roth/Traditional split is a future feature (the app warns at >= 90% of the contribution limit). The
   "maxing out" side account IS modeled since 2026-09-25c (see model steps 6–7). Its tax uses the same
   whole-account caveat as the main rate, and the marginal rate t is applied to the whole excess.
@@ -397,6 +404,8 @@ the whole account) is still open — see "Known limitations."
   2025 $1,226 / $7,391 and 2026 $1,286 / $7,749; 2025 wage base $176,100.
 - SS taxability thresholds ($25k/$34k Single, $32k/$44k MFJ) are statutory; not fetched.
 - Self-employment tax (12.4% + 2.9%, 92.35%, $400 minimum, half deductible): IRS Topic 554, checked 2026-09-20.
+- NIIT (3.8%; $200,000 Single / $250,000 MFJ; not indexed; MAGI = AGI; SS and qualified-plan distributions
+  are not investment income, stock/fund gains are): IRS Topic 559 and the IRS NIIT Q&A, checked 2026-09-25.
 - Catch-up contributions (401(k) $7,500/2025, $8,000/2026; 60-63 enhanced tier $11,250 both years; IRA
   $1,000/2025, $1,100/2026): IRS Notice 2024-80 and the 2026 401(k)/IRA newsroom announcement, checked 2026-09-23.
 - Every data file names its sources in comments. Re-verify each January when new-year data is added.
@@ -409,6 +418,11 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (h) — NIIT modeled (see model step 4): `calculateNiit` + `data/niitRates.js`, in `totalTax`; the rate
+  walk-throughs, "What sets the rate" and the total portfolio calculation show it only when owed. Hand-verified
+  tests (capitalGainsTax, retirementTaxStack); the incomeNeed $300k-gains stacking test was re-derived by hand
+  with NIIT (rate 15% -> 18.8%). ARTICLE.md updated. Removed the stale "self-employment tax not modeled" entry
+  and expanded the 1099 limitations. 408 tests.
 - 2026-09-25 (g) — Removed "Your portfolio at retirement" (the user found it muddying). The trade-off table is back
   to its pre-merge form, in its own "The trade-off in dollars" card below the rates. The total-value redundancy
   item is moot (the total now appears only in the total portfolio tax comparison). 395 tests.

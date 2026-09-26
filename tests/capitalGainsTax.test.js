@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateCapitalGainsTax as cgTax } from '../src/lib/capitalGainsTax.js';
+import { calculateCapitalGainsTax as cgTax, calculateNiit } from '../src/lib/capitalGainsTax.js';
 import { getStandardDeduction } from '../src/lib/taxCalculations.js';
 
 const Y = 2025;
@@ -111,5 +111,40 @@ describe('calculateCapitalGainsTax — 2026 (HAND CALC)', () => {
     // ordinary gross 70,000 -> ordinaryTaxableIncome 53,900 (already above 49,450 threshold)
     // gains occupy [53,900, 73,900], entirely 15% -> 3,000
     expect(cgTax(70000, 20000, std, 'single', 2026)).toBeCloseTo(3000, 6);
+  });
+});
+
+// NIIT: 3.8% x the smaller of net investment income and MAGI above the threshold
+// ($200,000 Single / $250,000 MFJ, fixed by statute — the same in every year).
+describe('calculateNiit (hand-computed)', () => {
+  it('owes nothing at or below the threshold', () => {
+    expect(calculateNiit(200000, 50000, 'single', Y)).toBe(0);
+    expect(calculateNiit(150000, 50000, 'single', Y)).toBe(0);
+    expect(calculateNiit(250000, 50000, 'mfj', Y)).toBe(0);
+  });
+
+  it('is limited by the MAGI excess when that is smaller (HAND CALC)', () => {
+    // MAGI 230,000 - 200,000 = 30,000 excess; NII 50,000 -> 3.8% x 30,000 = 1,140
+    expect(calculateNiit(230000, 50000, 'single', Y)).toBeCloseTo(1140, 6);
+  });
+
+  it('is limited by net investment income when that is smaller (HAND CALC)', () => {
+    // excess 30,000; NII 20,000 -> 3.8% x 20,000 = 760
+    expect(calculateNiit(230000, 20000, 'single', Y)).toBeCloseTo(760, 6);
+  });
+
+  it('uses the higher MFJ threshold (HAND CALC)', () => {
+    // MFJ: 270,000 - 250,000 = 20,000 excess; NII 30,000 -> 3.8% x 20,000 = 760
+    expect(calculateNiit(270000, 30000, 'mfj', Y)).toBeCloseTo(760, 6);
+    // Single, same income: excess 70,000; NII 30,000 -> 3.8% x 30,000 = 1,140
+    expect(calculateNiit(270000, 30000, 'single', Y)).toBeCloseTo(1140, 6);
+  });
+
+  it('thresholds are not indexed: 2026 matches 2025', () => {
+    expect(calculateNiit(230000, 50000, 'single', 2026)).toBeCloseTo(1140, 6);
+  });
+
+  it('no investment income -> no NIIT, whatever the MAGI', () => {
+    expect(calculateNiit(1000000, 0, 'single', Y)).toBe(0);
   });
 });

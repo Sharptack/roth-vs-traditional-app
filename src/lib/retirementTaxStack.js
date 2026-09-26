@@ -16,9 +16,12 @@
 //     stacked on top of ordinary income (see capitalGainsTax.js) — NOT a flat
 //     rate. Many retirees with modest other income pay 0% on some or all of a
 //     taxable-account withdrawal.
+//   - Net Investment Income Tax: 3.8% on the gain, limited to MAGI above
+//     $200,000 Single / $250,000 MFJ. MAGI = Pre-tax withdrawals + taxable
+//     Social Security + gains (Roth withdrawals and cost basis are in neither).
 import { calculateTax, getStandardDeduction } from './taxCalculations.js';
 import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
-import { calculateCapitalGainsTax } from './capitalGainsTax.js';
+import { calculateCapitalGainsTax, calculateNiit } from './capitalGainsTax.js';
 
 export function calculateRetirementTax({
   pretaxWithdrawal = 0,
@@ -46,6 +49,8 @@ export function calculateRetirementTax({
     filingStatus,
     year,
   );
+  const magi = grossOrdinaryIncome + capitalGains;
+  const niit = calculateNiit(magi, capitalGains, filingStatus, year);
   return {
     taxableSS,
     grossOrdinaryIncome, // before the standard deduction
@@ -53,6 +58,8 @@ export function calculateRetirementTax({
     ordinaryTaxableIncome,
     ordinaryTax,
     capitalGainsTax,
-    totalTax: ordinaryTax + capitalGainsTax,
+    magi, // modified AGI for the NIIT
+    niit, // Net Investment Income Tax on the gains
+    totalTax: ordinaryTax + capitalGainsTax + niit,
   };
 }

@@ -140,6 +140,8 @@ export function solveGrossWithdrawal({
 //                              because gains are stacked on top of ordinary income: more
 //                              ordinary income pushes a fixed taxable-account withdrawal
 //                              into a higher capital-gains bracket.
+//   extraNiit                  Net Investment Income Tax the withdrawal adds: it raises
+//                              MAGI, exposing more taxable-account gains to the 3.8%.
 export function explainWithdrawalRate(grossUp, { otherPretaxWithdrawal = 0, filingStatus, year }) {
   const hypothetical = !(grossUp.grossWithdrawal > 0);
   const withdrawal = hypothetical ? grossUp.probeSize : grossUp.grossWithdrawal;
@@ -148,6 +150,7 @@ export function explainWithdrawalRate(grossUp, { otherPretaxWithdrawal = 0, fili
   const standardDeduction = getStandardDeduction(filingStatus, year);
   const extraOrdinaryTax = after.ordinaryTax - before.ordinaryTax;
   const extraCapitalGainsTax = after.capitalGainsTax - before.capitalGainsTax;
+  const extraNiit = after.niit - before.niit;
   return {
     hypothetical,
     withdrawal,
@@ -161,6 +164,7 @@ export function explainWithdrawalRate(grossUp, { otherPretaxWithdrawal = 0, fili
     extraTaxableSS: after.taxableSS - before.taxableSS,
     extraOrdinaryTax,
     extraCapitalGainsTax,
-    extraTax: extraOrdinaryTax + extraCapitalGainsTax,
+    extraNiit,
+    extraTax: extraOrdinaryTax + extraCapitalGainsTax + extraNiit,
   };
 }

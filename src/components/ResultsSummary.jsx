@@ -535,9 +535,11 @@ function TradeOff({ result }) {
 /* Tax rates (top of section 2) and total portfolio comparison (3)      */
 /* ------------------------------------------------------------------ */
 
-// Splits the extra tax into its two parts, when capital gains are involved.
+const NIIT_THRESHOLD_TEXT = '$200,000 ($250,000 filing jointly)';
+
+// Splits the extra tax into its parts, when capital gains are involved.
 function ExtraTaxSplit({ d }) {
-  if (!(d.extraCapitalGainsTax > 0.5)) return null;
+  if (!(d.extraCapitalGainsTax > 0.5 || d.extraNiit > 0.5)) return null;
   return (
     <>
       <Row label="…of which extra income tax" value={$(d.extraOrdinaryTax)} kind="sub" />
@@ -546,6 +548,13 @@ function ExtraTaxSplit({ d }) {
         value={$(d.extraCapitalGainsTax)}
         kind="sub"
       />
+      {d.extraNiit > 0.5 && (
+        <Row
+          label="…of which extra Net Investment Income Tax (more gains over the MAGI threshold)"
+          value={$(d.extraNiit)}
+          kind="sub"
+        />
+      )}
     </>
   );
 }
@@ -617,6 +626,14 @@ function RateDrivers({ d }) {
             withdrawal raises that ordinary income, which pushes more of those gains into a higher
             capital-gains bracket and adds {$(d.extraCapitalGainsTax)} of capital-gains tax. That tax
             only exists because of this withdrawal, so it counts in the rate.
+          </li>
+        )}
+        {d.extraNiit > 0.5 && (
+          <li>
+            <strong>The Net Investment Income Tax.</strong> Above {NIIT_THRESHOLD_TEXT} of modified
+            AGI, taxable-account gains owe an extra 3.8%. This withdrawal isn&rsquo;t investment
+            income itself, but it raises your modified AGI, so more of your gains go over the line
+            and it adds {$(d.extraNiit)} of that tax.
           </li>
         )}
       </ul>
@@ -750,6 +767,7 @@ const SCENARIOS = [
 function PortfolioMath({ result }) {
   const { portfolio, socialSecurity: ss, current } = result;
   const std = current.standardDeduction;
+  const owesNiit = SCENARIOS.some((c) => portfolio[c.key].niit > 0.5);
   const rows = [
     { label: 'Pre-tax account withdrawals', get: (p) => $(p.withdrawals.pretax) },
     { label: 'Roth account withdrawals (tax-free)', get: (p) => $(p.withdrawals.roth) },
@@ -787,6 +805,14 @@ function PortfolioMath({ result }) {
           ? `${formatPercent(p.capitalGainsTax / p.withdrawals.taxable)} of the taxable withdrawal`
           : '',
     },
+    ...(owesNiit
+      ? [
+          {
+            label: `Net Investment Income Tax (3.8% on gains, limited to modified AGI above ${NIIT_THRESHOLD_TEXT})`,
+            get: (p) => $(p.niit),
+          },
+        ]
+      : []),
     { label: 'Total tax', kind: 'total', get: (p) => $(p.totalTaxPaid) },
     {
       label: 'After-tax income (gross income − total tax)',
@@ -806,6 +832,9 @@ function PortfolioMath({ result }) {
           part gain, in proportion to the account; the gain is taxed at the real 0% / 15% / 20% capital-gains rates, stacked on top of your ordinary
           income &mdash; not a flat rate, so a withdrawal can be partly or fully tax-free when your
           ordinary income is modest.
+          {owesNiit && (
+            <> Above {NIIT_THRESHOLD_TEXT} of modified AGI the gain also owes the 3.8% Net Investment Income Tax.</>
+          )}
         </p>
         <div className="table-wrap">
           <table className="calc-table">

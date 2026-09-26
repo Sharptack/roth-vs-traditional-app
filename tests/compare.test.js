@@ -8,6 +8,7 @@ import {
 import { estimateSocialSecurityBenefit } from '../src/lib/socialSecurity.js';
 import { futureValueAnnuity as futureValueAnnuityRef } from '../src/lib/growthCalculations.js';
 import { solveGrossWithdrawal } from '../src/lib/incomeNeed.js';
+import { DEFAULT_FORM_VALUES, toCompareInputs } from '../src/lib/formInputs.js';
 
 const baseInputs = {
   grossIncome: 100000,
@@ -998,5 +999,30 @@ describe('Existing Accounts: taxable cost basis', () => {
   it('rejects a basis outside 0-100%', () => {
     expect(validateInputs({ ...base, otherTaxableBasis: 1.2 }).join(' ')).toMatch(/basis/i);
     expect(validateInputs({ ...base, otherTaxableBasis: 0.5 })).toEqual([]);
+  });
+});
+
+describe('Net Investment Income Tax flows through the comparison', () => {
+  // $300k single, $300k Pre-tax and $600k taxable today (50% basis), age 35 -> 65: MAGI in
+  // retirement is well over $200,000, so taxable-account gains owe the 3.8% NIIT.
+  const r = compareRothVsTraditional(
+    toCompareInputs({ ...DEFAULT_FORM_VALUES, grossIncome: '300000', otherPretaxBalance: '300000', otherTaxableBalance: '600000' }, 2025),
+  );
+
+  it('the rate walk-through parts still add up to the extra tax, NIIT included', () => {
+    const d = r.rateDrivers;
+    expect(d.extraNiit).toBeGreaterThan(0);
+    expect(d.extraTax).toBeCloseTo(d.extraOrdinaryTax + d.extraCapitalGainsTax + d.extraNiit, 6);
+    // G = 0 here, so the rate is read from the probe
+    expect(d.hypothetical).toBe(true);
+    expect(d.extraTax).toBeCloseTo(r.grossUp.probeExtraTax, 6);
+  });
+
+  it('both portfolio scenarios carry the NIIT in their total tax', () => {
+    for (const k of ['roth', 'pretax']) {
+      const p = r.portfolio[k];
+      expect(p.niit).toBeGreaterThan(0);
+      expect(p.totalTaxPaid).toBeCloseTo(p.ordinaryTax + p.capitalGainsTax + p.niit, 6);
+    }
   });
 });

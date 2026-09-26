@@ -97,6 +97,7 @@ export function solvePortfolioWithdrawal(
     ordinaryTaxableIncome: result.tax.ordinaryTaxableIncome,
     ordinaryTax: result.tax.ordinaryTax,
     capitalGainsTax: result.tax.capitalGainsTax,
+    niit: result.tax.niit,
     taxableGains: result.tax.capitalGains,
     totalGrossWithdrawal,
     achievedAfterTaxIncome: result.afterTaxIncome,
