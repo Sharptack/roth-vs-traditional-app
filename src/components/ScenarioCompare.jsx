@@ -58,18 +58,19 @@ function CompareTable({ rows, caption }) {
   );
 }
 
-// "Compare a change": pin the current inputs as a baseline, then edit the form and
-// see the baseline and the edited scenario side by side.
-export default function ScenarioCompare({ baseline, current, onStart, onRebase, onStop }) {
-  if (!baseline) {
+// "Compare a change": a second set of inputs (rendered by App, beside the main form) starts as
+// a copy of the main inputs. This panel shows the two scenarios side by side: `baseline` is the
+// main form, `current` is the second form (null = not comparing).
+export default function ScenarioCompare({ baseline, current, onStart, onReset, onAdopt, onStop }) {
+  if (!current) {
     return (
       <section className="card compare-card compare-start" aria-label="Compare a change">
-        <button type="button" className="button" onClick={onStart} disabled={!current.result.valid}>
+        <button type="button" className="button" onClick={onStart} disabled={!baseline.result.valid}>
           Compare a change
         </button>
         <p className="hint">
-          Saves these inputs as a baseline. Then change any input above to see the two side by side,
-          including how the rates are calculated.
+          Opens a second set of inputs next to these, starting from the same values. Change any of
+          them to see the two side by side, including how the rates are calculated.
         </p>
       </section>
     );
@@ -83,8 +84,11 @@ export default function ScenarioCompare({ baseline, current, onStart, onRebase, 
       <div className="compare-head">
         <h2 id="compare-title">Comparing a change</h2>
         <div className="compare-actions">
-          <button type="button" className="button secondary" onClick={onRebase} disabled={!current.result.valid}>
-            Make this the new baseline
+          <button type="button" className="button secondary" onClick={onReset}>
+            Reset changes
+          </button>
+          <button type="button" className="button secondary" onClick={onAdopt} disabled={!current.result.valid}>
+            Use these as my inputs
           </button>
           <button type="button" className="button secondary" onClick={onStop}>
             Stop comparing
@@ -98,7 +102,7 @@ export default function ScenarioCompare({ baseline, current, onStart, onRebase, 
         <>
           <h3 className="subhead">What changed</h3>
           {c.changes.length === 0 ? (
-            <p className="hint">Nothing yet. Change any input above.</p>
+            <p className="hint">Nothing yet. Change any input in the second set above.</p>
           ) : (
             <div className="table-wrap">
               <table className="compare-table changes-table">

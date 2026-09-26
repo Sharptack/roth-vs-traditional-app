@@ -1079,3 +1079,41 @@ th.win .th-sub {
 .table-wrap + .table-wrap {
   margin-top: 16px;
 }
+
+/* ---------- compare mode: a second set of inputs beside the main form ---------- */
+
+.page.wide {
+  max-width: 1180px;
+}
+
+.input-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.form-title {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+}
+
+.compare-form {
+  border: 2px solid var(--accent);
+}
+
+.field.changed input,
+.field.changed select {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.radio-group.changed legend {
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .input-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -131,18 +131,22 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   Every chart has a hover/focus tooltip and a "Show the numbers" `<details>` table underneath as the
   non-interactive fallback.
 
-## "Compare a change" (added 2026-09-25)
-- On the calculator page, between the form and the results (`ScenarioCompare.jsx`). "Compare a change" pins
-  the current form values as a baseline (`App.jsx` `baselineValues`, memory only: reload clears it); the user
-  then edits the normal form. The panel shows: "What changed" (inputs that differ, auto-detected), a headline
-  table (retirement number, SS, both rates, lean, contributions, after-tax income, winner) with Baseline /
-  With your change / Change, and — open by default, because the user called it the most important part —
-  "How the rates are calculated, side by side" (every rate step + "What sets the rate" facts, each side with
-  its own arithmetic under the value). Buttons: "Make this the new baseline", "Stop comparing".
-- Any number of inputs may change at once (the "What changed" list makes that visible) — chosen over a
-  one-variable picker so no second form is needed.
+## "Compare a change" (added 2026-09-25; reworked same day)
+- Reworked at the user's request: they disliked editing the existing inputs to make a comparison. Now
+  "Compare a change" (button under the main form, `ScenarioCompare.jsx`) opens a SECOND full `InputForm`
+  beside the main one ("Your inputs (baseline)" left, "With a change" right; `App.jsx` `compareValues` state, a
+  copy of the main values, memory only). The main form is never touched; it is the baseline. The page widens
+  (`.page.wide`, ~1180px) while comparing and the two forms stack below 900px. Fields in the second form that
+  differ from the main form are highlighted (`changed` class); any number of them may change at once.
+  `InputForm` gained optional `title`, `baseValues` (enables the highlight) and `namePrefix` (keeps the two
+  forms' radio groups separate).
+- Below the two forms the compare card shows: "What changed" (auto-detected), a headline table (retirement
+  number, SS, both rates, lean, contributions, after-tax income, winner) with Baseline / With your change /
+  Change, and, open by default, "How the rates are calculated, side by side" (every rate step + "What sets
+  the rate" facts, each side with its own arithmetic). Buttons: "Reset changes" (re-copy the main inputs),
+  "Use these as my inputs" (second form becomes the main form, comparison closes), "Stop comparing".
 - Possible next steps (not built): also compare the retirement-number walk and the portfolio section; remember
-  the baseline across reloads; named/saved scenarios (would need storage — see the backend future item).
+  the comparison across reloads; named/saved scenarios (would need storage — see the backend future item).
 
 ## The model (as built)
 1. Current tax: income tax on (gross − half of any self-employment tax − **Pre-tax savings, if
@@ -368,6 +372,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 — "Compare a change" reworked: instead of pinning a baseline and editing the one form, it now opens a
+  second full set of inputs beside the main form (changed fields highlighted); the main form stays the baseline.
+  Buttons: Reset changes / Use these as my inputs / Stop comparing. 372 tests.
 - 2026-09-25 — "Compare a change" (pin a baseline, edit, see both side by side incl. the rate calculation step
   by step). The rate-calculation dropdown now renders from `lib/rateSteps.js` rows (shared with the comparison).
   Recorded the new direction: internal advisor tool, desktop-first, future multi-calculator suite. 372 tests.

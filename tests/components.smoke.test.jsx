@@ -589,11 +589,12 @@ describe('ScenarioCompare', () => {
   };
   const noop = () => {};
 
-  it('offers "Compare a change" when there is no baseline', () => {
+  it('offers "Compare a change" when no second set of inputs is open', () => {
     const html = renderToStaticMarkup(
-      <ScenarioCompare baseline={null} current={scenario()} onStart={noop} onRebase={noop} onStop={noop} />,
+      <ScenarioCompare baseline={scenario()} current={null} onStart={noop} onStop={noop} />,
     );
     expect(html).toContain('Compare a change');
+    expect(html).toContain('Opens a second set of inputs');
     expect(html).not.toContain('With your change');
   });
 
@@ -603,7 +604,6 @@ describe('ScenarioCompare', () => {
         baseline={scenario()}
         current={scenario({ grossIncome: '130000' })}
         onStart={noop}
-        onRebase={noop}
         onStop={noop}
       />,
     );
@@ -616,7 +616,8 @@ describe('ScenarioCompare', () => {
     expect(html).toContain('Step 1: income from everything except this account');
     expect(html).toContain('Extra tax caused by the withdrawal');
     expect(html).toContain('Bracket of its last dollar');
-    expect(html).toContain('Make this the new baseline');
+    expect(html).toContain('Reset changes');
+    expect(html).toContain('Use these as my inputs');
     expect(html).toContain('Stop comparing');
     expect(html).toMatch(/\+\$[\d,]+/); // a signed dollar change
     expect(html).not.toMatch(/NaN|Infinity/);
@@ -624,9 +625,9 @@ describe('ScenarioCompare', () => {
 
   it('says nothing changed yet right after pinning', () => {
     const html = renderToStaticMarkup(
-      <ScenarioCompare baseline={scenario()} current={scenario()} onStart={noop} onRebase={noop} onStop={noop} />,
+      <ScenarioCompare baseline={scenario()} current={scenario()} onStart={noop} onStop={noop} />,
     );
-    expect(html).toContain('Nothing yet. Change any input above.');
+    expect(html).toContain('Nothing yet. Change any input in the second set above.');
   });
 
   it('asks for valid inputs instead of comparing when the current inputs are invalid', () => {
@@ -635,7 +636,6 @@ describe('ScenarioCompare', () => {
         baseline={scenario()}
         current={scenario({ retirementAge: '30' })}
         onStart={noop}
-        onRebase={noop}
         onStop={noop}
       />,
     );

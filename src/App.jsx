@@ -81,26 +81,27 @@ function useRoute() {
 
 export default function App() {
   const [values, setValues] = useState(DEFAULT_FORM_VALUES);
-  // "Compare a change": the form values pinned as the baseline (null = not comparing).
-  // Kept in memory only, so a reload clears it.
-  const [baselineValues, setBaselineValues] = useState(null);
+  // "Compare a change": a second copy of the inputs to edit (null = not comparing). The main
+  // inputs are the baseline. Kept in memory only, so a reload clears it.
+  const [compareValues, setCompareValues] = useState(null);
   const route = useRoute();
 
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
+  const handleCompareChange = (name, value) => setCompareValues((prev) => ({ ...prev, [name]: value }));
 
   // Results update live: recomputed on every input change, no submit button.
   const current = useMemo(() => {
     const inputs = toCompareInputs(values, CURRENT_YEAR);
     return { inputs, result: compareRothVsTraditional(inputs) };
   }, [values]);
-  const baseline = useMemo(() => {
-    if (!baselineValues) return null;
-    const inputs = toCompareInputs(baselineValues, CURRENT_YEAR);
+  const changed = useMemo(() => {
+    if (!compareValues) return null;
+    const inputs = toCompareInputs(compareValues, CURRENT_YEAR);
     return { inputs, result: compareRothVsTraditional(inputs) };
-  }, [baselineValues]);
+  }, [compareValues]);
 
   return (
-    <div className="page">
+    <div className={compareValues ? 'page wide' : 'page'}>
       {/* The calculator stays mounted (just hidden) while the article is open, so your
           inputs, open dropdowns and scroll position are all still there when you return. */}
       <div hidden={route !== 'calculator'}>
@@ -122,13 +123,32 @@ export default function App() {
         </header>
 
         <main>
-          <InputForm values={values} onChange={handleChange} />
+          <div className={compareValues ? 'input-columns' : undefined}>
+            <InputForm
+              values={values}
+              onChange={handleChange}
+              title={compareValues ? 'Your inputs (baseline)' : undefined}
+            />
+            {compareValues && (
+              <InputForm
+                values={compareValues}
+                onChange={handleCompareChange}
+                title="With a change"
+                baseValues={values}
+                namePrefix="compare-"
+              />
+            )}
+          </div>
           <ScenarioCompare
-            baseline={baseline}
-            current={current}
-            onStart={() => setBaselineValues(values)}
-            onRebase={() => setBaselineValues(values)}
-            onStop={() => setBaselineValues(null)}
+            baseline={current}
+            current={changed}
+            onStart={() => setCompareValues({ ...values })}
+            onReset={() => setCompareValues({ ...values })}
+            onAdopt={() => {
+              setValues(compareValues);
+              setCompareValues(null);
+            }}
+            onStop={() => setCompareValues(null)}
           />
           <ResultsSummary result={current.result} />
         </main>

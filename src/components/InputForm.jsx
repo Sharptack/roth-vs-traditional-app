@@ -32,9 +32,9 @@ const lifestyleLabel = (value) =>
     ? 'same'
     : (LIFESTYLE_OPTIONS.find((o) => o.value === value)?.label ?? value).replace(' than today', '');
 
-function Field({ label, hint, children, id }) {
+function Field({ label, hint, children, id, changed }) {
   return (
-    <div className="field">
+    <div className={changed ? 'field changed' : 'field'}>
       <label htmlFor={id}>{label}</label>
       {children}
       {hint && <p className="hint">{hint}</p>}
@@ -43,13 +43,13 @@ function Field({ label, hint, children, id }) {
 }
 
 // Dollar input: shows raw text while typing, "$12,345" once you leave the field.
-function CurrencyInput({ label, hint, value, onChange }) {
+function CurrencyInput({ label, hint, value, onChange, changed }) {
   const id = useId();
   const [focused, setFocused] = useState(false);
   const parsed = parseNumber(value);
   const display = !focused && Number.isFinite(parsed) ? formatCurrency(parsed) : value;
   return (
-    <Field label={label} hint={hint} id={id}>
+    <Field label={label} hint={hint} id={id} changed={changed}>
       <input
         id={id}
         type="text"
@@ -65,10 +65,10 @@ function CurrencyInput({ label, hint, value, onChange }) {
   );
 }
 
-function AgeInput({ label, value, onChange }) {
+function AgeInput({ label, value, onChange, changed }) {
   const id = useId();
   return (
-    <Field label={label} id={id}>
+    <Field label={label} id={id} changed={changed}>
       <input
         id={id}
         type="text"
@@ -81,10 +81,10 @@ function AgeInput({ label, value, onChange }) {
   );
 }
 
-function SelectInput({ label, hint, value, onChange, options }) {
+function SelectInput({ label, hint, value, onChange, options, changed }) {
   const id = useId();
   return (
-    <Field label={label} hint={hint} id={id}>
+    <Field label={label} hint={hint} id={id} changed={changed}>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -96,9 +96,9 @@ function SelectInput({ label, hint, value, onChange, options }) {
   );
 }
 
-function RadioGroup({ legend, name, value, onChange, options, hint }) {
+function RadioGroup({ legend, name, value, onChange, options, hint, changed }) {
   return (
-    <fieldset className="radio-group">
+    <fieldset className={changed ? 'radio-group changed' : 'radio-group'}>
       <legend>{legend}</legend>
       <div className="radio-options">
         {options.map((o) => (
@@ -121,11 +121,19 @@ function RadioGroup({ legend, name, value, onChange, options, hint }) {
 
 const toOptions = (map) => Object.entries(map).map(([value, label]) => ({ value, label }));
 
-export default function InputForm({ values, onChange }) {
+// baseValues (optional): the inputs this form is being compared against; any field that
+// differs is highlighted. namePrefix keeps radio groups separate when two forms are on screen.
+export default function InputForm({ values, onChange, title, baseValues, namePrefix = '' }) {
   const set = (name) => (value) => onChange(name, value);
+  const isChanged = (name) => Boolean(baseValues) && baseValues[name] !== values[name];
 
   return (
-    <form className="card input-form" onSubmit={(e) => e.preventDefault()} noValidate>
+    <form
+      className={baseValues ? 'card input-form compare-form' : 'card input-form'}
+      onSubmit={(e) => e.preventDefault()}
+      noValidate
+    >
+      {title && <h2 className="form-title">{title}</h2>}
       <fieldset>
         <legend>About you</legend>
 
@@ -133,6 +141,7 @@ export default function InputForm({ values, onChange }) {
           label="Total gross income (annual)"
           value={values.grossIncome}
           onChange={set('grossIncome')}
+          changed={isChanged('grossIncome')}
         />
 
         <details className="details lifestyle-assumption">
@@ -155,6 +164,7 @@ export default function InputForm({ values, onChange }) {
               hint="How much you expect to spend each year in retirement compared with what you spend today."
               value={values.retirementLifestyle}
               onChange={set('retirementLifestyle')}
+          changed={isChanged('retirementLifestyle')}
               options={LIFESTYLE_OPTIONS}
             />
           </div>
@@ -169,6 +179,7 @@ export default function InputForm({ values, onChange }) {
           }
           value={values.incomeType}
           onChange={set('incomeType')}
+          changed={isChanged('incomeType')}
           options={INCOME_TYPE_OPTIONS}
         />
         {values.incomeType === 'both' && (
@@ -177,20 +188,24 @@ export default function InputForm({ values, onChange }) {
             hint="The rest is treated as W-2 wages."
             value={values.selfEmploymentIncome}
             onChange={set('selfEmploymentIncome')}
+          changed={isChanged('selfEmploymentIncome')}
           />
         )}
         <SelectInput
           label="Filing status"
           value={values.filingStatus}
           onChange={set('filingStatus')}
+          changed={isChanged('filingStatus')}
           options={toOptions(FILING_STATUSES)}
         />
         <div className="field-row">
-          <AgeInput label="Current age" value={values.currentAge} onChange={set('currentAge')} />
+          <AgeInput label="Current age" value={values.currentAge} onChange={set('currentAge')}
+          changed={isChanged('currentAge')} />
           <AgeInput
             label="Planned retirement age"
             value={values.retirementAge}
             onChange={set('retirementAge')}
+          changed={isChanged('retirementAge')}
           />
         </div>
       </fieldset>
@@ -201,12 +216,14 @@ export default function InputForm({ values, onChange }) {
           label="Current debt payments that will end by retirement (annual)"
           value={values.debtPayments}
           onChange={set('debtPayments')}
+          changed={isChanged('debtPayments')}
         />
         <CurrencyInput
           label="Other expenses that will end by retirement (annual)"
           hint="For example private school or kids' college."
           value={values.otherExpenses}
           onChange={set('otherExpenses')}
+          changed={isChanged('otherExpenses')}
         />
       </fieldset>
 
@@ -217,18 +234,21 @@ export default function InputForm({ values, onChange }) {
           hint="The amount you're currently contributing to retirement accounts each year, or the amount you're considering."
           value={values.savings}
           onChange={set('savings')}
+          changed={isChanged('savings')}
         />
         <RadioGroup
           legend="Are these savings currently Pre-tax or Roth?"
-          name="currentType"
+          name={`${namePrefix}currentType`}
           value={values.currentType}
           onChange={set('currentType')}
+          changed={isChanged('currentType')}
           options={toOptions(CONTRIBUTION_TYPES)}
         />
         <SelectInput
           label="Account type these savings are held in"
           value={values.accountType}
           onChange={set('accountType')}
+          changed={isChanged('accountType')}
           options={toOptions(ACCOUNT_TYPES)}
         />
       </fieldset>
@@ -237,9 +257,10 @@ export default function InputForm({ values, onChange }) {
         <legend>Social Security</legend>
         <RadioGroup
           legend="Do you know your Social Security benefit?"
-          name="knowsSocialSecurity"
+          name={`${namePrefix}knowsSocialSecurity`}
           value={values.knowsSocialSecurity}
           onChange={set('knowsSocialSecurity')}
+          changed={isChanged('knowsSocialSecurity')}
           options={[
             { value: 'yes', label: 'Yes' },
             { value: 'no', label: 'No' },
@@ -251,6 +272,7 @@ export default function InputForm({ values, onChange }) {
             hint="Your annual benefit before taxes, in today's dollars. For a couple, enter the household total."
             value={values.socialSecurityBenefit}
             onChange={set('socialSecurityBenefit')}
+          changed={isChanged('socialSecurityBenefit')}
           />
         ) : (
           <p className="hint disclaimer">
@@ -270,16 +292,19 @@ export default function InputForm({ values, onChange }) {
           label="Total value of other Pre-tax accounts"
           value={values.otherPretaxBalance}
           onChange={set('otherPretaxBalance')}
+          changed={isChanged('otherPretaxBalance')}
         />
         <CurrencyInput
           label="Total value of other Roth accounts"
           value={values.otherRothBalance}
           onChange={set('otherRothBalance')}
+          changed={isChanged('otherRothBalance')}
         />
         <CurrencyInput
           label="Total value of other taxable investment accounts"
           value={values.otherTaxableBalance}
           onChange={set('otherTaxableBalance')}
+          changed={isChanged('otherTaxableBalance')}
         />
       </fieldset>
 
@@ -291,6 +316,7 @@ export default function InputForm({ values, onChange }) {
             hint="Applied to every account until you retire. The default is 7%. No inflation is modeled, so think of this as a return after inflation."
             value={values.returnRate}
             onChange={set('returnRate')}
+          changed={isChanged('returnRate')}
             options={RETURN_OPTIONS}
           />
         </div>
