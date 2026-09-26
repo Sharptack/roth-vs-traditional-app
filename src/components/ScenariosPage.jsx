@@ -86,7 +86,7 @@ function ValueTable({ batch, xTicks, valueOf, format, caption }) {
 }
 
 // One chart per scenario batch: who comes out ahead (Roth's advantage), with the zero line
-// splitting Roth-ahead from Pre-tax-ahead. The rate gap for the same points is in the table.
+// splitting Roth-ahead from Pre-tax-ahead.
 function BatchChart({ batch }) {
   const xTicks = batch.series[0].points.map((p) => p.x);
   const series = batch.series.map((s) => ({
@@ -119,13 +119,6 @@ function BatchChart({ batch }) {
             valueOf={(p) => p.advantagePct}
             format={formatAdvantagePct}
             caption="Roth advantage (% of Pre-tax income)"
-          />
-          <ValueTable
-            batch={batch}
-            xTicks={xTicks}
-            valueOf={(p) => p.gap}
-            format={formatGapPoints}
-            caption="Rate gap (marginal rate now minus effective rate in retirement)"
           />
         </div>
       </details>
@@ -228,7 +221,7 @@ export default function ScenariosPage() {
         <p>
           Every chart below shows who actually comes out ahead: above the zero line Roth does, below it Pre-tax
           does. Each is a set of hand-picked scenarios run through the same comparison the calculator uses
-          (single filer unless noted, W-2 income, estimated Social Security, 7% return, no state tax &mdash; see{' '}
+          (single filer, W-2 income, estimated Social Security, 7% return, no state tax &mdash; see{' '}
           <a href="#/how-it-works">How this works</a>). The rate gap itself is unpacked once, then two maps show
           where each side wins, and the last chart tests the rule of thumb against every scenario. Hover or focus
           any point for exact numbers; each chart has a table underneath.

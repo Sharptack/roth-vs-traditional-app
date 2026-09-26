@@ -10,7 +10,7 @@
 // retirement, 7% expected return, Social Security estimated (not user-entered),
 // same 1× retirement lifestyle unless a batch is explicitly sweeping it, and a
 // 401(k) account. The IRS limit DOES bind at higher incomes and savings rates (2026:
-// 113 of 467 points, e.g. 10% of $300k = $30,000 vs. a $24,500 limit): the calculator
+// 114 of 467 points, e.g. 10% of $300k = $30,000 vs. a $24,500 limit): the calculator
 // then puts the rest of the same take-home cost in a taxable account, so the Roth-
 // advantage numbers at those points include that taxable side.
 
@@ -120,6 +120,20 @@ export const SCENARIO_BATCHES = [
     })),
   },
   {
+    key: 'age50SavingsSweep',
+    title: 'Age 50: saving more, with a $500k existing Pre-tax balance',
+    description:
+      'Age 50, retiring at 65, with a typical $500,000 existing Pre-tax balance, saving 5%, 10%, 20%, or 30% of gross income. At 50 the IRS limit is higher (catch-up contributions: $32,500 in 2026), but the existing balance has only 15 years to grow, so it pushes retirement income into higher brackets less than it does at 35.',
+    xLabel: 'Gross income',
+    xType: 'currency',
+    base: { ...BASE, currentAge: 50, retirementAge: 65, otherPretaxBalance: 500000 },
+    series: [0.05, 0.1, 0.2, 0.3].map((rate) => ({
+      key: 'savings' + Math.round(rate * 100),
+      label: Math.round(rate * 100) + '% savings rate',
+      points: INCOMES.map((income) => ({ x: income, overrides: bySavingsRate(income, rate) })),
+    })),
+  },
+  {
     key: 'pretaxBalanceSweep',
     title: 'A bigger existing Pre-tax balance, at different incomes',
     description:
@@ -150,23 +164,6 @@ export const SCENARIO_BATCHES = [
       points: TAXABLE_BALANCES.map((balance) => ({
         x: balance,
         overrides: { ...bySavingsRate(income, 0.1), otherTaxableBalance: balance },
-      })),
-    })),
-  },
-  {
-    key: 'mfjBalanceSweep',
-    title: 'Married filing jointly, with different existing Pre-tax balances',
-    description:
-      'Age 35, retiring at 65, saving 10% of gross income, filing jointly (treated as one earner, as elsewhere in the calculator), with an existing Pre-tax balance of $0, $250,000, $500,000, or $1,000,000 today.',
-    xLabel: 'Gross income',
-    xType: 'currency',
-    base: { ...BASE, filingStatus: 'mfj', currentAge: 35, retirementAge: 65 },
-    series: [0, 250000, 500000, 1000000].map((balance) => ({
-      key: `balance${balance}`,
-      label: formatBalanceLabel(balance),
-      points: INCOMES.map((income) => ({
-        x: income,
-        overrides: { ...bySavingsRate(income, 0.1), otherPretaxBalance: balance },
       })),
     })),
   },

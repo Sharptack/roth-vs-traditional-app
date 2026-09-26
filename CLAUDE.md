@@ -117,10 +117,10 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `ScatterChart` (x = gap, y = advantagePct, color+shape by batch, an OLS trend line from `src/lib/regression.js`).
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
 - The nine batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
-  estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 113 of 467 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
+  estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 114 of 467 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
   at a fixed 10% savings rate (age 35→65, 14 incomes from $25k to $500k); the same income sweep at 5%/10%/20%/30% savings
   rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k/$500k; the same income
-  sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; and a lifestyle sweep (1×→2× in 0.1 steps, i.e. "spending
+  sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; an age-50 savings-rate sweep (5/10/20/30% saved, $500k existing Pre-tax balance, 401(k) limit $32,500 with catch-up); and a lifestyle sweep (1×→2× in 0.1 steps, i.e. "spending
   20/40/60/80/100% more in retirement") at incomes $25k/$50k/$75k/$150k/$500k; and a retirement-age sweep (55-70, age 35, 10% saved, incomes $25k/$50k/$100k/$150k/$500k; flat before 62 because Social Security is estimated as if claimed at 62 for earlier retirees; the 59½ early-withdrawal penalty is not modeled). Extending or adding a batch
   is a data-only change in `scenarioBatches.js` — no chart code changes needed.
 - Charts are hand-rolled inline SVG (`src/components/charts/`), not a charting library — the app has no chart
@@ -138,17 +138,17 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   setup, and ONE line chart of Roth's advantage (`advantagePct`), with the area above the zero line tinted blue and
   labelled "▲ Roth comes out ahead" and the area below tinted orange, "▼ Pre-tax comes out ahead" (`LineChart`
   `zones` prop). Roth = blue / Pre-tax = orange everywhere the winner is shown (zones, heatmaps, scatter). The rate gap
-  for the same points is in each card's "Show the numbers" (advantage table + gap table). The income-sweep card is
+  for the same points is in each card's "Show the numbers" (ONE table: the advantage the chart plots; the rate gap is shown once, in "What the rate gap is made of"). The income-sweep card is
   followed by "What the rate gap is made of" (marginal-now and effective-in-retirement as two lines). After the batches:
   two break-even maps (`charts/Heatmap.jsx`; `HEATMAPS` in scenarioBatches.js, run by `runHeatmap`: income across, then
   savings rate 5-30% or existing Pre-tax balance $0-$2M down; `*` = over the IRS limit, from `overLimit`), then the combined
   scatter, whose points are coloured by winner (blue Roth / orange Pre-tax / grey even; batch is in the tooltip).
 - Where Roth wins (found by scanning the engine 2026-09-25): a large existing Pre-tax balance (forced taxable withdrawals;
   +7% to +35% at $100k-$1M+ balances, still +3-7% at $300k income with $1M+), a large existing taxable balance at lower
-  incomes (+14-26% at $500k-$1M and $40k-$60k income), married filing jointly with balances, big lifestyle increases at
+  incomes (+14-26% at $500k-$1M and $40k-$60k income), married filing jointly with balances (found in the scan; no longer charted — the MFJ chart was removed 2026-09-26), big lifestyle increases at
   $50k-$60k (2x), retiring at 70 at $150k, and 20-30% savings at $175k-$200k (the excess in a taxable account). Age at
   contribution start does NOT matter (both sides scale with the same growth). Existing Roth balances do not help Roth.
-  The batches for these: `pretaxBalanceSweep`, `taxableBalanceSweep`, `mfjBalanceSweep`. `BASE` uses
+  The batches for these: `pretaxBalanceSweep`, `taxableBalanceSweep`. The age-50 finding: the same $500k existing balance gives Roth +3-9% at 35 but is about even at 50 (only 15 years to grow, so fewer forced taxable withdrawals) — the reason for `age50SavingsSweep`. `BASE` uses
   `otherTaxableBasis: 0.5` (the form default).
 - For screenshots of this long page, headless Chrome's `--screenshot` garbles pages taller than ~8000px; slice with the
   DevTools protocol instead (`Page.captureScreenshot` with a `clip`, `captureBeyondViewport`).
@@ -460,6 +460,10 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-26 (c) — Visualization: each "Show the numbers" dropdown now holds ONE table (the plotted advantage; the separate gap table
+  is gone); removed the "Married filing jointly" chart (every chart is now single-filer, and the page says so); added "Age 50: saving more,
+  with a $500k existing Pre-tax balance" (5/10/20/30% saved across incomes) because age changes the answer once there is an existing
+  balance and catch-up contributions raise the limit at 50. 438 tests.
 - 2026-09-26 (o) — Removed the "Your tax rate now vs. later" subheading from the Tax rate comparison card (repeated
   the card title). 436 tests.
 - 2026-09-26 (n) — "Clear all" (with undo) in the inputs card. Results cards renamed: "Roth vs. Traditional" ->

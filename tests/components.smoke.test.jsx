@@ -592,6 +592,13 @@ describe('ScenariosPage', () => {
     expect((html.match(/Show the numbers/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1);
   });
 
+  it('has ONE table per "Show the numbers" dropdown', () => {
+    const dropdowns = html.split('<details class="details"').slice(1).map((d) => d.slice(0, d.indexOf('</details>')));
+    expect(dropdowns.length).toBe(SCENARIO_BATCHES.length + 1);
+    for (const d of dropdowns) expect((d.match(/<table/g) ?? []).length).toBe(1);
+    expect(html).not.toContain('Rate gap (marginal rate now minus effective rate in retirement)');
+  });
+
   it('states the rule of thumb once, at the top, and does not repeat it per chart', () => {
     const sentence = 'The rule of thumb: the higher that gap, the more Pre-tax should come out ahead';
     expect(html).toContain(sentence);
@@ -630,10 +637,11 @@ describe('ScenariosPage', () => {
     }
   });
 
-  it('includes the Roth-friendly sweeps: existing Pre-tax balance, existing taxable balance, married filing jointly', () => {
+  it('includes the Roth-friendly sweeps (existing Pre-tax balance, existing taxable balance) and the age-50 savings chart', () => {
     expect(html).toContain('A bigger existing Pre-tax balance, at different incomes');
     expect(html).toContain('A bigger existing taxable investment account, at different incomes');
-    expect(html).toContain('Married filing jointly, with different existing Pre-tax balances');
+    expect(html).toContain('Age 50: saving more, with a $500k existing Pre-tax balance');
+    expect(html).not.toContain('Married filing jointly');
   });
 
   it('has the retirement-age sweep', () => {

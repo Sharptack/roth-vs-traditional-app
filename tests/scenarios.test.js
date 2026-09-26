@@ -159,10 +159,15 @@ describe('the real SCENARIO_BATCHES data', () => {
       expect(series.points.map((p) => p.x)).toEqual(TAXABLE_BALANCES);
       for (const p of series.points) expect(p.inputs.otherTaxableBalance).toBe(p.x);
     }
-    expect(byKey.mfjBalanceSweep.series).toHaveLength(4);
-    for (const series of byKey.mfjBalanceSweep.series) {
-      for (const p of series.points) expect(p.inputs.filingStatus).toBe('mfj');
+    expect(byKey.age50SavingsSweep.series).toHaveLength(4);
+    for (const series of byKey.age50SavingsSweep.series) {
+      expect(series.points.map((p) => p.x)).toEqual(INCOMES);
+      for (const p of series.points) {
+        expect(p.inputs.currentAge).toBe(50);
+        expect(p.inputs.otherPretaxBalance).toBe(500000);
+      }
     }
+    expect(byKey.mfjBalanceSweep).toBeUndefined();
 
     expect(byKey.retirementAgeSweep.series).toHaveLength(5);
     for (const series of byKey.retirementAgeSweep.series) {
@@ -206,6 +211,17 @@ describe('the real SCENARIO_BATCHES data', () => {
     // 2026 limit $24,500 at age 35: 10% of $300k = $30,000 is over; 10% of $100k = $10,000 is not.
     expect(runScenarioPoint(base, { grossIncome: 300000, savings: 30000 }, 2026).overLimit).toBe(true);
     expect(runScenarioPoint(base, { grossIncome: 100000, savings: 10000 }, 2026).overLimit).toBe(false);
+  });
+
+  it('HAND CALC: the age-50 batch saves the same 10% of income, but its limit includes the $8,000 catch-up', () => {
+    // 2026 401(k): $24,500 base + $8,000 catch-up at 50 = $32,500. 30% of $100,000 = $30,000 fits at 50
+    // (over the limit at 35, where the limit is $24,500).
+    const age50 = runAllBatches(SCENARIO_BATCHES, 2026).find((r) => r.key === 'age50SavingsSweep');
+    const thirty = age50.series.find((sr) => sr.key === 'savings30').points.find((p) => p.x === 100000);
+    expect(thirty.inputs.savings).toBe(30000);
+    expect(thirty.overLimit).toBe(false);
+    const at35 = runScenarioPoint(base, { grossIncome: 100000, savings: 30000 }, 2026);
+    expect(at35.overLimit).toBe(true);
   });
 
   it('the savings-rate batch includes the same 10% line as the income-sweep batch', () => {
