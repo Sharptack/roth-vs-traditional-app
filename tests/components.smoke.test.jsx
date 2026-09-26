@@ -42,20 +42,21 @@ describe('InputForm', () => {
     ]) {
       expect(html).toContain(label);
     }
-    expect(html).not.toMatch(/type="submit"|<button/);
+    expect(html).not.toMatch(/type="submit"/);
+    // the only buttons are the section headers and "Expand all"
+    expect(html).not.toMatch(/<button(?! type="button")/);
   });
 
   it('drops the two hints, rewords the savings hint, and moves the return into Assumptions', () => {
     expect(html).not.toContain('Also used as the contribution amount in the comparison');
     expect(html).not.toContain('Used only to check against the IRS contribution limit');
     expect(html).toContain("The amount you're currently contributing to retirement accounts each year, or the amount you're considering.".replaceAll("'", '&#x27;'));
-    // the return selector lives inside a collapsed Assumptions section that shows the current rate
-    const assumptions = html.slice(html.indexOf('class="details assumptions"'));
-    expect(assumptions).toContain('Assumptions:');
-    expect(assumptions).toContain('7% expected annual investment return');
+    // the return selector lives in the last section, Assumptions, whose header shows the current rate
+    const assumptions = html.slice(html.indexOf('>Assumptions<'));
+    expect(assumptions).toContain('7% expected annual return');
     expect(assumptions).toContain('Expected annual investment return');
-    // ...and is not in the main fieldsets above it
-    const mainForm = html.slice(0, html.indexOf('class="details assumptions"'));
+    // ...and is not in the sections above it
+    const mainForm = html.slice(0, html.indexOf('>Assumptions<'));
     expect(mainForm).not.toContain('Expected annual investment return');
   });
 
@@ -89,8 +90,8 @@ describe('InputForm', () => {
     expect(block).toContain('Others expect to spend less in');
     expect(block).toContain('Expected retirement lifestyle');
     // the return-rate Assumptions dropdown no longer mentions lifestyle
-    const assumptions = html.slice(html.indexOf('class="details assumptions"'));
-    expect(assumptions).toContain('7% expected annual investment return');
+    const assumptions = html.slice(html.indexOf('>Assumptions<'));
+    expect(assumptions).toContain('7% expected annual return');
     expect(assumptions).not.toContain('retirement lifestyle');
     expect(assumptions).not.toContain('Expected retirement lifestyle');
     const higher = renderToStaticMarkup(
@@ -151,7 +152,7 @@ describe('ResultsSummary', () => {
   it('gives the retirement number its own section, with a note on what it means', () => {
     const html = render();
     const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
-    expect(sec1).toContain('Retirement income number</h2>');
+    expect(sec1).toContain('Retirement income number</span>');
     expect(sec1).toContain('class="hero"');
     expect(sec1).toContain('What this number is:');
     expect(sec1).toContain('the after-tax amount you need each year in retirement');
@@ -772,8 +773,8 @@ describe('Future Contributions vs. Existing Accounts', () => {
 
   it('labels the form sections Future Contributions and Existing Accounts', () => {
     const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
-    expect(html).toContain('<legend>Future Contributions</legend>');
-    expect(html).toContain('<legend>Existing Accounts</legend>');
+    expect(html).toMatch(/class="collapsible-title"[^>]*>Future Contributions</);
+    expect(html).toMatch(/class="collapsible-title"[^>]*>Existing Accounts</);
     expect(html).not.toMatch(/this account|other retirement account/i);
   });
 
@@ -836,5 +837,50 @@ describe("Rate walk-through when no withdrawal is needed", () => {
     expect(html).toContain("Taxable income after the standard deduction, with that withdrawal added");
     expect(html).toContain("Total tax, with that withdrawal added");
     expect(html).toMatch(/Extra tax that withdrawal would cause \(\$[\d,]+ − \$[\d,]+ without it\)/);
+  });
+});
+
+describe('Collapsible sections', () => {
+  it('lists every input section with a summary; only the first starts open, and closed ones stay rendered', () => {
+    const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
+    const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
+    expect(titles).toEqual([
+      'About you',
+      'Costs that end before retirement',
+      'Future Contributions',
+      'Social Security',
+      'Existing Accounts',
+      'Assumptions',
+    ]);
+    expect(html).toContain('class="collapsible-summary">$100,000 W-2 · Single · age 35, retiring at 65<');
+    expect((html.match(/aria-expanded="true"/g) ?? []).length).toBe(1);
+    expect((html.match(/class="collapsible-body" hidden=""/g) ?? []).length).toBe(5);
+    // a closed section's inputs are still in the page (hidden), so nothing is lost by closing it
+    expect(html).toContain('Savings for retirement (annual)');
+    expect(html).toContain('Expand all');
+  });
+
+  it('opens the sections App passes in, and flags changed sections when comparing', () => {
+    const html = renderToStaticMarkup(
+      <InputForm
+        values={{ ...DEFAULT_FORM_VALUES, savings: '20000' }}
+        baseValues={DEFAULT_FORM_VALUES}
+        onChange={() => {}}
+        open={new Set(['about', 'costs', 'contributions', 'socialSecurity', 'existing', 'assumptions'])}
+        onOpenChange={() => {}}
+      />,
+    );
+    expect(html).not.toContain('aria-expanded="false"');
+    expect(html).toContain('Collapse all');
+    expect((html.match(/class="collapsible-flag">changed</g) ?? []).length).toBe(1);
+  });
+
+  it('shows each results card with its headline, all open', () => {
+    const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
+    const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
+    expect(titles).toEqual(['Retirement income number', 'Roth vs. Traditional', 'The trade-off in dollars', 'Total portfolio tax comparison']);
+    expect(html).toContain('class="collapsible-summary">$65,380 a year after tax<');
+    expect(html).not.toContain('aria-expanded="false"');
+    expect(html).toContain('Collapse all results');
   });
 });

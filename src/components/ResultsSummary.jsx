@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { resultHeadlines } from '../lib/sectionSummaries.js';
+import Collapsible, { toggleId } from './Collapsible.jsx';
 import { formatCurrency, formatPercent, formatValue } from '../lib/format.js';
 import { effectiveRateSteps } from '../lib/rateSteps.js';
 
@@ -140,9 +143,7 @@ function RetirementNumberSection({ result }) {
   const direction = retirementNeed.lifestyleFactor > 1 ? 'higher' : 'lower';
   const portfolioNeed = Math.max(0, retirementNeed.target - socialSecurity.annualBenefit);
   return (
-    <section className="card" aria-labelledby="sec1">
-      <h2 id="sec1">Retirement income number</h2>
-
+    <>
       <div className="hero">
         <div className="hero-value">{$(retirementNeed.target)}</div>
         <div className="hero-sub">After-tax income per year</div>
@@ -192,7 +193,7 @@ function RetirementNumberSection({ result }) {
       )}
 
       <RetirementNumberMath result={result} />
-    </section>
+    </>
   );
 }
 
@@ -418,10 +419,9 @@ function SideNote({ amount, per = '' }) {
 // Section 2: the two rates the decision turns on, in their own block.
 function RothVsTraditional({ result }) {
   return (
-    <section className="card" aria-labelledby="sec2">
-      <h2 id="sec2">Roth vs. Traditional</h2>
+    <>
       <TaxRates result={result} />
-    </section>
+    </>
   );
 }
 
@@ -432,8 +432,7 @@ function TradeOff({ result }) {
   const win = (side) => (comparison.winner === side ? 'win' : '');
   const anySide = contributionSplit.roth.excessToTaxable > 0 || contributionSplit.pretax.excessToTaxable > 0;
   return (
-    <section className="card" aria-labelledby="sec-tradeoff">
-      <h2 id="sec-tradeoff">The trade-off in dollars</h2>
+    <>
 
       {limitCheck.atLimit && <p className="alert">{limitCheck.message}</p>}
 
@@ -533,7 +532,7 @@ function TradeOff({ result }) {
       </details>
 
       <YearsWithoutSocialSecurity result={result} />
-    </section>
+    </>
   );
 }
 
@@ -887,8 +886,7 @@ function PortfolioComparison({ result }) {
   const incomeLeader = Math.abs(incomeGap) < 0.5 ? null : incomeGap > 0 ? 'pretax' : 'roth';
 
   return (
-    <section className="card" aria-labelledby="sec3">
-      <h2 id="sec3">Total portfolio tax comparison</h2>
+    <>
       <p className="hint">
         Same after-tax lifestyle in both columns, funded from your whole portfolio (Existing Accounts
         plus Future Contributions, grown to retirement) together with Social Security.
@@ -1004,11 +1002,23 @@ function PortfolioComparison({ result }) {
           target. Add savings or lower your retirement income number.
         </p>
       )}
-    </section>
+    </>
   );
 }
 
+// The results cards, in page order. Each opens and closes from its header, which shows the
+// card's headline (sectionSummaries.js). `id` keys the headline; `headingId` is the
+// heading's id (kept from the fixed-card layout, used for in-page links and tests).
+const RESULT_CARDS = [
+  { id: 'need', headingId: 'sec1', title: 'Retirement income number', Body: RetirementNumberSection },
+  { id: 'rates', headingId: 'sec2', title: 'Roth vs. Traditional', Body: RothVsTraditional },
+  { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'The trade-off in dollars', Body: TradeOff },
+  { id: 'portfolio', headingId: 'sec3', title: 'Total portfolio tax comparison', Body: PortfolioComparison },
+];
+
 export default function ResultsSummary({ result }) {
+  // Every card starts open; closing one keeps its dropdowns as they were (the body is hidden, not removed).
+  const [open, setOpen] = useState(() => new Set(RESULT_CARDS.map((card) => card.id)));
   if (!result.valid) {
     return (
       <section className="card" aria-labelledby="sec0">
@@ -1023,12 +1033,32 @@ export default function ResultsSummary({ result }) {
     );
   }
 
+  const headlines = resultHeadlines(result);
+  const allOpen = RESULT_CARDS.every((card) => open.has(card.id));
   return (
     <div className="results">
-      <RetirementNumberSection result={result} />
-      <RothVsTraditional result={result} />
-      <TradeOff result={result} />
-      <PortfolioComparison result={result} />
+      <div className="results-head">
+        <h2 className="sr-only">Results</h2>
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => setOpen(new Set(allOpen ? [] : RESULT_CARDS.map((card) => card.id)))}
+        >
+          {allOpen ? 'Collapse all results' : 'Expand all results'}
+        </button>
+      </div>
+      {RESULT_CARDS.map(({ id, headingId, title, Body }) => (
+        <Collapsible
+          key={id}
+          headingId={headingId}
+          title={title}
+          summary={headlines[id]}
+          open={open.has(id)}
+          onToggle={() => setOpen(toggleId(open, id))}
+        >
+          <Body result={result} />
+        </Collapsible>
+      ))}
       <p className="disclaimer">
         Estimates only — not tax or financial advice. Based on {result.dataYear} federal tax rules,
         with no state tax, no inflation, and a simplified proportional withdrawal from every

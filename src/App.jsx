@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ArticlePage from './components/ArticlePage.jsx';
-import InputForm from './components/InputForm.jsx';
+import InputForm, { DEFAULT_OPEN_INPUTS } from './components/InputForm.jsx';
 import ResultsSummary from './components/ResultsSummary.jsx';
 import ScenarioCompare from './components/ScenarioCompare.jsx';
 import ScenariosPage from './components/ScenariosPage.jsx';
@@ -84,6 +84,9 @@ export default function App() {
   // inputs are the baseline. Kept in memory only, so a reload clears it.
   const [compareValues, setCompareValues] = useState(FROM_LINK.compareValues);
   const route = useRoute();
+  // Which input sections are open. Shared by both forms in "Compare a change", so opening a
+  // section on one side opens it on the other and the two stay lined up.
+  const [openInputs, setOpenInputs] = useState(() => new Set(DEFAULT_OPEN_INPUTS));
 
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
   const handleCompareChange = (name, value) => setCompareValues((prev) => ({ ...prev, [name]: value }));
@@ -100,7 +103,9 @@ export default function App() {
   }, [compareValues]);
 
   return (
-    <div className={compareValues ? 'page wide' : 'page'}>
+    // The calculator gets a wide desktop page; the article and the charts page keep the
+    // narrow reading width.
+    <div className={route === 'calculator' ? 'page calc-page' : 'page'}>
       {/* The calculator stays mounted (just hidden) while the article is open, so your
           inputs, open dropdowns and scroll position are all still there when you return. */}
       <div hidden={route !== 'calculator'}>
@@ -121,36 +126,48 @@ export default function App() {
           <p className="disclaimer">Estimates only — not tax or financial advice.</p>
         </header>
 
-        <main>
-          <div className={compareValues ? 'input-columns' : undefined}>
-            <InputForm
-              values={values}
-              onChange={handleChange}
-              title={compareValues ? 'Your inputs (baseline)' : undefined}
-              footer={<ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />}
-            />
-            {compareValues && (
+        {/* Desktop: inputs on the left (sticky), results on the right. While comparing, the two
+            sets of inputs sit side by side across the page and the results go below them. */}
+        <main className={compareValues ? 'calc-layout comparing' : 'calc-layout'}>
+          <div className="inputs-column">
+            <div className={compareValues ? 'input-columns' : undefined}>
               <InputForm
-                values={compareValues}
-                onChange={handleCompareChange}
-                title="With a change"
-                baseValues={values}
-                namePrefix="compare-"
+                values={values}
+                onChange={handleChange}
+                title={compareValues ? 'Your inputs (baseline)' : 'Inputs'}
+                open={openInputs}
+                onOpenChange={setOpenInputs}
+                footer={<ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />}
+              />
+              {compareValues && (
+                <InputForm
+                  values={compareValues}
+                  onChange={handleCompareChange}
+                  title="With a change"
+                  baseValues={values}
+                  namePrefix="compare-"
+                  open={openInputs}
+                  onOpenChange={setOpenInputs}
+                />
+              )}
+            </div>
+            {!compareValues && <ScenarioCompare baseline={current} current={null} onStart={() => setCompareValues({ ...values })} />}
+          </div>
+          <div className="results-column">
+            {compareValues && (
+              <ScenarioCompare
+                baseline={current}
+                current={changed}
+                onReset={() => setCompareValues({ ...values })}
+                onAdopt={() => {
+                  setValues(compareValues);
+                  setCompareValues(null);
+                }}
+                onStop={() => setCompareValues(null)}
               />
             )}
+            <ResultsSummary result={current.result} />
           </div>
-          <ScenarioCompare
-            baseline={current}
-            current={changed}
-            onStart={() => setCompareValues({ ...values })}
-            onReset={() => setCompareValues({ ...values })}
-            onAdopt={() => {
-              setValues(compareValues);
-              setCompareValues(null);
-            }}
-            onStop={() => setCompareValues(null)}
-          />
-          <ResultsSummary result={current.result} />
         </main>
 
         <footer className="page-footer">

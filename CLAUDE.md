@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (425 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (434 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -81,7 +81,9 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `formatValue`/`formatDelta` (rates change in "pts").
 - `src/data/scenarioBatches.js`: the hand-picked scenario batches charted on the scenarios page (income,
   savings-rate, balance, age-50, and lifestyle sweeps) — plain data, no compare.js calls.
-- `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`, `ArticlePage.jsx` (renders ARTICLE.md),
+- `src/lib/sectionSummaries.js`: `INPUT_SECTIONS` (the input sections: id, title, the form keys each holds, a one-line
+  `summary(values)`), `sectionChanged`, `resultHeadlines(result)` (the headline on each results card header). See "Calculator layout".
+- `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`, `Collapsible.jsx` (the open/close section used by both), `ArticlePage.jsx` (renders ARTICLE.md),
   `ScenariosPage.jsx` (the scenario charts — see below), `charts/LineChart.jsx`, `charts/ScatterChart.jsx`,
   `charts/palette.js` (fixed categorical color + shape order, assigned by series identity). `src/lib/route.js`:
   hash routing helper. `src/App.jsx` holds state and the "Future enhancements" comment block. `tests/`
@@ -151,12 +153,28 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - For screenshots of this long page, headless Chrome's `--screenshot` garbles pages taller than ~8000px; slice with the
   DevTools protocol instead (`Page.captureScreenshot` with a `clip`, `captureBeyondViewport`).
 
+## Calculator layout (2026-09-25m, at the user's request: "more easily navigable")
+- Desktop: two columns (`.calc-layout`, page `.calc-page` max 1280px): inputs on the left (420px, sticky, scrolls on its
+  own), results on the right. Below 900px everything stacks. The article and Visualization pages keep the 760px width.
+- Inputs: one "Inputs" card holding a LIST of collapsible sections (`INPUT_SECTIONS`: About you, Costs that end before
+  retirement, Future Contributions, Social Security, Existing Accounts, Assumptions — Assumptions was a `<details>`
+  before). Each closed header shows a one-line summary of its values, so every input can be read at a glance; only
+  "About you" starts open; "Expand all / Collapse all" in the card head. In compare mode a section whose inputs differ
+  gets a "changed" pill. The inner dropdowns ("Will you earn more or less later?", cost basis) are unchanged.
+- Results: the four cards (Retirement income number, Roth vs. Traditional, The trade-off in dollars, Total portfolio
+  tax comparison) are `Collapsible` cards; the header shows the headline (`resultHeadlines`) while closed; all start
+  open; "Collapse all results" above them. Heading ids `sec1`, `sec2`, `sec-tradeoff`, `sec3` are kept.
+- `Collapsible` hides a closed body (`hidden`), never unmounts it, so typed values and open dropdowns survive. Section
+  bodies in InputForm are built by a `section(id, content)` function call, NOT an inner component (an inner component
+  would remount every render and lose input state).
+
 ## "Compare a change" (added 2026-09-25; reworked same day)
 - Reworked at the user's request: they disliked editing the existing inputs to make a comparison. Now
   "Compare a change" (button under the main form, `ScenarioCompare.jsx`) opens a SECOND full `InputForm`
   beside the main one ("Your inputs (baseline)" left, "With a change" right; `App.jsx` `compareValues` state, a
-  copy of the main values, memory only). The main form is never touched; it is the baseline. The page widens
-  (`.page.wide`, ~1180px) while comparing and the two forms stack below 900px. Fields in the second form that
+  copy of the main values, memory only). The main form is never touched; it is the baseline. While comparing, the
+  two forms go across the top (the inputs column stops being sticky), the compare card and results below; the forms
+  stack below 900px. Both forms share one set of open sections (`App.jsx` `openInputs`), so they stay lined up. Fields in the second form that
   differ from the main form are highlighted (`changed` class); any number of them may change at once.
   `InputForm` gained optional `title`, `baseValues` (enables the highlight) and `namePrefix` (keeps the two
   forms' radio groups separate).
@@ -438,6 +456,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (m) — Layout: inputs become a list of collapsible sections with one-line summaries, beside the results
+  (sticky left column on desktop); the four results cards collapse too, showing their headline when closed. New
+  `lib/sectionSummaries.js` (hand-checked tests) and `components/Collapsible.jsx`. No model change. 434 tests.
 - 2026-09-25 (l) — Cost basis moved into a collapsed dropdown under the taxable balance (summary shows the chosen
   share). The rate walk-through, when no withdrawal is needed (G = 0), now shows how "Extra tax that withdrawal would
   cause" is worked out: taxable SS and taxable income with the hypothetical withdrawal added (vs. before), the tax with
