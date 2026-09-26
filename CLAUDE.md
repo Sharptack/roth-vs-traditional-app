@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (388 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (396 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -149,7 +149,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   the comparison across reloads; named/saved scenarios (would need storage — see the backend future item).
 
 ## Sharing a scenario (added 2026-09-25)
-- "Copy inputs to share" button (`ShareInputs.jsx`, rendered inside the Compare-a-change card) copies plain text:
+- "Copy inputs to share" button (`ShareInputs.jsx`, in the page header since 2026-09-25d — the user wanted it apart from Compare a change) copies plain text:
   every input (labelled, via `scenarioCompare.describeInputs`), the headline results (`headlineRows`), and a
   link. When comparing, it adds the changed inputs and the changed side's results. Falls back to a textarea if
   the clipboard is blocked. Meant for pasting a scenario into a conversation with Claude.
@@ -158,6 +158,20 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   is not rewritten as you type. Query string, not hash, so it coexists with the hash routes.
 - For Claude: to reproduce a pasted scenario, turn the link's query into form values with
   `valuesFromSearch`, then `toCompareInputs` + `compareRothVsTraditional` (e.g. in a `node -e`/vitest snippet).
+
+## Taxable-account cost basis (2026-09-25d)
+- A taxable withdrawal is split pro-rata into cost basis (tax-free, NOT in SS combined income) and gain (LTCG
+  brackets, IS in combined income). `calculateRetirementTax` takes `taxableGainShare` (default 1 = all gain,
+  the old behavior) and returns `capitalGains`; `solveGrossWithdrawal` takes `otherTaxableGainShare`;
+  `solvePortfolioWithdrawal` takes `{ taxableGainShare }` and returns `taxableGains`.
+- Existing taxable accounts: input `otherTaxableBasis` (share of TODAY'S balance; form default '0.5', options
+  0/25/50/75/100% in a dropdown under the taxable balance, shown only when that balance > 0; lib default 0 = all
+  gain so older callers/tests are unchanged). Growth to retirement is all gain: gain share = 1 − basis$ / grown
+  balance (`otherWithdrawals.taxableGains`, `taxableGainShare`).
+- Taxable side of Future Contributions: every contributed dollar is basis (excess × years); `annuity.X.side`
+  has `basis`, `gainShare`, `gains`. Section 3 taxable bucket gain share = 1 − (existing basis + side basis)
+  / bucket. Simplifications: first-year pro-rata split (no lot selection, basis share held for the year), and the
+  single-contribution lump sum's side uses the annuity side's rate.
 
 ## The model (as built)
 1. Current tax: income tax on (gross − half of any self-employment tax − **Pre-tax savings, if
@@ -398,6 +412,12 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (d) — Cost basis for taxable accounts (see its section): existing taxable balances default to 50%
+  basis with a dropdown; Future-Contribution spillover is all basis; only gains are taxed and count toward SS
+  combined income. Hand-verified tests (new tests/retirementTaxStack.test.js; compare.test.js side-account figures
+  re-derived by hand; all matched first run). "Copy inputs to share" moved to the page header. "Comparing a
+  change" highlights the retirement income number and, more strongly, the marginal vs. effective rate rows
+  (`headlineRows` rows carry `emphasis`). 396 tests.
 - 2026-09-25 (c) — (1) MODEL FIX, contribution limit: both scenarios now cost the same take-home pay and whatever
   doesn't fit under the limit goes to a taxable account (`splitAtTakeHome`); at the limit with Roth savings, the
   Pre-tax side invests the tax it saves (e.g. $23,500 at 24% -> $5,640/yr). Old code overstated the Pre-tax

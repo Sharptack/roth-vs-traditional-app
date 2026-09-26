@@ -744,7 +744,11 @@ function PortfolioMath({ result }) {
   const rows = [
     { label: 'Pre-tax account withdrawals', get: (p) => $(p.withdrawals.pretax) },
     { label: 'Roth account withdrawals (tax-free)', get: (p) => $(p.withdrawals.roth) },
-    { label: 'Taxable account withdrawals', get: (p) => $(p.withdrawals.taxable) },
+    {
+      label: 'Taxable account withdrawals',
+      get: (p) => $(p.withdrawals.taxable),
+      sub: (p) => (p.withdrawals.taxable > 0 ? `${$(p.taxableGains)} of it gains, the rest cost basis` : ''),
+    },
     { label: 'Social Security benefit', get: () => $(ss.annualBenefit) },
     {
       label: 'Gross income (withdrawals + Social Security)',
@@ -758,8 +762,8 @@ function PortfolioMath({ result }) {
         ss.annualBenefit > 0 ? `${formatPercent(p.taxableSS / ss.annualBenefit, 0)} of benefit` : '',
     },
     {
-      label: 'Adjusted gross income, AGI (Pre-tax + taxable-account withdrawals + taxable Social Security)',
-      get: (p) => $(p.withdrawals.pretax + p.withdrawals.taxable + p.taxableSS),
+      label: 'Adjusted gross income, AGI (Pre-tax withdrawals + taxable-account gains + taxable Social Security)',
+      get: (p) => $(p.withdrawals.pretax + p.taxableGains + p.taxableSS),
     },
     {
       label: `Ordinary taxable income (Pre-tax withdrawals + taxable Social Security − ${$(std)} standard deduction)`,
@@ -767,7 +771,7 @@ function PortfolioMath({ result }) {
     },
     { label: 'Federal income tax', get: (p) => $(p.ordinaryTax) },
     {
-      label: 'Capital gains tax (real 0% / 15% / 20% brackets, on top of ordinary income)',
+      label: 'Capital gains tax (real 0% / 15% / 20% brackets on the gains, on top of ordinary income)',
       get: (p) => $(p.capitalGainsTax),
       sub: (p) =>
         p.withdrawals.taxable > 0
@@ -788,9 +792,9 @@ function PortfolioMath({ result }) {
         <p>
           Each scenario draws the same share of every account (scaled until the after-tax income
           matches your target). Social Security is added on top and is taxed under the IRS
-          combined-income rules, using your Pre-tax and taxable-account withdrawals as the
-          &ldquo;other income.&rdquo; Taxable-account withdrawals are treated as capital gain and
-          taxed at the real 0% / 15% / 20% capital-gains rates, stacked on top of your ordinary
+          combined-income rules, using your Pre-tax withdrawals and taxable-account gains as the
+          &ldquo;other income.&rdquo; Each taxable-account withdrawal is part cost basis (tax-free) and
+          part gain, in proportion to the account; the gain is taxed at the real 0% / 15% / 20% capital-gains rates, stacked on top of your ordinary
           income &mdash; not a flat rate, so a withdrawal can be partly or fully tax-free when your
           ordinary income is modest.
         </p>

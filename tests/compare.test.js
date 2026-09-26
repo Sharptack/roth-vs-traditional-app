@@ -690,10 +690,13 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     //   i.e. it invested Pre-tax-sized dollars the saver never had.)
     // Pre-tax account: FV 2,219,828.48, 4% = 88,793.14 (ordinary income).
     // Taxable side: FV 5,640 x 94.4607862 = 532,758.83; 4% = 21,310.35.
+    //   Cost basis = every dollar contributed: 5,640 x 30 = 169,200, so the withdrawal is
+    //   169,200 / 532,758.83 basis -> basis part = 4% x 169,200 = 6,768; gain = 14,542.35.
     //   Stacked on 88,793.14 of ordinary income: ordinary taxable = 88,793.14 - 15,750 = 73,043.14,
-    //   already above the $48,350 top of the 0% gains bracket, so all of it is taxed at 15%:
-    //   3,196.55 -> after tax 18,113.80.
-    // One year's side contribution: 5,640 x 7.6122550 = 42,933.12; after tax x 0.85 = 36,493.15.
+    //   already above the $48,350 top of the 0% gains bracket, so the gain is taxed at 15%:
+    //   2,181.35 -> after tax 19,129.00; rate on the whole withdrawal 2,181.35 / 21,310.35 = 10.236%.
+    // One year's side contribution: 5,640 x 7.6122550 = 42,933.12; after tax at that rate:
+    //   42,933.12 x (1 - 0.102362) = 38,538.36.
     const r = compareRothVsTraditional({ ...base, savings: 23500, currentType: 'roth' });
     expect(r.contributionSplit.roth.toAccount).toBe(23500);
     expect(r.contributionSplit.roth.excessToTaxable).toBe(0);
@@ -704,17 +707,18 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     const side = r.annuity.pretax.side;
     expect(side.futureValue).toBeCloseTo(532758.83, 1);
     expect(side.annualWithdrawal).toBeCloseTo(21310.35, 1);
-    expect(side.taxRate).toBeCloseTo(0.15, 10);
-    expect(side.afterTaxWithdrawal).toBeCloseTo(18113.8, 1);
+    expect(side.gains).toBeCloseTo(14542.35, 1);
+    expect(side.taxRate).toBeCloseTo(0.102362, 5);
+    expect(side.afterTaxWithdrawal).toBeCloseTo(19129.0, 1);
     expect(r.annuity.roth.side.futureValue).toBe(0);
 
     // Totals for Future Contributions = the account + its taxable side.
     expect(r.annuity.pretax.totalFutureValue).toBeCloseTo(2219828.48 + 532758.83, 1);
-    expect(r.annuity.pretax.totalAfterTaxIncome).toBeCloseTo(r.annuity.pretax.afterTaxWithdrawal + 18113.8, 1);
+    expect(r.annuity.pretax.totalAfterTaxIncome).toBeCloseTo(r.annuity.pretax.afterTaxWithdrawal + 19129.0, 1);
     expect(r.annuity.roth.totalAfterTaxIncome).toBeCloseTo(r.annuity.roth.afterTaxWithdrawal, 6);
     expect(r.lumpSum.pretax.side.futureValue).toBeCloseTo(42933.12, 1);
-    expect(r.lumpSum.pretax.side.afterTaxValue).toBeCloseTo(36493.15, 1);
-    expect(r.lumpSum.pretax.totalAfterTaxValue).toBeCloseTo(r.lumpSum.pretax.afterTaxValue + 36493.15, 1);
+    expect(r.lumpSum.pretax.side.afterTaxValue).toBeCloseTo(38538.36, 0);
+    expect(r.lumpSum.pretax.totalAfterTaxValue).toBeCloseTo(r.lumpSum.pretax.afterTaxValue + 38538.36, 0);
 
     // The verdict uses the totals.
     const { roth, pretax } = r.annuity;
@@ -747,10 +751,11 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     expect(r.annuity.roth.side.annualWithdrawal).toBeCloseTo(62344.12, 1);
     expect(r.annuity.roth.side.taxRate).toBe(0);
     expect(r.annuity.roth.side.afterTaxWithdrawal).toBeCloseTo(62344.12, 1);
-    // Pre-tax side: 4% = 83,654.47 on top of 73,043.14 of ordinary taxable income: all at 15%
-    //   (total 156,697.61 < 533,400) -> tax 12,548.17, after tax 71,106.30.
+    // Pre-tax side: 4% = 83,654.47; basis part = 4% x (22,140 x 30 = 664,200) = 26,568;
+    //   gain 57,086.47 on top of 73,043.14 of ordinary taxable income: all at 15%
+    //   (total 130,129.61 < 533,400) -> tax 8,562.97, after tax 75,091.50.
     expect(r.annuity.pretax.side.annualWithdrawal).toBeCloseTo(83654.47, 1);
-    expect(r.annuity.pretax.side.afterTaxWithdrawal).toBeCloseTo(71106.3, 1);
+    expect(r.annuity.pretax.side.afterTaxWithdrawal).toBeCloseTo(75091.5, 1);
   });
 
   it('under the limit: nothing changes from the pre-cap behavior (backward-compatible)', () => {
@@ -953,5 +958,45 @@ describe('rateDrivers — wired to the gross-up the rate came from', () => {
     expect(r.rateDrivers.otherPretaxWithdrawal).toBeCloseTo(r.otherWithdrawals.pretaxGross, 6);
     expect(r.rateDrivers.deductionUsedBefore).toBe(15750);
     expect(r.rateDrivers.startBracket).toBeGreaterThan(0);
+  });
+});
+
+describe('Existing Accounts: taxable cost basis', () => {
+  // Single, 2025, 35 -> 65 at 7% (lump-sum factor 7.6122550). Existing taxable $100,000 at 50% basis,
+  // nothing else existing, Social Security known at $40,000.
+  const base = {
+    ...baseInputs,
+    otherPretaxBalance: 0,
+    otherTaxableBalance: 100000,
+    knowsSocialSecurity: true,
+    socialSecurityBenefit: 40000,
+  };
+
+  it('50% basis: only the growth and the other half are taxed (HAND CALC)', () => {
+    // FV = 100,000 x 7.6122550 = 761,225.50; basis stays 50,000.
+    // 4% withdrawal = 30,449.02; basis part = 4% x 50,000 = 2,000; gain = 28,449.02.
+    // Stack without Future Contributions: combined income = 28,449.02 + 20,000 = 48,449.02 (> 34,000)
+    //   taxable SS = min(0.85 x 40,000, 0.85 x (48,449.02 - 34,000) + 4,500)
+    //              = min(34,000, 12,281.67 + 4,500) = 16,781.67
+    //   ordinary taxable = 16,781.67 - 15,750 = 1,031.67 -> tax 103.17
+    //   gains stack on 1,031.67: 1,031.67 + 28,449.02 = 29,480.69 < 48,350 -> 0% -> total tax 103.17
+    const r = compareRothVsTraditional({ ...base, otherTaxableBasis: 0.5 });
+    expect(r.otherWithdrawals.taxableGross).toBeCloseTo(30449.02, 1);
+    expect(r.otherWithdrawals.taxableGains).toBeCloseTo(28449.02, 1);
+    expect(r.grossUp.baseStack.taxableSS).toBeCloseTo(16781.67, 1);
+    expect(r.grossUp.baseStack.totalTax).toBeCloseTo(103.17, 1);
+  });
+
+  it('omitting the basis treats the whole withdrawal as gain (backward compatible)', () => {
+    // gain = 30,449.02 -> combined 50,449.02 -> taxable SS = 0.85 x 16,449.02 + 4,500 = 18,481.67
+    //   ordinary taxable = 2,731.67 -> tax 273.17; gains 2,731.67 + 30,449.02 < 48,350 -> 0%
+    const r = compareRothVsTraditional(base);
+    expect(r.otherWithdrawals.taxableGains).toBeCloseTo(30449.02, 1);
+    expect(r.grossUp.baseStack.totalTax).toBeCloseTo(273.17, 1);
+  });
+
+  it('rejects a basis outside 0-100%', () => {
+    expect(validateInputs({ ...base, otherTaxableBasis: 1.2 }).join(' ')).toMatch(/basis/i);
+    expect(validateInputs({ ...base, otherTaxableBasis: 0.5 })).toEqual([]);
   });
 });

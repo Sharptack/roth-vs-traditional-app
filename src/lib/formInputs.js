@@ -31,6 +31,7 @@ export const DEFAULT_FORM_VALUES = {
   otherPretaxBalance: '100000',
   otherRothBalance: '0',
   otherTaxableBalance: '0',
+  otherTaxableBasis: '0.5', // share of today's taxable balance that is cost basis
 };
 
 // How much of the gross income is 1099 (self-employment) income.
@@ -60,6 +61,7 @@ export function toCompareInputs(values, year) {
     otherPretaxBalance: blankAsZero(values.otherPretaxBalance),
     otherRothBalance: blankAsZero(values.otherRothBalance),
     otherTaxableBalance: blankAsZero(values.otherTaxableBalance),
+    otherTaxableBasis: Number(values.otherTaxableBasis ?? DEFAULT_FORM_VALUES.otherTaxableBasis),
     year,
   };
 }

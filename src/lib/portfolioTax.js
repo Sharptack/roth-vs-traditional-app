@@ -10,7 +10,8 @@
 //   3. At each step: taxable SS comes from the IRS combined-income formula using
 //      (scaled pretax + scaled taxable withdrawal) as "other income"; ordinary
 //      tax is applied to (scaled pretax + taxable SS - standard deduction); the
-//      capital gains tax is the scaled taxable withdrawal run through the real
+//      capital gains tax is the GAIN part of the scaled taxable withdrawal
+//      (taxableGainShare; the rest is cost basis) run through the real
 //      0%/15%/20% capital-gains brackets, stacked on top of ordinary income —
 //      not a flat rate. (All in retirementTaxStack.js, shared with incomeNeed.js.)
 //
@@ -32,7 +33,8 @@ export function solvePortfolioWithdrawal(
   ssBenefit,
   filingStatus,
   year,
-  { withdrawalRate = WITHDRAWAL_RATE } = {},
+  // taxableGainShare: share of the taxable bucket that is gain (the rest is cost basis).
+  { withdrawalRate = WITHDRAWAL_RATE, taxableGainShare = 1 } = {},
 ) {
   const balances = {
     pretax: Math.max(0, buckets.pretax || 0),
@@ -56,6 +58,7 @@ export function solvePortfolioWithdrawal(
     const tax = calculateRetirementTax({
       pretaxWithdrawal: w.pretax,
       taxableWithdrawal: w.taxable,
+      taxableGainShare,
       ssBenefit,
       filingStatus,
       year,
@@ -94,6 +97,7 @@ export function solvePortfolioWithdrawal(
     ordinaryTaxableIncome: result.tax.ordinaryTaxableIncome,
     ordinaryTax: result.tax.ordinaryTax,
     capitalGainsTax: result.tax.capitalGainsTax,
+    taxableGains: result.tax.capitalGains,
     totalGrossWithdrawal,
     achievedAfterTaxIncome: result.afterTaxIncome,
     // true when the target is met (or exceeded, e.g. Social Security alone

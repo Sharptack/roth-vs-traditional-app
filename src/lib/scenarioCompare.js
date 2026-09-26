@@ -31,6 +31,7 @@ const INPUT_FIELDS = [
   { label: 'Existing Accounts, Pre-tax', get: (i) => i.otherPretaxBalance, show: formatCurrency },
   { label: 'Existing Accounts, Roth', get: (i) => i.otherRothBalance, show: formatCurrency },
   { label: 'Existing Accounts, taxable', get: (i) => i.otherTaxableBalance, show: formatCurrency },
+  { label: 'Cost basis of existing taxable', get: (i) => i.otherTaxableBasis ?? 0, show: (v) => formatPercent(v, 0) },
 ];
 
 // Every input, labelled and formatted, in form order (for sharing a scenario as text).
@@ -52,14 +53,16 @@ export function changedInputs(baseline, current) {
 
 const LEAN_TEXT = { pretax: 'Pre-tax (Traditional)', roth: 'Roth', even: 'About even' };
 
-// The handful of numbers worth seeing side by side at a glance.
+// The handful of numbers worth seeing side by side at a glance. `emphasis` marks the
+// rows the UI highlights: the retirement income number ('key') and the two rates
+// the decision turns on ('rate').
 export function headlineRows(result) {
-  const row = (key, label, value, format, kind = 'sub') => ({ key, label, value, format, kind });
+  const row = (key, label, value, format, kind = 'sub', emphasis) => ({ key, label, value, format, kind, emphasis });
   return [
-    row('need', 'Retirement income number', result.retirementNeed.target, 'currency', 'total'),
+    row('need', 'Retirement income number', result.retirementNeed.target, 'currency', 'total', 'key'),
     row('ssBenefit', 'Social Security benefit used', result.socialSecurity.annualBenefit, 'currency'),
-    row('marginalNow', 'Marginal rate while working', result.rates.marginalNow, 'percent'),
-    row('effectiveRetirement', 'Effective rate on these withdrawals', result.rates.effectiveRetirement, 'percent', 'total'),
+    row('marginalNow', 'Marginal rate while working', result.rates.marginalNow, 'percent', 'total', 'rate'),
+    row('effectiveRetirement', 'Effective rate on these withdrawals', result.rates.effectiveRetirement, 'percent', 'total', 'rate'),
     row('lean', 'Tends to favor', LEAN_TEXT[result.rates.lean], 'text', 'total'),
     row('contributionRoth', 'Contribution per year, Roth', result.contribution.roth, 'currency'),
     row('contributionPretax', 'Contribution per year, Pre-tax', result.contribution.pretax, 'currency'),
@@ -95,6 +98,7 @@ export function alignRows(baselineRows, currentRows) {
       label: shape.label,
       kind: shape.kind,
       format: shape.format,
+      emphasis: shape.emphasis,
       baseline: base,
       current: cur,
       delta: numeric ? cur.value - base.value : null,

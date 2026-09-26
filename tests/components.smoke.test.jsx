@@ -671,10 +671,12 @@ describe('Round 2026-09-25b adjustments', () => {
     expect(html).toContain('40% lower than today');
   });
 
-  it('App offers "Copy inputs to share" next to Compare a change', () => {
+  it('App offers "Copy inputs to share" in the page header, apart from Compare a change', () => {
     const html = renderToStaticMarkup(<App />);
-    expect(html).toContain('Copy inputs to share');
-    expect(html.indexOf('Copy inputs to share')).toBeGreaterThan(html.indexOf('Compare a change'));
+    const header = html.slice(html.indexOf('class="page-header"'), html.indexOf('</header>'));
+    expect(header).toContain('Copy inputs to share');
+    const compareCard = html.slice(html.indexOf('compare-start'), html.indexOf('</section>', html.indexOf('compare-start')));
+    expect(compareCard).not.toContain('Copy inputs to share');
   });
 });
 
@@ -723,5 +725,39 @@ describe('Future Contributions vs. Existing Accounts', () => {
     expect(articleMarkdown).toContain('**Existing Accounts**');
     expect(articleMarkdown).not.toMatch(/this account/i);
     expect(articleMarkdown).not.toContain('still a planned future feature');
+  });
+});
+
+describe('Comparing a change: emphasis', () => {
+  it('highlights the retirement income number and, more strongly, the two rates', () => {
+    const scenario = (overrides = {}) => {
+      const inputs = toCompareInputs({ ...DEFAULT_FORM_VALUES, ...overrides }, 2025);
+      return { inputs, result: compareRothVsTraditional(inputs) };
+    };
+    const html = renderToStaticMarkup(
+      <ScenarioCompare baseline={scenario()} current={scenario({ grossIncome: '130000' })} onStart={() => {}} onStop={() => {}} />,
+    );
+    expect(html).toMatch(/class="total-row emph-key"><th scope="row">Retirement income number/);
+    expect(html).toMatch(/class="total-row emph-rate"><th scope="row">Marginal rate while working/);
+    expect(html).toMatch(/class="total-row emph-rate"><th scope="row">Effective rate on these withdrawals/);
+    expect((html.match(/emph-rate/g) ?? []).length).toBe(2);
+  });
+});
+
+describe('Existing taxable accounts: cost basis dropdown', () => {
+  it('appears only when there is a taxable balance, defaulting to 50%', () => {
+    const none = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
+    expect(none).not.toContain('Cost basis of those taxable accounts');
+    const some = renderToStaticMarkup(
+      <InputForm values={{ ...DEFAULT_FORM_VALUES, otherTaxableBalance: '50000' }} onChange={() => {}} />,
+    );
+    expect(some).toContain('Cost basis of those taxable accounts');
+    expect(some).toMatch(/<option value="0.5" selected="">50% \(default\)/);
+  });
+
+  it('shows the gains part of the taxable withdrawal in the rate walk-through', () => {
+    const html = render({ otherTaxableBalance: '100000' });
+    expect(html).toContain('…of which gains (taxed; the rest is cost basis)');
+    expect(html).toContain('of it gains, the rest cost basis');
   });
 });

@@ -27,6 +27,14 @@ const LIFESTYLE_OPTIONS = [
   { value: '2', label: '100% higher than today' },
 ];
 
+const BASIS_OPTIONS = [
+  { value: '0', label: '0% (all of it is gains)' },
+  { value: '0.25', label: '25%' },
+  { value: '0.5', label: '50% (default)' },
+  { value: '0.75', label: '75%' },
+  { value: '1', label: '100% (no gains yet)' },
+];
+
 const returnLabel = (value) => RETURN_OPTIONS.find((o) => o.value === value)?.label ?? value;
 // Short form for a dropdown summary: "same", "25% higher", "20% lower".
 const lifestyleLabel = (value) =>
@@ -312,6 +320,16 @@ export default function InputForm({ values, onChange, title, baseValues, namePre
           onChange={set('otherTaxableBalance')}
           changed={isChanged('otherTaxableBalance')}
         />
+        {parseNumber(values.otherTaxableBalance) > 0 && (
+          <SelectInput
+            label="Cost basis of those taxable accounts"
+            hint="The share of today's balance that is money you put in, not gains. Only gains are taxed when you withdraw; growth from here on is all gain."
+            value={values.otherTaxableBasis}
+            onChange={set('otherTaxableBasis')}
+            changed={isChanged('otherTaxableBasis')}
+            options={BASIS_OPTIONS}
+          />
+        )}
       </fieldset>
 
       <details className="details assumptions">

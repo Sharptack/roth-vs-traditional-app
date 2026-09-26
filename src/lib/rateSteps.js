@@ -10,7 +10,7 @@
 //   value   a number (absent on headings)
 //   format  'currency' | 'percent' | 'bracket' (a whole-number rate)
 //   kind    '' | 'sub' | 'total' | 'heading'
-import { formatCurrency as $ } from './format.js';
+import { formatCurrency as $, formatPercent } from './format.js';
 
 const heading = (key, label) => ({ key, label, kind: 'heading' });
 const money = (key, label, value, kind = 'sub', detail) => ({
@@ -62,7 +62,18 @@ export function effectiveRateSteps(result) {
     money('ssBenefit', 'Social Security benefit', ss.annualBenefit),
     money('otherPretax', 'Existing Accounts, Pre-tax (4% withdrawal)', o.pretaxGross),
     ...(o.roth > 0 ? [money('otherRoth', 'Existing Accounts, Roth (4%, tax-free)', o.roth)] : []),
-    ...(hasGains ? [money('otherTaxable', 'Existing Accounts, taxable (4% withdrawal)', o.taxableGross)] : []),
+    ...(hasGains
+      ? [
+          money('otherTaxable', 'Existing Accounts, taxable (4% withdrawal)', o.taxableGross),
+          money(
+            'otherTaxableGains',
+            '…of which gains (taxed; the rest is cost basis)',
+            o.taxableGains,
+            'sub',
+            `${formatPercent(o.taxableGainShare, 0)} of the withdrawal`,
+          ),
+        ]
+      : []),
     money('baseTaxableSS', 'Taxable part of Social Security (IRS combined-income rules)', g.baseStack.taxableSS),
     money(
       'baseTaxableIncome',

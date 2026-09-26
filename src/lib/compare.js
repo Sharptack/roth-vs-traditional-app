@@ -14,7 +14,9 @@
 //   accountType ('401k' | 'ira')           — for the contribution-limit check
 //   knowsSocialSecurity (bool), socialSecurityBenefit — known benefit if any
 //   returnRate                             — expected annual return, e.g. 0.07
-//   otherPretaxBalance, otherRothBalance, otherTaxableBalance
+//   otherPretaxBalance, otherRothBalance, otherTaxableBalance  — the Existing Accounts
+//   otherTaxableBasis                      — share of today's taxable balance that is cost
+//                                            basis (0–1). Optional, default 0 = all gain.
 //   year                                   — tax year (defaults to current year)
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
@@ -113,6 +115,10 @@ export function validateInputs(inputs) {
     ['otherTaxableBalance', 'Other taxable balance'],
   ]) {
     if (!isNum(inputs[key]) || inputs[key] < 0) errors.push(`${label} can't be negative.`);
+  }
+  const basis = inputs.otherTaxableBasis ?? 0;
+  if (!isNum(basis) || basis < 0 || basis > 1) {
+    errors.push('Choose the cost basis of your existing taxable accounts (0–100%).');
   }
   if (inputs.knowsSocialSecurity && (!isNum(inputs.socialSecurityBenefit) || inputs.socialSecurityBenefit < 0)) {
     errors.push('Enter your annual Social Security benefit.');
@@ -264,10 +270,17 @@ export function compareRothVsTraditional(inputs) {
     roth: futureValueLumpSum(inputs.otherRothBalance, returnRate, years),
     taxable: futureValueLumpSum(inputs.otherTaxableBalance, returnRate, years),
   };
+  // Cost basis of the taxable Existing Accounts: a share of TODAY's balance; all
+  // growth from here on is gain. Withdrawals are split pro-rata between basis
+  // (untaxed) and gain (capital gain), so gain share = 1 − basis / grown balance.
+  const existingTaxableBasis = inputs.otherTaxableBalance * (inputs.otherTaxableBasis ?? 0);
+  const existingGainShare = grown.taxable > 0 ? Math.max(0, 1 - existingTaxableBasis / grown.taxable) : 1;
   const otherWithdrawals = {
     pretaxGross: WITHDRAWAL_RATE * grown.pretax, // fully taxable, stacks as ordinary income
     roth: WITHDRAWAL_RATE * grown.roth, // tax-free
-    taxableGross: WITHDRAWAL_RATE * grown.taxable, // treated as capital gain, taxed via real LTCG brackets
+    taxableGross: WITHDRAWAL_RATE * grown.taxable, // gain part taxed via real LTCG brackets
+    taxableGains: WITHDRAWAL_RATE * grown.taxable * existingGainShare,
+    taxableGainShare: existingGainShare,
   };
   // NOTE: no RMD sequencing or tax-efficient withdrawal ordering is modeled —
   // all accounts are treated as drawn simultaneously.
@@ -281,6 +294,7 @@ export function compareRothVsTraditional(inputs) {
     otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
     otherRothWithdrawal: otherWithdrawals.roth,
     otherTaxableWithdrawal: otherWithdrawals.taxableGross,
+    otherTaxableGainShare: existingGainShare,
     filingStatus,
     year,
     probeSize: accountPretaxAnnualWithdrawal,
@@ -339,25 +353,37 @@ export function compareRothVsTraditional(inputs) {
   // taxable in that scenario's first retirement year: Social Security, Existing
   // Accounts' 4% withdrawals, and (Pre-tax scenario) the account's own 4% withdrawal.
   // Rate = the extra tax it causes / the withdrawal.
-  const sideTaxRate = (withdrawal, accountPretaxWithdrawal, ss) => {
+  // Every dollar contributed to it is cost basis, so only its growth is gain.
+  const sideGainShare = (split, fv) =>
+    fv > 0 ? Math.max(0, 1 - (split.excessToTaxable * years) / fv) : 1;
+  const sideTaxRate = (withdrawal, gains, accountPretaxWithdrawal, ss) => {
     if (!(withdrawal > 0)) return 0;
-    const stack = (extra) =>
-      calculateRetirementTax({
+    const stack = (extra, extraGains) => {
+      const taxable = otherWithdrawals.taxableGross + extra;
+      return calculateRetirementTax({
         pretaxWithdrawal: otherWithdrawals.pretaxGross + accountPretaxWithdrawal,
-        taxableWithdrawal: otherWithdrawals.taxableGross + extra,
+        taxableWithdrawal: taxable,
+        taxableGainShare: taxable > 0 ? (otherWithdrawals.taxableGains + extraGains) / taxable : 1,
         ssBenefit: ss,
         filingStatus,
         year,
       }).totalTax;
-    return (stack(withdrawal) - stack(0)) / withdrawal;
+    };
+    return (stack(withdrawal, gains) - stack(0, 0)) / withdrawal;
   };
   const sideFor = (scenario, split, fv, ss) => {
     const annualWithdrawal = WITHDRAWAL_RATE * fv;
-    const taxRate = sideTaxRate(annualWithdrawal, scenario === 'pretax' ? accountPretaxAnnualWithdrawal : 0, ss);
+    const gainShare = sideGainShare(split, fv);
+    const gains = annualWithdrawal * gainShare;
+    const accountDraw = scenario === 'pretax' ? accountPretaxAnnualWithdrawal : 0;
+    const taxRate = sideTaxRate(annualWithdrawal, gains, accountDraw, ss);
     return {
       contribution: split.excessToTaxable,
+      basis: split.excessToTaxable * years,
       futureValue: fv,
       annualWithdrawal,
+      gainShare,
+      gains,
       taxRate,
       afterTaxWithdrawal: annualWithdrawal * (1 - taxRate),
     };
@@ -394,10 +420,18 @@ export function compareRothVsTraditional(inputs) {
   const portfolio = {};
   for (const scenario of ['roth', 'pretax']) {
     const buckets = scenarioBuckets[scenario];
+    // Cost basis in the taxable bucket: the Existing Accounts' basis plus every
+    // dollar of Future Contributions that spilled over the limit.
+    const taxableBasis = existingTaxableBasis + annuity[scenario].side.basis;
+    const taxableGainShare = buckets.taxable > 0 ? Math.max(0, 1 - taxableBasis / buckets.taxable) : 1;
     portfolio[scenario] = {
       buckets,
       totalValue: buckets.pretax + buckets.roth + buckets.taxable,
-      ...solvePortfolioWithdrawal(targetAfterTaxIncome, buckets, ssBenefit, filingStatus, year),
+      taxableBasis,
+      taxableGainShare,
+      ...solvePortfolioWithdrawal(targetAfterTaxIncome, buckets, ssBenefit, filingStatus, year, {
+        taxableGainShare,
+      }),
     };
   }
 
@@ -414,6 +448,7 @@ export function compareRothVsTraditional(inputs) {
     otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
     otherRothWithdrawal: otherWithdrawals.roth,
     otherTaxableWithdrawal: otherWithdrawals.taxableGross,
+    otherTaxableGainShare: existingGainShare,
     filingStatus,
     year,
     probeSize: accountPretaxAnnualWithdrawal,

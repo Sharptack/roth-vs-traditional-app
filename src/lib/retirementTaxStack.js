@@ -8,8 +8,11 @@
 //     (Roth withdrawals are tax-free and are NOT part of combined income.)
 //   - Ordinary tax applies to (pre-tax withdrawals + taxable Social Security
 //     - standard deduction), through the progressive brackets.
-//   - Taxable-account withdrawals are treated as entirely long-term capital
-//     gain and taxed via the REAL 0% / 15% / 20% capital-gains brackets,
+//   - Taxable-account withdrawals: only the GAIN part (taxableGainShare of the
+//     withdrawal; the rest is cost basis coming back, untaxed) counts toward
+//     Social Security combined income and is taxed. Withdrawals are split
+//     pro-rata between basis and gain. The default share of 1 treats the whole
+//     withdrawal as gain. The gain is treated as long-term capital gain and taxed via the REAL 0% / 15% / 20% capital-gains brackets,
 //     stacked on top of ordinary income (see capitalGainsTax.js) — NOT a flat
 //     rate. Many retirees with modest other income pay 0% on some or all of a
 //     taxable-account withdrawal.
@@ -20,12 +23,14 @@ import { calculateCapitalGainsTax } from './capitalGainsTax.js';
 export function calculateRetirementTax({
   pretaxWithdrawal = 0,
   taxableWithdrawal = 0,
+  taxableGainShare = 1,
   ssBenefit = 0,
   filingStatus,
   year,
 }) {
+  const capitalGains = taxableWithdrawal * taxableGainShare;
   const taxableSS = calculateTaxableSocialSecurity(
-    pretaxWithdrawal + taxableWithdrawal,
+    pretaxWithdrawal + capitalGains,
     ssBenefit,
     filingStatus,
     year,
@@ -36,7 +41,7 @@ export function calculateRetirementTax({
   const ordinaryTax = calculateTax(ordinaryTaxableIncome, filingStatus, year);
   const capitalGainsTax = calculateCapitalGainsTax(
     grossOrdinaryIncome,
-    taxableWithdrawal,
+    capitalGains,
     standardDeduction,
     filingStatus,
     year,
@@ -44,6 +49,7 @@ export function calculateRetirementTax({
   return {
     taxableSS,
     grossOrdinaryIncome, // before the standard deduction
+    capitalGains, // the taxed part of the taxable-account withdrawal
     ordinaryTaxableIncome,
     ordinaryTax,
     capitalGainsTax,

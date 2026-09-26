@@ -47,6 +47,7 @@ export function solveGrossWithdrawal({
   otherPretaxWithdrawal = 0,
   otherRothWithdrawal = 0,
   otherTaxableWithdrawal = 0,
+  otherTaxableGainShare = 1, // share of the taxable withdrawal that is gain (rest = cost basis)
   filingStatus,
   year,
   probeSize = DEFAULT_PROBE_WITHDRAWAL,
@@ -55,6 +56,7 @@ export function solveGrossWithdrawal({
     calculateRetirementTax({
       pretaxWithdrawal: otherPretaxWithdrawal + g,
       taxableWithdrawal: otherTaxableWithdrawal,
+      taxableGainShare: otherTaxableGainShare,
       ssBenefit,
       filingStatus,
       year,

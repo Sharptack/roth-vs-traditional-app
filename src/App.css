@@ -1151,12 +1151,7 @@ th.win .th-sub {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  flex-basis: 100%;
-  margin-top: 8px;
-}
-
-.compare-start .share-inputs {
-  margin-top: 0;
+  margin-top: 12px;
 }
 
 .share-inputs .hint {
@@ -1189,4 +1184,32 @@ th.win .th-sub {
 
 .sum-table thead th.row-head {
   width: 38%;
+}
+
+/* "Comparing a change": the retirement income number, and above all the two
+   rates the decision turns on, stand out from the other headline rows. */
+.scenario-table tr.emph-key th,
+.scenario-table tr.emph-key td {
+  background: var(--accent-soft);
+  font-size: 1.05rem;
+}
+
+.scenario-table tr.emph-rate th,
+.scenario-table tr.emph-rate td {
+  background: var(--accent-soft);
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.scenario-table tr.emph-rate th {
+  border-left: 4px solid var(--accent);
+}
+
+.scenario-table tr.emph-rate td:not(.diff) {
+  color: var(--accent);
+}
+
+.scenario-table tr.emph-key + tr th,
+.scenario-table tr.emph-key + tr td {
+  border-top: 8px solid var(--card);
 }

@@ -119,6 +119,7 @@ export default function App() {
             range of income, savings, and balance scenarios.
           </p>
           <p className="disclaimer">Estimates only — not tax or financial advice.</p>
+          <ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />
         </header>
 
         <main>
@@ -148,7 +149,6 @@ export default function App() {
               setCompareValues(null);
             }}
             onStop={() => setCompareValues(null)}
-            share={<ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />}
           />
           <ResultsSummary result={current.result} />
         </main>
