@@ -172,9 +172,10 @@ describe('ResultsSummary', () => {
     expect(html.indexOf('id="sec2"')).toBeLessThan(html.indexOf('id="sec-tradeoff"'));
     expect(html.indexOf('id="sec-tradeoff"')).toBeLessThan(html.indexOf('id="sec3"'));
     // the rates block holds only the rates: no table
-    for (const label of ['Your tax rate now vs. later', 'Marginal rate while working', 'Effective rate on these withdrawals', 'How are the retirement rates calculated?']) {
+    for (const label of ['Marginal rate while working', 'Effective rate on these withdrawals', 'How are the retirement rates calculated?']) {
       expect(sec2, label).toContain(label);
     }
+    expect(sec2).not.toContain('Your tax rate now vs. later'); // the card title says it
     expect(sec2).not.toContain('class="compare-table');
     // one table, three groups, each value next to what it becomes after tax; no Difference column
     const table = trade.slice(trade.indexOf('<table'), trade.indexOf('</table>'));

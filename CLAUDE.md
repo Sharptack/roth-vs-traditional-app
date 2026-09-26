@@ -379,7 +379,7 @@ the whole account) is still open — see "Known limitations."
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
 - **Page layout (2026-09-25g):** (1) "Retirement income number": hero value, SS + income-needed-from-portfolio
   facts, note, "How is this calculated?" dropdown. (2) **"Tax rate comparison"** card (named "Roth vs. Traditional" before 2026-09-26) (`id="sec2"`) holding ONLY the
-  rates: "Your tax rate now vs. later" rate pair, the short lean phrase ("Tends to favor Roth" / "About even"; the
+  rates: the marginal vs. effective rate pair (no subheading since 2026-09-26; the card title says it), the short lean phrase ("Tends to favor Roth" / "About even"; the
   user removed the explanatory sentence and rule-of-thumb hint) and the "How are the retirement rates calculated?"
   dropdown. (3) **"After-tax comparison"** card (was "The trade-off in dollars") (`id="sec-tradeoff"`, `TradeOff` component): limit alert, then
   ONE table (Roth / Pre-tax only, no Difference column, no "Tax on withdrawals" row) with three shaded groups:
@@ -460,6 +460,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-26 (o) — Removed the "Your tax rate now vs. later" subheading from the Tax rate comparison card (repeated
+  the card title). 436 tests.
 - 2026-09-26 (n) — "Clear all" (with undo) in the inputs card. Results cards renamed: "Roth vs. Traditional" ->
   "Tax rate comparison" (accent bar), "The trade-off in dollars" -> "After-tax comparison". 436 tests.
 - 2026-09-26 (b) — Added a $500k income at the top end of every income axis (14 incomes, $25k-$500k) and as a line in the

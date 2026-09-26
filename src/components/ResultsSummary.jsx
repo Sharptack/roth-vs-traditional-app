@@ -730,8 +730,6 @@ function TaxRates({ result }) {
   const { rates } = result;
   return (
     <div className="tax-rates">
-      <h3 className="subhead">Your tax rate now vs. later</h3>
-
       <div className="rate-pair">
         <div className="rate-pair-item">
           <div className="stat-label">Marginal rate while working</div>
