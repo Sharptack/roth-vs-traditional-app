@@ -223,6 +223,11 @@ main {
   margin-top: 16px;
 }
 
+/* The tax rate comparison: the number the decision turns on, marked with an accent bar. */
+.key-card {
+  border-left: 4px solid var(--accent);
+}
+
 /* Input rows: one list inside the inputs card, separated by rules. */
 .collapsible-row {
   border-top: 1px solid var(--line);
@@ -260,6 +265,11 @@ main {
 
 .form-head {
   margin-bottom: 8px;
+}
+
+.form-head-actions {
+  display: flex;
+  gap: 16px;
 }
 
 .form-head .form-title {
@@ -1137,7 +1147,7 @@ th.win .th-sub {
   }
 }
 
-/* ---------- Roth vs. Traditional: rate lean, grouped comparison table ---------- */
+/* ---------- Tax rate comparison: rate lean; After-tax comparison: grouped table ---------- */
 
 .rate-lean {
   margin: 4px 0 12px;

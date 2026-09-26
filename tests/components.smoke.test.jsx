@@ -122,7 +122,7 @@ describe('ResultsSummary', () => {
       'Effective rate on these withdrawals',
       'Overall effective rate',
       'Current possible contribution',
-      'The trade-off in dollars',
+      'After-tax comparison',
       'A single year’s contribution',
       'Value at retirement',
       'After-tax value',
@@ -162,7 +162,7 @@ describe('ResultsSummary', () => {
     expect(sec1).not.toContain('Effective rate');
   });
 
-  it('gives the rates their own Roth vs. Traditional block, followed by the trade-off in dollars', () => {
+  it('gives the rates their own Tax rate comparison block, followed by the After-tax comparison', () => {
     const html = render();
     const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec-tradeoff"'));
     const trade = html.slice(html.indexOf('id="sec-tradeoff"'), html.indexOf('id="sec3"'));
@@ -340,7 +340,7 @@ describe('ResultsSummary', () => {
     expect(agiIdx).toBeLessThan(ordinaryIdx);
   });
 
-  it('shows the contribution-limit warning in the Roth vs. Traditional section', () => {
+  it('shows the contribution-limit warning in the results', () => {
     const html = render({ savings: '22000' });
     const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec3"'));
     expect(sec2).toContain('at/near the 2025 401(k) contribution limit');
@@ -878,9 +878,16 @@ describe('Collapsible sections', () => {
   it('shows each results card with its headline, all open', () => {
     const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
     const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
-    expect(titles).toEqual(['Retirement income number', 'Roth vs. Traditional', 'The trade-off in dollars', 'Total portfolio tax comparison']);
+    expect(titles).toEqual(['Retirement income number', 'Tax rate comparison', 'After-tax comparison', 'Total portfolio tax comparison']);
     expect(html).toContain('class="collapsible-summary">$65,380 a year after tax<');
     expect(html).not.toContain('aria-expanded="false"');
     expect(html).toContain('Collapse all results');
+    // the tax rate comparison, the number the decision turns on, carries the accent
+    expect(html).toMatch(/class="collapsible card collapsible-card open key-card" aria-labelledby="sec2"/);
+  });
+
+  it("offers Clear all in the main inputs card only", () => {
+    const app = renderToStaticMarkup(<App />);
+    expect((app.match(/>Clear all</g) ?? []).length).toBe(1);
   });
 });

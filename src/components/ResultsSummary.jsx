@@ -198,7 +198,7 @@ function RetirementNumberSection({ result }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Section 2 — Roth vs. Traditional                                     */
+/* Section 2 — Tax rate comparison                                      */
 /* ------------------------------------------------------------------ */
 
 function yearsWithoutSSVerdict(result) {
@@ -425,7 +425,7 @@ function RothVsTraditional({ result }) {
   );
 }
 
-// The trade-off in dollars: Future Contributions only, in its own block below the rates.
+// After-tax comparison (the trade-off in dollars): Future Contributions only, in its own block below the rates.
 function TradeOff({ result }) {
   const { lumpSum, annuity, contribution, contributionSplit, comparison, limitCheck, rates, years } =
     result;
@@ -1008,11 +1008,12 @@ function PortfolioComparison({ result }) {
 
 // The results cards, in page order. Each opens and closes from its header, which shows the
 // card's headline (sectionSummaries.js). `id` keys the headline; `headingId` is the
-// heading's id (kept from the fixed-card layout, used for in-page links and tests).
+// heading's id (kept from the fixed-card layout, used for in-page links and tests). The tax rate
+// comparison is the number the decision turns on, so it gets a subtle accent (`key-card`).
 const RESULT_CARDS = [
   { id: 'need', headingId: 'sec1', title: 'Retirement income number', Body: RetirementNumberSection },
-  { id: 'rates', headingId: 'sec2', title: 'Roth vs. Traditional', Body: RothVsTraditional },
-  { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'The trade-off in dollars', Body: TradeOff },
+  { id: 'rates', headingId: 'sec2', title: 'Tax rate comparison', Body: RothVsTraditional, className: 'key-card' },
+  { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'After-tax comparison', Body: TradeOff },
   { id: 'portfolio', headingId: 'sec3', title: 'Total portfolio tax comparison', Body: PortfolioComparison },
 ];
 
@@ -1047,10 +1048,11 @@ export default function ResultsSummary({ result }) {
           {allOpen ? 'Collapse all results' : 'Expand all results'}
         </button>
       </div>
-      {RESULT_CARDS.map(({ id, headingId, title, Body }) => (
+      {RESULT_CARDS.map(({ id, headingId, title, Body, className }) => (
         <Collapsible
           key={id}
           headingId={headingId}
+          className={className}
           title={title}
           summary={headlines[id]}
           open={open.has(id)}

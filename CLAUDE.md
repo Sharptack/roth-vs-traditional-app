@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (434 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (436 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -160,9 +160,13 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   retirement, Future Contributions, Social Security, Existing Accounts, Assumptions — Assumptions was a `<details>`
   before). Each closed header shows a one-line summary of its values, so every input can be read at a glance; only
   "About you" starts open; "Expand all / Collapse all" in the card head. In compare mode a section whose inputs differ
-  gets a "changed" pill. The inner dropdowns ("Will you earn more or less later?", cost basis) are unchanged.
-- Results: the four cards (Retirement income number, Roth vs. Traditional, The trade-off in dollars, Total portfolio
-  tax comparison) are `Collapsible` cards; the header shows the headline (`resultHeadlines`) while closed; all start
+  gets a "changed" pill. "Clear all" (main form only, card head): every dollar field to $0, ages blank, choices
+  back to defaults (`CLEARED_FORM_VALUES` in formInputs.js); it becomes "Undo clear" until the next edit (`App.jsx`
+  `beforeClear`). The inner dropdowns ("Will you earn more or less later?", cost basis) are unchanged.
+- Results: the four cards (Retirement income number, **Tax rate comparison**, **After-tax comparison**, Total portfolio
+  tax comparison; the middle two were "Roth vs. Traditional" and "The trade-off in dollars" until 2026-09-26 (n) —
+  the user asked for names that say what they are; the tax rate card carries a subtle accent bar, `key-card`, as the
+  number that matters most) are `Collapsible` cards; the header shows the headline (`resultHeadlines`) while closed; all start
   open; "Collapse all results" above them. Heading ids `sec1`, `sec2`, `sec-tradeoff`, `sec3` are kept.
 - `Collapsible` hides a closed body (`hidden`), never unmounts it, so typed values and open dropdowns survive. Section
   bodies in InputForm are built by a `section(id, content)` function call, NOT an inner component (an inner component
@@ -374,10 +378,10 @@ the whole account) is still open — see "Known limitations."
 - Section 3 has an extra **"Withdrawal rate needed"** row and a note: a higher tax bill is not a verdict
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
 - **Page layout (2026-09-25g):** (1) "Retirement income number": hero value, SS + income-needed-from-portfolio
-  facts, note, "How is this calculated?" dropdown. (2) **"Roth vs. Traditional"** card (`id="sec2"`) holding ONLY the
+  facts, note, "How is this calculated?" dropdown. (2) **"Tax rate comparison"** card (named "Roth vs. Traditional" before 2026-09-26) (`id="sec2"`) holding ONLY the
   rates: "Your tax rate now vs. later" rate pair, the short lean phrase ("Tends to favor Roth" / "About even"; the
   user removed the explanatory sentence and rule-of-thumb hint) and the "How are the retirement rates calculated?"
-  dropdown. (3) **"The trade-off in dollars"** card (`id="sec-tradeoff"`, `TradeOff` component): limit alert, then
+  dropdown. (3) **"After-tax comparison"** card (was "The trade-off in dollars") (`id="sec-tradeoff"`, `TradeOff` component): limit alert, then
   ONE table (Roth / Pre-tax only, no Difference column, no "Tax on withdrawals" row) with three shaded groups:
   "What you put in" (current possible contribution); "A single year's contribution" (value at retirement, after-tax
   value); "Contributing every year until retirement" (Future Contributions at retirement, after-tax income it
@@ -456,6 +460,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-26 (n) — "Clear all" (with undo) in the inputs card. Results cards renamed: "Roth vs. Traditional" ->
+  "Tax rate comparison" (accent bar), "The trade-off in dollars" -> "After-tax comparison". 436 tests.
 - 2026-09-26 (b) — Added a $500k income at the top end of every income axis (14 incomes, $25k-$500k) and as a line in the
   income-as-lines charts, which were trimmed to 5 lines each (lifestyle $25k/$50k/$75k/$150k/$500k; existing Pre-tax and taxable
   balance: $25k/$75k-or-$60k/$150k/$300k/$500k; retirement age $25k/$50k/$100k/$150k/$500k), so the sixth series colour was

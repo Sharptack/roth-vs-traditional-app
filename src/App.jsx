@@ -6,7 +6,7 @@ import ScenarioCompare from './components/ScenarioCompare.jsx';
 import ScenariosPage from './components/ScenariosPage.jsx';
 import ShareInputs from './components/ShareInputs.jsx';
 import { compareRothVsTraditional } from './lib/compare.js';
-import { DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
+import { CLEARED_FORM_VALUES, DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
 import { valuesFromSearch } from './lib/shareInputs.js';
 import { ARTICLE_HASH, SCENARIOS_HASH, routeFromHash } from './lib/route.js';
 import './App.css';
@@ -88,7 +88,21 @@ export default function App() {
   // section on one side opens it on the other and the two stay lined up.
   const [openInputs, setOpenInputs] = useState(() => new Set(DEFAULT_OPEN_INPUTS));
 
-  const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
+  // "Clear all" keeps the values it replaced until the next edit, so it can be undone.
+  const [beforeClear, setBeforeClear] = useState(null);
+
+  const handleChange = (name, value) => {
+    setBeforeClear(null);
+    setValues((prev) => ({ ...prev, [name]: value }));
+  };
+  const clearAll = () => {
+    setBeforeClear(values);
+    setValues(CLEARED_FORM_VALUES);
+  };
+  const undoClear = () => {
+    setValues(beforeClear);
+    setBeforeClear(null);
+  };
   const handleCompareChange = (name, value) => setCompareValues((prev) => ({ ...prev, [name]: value }));
 
   // Results update live: recomputed on every input change, no submit button.
@@ -137,6 +151,17 @@ export default function App() {
                 title={compareValues ? 'Your inputs (baseline)' : 'Inputs'}
                 open={openInputs}
                 onOpenChange={setOpenInputs}
+                headActions={
+                  beforeClear ? (
+                    <button type="button" className="link-button" onClick={undoClear}>
+                      Undo clear
+                    </button>
+                  ) : (
+                    <button type="button" className="link-button" onClick={clearAll}>
+                      Clear all
+                    </button>
+                  )
+                }
                 footer={<ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />}
               />
               {compareValues && (
@@ -162,6 +187,7 @@ export default function App() {
                 onAdopt={() => {
                   setValues(compareValues);
                   setCompareValues(null);
+                  setBeforeClear(null);
                 }}
                 onStop={() => setCompareValues(null)}
               />

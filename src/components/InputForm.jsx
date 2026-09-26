@@ -143,6 +143,7 @@ const toOptions = (map) => Object.entries(map).map(([value, label]) => ({ value,
 // baseValues (optional): the inputs this form is being compared against; any field that
 // differs is highlighted. namePrefix keeps radio groups separate when two forms are on screen.
 // `footer`: optional content at the very bottom of the card (the main form's share button).
+// `headActions`: optional buttons in the card head, beside "Expand all" (the main form's "Clear all").
 // The inputs are a list of collapsible sections (INPUT_SECTIONS), each header summarizing its
 // values. `open` (a Set of section ids) + `onOpenChange` let App share the open sections
 // between the two forms in "Compare a change"; without them the form keeps its own.
@@ -153,6 +154,7 @@ export default function InputForm({
   baseValues,
   namePrefix = '',
   footer,
+  headActions,
   open: openProp,
   onOpenChange,
 }) {
@@ -189,13 +191,16 @@ export default function InputForm({
     >
       <div className="form-head">
         <h2 className="form-title">{title}</h2>
-        <button
-          type="button"
-          className="link-button"
-          onClick={() => setOpen(new Set(allOpen ? [] : INPUT_SECTIONS.map((sec) => sec.id)))}
-        >
-          {allOpen ? 'Collapse all' : 'Expand all'}
-        </button>
+        <div className="form-head-actions">
+          {headActions}
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => setOpen(new Set(allOpen ? [] : INPUT_SECTIONS.map((sec) => sec.id)))}
+          >
+            {allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
+        </div>
       </div>
       {section('about', (
         <>

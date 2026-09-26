@@ -34,6 +34,24 @@ export const DEFAULT_FORM_VALUES = {
   otherTaxableBasis: '0.5', // share of today's taxable balance that is cost basis
 };
 
+// "Clear all": every dollar amount to $0 and the ages blank, to start a client from scratch.
+// Choices (filing status, income type, account type, return, lifestyle, cost basis) go back to
+// their defaults, since they have no "zero".
+export const CLEARED_FORM_VALUES = {
+  ...DEFAULT_FORM_VALUES,
+  grossIncome: '0',
+  selfEmploymentIncome: '0',
+  currentAge: '',
+  retirementAge: '',
+  debtPayments: '0',
+  otherExpenses: '0',
+  savings: '0',
+  socialSecurityBenefit: '0',
+  otherPretaxBalance: '0',
+  otherRothBalance: '0',
+  otherTaxableBalance: '0',
+};
+
 // How much of the gross income is 1099 (self-employment) income.
 function selfEmploymentAmount(values, grossIncome) {
   if (values.incomeType === '1099') return Number.isFinite(grossIncome) ? grossIncome : 0;
