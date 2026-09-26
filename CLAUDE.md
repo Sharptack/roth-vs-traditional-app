@@ -114,12 +114,12 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `ScenariosPage.jsx` renders one `LineChart` per batch (x = the swept variable, y = gap) plus one combined
   `ScatterChart` (x = gap, y = advantagePct, color+shape by batch, an OLS trend line from `src/lib/regression.js`).
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
-- The five batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
-  estimated Social Security, 401(k) — the limit never binds at these income/savings levels): income sweep
+- The six batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
+  estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 18 of 199 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
   at a fixed 10% savings rate (age 35→65, 12 incomes from $40k to $300k); the same income sweep at 5%/10%/20% savings
   rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k; the same income
   sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; and a lifestyle sweep (1×→2× in 0.1 steps, i.e. "spending
-  20/40/60/80/100% more in retirement") at incomes $30k/$50k/$75k/$100k/$150k. Extending or adding a batch
+  20/40/60/80/100% more in retirement") at incomes $30k/$50k/$75k/$100k/$150k; and a retirement-age sweep (55-70, age 35, 10% saved, incomes $50k/$75k/$100k/$150k/$250k; flat before 62 because Social Security is estimated as if claimed at 62 for earlier retirees; the 59½ early-withdrawal penalty is not modeled). Extending or adding a batch
   is a data-only change in `scenarioBatches.js` — no chart code changes needed.
 - Charts are hand-rolled inline SVG (`src/components/charts/`), not a charting library — the app has no chart
   dependency, and these are simple line/scatter plots. `LineChart`/`ScatterChart` are generic (series/points
@@ -130,6 +130,17 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   other color once every point can be adjacent to every other point (see the dataviz skill's "all-pairs" note).
   Every chart has a hover/focus tooltip and a "Show the numbers" `<details>` table underneath as the
   non-interactive fallback.
+
+- Page layout (2026-09-25j): every batch card shows TWO line charts — "The rate gap" (the predictor, with a highlighted
+  "rule of thumb" callout, `RuleOfThumb`, also in the intro) and "Who actually comes out ahead?" (the outcome, `advantagePct`;
+  above 0 = Roth ahead). The income-sweep batch is followed by "What the rate gap is made of" (marginal-now and
+  effective-in-retirement as two lines; the gap is the distance between them). After the batches: the break-even map
+  (`charts/Heatmap.jsx`; `HEATMAP` in scenarioBatches.js, run by `runHeatmap` in scenarios.js: income x savings rate 5-30%,
+  cells tinted by Roth advantage, Roth blue / Pre-tax orange via `--series-1/2`, `*` = over the IRS limit, from
+  `overLimit` on each point), then the combined scatter (now 279 points: the sixth batch needed `--series-6` and a
+  `triangleDown` shape). Tables under each batch ("Show the numbers") list both the gap and the advantage.
+- For screenshots of this long page, headless Chrome's `--screenshot` garbles pages taller than ~8000px; slice with the
+  DevTools protocol instead (`Page.captureScreenshot` with a `clip`, `captureBeyondViewport`).
 
 ## "Compare a change" (added 2026-09-25; reworked same day)
 - Reworked at the user's request: they disliked editing the existing inputs to make a comparison. Now
@@ -418,6 +429,18 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (j) — Visualization additions: a "Who actually comes out ahead?" chart under every rate-gap chart; "What the rate
+  gap is made of" (two-rates chart); a break-even map (income x savings rate heatmap); a retirement-age sweep batch; the rule of
+  thumb highlighted as a callout in the intro and above every gap chart. New pure pieces: `runHeatmap`, `overLimit`,
+  `HEATMAP`, `RETIREMENT_AGES` (tested). Scatter trend with all 279 points: r² 0.95. 420 tests.
+- 2026-09-25 (i) — Re-ran all 199 Visualization scenarios on the current engine (taxable side account, cost basis, NIIT, corrected
+  contribution-limit split) against the version from 2026-09-25 (cb363e4). The page is computed live, so it already showed the new
+  numbers; nothing to regenerate. Rate gaps moved by up to 4.2 pts (mean ~0.4) and Roth advantage by up to 32 pts, mostly at
+  high incomes / 20% savings where savings exceed the IRS limit (the old model overstated the Pre-tax spillover, so Roth looked far
+  better there); 12 winners flipped, mostly Roth -> Pre-tax at $250k-$300k. The scatter trend went from r² 0.48 to 0.95 (about
+  −1.1% Roth advantage per point of gap). Independently recomputed three points from the pieces (matched to the dollar), and
+  corrected a wrong comment that said the limit never binds. Added two tests (a hand-verified over-the-limit scenario; charts use
+  total after-tax income). 410 tests.
 - 2026-09-25 (h) — NIIT modeled (see model step 4): `calculateNiit` + `data/niitRates.js`, in `totalTax`; the rate
   walk-throughs, "What sets the rate" and the total portfolio calculation show it only when owed. Hand-verified
   tests (capitalGainsTax, retirementTaxStack); the incomeNeed $300k-gains stacking test was re-derived by hand

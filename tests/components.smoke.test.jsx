@@ -573,7 +573,8 @@ describe('ScenariosPage', () => {
     for (const batch of SCENARIO_BATCHES) {
       expect(html).toContain(batch.title);
     }
-    expect((html.match(/class="chart-svg"/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1); // + the combined scatter
+    // two charts per batch (the rate gap, and who comes out ahead) + the two-rates chart + the combined scatter
+    expect((html.match(/class="chart-svg"/g) ?? []).length).toBe(SCENARIO_BATCHES.length * 2 + 2);
   });
 
   it('renders the combined scatter with a trend-line summary sentence', () => {
@@ -582,8 +583,40 @@ describe('ScenariosPage', () => {
     expect(html).toMatch(/r² = -?\d\.\d\d\)/);
   });
 
-  it('has a "Show the numbers" table for each batch', () => {
-    expect((html.match(/Show the numbers/g) ?? []).length).toBe(SCENARIO_BATCHES.length);
+  it('has a "Show the numbers" table for each batch, plus one for the two-rates chart', () => {
+    expect((html.match(/Show the numbers/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1);
+  });
+
+  it('highlights the rule of thumb in the intro and above every rate-gap chart', () => {
+    const sentence = 'The rule of thumb: the higher that gap, the more Pre-tax should come out ahead';
+    expect(html).toContain(sentence);
+    expect((html.match(/class="rule-callout"/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1);
+  });
+
+  it('shows who actually comes out ahead next to every rate-gap chart', () => {
+    expect((html.match(/Who actually comes out ahead\?/g) ?? []).length).toBe(SCENARIO_BATCHES.length);
+    expect(html).toContain('Above the zero line');
+  });
+
+  it('shows the two rates as separate lines, and says the gap is the distance between them', () => {
+    expect(html).toContain('What the rate gap is made of');
+    expect(html).toContain('Marginal rate while working');
+    expect(html).toContain('Effective rate on withdrawals in retirement');
+    expect(html).toContain('The rate gap is the vertical distance between the two lines.');
+  });
+
+  it('renders the break-even map with every income column and savings-rate row', () => {
+    expect(html).toContain('Where does each one win? Income against savings rate');
+    expect(html).toContain('class="heatmap"');
+    const map = html.slice(html.indexOf('class="heatmap"'), html.indexOf('heatmap-legend'));
+    expect((map.match(/<tr>/g) ?? []).length).toBe(1 + 6); // header + 6 savings rates
+    for (const rate of ['5%', '10%', '15%', '20%', '25%', '30%']) expect(map).toContain(`<th scope="row">${rate}</th>`);
+    expect(html).toContain('savings above the IRS limit');
+  });
+
+  it('has the retirement-age sweep', () => {
+    expect(html).toContain('Retiring earlier or later, at different incomes');
+    expect(html).toContain('10% early-withdrawal penalty before 59½ is not modeled');
   });
 });
 

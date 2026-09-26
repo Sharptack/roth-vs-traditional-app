@@ -21,6 +21,8 @@ function ShapePath({ shape, r }) {
       return <rect x={-r} y={-r} width={r * 2} height={r * 2} />;
     case 'triangle':
       return <polygon points={`0,${-r * 1.15} ${r * 1.05},${r * 0.75} ${-r * 1.05},${r * 0.75}`} />;
+    case 'triangleDown':
+      return <polygon points={`0,${r * 1.15} ${r * 1.05},${-r * 0.75} ${-r * 1.05},${-r * 0.75}`} />;
     case 'diamond':
       return <polygon points={`0,${-r * 1.25} ${r * 1.25},0 0,${r * 1.25} ${-r * 1.25},0`} />;
     case 'cross':

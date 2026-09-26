@@ -21,6 +21,9 @@ export function runScenarioPoint(base, overrides, year) {
   const rothAfterTax = result.annuity.roth.totalAfterTaxIncome;
   const pretaxAfterTax = result.annuity.pretax.totalAfterTaxIncome;
   const advantagePct = pretaxAfterTax !== 0 ? ((rothAfterTax - pretaxAfterTax) / pretaxAfterTax) * 100 : 0;
+  // True when the savings don't all fit under the IRS limit, so part goes to a taxable account.
+  const overLimit =
+    result.contributionSplit.roth.excessToTaxable > 0 || result.contributionSplit.pretax.excessToTaxable > 0;
 
   return {
     inputs,
@@ -30,7 +33,23 @@ export function runScenarioPoint(base, overrides, year) {
     rothAfterTax,
     pretaxAfterTax,
     advantagePct,
+    overLimit,
     winner: result.comparison.winner,
+  };
+}
+
+// The break-even map: one scenario per (savings rate, income) cell. `def` is HEATMAP from
+// scenarioBatches.js; rows are savings rates, cells run across incomes.
+export function runHeatmap(def, year) {
+  return {
+    ...def,
+    rows: def.savingsRates.map((rate) => ({
+      rate,
+      cells: def.incomes.map((income) => ({
+        income,
+        ...runScenarioPoint(def.base, def.overridesFor(income, rate), year),
+      })),
+    })),
   };
 }
 

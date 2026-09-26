@@ -9,8 +9,10 @@
 // no self-employment income, 0 debt payments, 0 other expenses ending at
 // retirement, 7% expected return, Social Security estimated (not user-entered),
 // same 1× retirement lifestyle unless a batch is explicitly sweeping it, and a
-// 401(k) account (the contribution-limit check never binds at these income/
-// savings-rate combinations, so the account type choice doesn't matter here).
+// 401(k) account. The IRS limit DOES bind at higher incomes and savings rates (2026:
+// 18 of 199 points, e.g. 10% of $300k = $30,000 vs. a $24,500 limit): the calculator
+// then puts the rest of the same take-home cost in a taxable account, so the Roth-
+// advantage numbers at those points include that taxable side.
 
 const BASE = {
   filingStatus: 'single',
@@ -35,7 +37,7 @@ export const INCOMES = [
 // Retirement lifestyle multipliers, 1x (same as today) to 2x in 0.1 steps.
 export const LIFESTYLES = Array.from({ length: 11 }, (_, i) => Number((1 + i / 10).toFixed(1)));
 
-const bySavingsRate = (income, rate) => ({
+export const bySavingsRate = (income, rate) => ({
   grossIncome: income,
   savings: Math.round(income * rate),
 });
@@ -45,6 +47,9 @@ const formatBalanceLabel = (balance) => {
   const compact = balance >= 1000000 ? `$${(balance / 1000000).toFixed(1)}M` : `$${(balance / 1000).toFixed(0)}k`;
   return `${compact} existing balance`;
 };
+
+// Retirement ages swept by the retirement-age batch (35 is the current age there).
+export const RETIREMENT_AGES = Array.from({ length: 16 }, (_, i) => 55 + i);
 
 export const SCENARIO_BATCHES = [
   {
@@ -127,4 +132,33 @@ export const SCENARIO_BATCHES = [
       })),
     })),
   },
+  {
+    key: 'retirementAgeSweep',
+    title: 'Retiring earlier or later, at different incomes',
+    description:
+      'Age 35, saving 10% of gross income, no debt or other expenses ending at retirement, no other balances, retiring anywhere from 55 to 70. Retiring earlier means fewer years of saving and more years of retirement to fund. (The 10% early-withdrawal penalty before 59½ is not modeled, and for anyone retiring before 62 Social Security is estimated as if claimed at 62, which is why the lines are flat before then.)',
+    xLabel: 'Retirement age',
+    xType: 'age',
+    base: { ...BASE, currentAge: 35, retirementAge: 65 },
+    series: [50000, 75000, 100000, 150000, 250000].map((income) => ({
+      key: `income${income}`,
+      label: `${(income / 1000).toFixed(0)}k income`,
+      points: RETIREMENT_AGES.map((age) => ({
+        x: age,
+        overrides: { ...bySavingsRate(income, 0.1), retirementAge: age },
+      })),
+    })),
+  },
 ];
+
+// The break-even map: every income x savings-rate combination, at age 35 retiring at 65 with no
+// existing balances, so the page can show where Roth or Pre-tax comes out ahead.
+export const HEATMAP = {
+  title: 'Where does each one win? Income against savings rate',
+  description:
+    'Age 35, retiring at 65, no debt or other expenses ending at retirement, no other balances. Each cell is one scenario: gross income across, share of income saved down.',
+  incomes: INCOMES,
+  savingsRates: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3],
+  base: { ...BASE, currentAge: 35, retirementAge: 65 },
+  overridesFor: bySavingsRate,
+};

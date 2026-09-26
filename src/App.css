@@ -18,6 +18,7 @@
   --series-3: #1baf7a;
   --series-4: #eda100;
   --series-5: #e87ba4;
+  --series-6: #008300;
   color-scheme: light dark;
 }
 
@@ -39,6 +40,7 @@
     --series-3: #199e70;
     --series-4: #c98500;
     --series-5: #d55181;
+    --series-6: #008300;
   }
 }
 
@@ -1186,4 +1188,103 @@ th.win .th-sub {
 .scenario-table tr.emph-key + tr th,
 .scenario-table tr.emph-key + tr td {
   border-top: 8px solid var(--card);
+}
+
+/* ---------- visualization page: rule-of-thumb callout, grouped cards, break-even map ---------- */
+
+.scenario-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rule-callout {
+  margin: 8px 0 12px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.95rem;
+}
+
+.scenarios-intro .rule-callout {
+  font-size: 1.05rem;
+  margin: 14px 0;
+}
+
+.table-caption-left {
+  text-align: left;
+  font-weight: 700;
+  padding: 8px 0 4px;
+}
+
+.heatmap {
+  table-layout: fixed;
+  font-size: 0.8rem;
+  border-collapse: separate;
+  border-spacing: 2px;
+}
+
+.heatmap th,
+.heatmap td {
+  padding: 8px 2px;
+  text-align: center;
+  border-bottom: 0;
+  border-radius: 4px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.heatmap thead th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--dim);
+}
+
+.heatmap tbody th {
+  width: auto;
+  text-align: center;
+  font-weight: 600;
+  color: var(--dim);
+}
+
+.heatmap .heatmap-corner {
+  width: 14%;
+  font-size: 0.72rem;
+  white-space: normal;
+}
+
+.heatmap td {
+  font-variant-numeric: tabular-nums;
+  background: var(--bg);
+}
+
+.heatmap-flag {
+  font-weight: 700;
+}
+
+.heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 0.85rem;
+  color: var(--dim);
+}
+
+.heatmap-scale {
+  width: 160px;
+  height: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--series-2) 65%, transparent),
+    transparent,
+    color-mix(in srgb, var(--series-1) 65%, transparent)
+  );
+}
+
+.heatmap-legend-note {
+  flex-basis: 100%;
 }
