@@ -116,8 +116,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
 - The nine batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
   estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 18 of 199 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
-  at a fixed 10% savings rate (age 35→65, 12 incomes from $40k to $300k); the same income sweep at 5%/10%/20% savings
-  rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k; the same income
+  at a fixed 10% savings rate (age 35→65, 12 incomes from $40k to $300k); the same income sweep at 5%/10%/20%/30% savings
+  rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k/$500k; the same income
   sweep at age 50→65 with a balance of $0/$100k/$500k/$1M; and a lifestyle sweep (1×→2× in 0.1 steps, i.e. "spending
   20/40/60/80/100% more in retirement") at incomes $30k/$50k/$75k/$100k/$150k; and a retirement-age sweep (55-70, age 35, 10% saved, incomes $50k/$75k/$100k/$150k/$250k; flat before 62 because Social Security is estimated as if claimed at 62 for earlier retirees; the 59½ early-withdrawal penalty is not modeled). Extending or adding a batch
   is a data-only change in `scenarioBatches.js` — no chart code changes needed.

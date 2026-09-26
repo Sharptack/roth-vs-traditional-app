@@ -75,11 +75,11 @@ export const SCENARIO_BATCHES = [
   {
     key: 'savingsRateSweep',
     title: 'Income, at different savings rates',
-    description: 'Same as above (age 35, retiring at 65), compared at 5%, 10%, and 20% savings rates.',
+    description: 'Same as above (age 35, retiring at 65), compared at 5%, 10%, 20%, and 30% savings rates.',
     xLabel: 'Gross income',
     xType: 'currency',
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
-    series: [0.05, 0.1, 0.2].map((rate) => ({
+    series: [0.05, 0.1, 0.2, 0.3].map((rate) => ({
       key: `savings${Math.round(rate * 100)}`,
       label: `${Math.round(rate * 100)}% savings rate`,
       points: INCOMES.map((income) => ({ x: income, overrides: bySavingsRate(income, rate) })),
@@ -89,11 +89,11 @@ export const SCENARIO_BATCHES = [
     key: 'balanceSweep',
     title: 'Income, with different existing Pre-tax balances (age 35)',
     description:
-      'Same as the first chart (age 35, retiring at 65, saving 10%), but starting with an existing Pre-tax balance of $0, $20,000, $100,000, or $250,000 today.',
+      'Same as the first chart (age 35, retiring at 65, saving 10%), but starting with an existing Pre-tax balance of $0, $20,000, $100,000, $250,000, or $500,000 today.',
     xLabel: 'Gross income',
     xType: 'currency',
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
-    series: [0, 20000, 100000, 250000].map((balance) => ({
+    series: [0, 20000, 100000, 250000, 500000].map((balance) => ({
       key: `balance${balance}`,
       label: formatBalanceLabel(balance),
       points: INCOMES.map((income) => ({

@@ -135,12 +135,12 @@ describe('the real SCENARIO_BATCHES data', () => {
     expect(byKey.incomeSweep.series).toHaveLength(1);
     expect(byKey.incomeSweep.series[0].points).toHaveLength(INCOMES.length);
 
-    expect(byKey.savingsRateSweep.series).toHaveLength(3);
+    expect(byKey.savingsRateSweep.series).toHaveLength(4);
     for (const series of byKey.savingsRateSweep.series) {
       expect(series.points).toHaveLength(INCOMES.length);
     }
 
-    expect(byKey.balanceSweep.series).toHaveLength(4);
+    expect(byKey.balanceSweep.series).toHaveLength(5);
     expect(byKey.age50BalanceSweep.series).toHaveLength(4);
 
     expect(byKey.lifestyleSweep.series).toHaveLength(5);
