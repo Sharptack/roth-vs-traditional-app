@@ -680,10 +680,13 @@ describe('Round 2026-09-25b adjustments', () => {
     expect(html).toContain('40% lower than today');
   });
 
-  it('App offers "Copy inputs to share" in the page header, apart from Compare a change', () => {
+  it('App offers "Copy inputs to share" at the very bottom of the main inputs card, apart from Compare a change', () => {
     const html = renderToStaticMarkup(<App />);
     const header = html.slice(html.indexOf('class="page-header"'), html.indexOf('</header>'));
-    expect(header).toContain('Copy inputs to share');
+    expect(header).not.toContain('Copy inputs to share');
+    const form = html.slice(html.indexOf('<form'), html.indexOf('</form>'));
+    expect(form).toContain('Copy inputs to share');
+    expect(form.indexOf('Copy inputs to share')).toBeGreaterThan(form.indexOf('Assumptions:'));
     const compareCard = html.slice(html.indexOf('compare-start'), html.indexOf('</section>', html.indexOf('compare-start')));
     expect(compareCard).not.toContain('Copy inputs to share');
   });

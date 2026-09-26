@@ -133,7 +133,8 @@ const toOptions = (map) => Object.entries(map).map(([value, label]) => ({ value,
 
 // baseValues (optional): the inputs this form is being compared against; any field that
 // differs is highlighted. namePrefix keeps radio groups separate when two forms are on screen.
-export default function InputForm({ values, onChange, title, baseValues, namePrefix = '' }) {
+// `footer`: optional content at the very bottom of the card (the main form's share button).
+export default function InputForm({ values, onChange, title, baseValues, namePrefix = '', footer }) {
   const set = (name) => (value) => onChange(name, value);
   const isChanged = (name) => Boolean(baseValues) && baseValues[name] !== values[name];
 
@@ -345,6 +346,7 @@ export default function InputForm({ values, onChange, title, baseValues, namePre
           />
         </div>
       </details>
+      {footer}
     </form>
   );
 }

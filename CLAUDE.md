@@ -149,7 +149,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   the comparison across reloads; named/saved scenarios (would need storage — see the backend future item).
 
 ## Sharing a scenario (added 2026-09-25)
-- "Copy inputs to share" button (`ShareInputs.jsx`, in the page header since 2026-09-25d — the user wanted it apart from Compare a change) copies plain text:
+- "Copy inputs to share" button (`ShareInputs.jsx`, at the very bottom of the MAIN inputs card, below Assumptions, via `InputForm`'s `footer` prop; the user wanted it apart from Compare a change) copies plain text:
   every input (labelled, via `scenarioCompare.describeInputs`), the headline results (`headlineRows`), and a
   link. When comparing, it adds the changed inputs and the changed side's results. Falls back to a textarea if
   the clipboard is blocked. Meant for pasting a scenario into a conversation with Claude.
@@ -368,6 +368,9 @@ the whole account) is still open — see "Known limitations."
 - SS wage base lives only in `ficaRates.js`.
 
 ## Known limitations / open items
+- OPEN (user will test first, 2026-09-25): the "Total portfolio tax comparison" section still opens with a
+  "Total future portfolio value" row (+ per-bucket breakdown) that repeats the totals in "Your portfolio at
+  retirement". Options offered: drop the row, or keep only the per-bucket breakdown. Revisit when the user asks.
 - The effective rate is measured on the *gap-filling* withdrawal G but Section 2 applies it to the account's
   full 4% withdrawal (this is the G > 0 case; the separate G = 0 probe-size issue was fixed 2026-09-23 —
   see "Effective-rate probe size" above). For large accounts this overstates tax a bit (default MFJ case:
@@ -411,6 +414,7 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (f) — "Copy inputs to share" moved to the very bottom of the main inputs card. 395 tests.
 - 2026-09-25 (e) — Layout: the rates get their own "Roth vs. Traditional" card; the portfolio summary and the
   trade-off table merged into one "Your portfolio at retirement" card below it (one table: what you put in -> total
   portfolio = Existing + Future Contributions -> Future Contributions only, after tax). Rates subhead shortened to

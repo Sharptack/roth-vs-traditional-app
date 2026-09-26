@@ -119,7 +119,6 @@ export default function App() {
             range of income, savings, and balance scenarios.
           </p>
           <p className="disclaimer">Estimates only — not tax or financial advice.</p>
-          <ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />
         </header>
 
         <main>
@@ -128,6 +127,7 @@ export default function App() {
               values={values}
               onChange={handleChange}
               title={compareValues ? 'Your inputs (baseline)' : undefined}
+              footer={<ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />}
             />
             {compareValues && (
               <InputForm
