@@ -6,9 +6,4 @@ export const SERIES_COLORS = [
   'var(--series-3)',
   'var(--series-4)',
   'var(--series-5)',
-  'var(--series-6)',
 ];
-
-// Secondary (non-color) identity channel for the scatter, whose points can sit
-// next to any other point (not just an adjacent series in a legend order).
-export const SERIES_SHAPES = ['circle', 'square', 'triangle', 'diamond', 'cross', 'triangleDown'];

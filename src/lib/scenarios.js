@@ -38,16 +38,16 @@ export function runScenarioPoint(base, overrides, year) {
   };
 }
 
-// The break-even map: one scenario per (savings rate, income) cell. `def` is HEATMAP from
-// scenarioBatches.js; rows are savings rates, cells run across incomes.
+// A break-even map: one scenario per (row, income) cell. `def` is an entry of HEATMAPS in
+// scenarioBatches.js; each row is one value of the row variable, cells run across incomes.
 export function runHeatmap(def, year) {
   return {
     ...def,
-    rows: def.savingsRates.map((rate) => ({
-      rate,
+    rows: def.rows.map((row) => ({
+      ...row,
       cells: def.incomes.map((income) => ({
         income,
-        ...runScenarioPoint(def.base, def.overridesFor(income, rate), year),
+        ...runScenarioPoint(def.base, def.overridesFor(income, row), year),
       })),
     })),
   };

@@ -1,4 +1,4 @@
-// The break-even map: a grid of scenarios (rows = savings rates, columns = incomes), each cell
+// A break-even map: a grid of scenarios (rows = one variable, columns = incomes), each cell
 // tinted by who comes out ahead and by how much. Roth = blue, Pre-tax = orange (a diverging
 // pair with a neutral middle, so "about even" reads as no colour at all). Every cell also
 // prints its number, so colour is never the only channel.
@@ -18,20 +18,21 @@ function who(cell) {
   return cell.advantagePct > 0 ? 'Roth ahead' : 'Pre-tax ahead';
 }
 
-export default function Heatmap({ rows, formatIncome, formatCell, formatDetail }) {
+export default function Heatmap({ rows, rowHeading, formatIncome, formatCell, formatDetail }) {
   const incomes = rows[0].cells.map((c) => c.income);
+  const anyOverLimit = rows.some((row) => row.cells.some((cell) => cell.overLimit));
 
   return (
     <div className="chart-wrap">
       <div className="table-wrap">
         <table className="heatmap">
           <caption className="sr-only">
-            Roth advantage by gross income (across) and share of income saved (down)
+            Roth advantage by gross income (across) and {rowHeading.toLowerCase()} (down)
           </caption>
           <thead>
             <tr>
               <th scope="col" className="heatmap-corner">
-                Saved &darr; &nbsp; Income &rarr;
+                {rowHeading} &darr; &nbsp; Income &rarr;
               </th>
               {incomes.map((income) => (
                 <th scope="col" key={income}>
@@ -42,13 +43,13 @@ export default function Heatmap({ rows, formatIncome, formatCell, formatDetail }
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.rate}>
-                <th scope="row">{Math.round(row.rate * 100)}%</th>
+              <tr key={row.label}>
+                <th scope="row">{row.label}</th>
                 {row.cells.map((cell) => (
                   <td
                     key={cell.income}
                     style={cellStyle(cell)}
-                    title={`${formatIncome(cell.income)} income, ${Math.round(row.rate * 100)}% saved: ${who(cell)} (${formatDetail(cell)})`}
+                    title={`${formatIncome(cell.income)} income, ${rowHeading.toLowerCase()} ${row.label}: ${who(cell)} (${formatDetail(cell)})`}
                   >
                     {formatCell(cell)}
                     {cell.overLimit && <span className="heatmap-flag">*</span>}
@@ -65,8 +66,8 @@ export default function Heatmap({ rows, formatIncome, formatCell, formatDetail }
         <span className="heatmap-scale" aria-hidden="true" />
         <span>Roth ahead</span>
         <span className="heatmap-legend-note">
-          Full colour at {FULL_TINT_AT}% or more. Blank = about even. * = savings above the IRS limit; the
-          excess goes to a taxable account.
+          Full colour at {FULL_TINT_AT}% or more. Blank = about even.
+          {anyOverLimit && ' * = savings above the IRS limit; the excess goes to a taxable account.'}
         </span>
       </div>
     </div>

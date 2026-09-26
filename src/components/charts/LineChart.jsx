@@ -15,7 +15,9 @@ function padDomain(min, max, fraction) {
 // (values need not be evenly spaced — incomes, e.g., are plotted at their real
 // dollar position), a crosshair + one tooltip listing every series at that x,
 // and a legend when there's more than one series (see the dataviz skill).
-export default function LineChart({ series, xTicks, formatX, formatY, formatYTick = formatY, xLabel, yLabel }) {
+// `zones` (optional): { above: { label, color }, below: { label, color } } shades the areas above and
+// below the zero line and labels them (used to show who comes out ahead).
+export default function LineChart({ series, xTicks, formatX, formatY, formatYTick = formatY, xLabel, yLabel, zones }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
   const plotLeft = MARGIN.left;
@@ -43,7 +45,7 @@ export default function LineChart({ series, xTicks, formatX, formatY, formatYTic
   // Every data point gets a marker and a hover column, but with many points the x labels
   // would collide, so label only round values (or every point when there are few).
   const labelTicks =
-    xTicks.length > 8
+    xTicks.length > 6
       ? niceTicks(Math.min(...xTicks), Math.max(...xTicks), 6).filter(
           (t) => t >= Math.min(...xTicks) && t <= Math.max(...xTicks),
         )
@@ -55,6 +57,30 @@ export default function LineChart({ series, xTicks, formatX, formatY, formatYTic
     <div className="chart-wrap">
       <div className="chart" style={{ aspectRatio: `${WIDTH} / ${HEIGHT}` }}>
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="chart-svg" preserveAspectRatio="xMidYMid meet">
+          {zones && yDomainMin < 0 && yDomainMax > 0 && (
+            <g>
+              <rect
+                x={plotLeft}
+                y={plotTop}
+                width={plotRight - plotLeft}
+                height={yScale(0) - plotTop}
+                style={{ fill: `color-mix(in srgb, ${zones.above.color} 9%, transparent)` }}
+              />
+              <rect
+                x={plotLeft}
+                y={yScale(0)}
+                width={plotRight - plotLeft}
+                height={plotBottom - yScale(0)}
+                style={{ fill: `color-mix(in srgb, ${zones.below.color} 9%, transparent)` }}
+              />
+              <text x={plotRight - 8} y={plotTop + 16} textAnchor="end" className="chart-zone-label">
+                {zones.above.label}
+              </text>
+              <text x={plotRight - 8} y={plotBottom - 8} textAnchor="end" className="chart-zone-label">
+                {zones.below.label}
+              </text>
+            </g>
+          )}
           {yTicksList.map((t) => (
             <g key={`grid-${t}`}>
               <line x1={plotLeft} x2={plotRight} y1={yScale(t)} y2={yScale(t)} className="chart-gridline" />

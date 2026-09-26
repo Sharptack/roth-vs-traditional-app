@@ -569,49 +569,69 @@ describe('ScenariosPage', () => {
     expect(html).not.toMatch(/NaN|Infinity/);
   });
 
-  it('renders every scenario batch with its title and a chart', () => {
+  it('renders every scenario batch with its title and exactly one chart', () => {
     for (const batch of SCENARIO_BATCHES) {
       expect(html).toContain(batch.title);
     }
-    // two charts per batch (the rate gap, and who comes out ahead) + the two-rates chart + the combined scatter
-    expect((html.match(/class="chart-svg"/g) ?? []).length).toBe(SCENARIO_BATCHES.length * 2 + 2);
+    // one chart per batch + the two-rates chart + the combined scatter
+    expect((html.match(/class="chart-svg"/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 2);
   });
 
-  it('renders the combined scatter with a trend-line summary sentence', () => {
+  it('renders the combined scatter, coloured by winner, with a trend-line summary sentence', () => {
     expect(html).toContain('Does the gap predict the winner?');
     expect(html).toContain('Trend line:');
     expect(html).toMatch(/r² = -?\d\.\d\d\)/);
+    expect(html).toContain('Roth comes out ahead');
+    expect(html).toContain('Pre-tax comes out ahead');
+    expect(html).toContain('About even');
   });
 
   it('has a "Show the numbers" table for each batch, plus one for the two-rates chart', () => {
     expect((html.match(/Show the numbers/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1);
   });
 
-  it('highlights the rule of thumb in the intro and above every rate-gap chart', () => {
+  it('states the rule of thumb once, at the top, and does not repeat it per chart', () => {
     const sentence = 'The rule of thumb: the higher that gap, the more Pre-tax should come out ahead';
     expect(html).toContain(sentence);
-    expect((html.match(/class="rule-callout"/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1);
+    expect((html.match(/class="rule-callout"/g) ?? []).length).toBe(1);
+    expect((html.match(/The rule of thumb/g) ?? []).length).toBe(1);
+    expect(html).not.toContain('Who actually comes out ahead?');
+    expect(html).not.toContain('<h3 class="subhead">The rate gap</h3>');
   });
 
-  it('shows who actually comes out ahead next to every rate-gap chart', () => {
-    expect((html.match(/Who actually comes out ahead\?/g) ?? []).length).toBe(SCENARIO_BATCHES.length);
-    expect(html).toContain('Above the zero line');
+  it('labels who wins on each side of the zero line of every batch chart', () => {
+    expect((html.match(/▲ Roth comes out ahead/g) ?? []).length).toBe(SCENARIO_BATCHES.length);
+    expect((html.match(/▼ Pre-tax comes out ahead/g) ?? []).length).toBe(SCENARIO_BATCHES.length);
+    expect(html).toContain('Roth advantage (% of Pre-tax income)');
   });
 
   it('shows the two rates as separate lines, and says the gap is the distance between them', () => {
     expect(html).toContain('What the rate gap is made of');
     expect(html).toContain('Marginal rate while working');
     expect(html).toContain('Effective rate on withdrawals in retirement');
-    expect(html).toContain('The rate gap is the vertical distance between the two lines.');
+    expect(html).toContain('The rate gap is the vertical distance between them.');
   });
 
-  it('renders the break-even map with every income column and savings-rate row', () => {
+  it('renders the two break-even maps with every income column and row', () => {
     expect(html).toContain('Where does each one win? Income against savings rate');
-    expect(html).toContain('class="heatmap"');
-    const map = html.slice(html.indexOf('class="heatmap"'), html.indexOf('heatmap-legend'));
-    expect((map.match(/<tr>/g) ?? []).length).toBe(1 + 6); // header + 6 savings rates
-    for (const rate of ['5%', '10%', '15%', '20%', '25%', '30%']) expect(map).toContain(`<th scope="row">${rate}</th>`);
+    expect(html).toContain('Where does each one win? Income against existing Pre-tax balance');
+    expect((html.match(/class="heatmap"/g) ?? []).length).toBe(2);
+    const first = html.indexOf('class="heatmap"');
+    const second = html.indexOf('class="heatmap"', first + 1);
+    const savingsMap = html.slice(first, second);
+    expect((savingsMap.match(/<tr>/g) ?? []).length).toBe(1 + 6); // header + 6 savings rates
+    for (const rate of ['5%', '10%', '15%', '20%', '25%', '30%']) expect(savingsMap).toContain(`<th scope="row">${rate}</th>`);
     expect(html).toContain('savings above the IRS limit');
+    const balanceMap = html.slice(second, html.indexOf('Does the gap predict the winner?'));
+    for (const balance of ['$0', '$100k', '$250k', '$500k', '$1M', '$2M']) {
+      expect(balanceMap).toContain(`<th scope="row">${balance}</th>`);
+    }
+  });
+
+  it('includes the Roth-friendly sweeps: existing Pre-tax balance, existing taxable balance, married filing jointly', () => {
+    expect(html).toContain('A bigger existing Pre-tax balance, at different incomes');
+    expect(html).toContain('A bigger existing taxable investment account, at different incomes');
+    expect(html).toContain('Married filing jointly, with different existing Pre-tax balances');
   });
 
   it('has the retirement-age sweep', () => {

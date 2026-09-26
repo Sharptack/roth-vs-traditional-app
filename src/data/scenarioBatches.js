@@ -28,6 +28,7 @@ const BASE = {
   otherPretaxBalance: 0,
   otherRothBalance: 0,
   otherTaxableBalance: 0,
+  otherTaxableBasis: 0.5, // the calculator's default: half of an existing taxable balance is cost basis
 };
 
 export const INCOMES = [
@@ -42,11 +43,14 @@ export const bySavingsRate = (income, rate) => ({
   savings: Math.round(income * rate),
 });
 
-const formatBalanceLabel = (balance) => {
-  if (balance === 0) return 'No existing balance';
-  const compact = balance >= 1000000 ? `$${(balance / 1000000).toFixed(1)}M` : `$${(balance / 1000).toFixed(0)}k`;
-  return `${compact} existing balance`;
-};
+const compactMoney = (v) => (v >= 1000000 ? '$' + Number((v / 1000000).toFixed(1)) + 'M' : '$' + (v / 1000).toFixed(0) + 'k');
+
+const formatBalanceLabel = (balance) =>
+  balance === 0 ? 'No existing balance' : `${compactMoney(balance)} existing balance`;
+
+// Existing balances swept on the x axis of the balance-level batches.
+export const PRETAX_BALANCES = [0, 50000, 100000, 250000, 500000, 750000, 1000000, 1500000, 2000000];
+export const TAXABLE_BALANCES = [0, 50000, 100000, 250000, 500000, 750000, 1000000];
 
 // Retirement ages swept by the retirement-age batch (35 is the current age there).
 export const RETIREMENT_AGES = Array.from({ length: 16 }, (_, i) => 55 + i);
@@ -116,6 +120,57 @@ export const SCENARIO_BATCHES = [
     })),
   },
   {
+    key: 'pretaxBalanceSweep',
+    title: 'A bigger existing Pre-tax balance, at different incomes',
+    description:
+      'Age 35, retiring at 65, saving 10% of gross income, with an existing Pre-tax balance (401(k)/IRA) of anywhere from $0 to $2 million today. A large Pre-tax balance already forces taxable withdrawals in retirement, which is where Roth contributions start to win.',
+    xLabel: 'Existing Pre-tax balance today',
+    xType: 'currency',
+    base: { ...BASE, currentAge: 35, retirementAge: 65 },
+    series: [40000, 75000, 100000, 150000, 300000].map((income) => ({
+      key: `income${income}`,
+      label: '$' + (income / 1000).toFixed(0) + 'k income',
+      points: PRETAX_BALANCES.map((balance) => ({
+        x: balance,
+        overrides: { ...bySavingsRate(income, 0.1), otherPretaxBalance: balance },
+      })),
+    })),
+  },
+  {
+    key: 'taxableBalanceSweep',
+    title: 'A bigger existing taxable investment account, at different incomes',
+    description:
+      'Age 35, retiring at 65, saving 10% of gross income, with an existing taxable brokerage balance of $0 to $1 million today (half assumed to be original contributions, the calculator\'s default). Its gains stack on top of retirement income and can push it into higher brackets.',
+    xLabel: 'Existing taxable balance today',
+    xType: 'currency',
+    base: { ...BASE, currentAge: 35, retirementAge: 65 },
+    series: [40000, 60000, 100000, 150000, 300000].map((income) => ({
+      key: `income${income}`,
+      label: '$' + (income / 1000).toFixed(0) + 'k income',
+      points: TAXABLE_BALANCES.map((balance) => ({
+        x: balance,
+        overrides: { ...bySavingsRate(income, 0.1), otherTaxableBalance: balance },
+      })),
+    })),
+  },
+  {
+    key: 'mfjBalanceSweep',
+    title: 'Married filing jointly, with different existing Pre-tax balances',
+    description:
+      'Age 35, retiring at 65, saving 10% of gross income, filing jointly (treated as one earner, as elsewhere in the calculator), with an existing Pre-tax balance of $0, $250,000, $500,000, or $1,000,000 today.',
+    xLabel: 'Gross income',
+    xType: 'currency',
+    base: { ...BASE, filingStatus: 'mfj', currentAge: 35, retirementAge: 65 },
+    series: [0, 250000, 500000, 1000000].map((balance) => ({
+      key: `balance${balance}`,
+      label: formatBalanceLabel(balance),
+      points: INCOMES.map((income) => ({
+        x: income,
+        overrides: { ...bySavingsRate(income, 0.1), otherPretaxBalance: balance },
+      })),
+    })),
+  },
+  {
     key: 'lifestyleSweep',
     title: 'Spending more in retirement, at different incomes',
     description:
@@ -142,7 +197,7 @@ export const SCENARIO_BATCHES = [
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
     series: [50000, 75000, 100000, 150000, 250000].map((income) => ({
       key: `income${income}`,
-      label: `${(income / 1000).toFixed(0)}k income`,
+      label: '$' + (income / 1000).toFixed(0) + 'k income',
       points: RETIREMENT_AGES.map((age) => ({
         x: age,
         overrides: { ...bySavingsRate(income, 0.1), retirementAge: age },
@@ -151,14 +206,34 @@ export const SCENARIO_BATCHES = [
   },
 ];
 
-// The break-even map: every income x savings-rate combination, at age 35 retiring at 65 with no
-// existing balances, so the page can show where Roth or Pre-tax comes out ahead.
-export const HEATMAP = {
-  title: 'Where does each one win? Income against savings rate',
-  description:
-    'Age 35, retiring at 65, no debt or other expenses ending at retirement, no other balances. Each cell is one scenario: gross income across, share of income saved down.',
-  incomes: INCOMES,
-  savingsRates: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3],
-  base: { ...BASE, currentAge: 35, retirementAge: 65 },
-  overridesFor: bySavingsRate,
-};
+// The break-even maps: every income x (row variable) combination, at age 35 retiring at 65, so the
+// page can show where Roth or Pre-tax comes out ahead. `overridesFor(income, row)` builds each cell.
+const HEATMAP_BASE = { ...BASE, currentAge: 35, retirementAge: 65 };
+
+export const HEATMAPS = [
+  {
+    key: 'savingsRate',
+    title: 'Where does each one win? Income against savings rate',
+    description:
+      'Age 35, retiring at 65, no debt or other expenses ending at retirement, no other balances. Each cell is one scenario: gross income across, share of income saved down.',
+    rowHeading: 'Saved',
+    incomes: INCOMES,
+    rows: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3].map((rate) => ({ label: `${Math.round(rate * 100)}%`, value: rate })),
+    base: HEATMAP_BASE,
+    overridesFor: (income, row) => bySavingsRate(income, row.value),
+  },
+  {
+    key: 'pretaxBalance',
+    title: 'Where does each one win? Income against existing Pre-tax balance',
+    description:
+      'Age 35, retiring at 65, saving 10% of gross income, no debt or other expenses ending at retirement. Each cell is one scenario: gross income across, existing Pre-tax balance down.',
+    rowHeading: 'Existing balance',
+    incomes: INCOMES,
+    rows: [0, 100000, 250000, 500000, 1000000, 2000000].map((balance) => ({
+      label: balance === 0 ? '$0' : compactMoney(balance),
+      value: balance,
+    })),
+    base: HEATMAP_BASE,
+    overridesFor: (income, row) => ({ ...bySavingsRate(income, 0.1), otherPretaxBalance: row.value }),
+  },
+];

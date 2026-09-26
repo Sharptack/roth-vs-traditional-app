@@ -1,6 +1,5 @@
 import { useId, useState } from 'react';
 import { linearScale, niceTicks } from '../../lib/chartScale.js';
-import { SERIES_COLORS, SERIES_SHAPES } from './palette.js';
 
 const WIDTH = 640;
 const HEIGHT = 400;
@@ -11,48 +10,12 @@ function padDomain(min, max, fraction) {
   return [min - span * fraction, max + span * fraction];
 }
 
-// A shape drawn at the origin, sized by `r`; scatter points carry both a
-// (batch) color AND a shape, since a 5-way categorical palette isn't
-// guaranteed colorblind-safe for every pair once every point can sit next to
-// every other point (see the dataviz skill's "all-pairs" note).
-function ShapePath({ shape, r }) {
-  switch (shape) {
-    case 'square':
-      return <rect x={-r} y={-r} width={r * 2} height={r * 2} />;
-    case 'triangle':
-      return <polygon points={`0,${-r * 1.15} ${r * 1.05},${r * 0.75} ${-r * 1.05},${r * 0.75}`} />;
-    case 'triangleDown':
-      return <polygon points={`0,${r * 1.15} ${r * 1.05},${-r * 0.75} ${-r * 1.05},${-r * 0.75}`} />;
-    case 'diamond':
-      return <polygon points={`0,${-r * 1.25} ${r * 1.25},0 0,${r * 1.25} ${-r * 1.25},0`} />;
-    case 'cross':
-      return (
-        <>
-          <rect x={-r * 1.15} y={-r * 0.35} width={r * 2.3} height={r * 0.7} />
-          <rect x={-r * 0.35} y={-r * 1.15} width={r * 0.7} height={r * 2.3} />
-        </>
-      );
-    default:
-      return <circle r={r} />;
-  }
-}
-
-export function LegendIcon({ shape, color }) {
-  return (
-    <svg viewBox="-8 -8 16 16" width={14} height={14} aria-hidden="true">
-      <g fill={color}>
-        <ShapePath shape={shape} r={6} />
-      </g>
-    </svg>
-  );
-}
-
-// Hand-rolled SVG scatter: one point per scenario, colored + shaped by which
-// batch it came from, with a fitted trend line to visualize whether the rate
-// gap actually predicts the Roth/Pre-tax advantage.
+// Hand-rolled SVG scatter: one point per scenario, coloured by who comes out ahead
+// (`groups` gives each group's key, label and colour; each point carries its `group`),
+// with a fitted trend line to show how closely the rate gap predicts the advantage.
 export default function ScatterChart({
   points,
-  batches,
+  groups,
   regression,
   formatX,
   formatY,
@@ -82,7 +45,7 @@ export default function ScatterChart({
   const xScale = linearScale([xDomainMin, xDomainMax], [plotLeft, plotRight]);
   const yScale = linearScale([yDomainMin, yDomainMax], [plotBottom, plotTop]);
 
-  const batchIndex = Object.fromEntries(batches.map((b, i) => [b.key, i]));
+  const colorOf = Object.fromEntries(groups.map((g) => [g.key, g.color]));
 
   return (
     <div className="chart-wrap">
@@ -140,25 +103,22 @@ export default function ScatterChart({
             </g>
           )}
 
-          {points.map((p, i) => {
-            const bi = batchIndex[p.batchKey] ?? 0;
-            const color = SERIES_COLORS[bi % SERIES_COLORS.length];
-            const shape = SERIES_SHAPES[bi % SERIES_SHAPES.length];
-            return (
-              <g
-                key={`${p.batchKey}-${p.seriesLabel}-${i}`}
-                transform={`translate(${xScale(p.x)}, ${yScale(p.y)})`}
-                fill={color}
-                opacity={hoverIdx === null || hoverIdx === i ? 0.9 : 0.35}
-              >
-                <ShapePath shape={shape} r={5} />
-              </g>
-            );
-          })}
+          {points.map((p, i) => (
+            <circle
+              key={`pt-${i}`}
+              cx={xScale(p.x)}
+              cy={yScale(p.y)}
+              r={5}
+              fill={colorOf[p.group]}
+              stroke="var(--card)"
+              strokeWidth={1.5}
+              opacity={hoverIdx === null || hoverIdx === i ? 0.85 : 0.3}
+            />
+          ))}
 
           {points.map((p, i) => (
             <circle
-              key={`hit-${p.batchKey}-${p.seriesLabel}-${i}`}
+              key={`hit-${i}`}
               cx={xScale(p.x)}
               cy={yScale(p.y)}
               r={12}
@@ -202,12 +162,16 @@ export default function ScatterChart({
       </div>
 
       <ul className="chart-legend">
-        {batches.map((b, i) => (
-          <li key={b.key}>
-            <LegendIcon shape={SERIES_SHAPES[i % SERIES_SHAPES.length]} color={SERIES_COLORS[i % SERIES_COLORS.length]} />
-            {b.title}
+        {groups.map((g) => (
+          <li key={g.key}>
+            <span className="chart-legend-dot" style={{ background: g.color }} />
+            {g.label}
           </li>
         ))}
+        <li>
+          <span className="chart-legend-trend" />
+          Trend line
+        </li>
       </ul>
     </div>
   );

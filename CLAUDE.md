@@ -114,7 +114,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `ScenariosPage.jsx` renders one `LineChart` per batch (x = the swept variable, y = gap) plus one combined
   `ScatterChart` (x = gap, y = advantagePct, color+shape by batch, an OLS trend line from `src/lib/regression.js`).
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
-- The six batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
+- The nine batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
   estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 18 of 199 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
   at a fixed 10% savings rate (age 35→65, 12 incomes from $40k to $300k); the same income sweep at 5%/10%/20% savings
   rates; the same income sweep with an existing Pre-tax balance of $0/$20k/$100k/$250k; the same income
@@ -131,14 +131,23 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   Every chart has a hover/focus tooltip and a "Show the numbers" `<details>` table underneath as the
   non-interactive fallback.
 
-- Page layout (2026-09-25j): every batch card shows TWO line charts — "The rate gap" (the predictor, with a highlighted
-  "rule of thumb" callout, `RuleOfThumb`, also in the intro) and "Who actually comes out ahead?" (the outcome, `advantagePct`;
-  above 0 = Roth ahead). The income-sweep batch is followed by "What the rate gap is made of" (marginal-now and
-  effective-in-retirement as two lines; the gap is the distance between them). After the batches: the break-even map
-  (`charts/Heatmap.jsx`; `HEATMAP` in scenarioBatches.js, run by `runHeatmap` in scenarios.js: income x savings rate 5-30%,
-  cells tinted by Roth advantage, Roth blue / Pre-tax orange via `--series-1/2`, `*` = over the IRS limit, from
-  `overLimit` on each point), then the combined scatter (now 279 points: the sixth batch needed `--series-6` and a
-  `triangleDown` shape). Tables under each batch ("Show the numbers") list both the gap and the advantage.
+- Page layout (2026-09-25k, simplified at the user's request — no repeated explanations, "let the graphs speak"):
+  the rule of thumb appears ONCE, as a highlighted callout in the intro; every batch card is a title, one sentence of
+  setup, and ONE line chart of Roth's advantage (`advantagePct`), with the area above the zero line tinted blue and
+  labelled "▲ Roth comes out ahead" and the area below tinted orange, "▼ Pre-tax comes out ahead" (`LineChart`
+  `zones` prop). Roth = blue / Pre-tax = orange everywhere the winner is shown (zones, heatmaps, scatter). The rate gap
+  for the same points is in each card's "Show the numbers" (advantage table + gap table). The income-sweep card is
+  followed by "What the rate gap is made of" (marginal-now and effective-in-retirement as two lines). After the batches:
+  two break-even maps (`charts/Heatmap.jsx`; `HEATMAPS` in scenarioBatches.js, run by `runHeatmap`: income across, then
+  savings rate 5-30% or existing Pre-tax balance $0-$2M down; `*` = over the IRS limit, from `overLimit`), then the combined
+  scatter, whose points are coloured by winner (blue Roth / orange Pre-tax / grey even; batch is in the tooltip).
+- Where Roth wins (found by scanning the engine 2026-09-25): a large existing Pre-tax balance (forced taxable withdrawals;
+  +7% to +35% at $100k-$1M+ balances, still +3-7% at $300k income with $1M+), a large existing taxable balance at lower
+  incomes (+14-26% at $500k-$1M and $40k-$60k income), married filing jointly with balances, big lifestyle increases at
+  $50k-$60k (2x), retiring at 70 at $150k, and 20-30% savings at $175k-$200k (the excess in a taxable account). Age at
+  contribution start does NOT matter (both sides scale with the same growth). Existing Roth balances do not help Roth.
+  The batches for these: `pretaxBalanceSweep`, `taxableBalanceSweep`, `mfjBalanceSweep`. `BASE` uses
+  `otherTaxableBasis: 0.5` (the form default).
 - For screenshots of this long page, headless Chrome's `--screenshot` garbles pages taller than ~8000px; slice with the
   DevTools protocol instead (`Page.captureScreenshot` with a `clip`, `captureBeyondViewport`).
 
@@ -429,6 +438,13 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (k) — Visualization simplified and extended. One chart per batch (Roth's advantage with tinted "who wins" zones
+  around the zero line) instead of gap + advantage; the "The rate gap" headings and repeated rule-of-thumb callouts removed
+  (rule stated once, in the intro). Three Roth-friendly batches added (existing Pre-tax balance sweep, existing taxable balance
+  sweep, married filing jointly with balances) and a second break-even map (income x existing Pre-tax balance). Scatter now
+  coloured by winner (407 points, r² 0.97), dropping the per-batch colours/shapes and the 6th series colour. Fixed a bug from
+  the previous commit: the retirement-age legend labels lost their "$" (a String.replace `$` collapse in my edit script — beware
+  `$`/`$1` in replacement strings). 423 tests.
 - 2026-09-25 (j) — Visualization additions: a "Who actually comes out ahead?" chart under every rate-gap chart; "What the rate
   gap is made of" (two-rates chart); a break-even map (income x savings rate heatmap); a retirement-age sweep batch; the rule of
   thumb highlighted as a callout in the intro and above every gap chart. New pure pieces: `runHeatmap`, `overLimit`,

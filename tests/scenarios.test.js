@@ -7,7 +7,15 @@ import {
   runScenarioBatch,
   runScenarioPoint,
 } from '../src/lib/scenarios.js';
-import { HEATMAP, INCOMES, LIFESTYLES, RETIREMENT_AGES, SCENARIO_BATCHES } from '../src/data/scenarioBatches.js';
+import {
+  HEATMAPS,
+  INCOMES,
+  LIFESTYLES,
+  PRETAX_BALANCES,
+  RETIREMENT_AGES,
+  SCENARIO_BATCHES,
+  TAXABLE_BALANCES,
+} from '../src/data/scenarioBatches.js';
 
 const base = {
   filingStatus: 'single',
@@ -140,6 +148,22 @@ describe('the real SCENARIO_BATCHES data', () => {
       expect(series.points).toHaveLength(LIFESTYLES.length);
     }
 
+    expect(byKey.pretaxBalanceSweep.series).toHaveLength(5);
+    for (const series of byKey.pretaxBalanceSweep.series) {
+      expect(series.points.map((p) => p.x)).toEqual(PRETAX_BALANCES);
+      // the x value really is the existing balance that was run
+      for (const p of series.points) expect(p.inputs.otherPretaxBalance).toBe(p.x);
+    }
+    expect(byKey.taxableBalanceSweep.series).toHaveLength(5);
+    for (const series of byKey.taxableBalanceSweep.series) {
+      expect(series.points.map((p) => p.x)).toEqual(TAXABLE_BALANCES);
+      for (const p of series.points) expect(p.inputs.otherTaxableBalance).toBe(p.x);
+    }
+    expect(byKey.mfjBalanceSweep.series).toHaveLength(4);
+    for (const series of byKey.mfjBalanceSweep.series) {
+      for (const p of series.points) expect(p.inputs.filingStatus).toBe('mfj');
+    }
+
     expect(byKey.retirementAgeSweep.series).toHaveLength(5);
     for (const series of byKey.retirementAgeSweep.series) {
       expect(series.points).toHaveLength(RETIREMENT_AGES.length);
@@ -192,41 +216,62 @@ describe('the real SCENARIO_BATCHES data', () => {
   });
 });
 
-describe('runHeatmap (the break-even map)', () => {
-  const map = runHeatmap(HEATMAP, 2026);
+describe('runHeatmap (the break-even maps)', () => {
+  const [savingsDef, balanceDef] = HEATMAPS;
+  const savingsMap = runHeatmap(savingsDef, 2026);
+  const balanceMap = runHeatmap(balanceDef, 2026);
 
-  it('has one row per savings rate and one cell per income, in order', () => {
-    expect(map.rows.map((r) => r.rate)).toEqual(HEATMAP.savingsRates);
-    for (const row of map.rows) {
-      expect(row.cells.map((c) => c.income)).toEqual(HEATMAP.incomes);
+  it('has one row per row value and one cell per income, in order', () => {
+    for (const [def, map] of [
+      [savingsDef, savingsMap],
+      [balanceDef, balanceMap],
+    ]) {
+      expect(map.rows.map((r) => r.value)).toEqual(def.rows.map((r) => r.value));
+      for (const row of map.rows) expect(row.cells.map((c) => c.income)).toEqual(def.incomes);
     }
   });
 
-  it('each cell is the same scenario the calculator runs for that income and savings rate', () => {
+  it('each savings-rate cell is the same scenario the calculator runs for that income and rate', () => {
     // 15% of $100,000 = $15,000 saved
-    const row = map.rows.find((r) => r.rate === 0.15);
+    const row = savingsMap.rows.find((r) => r.value === 0.15);
     const cell = row.cells.find((c) => c.income === 100000);
-    const direct = compareRothVsTraditional({ ...HEATMAP.base, grossIncome: 100000, savings: 15000, year: 2026 });
+    const direct = compareRothVsTraditional({ ...savingsDef.base, grossIncome: 100000, savings: 15000, year: 2026 });
     expect(cell.inputs.savings).toBe(15000);
     expect(cell.rothAfterTax).toBe(direct.annuity.roth.totalAfterTaxIncome);
     expect(cell.pretaxAfterTax).toBe(direct.annuity.pretax.totalAfterTaxIncome);
   });
 
-  it('matches the income-sweep chart at the 10% row (same scenarios, same numbers)', () => {
-    const sweep = runAllBatches(SCENARIO_BATCHES, 2026).find((b) => b.key === 'incomeSweep').series[0];
-    const row = map.rows.find((r) => r.rate === 0.1);
-    expect(row.cells.map((c) => c.advantagePct)).toEqual(sweep.points.map((p) => p.advantagePct));
+  it('each balance cell saves 10% of income and carries that existing Pre-tax balance', () => {
+    const row = balanceMap.rows.find((r) => r.value === 500000);
+    const cell = row.cells.find((c) => c.income === 60000);
+    expect(cell.inputs.savings).toBe(6000);
+    expect(cell.inputs.otherPretaxBalance).toBe(500000);
   });
 
-  it('every cell is finite, and the over-limit cells are the high-income / high-savings corner', () => {
-    for (const row of map.rows) {
-      for (const c of row.cells) {
-        expect(Number.isFinite(c.advantagePct)).toBe(true);
-        // over the limit exactly when savings > 24,500 (2026, age 35) -- a currently-Pre-tax saver
-        expect(c.overLimit).toBe(c.inputs.savings > 24500);
-      }
+  it('matches the income-sweep chart at the 10% row and the $0-balance row (same scenarios, same numbers)', () => {
+    const sweep = runAllBatches(SCENARIO_BATCHES, 2026).find((b) => b.key === 'incomeSweep').series[0];
+    const tenPercent = savingsMap.rows.find((r) => r.value === 0.1);
+    expect(tenPercent.cells.map((c) => c.advantagePct)).toEqual(sweep.points.map((p) => p.advantagePct));
+    const noBalance = balanceMap.rows.find((r) => r.value === 0);
+    expect(noBalance.cells.map((c) => c.advantagePct)).toEqual(sweep.points.map((p) => p.advantagePct));
+  });
+
+  it('every cell is finite, and the savings-rate map flags exactly the over-limit cells', () => {
+    for (const map of [savingsMap, balanceMap]) {
+      for (const row of map.rows) for (const c of row.cells) expect(Number.isFinite(c.advantagePct)).toBe(true);
     }
-    expect(map.rows[0].cells[0].overLimit).toBe(false); // 5% of $40k
-    expect(map.rows[map.rows.length - 1].cells.at(-1).overLimit).toBe(true); // 30% of $300k
+    for (const row of savingsMap.rows) {
+      for (const c of row.cells) expect(c.overLimit).toBe(c.inputs.savings > 24500); // 2026, age 35
+    }
+    expect(savingsMap.rows[0].cells[0].overLimit).toBe(false); // 5% of $40k
+    expect(savingsMap.rows.at(-1).cells.at(-1).overLimit).toBe(true); // 30% of $300k
+  });
+
+  it('Roth comes out ahead somewhere on the balance map: big existing Pre-tax balances at modest incomes', () => {
+    const cell = balanceMap.rows.find((r) => r.value === 1000000).cells.find((c) => c.income === 50000);
+    expect(cell.advantagePct).toBeGreaterThan(0);
+    expect(cell.winner).toBe('roth');
+    // ...while with no existing balance Pre-tax wins at every income
+    for (const c of balanceMap.rows.find((r) => r.value === 0).cells) expect(c.advantagePct).toBeLessThan(0);
   });
 });
