@@ -283,9 +283,16 @@ function YearsWithoutSocialSecurity({ result }) {
                 kind="sub"
               />
               <Row
-                label="Extra tax that withdrawal would cause"
-                value={$(s.grossUp.probeExtraTax)}
+                label={`Taxable income after the ${$(std)} standard deduction, with that withdrawal added`}
+                value={$(s.grossUp.probeStack.ordinaryTaxableIncome)}
                 kind="sub"
+              />
+              <Row label="Total tax, with that withdrawal added" value={$(s.grossUp.probeStack.totalTax)} kind="sub" />
+              <Row label="Total tax without it (Existing Accounts only)" value={$(s.grossUp.baseStack.totalTax)} kind="sub" />
+              <Row
+                label={`Extra tax that withdrawal would cause (${$(s.grossUp.probeStack.totalTax)} − ${$(s.grossUp.baseStack.totalTax)})`}
+                value={$(s.grossUp.probeExtraTax)}
+                kind="total"
               />
               <ExtraTaxSplit d={s.rateDrivers} />
               <Row

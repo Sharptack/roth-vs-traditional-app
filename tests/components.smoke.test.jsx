@@ -812,9 +812,29 @@ describe('Existing taxable accounts: cost basis dropdown', () => {
     expect(some).toMatch(/<option value="0.5" selected="">50% \(default\)/);
   });
 
+  it("sits in a collapsed dropdown whose summary shows the current basis", () => {
+    const html = renderToStaticMarkup(
+      <InputForm values={{ ...DEFAULT_FORM_VALUES, otherTaxableBalance: "50000", otherTaxableBasis: "0" }} onChange={() => {}} />,
+    );
+    expect(html).toMatch(/<details class="details basis-option"><summary>Cost basis of those taxable accounts: (<!-- -->)?0% \(all gains\)<\/summary>/);
+  });
+
   it('shows the gains part of the taxable withdrawal in the rate walk-through', () => {
     const html = render({ otherTaxableBalance: '100000' });
     expect(html).toContain('…of which gains (taxed; the rest is cost basis)');
     expect(html).toContain('of it gains, the rest cost basis');
+  });
+});
+
+describe("Rate walk-through when no withdrawal is needed", () => {
+  it("shows how the extra tax on the hypothetical withdrawal is worked out", () => {
+    const result = compareRothVsTraditional(
+      toCompareInputs({ ...DEFAULT_FORM_VALUES, otherPretaxBalance: "400000", otherTaxableBalance: "200000" }),
+    );
+    expect(result.grossUp.grossWithdrawal).toBe(0);
+    const html = renderToStaticMarkup(<ResultsSummary result={result} />);
+    expect(html).toContain("Taxable income after the standard deduction, with that withdrawal added");
+    expect(html).toContain("Total tax, with that withdrawal added");
+    expect(html).toMatch(/Extra tax that withdrawal would cause \(\$[\d,]+ − \$[\d,]+ without it\)/);
   });
 });

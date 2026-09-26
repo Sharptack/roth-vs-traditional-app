@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (408 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (425 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -185,7 +185,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   the old behavior) and returns `capitalGains`; `solveGrossWithdrawal` takes `otherTaxableGainShare`;
   `solvePortfolioWithdrawal` takes `{ taxableGainShare }` and returns `taxableGains`.
 - Existing taxable accounts: input `otherTaxableBasis` (share of TODAY'S balance; form default '0.5', options
-  0/25/50/75/100% in a dropdown under the taxable balance, shown only when that balance > 0; lib default 0 = all
+  0/25/50/75/100% in a select inside a collapsed `<details>` ("Cost basis of those taxable accounts: 50%") under the taxable balance, shown only when that balance > 0; the summary is highlighted when it differs in Compare a change; lib default 0 = all
   gain so older callers/tests are unchanged). Growth to retirement is all gain: gain share = 1 − basis$ / grown
   balance (`otherWithdrawals.taxableGains`, `taxableGainShare`).
 - Taxable side of Future Contributions: every contributed dollar is basis (excess × years); `annuity.X.side`
@@ -438,6 +438,11 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-25 (l) — Cost basis moved into a collapsed dropdown under the taxable balance (summary shows the chosen
+  share). The rate walk-through, when no withdrawal is needed (G = 0), now shows how "Extra tax that withdrawal would
+  cause" is worked out: taxable SS and taxable income with the hypothetical withdrawal added (vs. before), the tax with
+  it, and "$with − $without" (`rateSteps.js` probe rows, from `grossUp.probeStack`); the no-Social-Security dropdown
+  gets the same rows. Display only, no model change. 425 tests.
 - 2026-09-25 (k) — Visualization simplified and extended. One chart per batch (Roth's advantage with tinted "who wins" zones
   around the zero line) instead of gap + advantage; the "The rate gap" headings and repeated rule-of-thumb callouts removed
   (rule stated once, in the intro). Three Roth-friendly batches added (existing Pre-tax balance sweep, existing taxable balance

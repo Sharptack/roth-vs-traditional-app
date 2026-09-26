@@ -757,6 +757,19 @@ th.win .th-sub {
   margin-bottom: 16px;
 }
 
+/* Cost basis: an optional dropdown tucked under the taxable balance. */
+.basis-option {
+  margin: -8px 0 0;
+}
+
+.basis-option .details-body {
+  background: var(--bg);
+}
+
+.basis-option .field {
+  margin-bottom: 0;
+}
+
 .lifestyle-assumption .details-body {
   background: var(--bg);
 }
@@ -1115,6 +1128,12 @@ th.win .th-sub {
 .field.changed select {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* A changed value inside a collapsed dropdown still shows on its summary. */
+.details.changed > summary {
+  background: var(--accent-soft);
+  border-radius: 4px;
 }
 
 .radio-group.changed legend {

@@ -35,6 +35,10 @@ const BASIS_OPTIONS = [
   { value: '1', label: '100% (no gains yet)' },
 ];
 
+// Short form for the cost-basis dropdown summary: "50%", "0% (all gains)".
+const basisLabel = (value) =>
+  (BASIS_OPTIONS.find((o) => o.value === value)?.label ?? value).replace(" (default)", "").replace("all of it is gains", "all gains");
+
 const returnLabel = (value) => RETURN_OPTIONS.find((o) => o.value === value)?.label ?? value;
 // Short form for a dropdown summary: "same", "25% higher", "20% lower".
 const lifestyleLabel = (value) =>
@@ -322,14 +326,21 @@ export default function InputForm({ values, onChange, title, baseValues, namePre
           changed={isChanged('otherTaxableBalance')}
         />
         {parseNumber(values.otherTaxableBalance) > 0 && (
-          <SelectInput
-            label="Cost basis of those taxable accounts"
-            hint="The share of today's balance that is money you put in, not gains. Only gains are taxed when you withdraw; growth from here on is all gain."
-            value={values.otherTaxableBasis}
-            onChange={set('otherTaxableBasis')}
-            changed={isChanged('otherTaxableBasis')}
-            options={BASIS_OPTIONS}
-          />
+          <details className={`details basis-option${isChanged('otherTaxableBasis') ? ' changed' : ''}`}>
+            <summary>
+              Cost basis of those taxable accounts: {basisLabel(values.otherTaxableBasis)}
+            </summary>
+            <div className="details-body">
+              <SelectInput
+                label="Cost basis of those taxable accounts"
+                hint="The share of today's balance that is money you put in, not gains. Only gains are taxed when you withdraw; growth from here on is all gain."
+                value={values.otherTaxableBasis}
+                onChange={set('otherTaxableBasis')}
+                changed={isChanged('otherTaxableBasis')}
+                options={BASIS_OPTIONS}
+              />
+            </div>
+          </details>
         )}
       </fieldset>
 

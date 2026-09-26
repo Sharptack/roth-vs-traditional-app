@@ -122,7 +122,29 @@ export function effectiveRateSteps(result) {
       money('grossWithdrawal', 'Withdrawal needed from Future Contributions', 0, 'total'),
       heading('step3', 'Step 3: what a withdrawal from it would cost, if you took one'),
       money('probeSize', "Future Contributions' own natural withdrawal (4% of their projected value)", g.probeSize),
-      money('extraTax', 'Extra tax that withdrawal would cause', g.probeExtraTax),
+      // The same re-do of the tax as Step 3 above, on that hypothetical withdrawal.
+      money(
+        'probeTaxableSS',
+        'Taxable part of Social Security, with that withdrawal added',
+        g.probeStack.taxableSS,
+        'sub',
+        g.probeStack.taxableSS - g.baseStack.taxableSS > 0.5 ? `was ${$(g.baseStack.taxableSS)}` : 'unchanged',
+      ),
+      money(
+        'probeTaxableIncome',
+        'Taxable income after the standard deduction, with that withdrawal added',
+        g.probeStack.ordinaryTaxableIncome,
+        'sub',
+        `was ${$(g.baseStack.ordinaryTaxableIncome)}`,
+      ),
+      ...taxRows('probe', g.probeStack, hasGains, 'Total tax, with that withdrawal added'),
+      money(
+        'extraTax',
+        'Extra tax that withdrawal would cause',
+        g.probeExtraTax,
+        'total',
+        `${$(g.probeStack.totalTax)} − ${$(g.baseStack.totalTax)} without it`,
+      ),
     );
   }
 
