@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (436 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (449 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -73,7 +73,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `contributionLimits`, `compare` (orchestrator; single source of every UI number), `constants`
   (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`,
   `shareInputs` (form values <-> link query string, plain-text scenario summary — see "Sharing a scenario"), `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
-  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line).
+  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line), `sideAwareRates` (the duplicate rates block's calculation — see its section).
 - `rateSteps.js`: the "How are the retirement rates calculated?" walk-through as data rows
   (`effectiveRateSteps`, `rateDriverRows`), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
   scenario comparison — one source for both. `scenarioCompare.js`: `changedInputs`, `headlineRows`,
@@ -303,6 +303,33 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
     later <= marginal now, so this view can only tie or favor Pre-tax. Roth can win when (a) other accounts'
     *forced* 4% draws already exceed the need (existing balances set the bracket), or (b) lifestyle > 1.
 
+## Duplicate rates block: the "new calculation" (2026-09-26) — TEMPORARY, one block will be removed
+The user asked for a second, parallel rates block so the old and new calculations can be compared; eventually one goes.
+- Where: a card titled "Tax rate comparison — new calculation" (id `sec2b`, card id `ratesNew`) directly below the original
+  "Tax rate comparison" (`sec2`, untouched). Numbers come from `result.sideAware` (`lib/sideAwareRates.js`, called in
+  compare.js step 10c); the walk-through rows are `sideAwareRateSteps` in `rateSteps.js`; the header headline is
+  `resultHeadlines().ratesNew`. The original `rates`, `rateDrivers`, its dropdown and every chart/verdict still use the old numbers.
+- Why: at $500k / $50k saved the old rates said Pre-tax, "comes out ahead" said Roth +0.4% and the portfolio section said Pre-tax
+  +2.8%. Cause: the effective rate (28.4%) was measured on the $354k withdrawal needed to hit the retirement income number
+  with only SS + Existing Accounts in the stack, then applied to the $92.6k the account really yields, and it ignored the taxable
+  accounts the two scenarios build from Future Contributions (the Pre-tax side invests the tax its deduction saved).
+- The calculation (first retirement year, 4% withdrawals; W = Pre-tax account, RW = Roth account, sideP / sideR = each scenario's
+  taxable account, extra = sideP - sideR): e = [tax(Existing + sideP + W) - tax(Existing + sideP)] / W (effective rate on the
+  account withdrawal WITH its scenario's taxable account in the stack); s = [tax(Existing + sideP) - tax(Existing + sideR)] / extra
+  (tax rate on the extra taxable money); X = [(W - RW) + extra(1 - s)] / W ("tax saved now, after the tax on investing it").
+  No taxable account: X = the marginal rate, X - e = today's rate gap. Capped at the limit: X = t(1 - s). Lean = leanFromRates(X, e).
+- IDENTITY (tested to the cent over 200+ combinations, and by hand in two cases): (X - e) x W = the exact after-tax income the
+  Pre-tax portfolio delivers minus the Roth portfolio's at a plain 4% (`portfolio.X.atBaseline`). So these rates cannot contradict the
+  exact dollar comparison. $500k case: 29.5% vs 23.6% = $5,492/yr for Pre-tax = the exact figure.
+- Evidence gathered before building (467 chart scenarios, clear-winner cases vs the exact 4% answer): the new rule agrees 100%; the old
+  rate lean 93%; the old "comes out ahead" (Section 2 dollars) 88%. Ingredients: keeping the old need-based rate with the extra-taxable
+  term 93%; measuring at the actual withdrawal but leaving the side out of the stack 99%; side in stack but ignoring the tax on the
+  extra money 98%. Measuring on the account's actual 4% withdrawal (not the need-based one) matters most. That is a CHOICE the user
+  approved by asking for it "the way you recommend"; the need-based rate stays visible in the original block.
+- NOT done yet (deliberately): the "comes out ahead" verdict, ScenarioCompare, the Visualization page and ARTICLE.md still use the old
+  numbers. When one block is chosen: switch the verdict/charts/compare/article to it and delete the other (and `sideAware` or the old
+  `rates`). The known limitation "effective rate is measured on the gap-filling withdrawal" applies only to the old block.
+
 ## Catch-up contributions (2026-09-23)
 `data/contributionLimits.js` entries changed shape from a plain number to `{ base, catchUp50,
 catchUp60to63 }` (401(k) only has `catchUp60to63`; IRA has no enhanced tier). `getLimit(accountType,
@@ -460,6 +487,10 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-26 (d) — Duplicate "Tax rate comparison — new calculation" block (see its section): rates that include each scenario's taxable
+  account and are measured on the account's actual 4% withdrawal, with a walk-through; the original block is unchanged. New
+  `lib/sideAwareRates.js` (two hand-verified tests, the to-the-cent identity with the exact dollar comparison over 200+ inputs, the
+  $500k regression), `sideAwareRateSteps` in rateSteps.js, a `ratesNew` headline, and `result.sideAware`. 449 tests.
 - 2026-09-26 (c) — Visualization: each "Show the numbers" dropdown now holds ONE table (the plotted advantage; the separate gap table
   is gone); removed the "Married filing jointly" chart (every chart is now single-filer, and the page says so); added "Age 50: saving more,
   with a $500k existing Pre-tax balance" (5/10/20/30% saved across incomes) because age changes the answer once there is an existing

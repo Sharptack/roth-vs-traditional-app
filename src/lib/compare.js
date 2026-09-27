@@ -28,6 +28,7 @@ import { estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { explainWithdrawalRate, solveGrossWithdrawal } from './incomeNeed.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
 import { calculateRetirementTax } from './retirementTaxStack.js';
+import { calculateSideAwareRates } from './sideAwareRates.js';
 import { checkContributionLimit, splitAtContributionLimit } from './contributionLimits.js';
 import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
 import {
@@ -403,6 +404,20 @@ export function compareRothVsTraditional(inputs) {
     l.totalAfterTaxValue = l.afterTaxValue + l.side.afterTaxValue;
   }
 
+  // 10c. The second way of working out the rates (sideAwareRates.js): the taxable account each
+  // scenario builds sits in the stack. Kept beside the original `rates` so the two can be compared.
+  const sideAware = calculateSideAwareRates({
+    other: otherWithdrawals,
+    ssBenefit,
+    filingStatus,
+    year,
+    pretaxAccountWithdrawal: annuity.pretax.annualWithdrawal,
+    rothAccountWithdrawal: annuity.roth.annualWithdrawal,
+    pretaxSide: { withdrawal: annuity.pretax.side.annualWithdrawal, gains: annuity.pretax.side.gains },
+    rothSide: { withdrawal: annuity.roth.side.annualWithdrawal, gains: annuity.roth.side.gains },
+  });
+  if (sideAware.available) sideAware.lean = leanFromRates(sideAware.taxSavedNow, sideAware.effectiveRate);
+
   // 11. Full-portfolio tax comparison. Each scenario's taxable bucket picks up
   // its own excess-over-the-limit contributions (0 when nothing was capped).
   const scenarioBuckets = {
@@ -550,6 +565,8 @@ export function compareRothVsTraditional(inputs) {
       lean: leanFromRates(marginalRateNow, effectiveRateRetirement),
     },
     rateDrivers,
+    // The duplicate rates block's numbers (sideAwareRates.js); { available: false } when there is no account withdrawal.
+    sideAware: { ...sideAware, marginalNow: marginalRateNow },
     retirementOverall: {
       totalTax: grossUp.solutionStack.totalTax,
       grossIncome: retirementGrossIncome,

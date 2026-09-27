@@ -76,15 +76,22 @@ describe('resultHeadlines', () => {
     rates: { marginalNow: 0.22, effectiveRetirement: 0.1234, lean: 'pretax' },
     comparison: { winner: 'pretax', afterTaxIncomeDifference: 1234.4 },
     portfolio: { roth: { totalTaxPaid: 8000 }, pretax: { totalTaxPaid: 11250.6 } },
+    sideAware: { available: true, taxSavedNow: 0.295, effectiveRate: 0.2, lean: 'pretax' },
   };
 
   it('formats each card headline', () => {
     expect(resultHeadlines(result)).toEqual({
       need: '$65,380 a year after tax',
       rates: '22.0% now vs. 12.3% in retirement · tends to favor Pre-tax',
+      ratesNew: '29.5% saved now vs. 20.0% paid later · tends to favor Pre-tax',
       tradeoff: 'Pre-tax ahead by $1,234 a year after tax',
       portfolio: 'Tax a year: All-Roth $8,000 vs. All-Pre-tax $11,251',
     });
+  });
+
+  it('says there is nothing to measure when the new rates are unavailable', () => {
+    const none = { ...result, sideAware: { available: false } };
+    expect(resultHeadlines(none).ratesNew).toBe('No withdrawal to measure');
   });
 
   it('says "About even" when neither side wins', () => {

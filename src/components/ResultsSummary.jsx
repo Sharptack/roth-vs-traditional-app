@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { resultHeadlines } from '../lib/sectionSummaries.js';
 import Collapsible, { toggleId } from './Collapsible.jsx';
 import { formatCurrency, formatPercent, formatValue } from '../lib/format.js';
-import { effectiveRateSteps } from '../lib/rateSteps.js';
+import { effectiveRateSteps, sideAwareRateSteps } from '../lib/rateSteps.js';
 
 const $ = (n) => formatCurrency(n);
 const minus = (n) => `−${formatCurrency(n)}`;
@@ -751,6 +751,78 @@ function TaxRates({ result }) {
   );
 }
 
+// ---- The duplicate ("new calculation") rates block, shown below the original for comparison ----
+// Same question, worked out with the taxable account each scenario builds from its Future
+// Contributions in the stack (lib/sideAwareRates.js). Temporary: one of the two blocks will go.
+
+function SideAwareRateMath({ result }) {
+  const s = result.sideAware;
+  const hasSide = s.extraSide.withdrawal > 0.5;
+  return (
+    <details className="details">
+      <summary>How are these rates calculated?</summary>
+      <div className="details-body">
+        <p className="note">
+          <strong>What is different from the block above.</strong> (1) The taxable account each scenario
+          builds from Future Contributions is in the stack. Capital gains sit on top of ordinary income, so a
+          bigger taxable account loses the cheap 0% bracket to the Pre-tax withdrawal, makes more Social
+          Security taxable and can add the 3.8% investment tax. (2) The rate is measured on the withdrawal the
+          Pre-tax account actually produces (4% of its projected value), not on the larger withdrawal needed to
+          reach the retirement income number. (3) When savings exceed the IRS limit, the tax the Pre-tax
+          deduction saves is invested in a taxable account, so the comparison is the tax saved now{' '}
+          <em>after the tax on investing it</em> against the tax paid later on the account withdrawal.
+          {!hasSide && ' Nothing here exceeds the limit, so the first rate is simply your marginal rate.'}
+        </p>
+        <div className="calc">
+          {sideAwareRateSteps(result).map((row) => (
+            <StepRow key={row.key} row={row} />
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function TaxRatesNew({ result }) {
+  const s = result.sideAware;
+  if (!s.available) {
+    return <p className="hint">There is no withdrawal from Future Contributions to measure, so there is no rate to compare.</p>;
+  }
+  const hasSide = s.extraSide.withdrawal > 0.5;
+  const ahead = s.dollarDifference >= 0 ? 'Pre-tax' : 'Roth';
+  return (
+    <div className="tax-rates">
+      <div className="rate-pair">
+        <div className="rate-pair-item">
+          <div className="stat-label">Tax saved now, after any tax on investing it</div>
+          <div className="stat-value">{formatPercent(s.taxSavedNow)}</div>
+          <div className="stat-sub">
+            {hasSide
+              ? `Your ${formatPercent(s.marginalNow)} marginal rate, less ${formatPercent(s.extraSideRate)} later tax on the taxable account the savings go into`
+              : 'Your marginal rate: the tax on your next dollar today'}
+          </div>
+        </div>
+        <div className="rate-pair-vs">vs</div>
+        <div className="rate-pair-item highlight">
+          <div className="stat-label">Effective rate on the account withdrawals</div>
+          <div className="stat-value">{formatPercent(s.effectiveRate)}</div>
+          <div className="stat-sub">Extra tax the Pre-tax withdrawal causes, with each scenario&rsquo;s taxable account in the stack</div>
+        </div>
+      </div>
+
+      <p className="rate-lean">
+        <strong>{LEAN_TEXT[s.lean]}</strong>
+      </p>
+      <p className="hint">
+        In dollars, the same comparison: {ahead} comes out ahead by {$(Math.abs(s.dollarDifference))} a year of
+        after-tax income (Future Contributions, at a 4% withdrawal, exact tax on the whole stack).
+      </p>
+
+      <SideAwareRateMath result={result} />
+    </div>
+  );
+}
+
 function BucketBreakdown({ buckets }) {
   return (
     <ul className="breakdown">
@@ -1011,6 +1083,8 @@ function PortfolioComparison({ result }) {
 const RESULT_CARDS = [
   { id: 'need', headingId: 'sec1', title: 'Retirement income number', Body: RetirementNumberSection },
   { id: 'rates', headingId: 'sec2', title: 'Tax rate comparison', Body: RothVsTraditional, className: 'key-card' },
+  // Temporary duplicate of the block above with the new calculation, so the two can be compared.
+  { id: 'ratesNew', headingId: 'sec2b', title: 'Tax rate comparison — new calculation', Body: TaxRatesNew, className: 'key-card' },
   { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'After-tax comparison', Body: TradeOff },
   { id: 'portfolio', headingId: 'sec3', title: 'Total portfolio tax comparison', Body: PortfolioComparison },
 ];

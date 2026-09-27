@@ -887,12 +887,54 @@ describe('Collapsible sections', () => {
   it('shows each results card with its headline, all open', () => {
     const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
     const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
-    expect(titles).toEqual(['Retirement income number', 'Tax rate comparison', 'After-tax comparison', 'Total portfolio tax comparison']);
+    expect(titles).toEqual([
+      'Retirement income number',
+      'Tax rate comparison',
+      'Tax rate comparison — new calculation',
+      'After-tax comparison',
+      'Total portfolio tax comparison',
+    ]);
     expect(html).toContain('class="collapsible-summary">$65,380 a year after tax<');
     expect(html).not.toContain('aria-expanded="false"');
     expect(html).toContain('Collapse all results');
     // the tax rate comparison, the number the decision turns on, carries the accent
     expect(html).toMatch(/class="collapsible card collapsible-card open key-card" aria-labelledby="sec2"/);
+  });
+
+  it('shows a duplicate, new-calculation rates block below the original and leaves the original as it was', () => {
+    const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
+    const orig = html.indexOf('id="sec2"');
+    const dup = html.indexOf('id="sec2b"');
+    const next = html.indexOf('id="sec-tradeoff"');
+    expect(orig).toBeGreaterThan(-1);
+    expect(dup).toBeGreaterThan(orig);
+    expect(next).toBeGreaterThan(dup);
+    const original = html.slice(orig, dup);
+    const duplicate = html.slice(dup, next);
+    // the original block keeps its labels and its own dropdown
+    expect(original).toContain('Marginal rate while working');
+    expect(original).toContain('Effective rate on these withdrawals');
+    expect(original).toContain('How are the retirement rates calculated?');
+    expect(original).not.toContain('Tax saved now');
+    // the duplicate has the new pair, its own dropdown, and the in-dollars cross-check
+    expect(duplicate).toContain('Tax saved now, after any tax on investing it');
+    expect(duplicate).toContain('Effective rate on the account withdrawals');
+    expect(duplicate).toContain('How are these rates calculated?');
+    expect(duplicate).toContain('comes out ahead by');
+    expect(duplicate).not.toMatch(/this account/i);
+    expect(html).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('the new block shows the taxable-account step only when savings exceed the IRS limit', () => {
+    const under = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
+    expect(under).not.toContain('the taxable accounts Future Contributions build');
+    const over = renderToStaticMarkup(
+      <ResultsSummary result={compareRothVsTraditional(toCompareInputs({ ...DEFAULT_FORM_VALUES, grossIncome: '500000', savings: '50000', otherPretaxBalance: '0' }, 2026))} />,
+    );
+    expect(over).toContain('Step 2: the taxable accounts Future Contributions build');
+    expect(over).toContain('Extra taxable money the Pre-tax scenario holds');
+    expect(over).toContain('Tax rate on the extra taxable money');
+    expect(over).not.toMatch(/NaN|Infinity/);
   });
 
   it("offers Clear all in the main inputs card only", () => {
