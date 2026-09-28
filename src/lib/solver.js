@@ -1,7 +1,6 @@
 // Generic binary-search solver for a monotonic INCREASING function.
 //
-// Both retirement-income solvers (incomeNeed.js — solve for a gross withdrawal;
-// portfolioTax.js — solve for a portfolio scale factor) reduce to: "find x >= 0
+// Used by portfolioTax.js to solve for a portfolio scale factor: "find x >= 0
 // such that f(x) = target", where f is after-tax income as a function of how
 // much is withdrawn. After-tax income rises with every extra dollar withdrawn
 // (even at the steepest stack — 37% bracket plus the 85% Social Security

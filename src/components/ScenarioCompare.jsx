@@ -136,7 +136,6 @@ export default function ScenarioCompare({ baseline, current, onStart, onReset, o
             <summary>How the rates are calculated, side by side</summary>
             <div className="details-body">
               <CompareTable rows={c.rateSteps} caption="Effective-rate calculation, side by side" />
-              <CompareTable rows={c.drivers} caption="What sets the rate, side by side" />
             </div>
           </details>
         </>

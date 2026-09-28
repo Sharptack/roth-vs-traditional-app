@@ -22,12 +22,10 @@
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
-import { calculateTaxFromGross, getMarginalRate } from './taxCalculations.js';
+import { calculateTaxFromGross } from './taxCalculations.js';
 import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
-import { explainWithdrawalRate, solveGrossWithdrawal } from './incomeNeed.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
-import { calculateRetirementTax } from './retirementTaxStack.js';
 import { calculateSideAwareRates } from './sideAwareRates.js';
 import { checkContributionLimit, splitAtContributionLimit } from './contributionLimits.js';
 import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
@@ -247,23 +245,32 @@ export function compareRothVsTraditional(inputs) {
     pretax: pretaxSplit.toAccount + pretaxSplit.excessToTaxable,
   };
 
-  // 10 (hoisted). This account's own future value doesn't depend on the tax
-  // solve below, so it's computed early and its natural 4% annual withdrawal
-  // is fed into the gross-up solver as the withdrawal size to measure the
-  // rate on — see the `probeSize` note in incomeNeed.js. Without this, the
-  // solver falls back to a fixed, arbitrary $1,000 probe whenever other
-  // income already covers the target (gross-up = $0), which can read a very
-  // different — and confusingly unstable — rate than the size this account
-  // will actually be asked to deliver.
+  // 9-10 (hoisted). Both accounts' natural 4% withdrawals, and each scenario's taxable
+  // "side" account (the part of Future Contributions that spilled over the IRS limit —
+  // one stream per scenario, since a Roth-only saver and a Pre-tax-only saver spill over by
+  // different amounts, R and P differing once converted at the same take-home cost), are
+  // needed by the rate calculation below, so they're computed first.
   const annuityRothFV = futureValueAnnuity(rothSplit.toAccount, returnRate, years);
   const annuityPretaxFV = futureValueAnnuity(pretaxSplit.toAccount, returnRate, years);
+  const accountRothAnnualWithdrawal = WITHDRAWAL_RATE * annuityRothFV;
   const accountPretaxAnnualWithdrawal = WITHDRAWAL_RATE * annuityPretaxFV;
-  // The excess beyond the limit, growing in a taxable account instead — one
-  // stream per scenario, since a Roth-only saver and a Pre-tax-only saver spill
-  // over by different amounts (R and P differ once converted at the same
-  // take-home cost).
   const excessRothTaxableFV = futureValueAnnuity(rothSplit.excessToTaxable, returnRate, years);
   const excessPretaxTaxableFV = futureValueAnnuity(pretaxSplit.excessToTaxable, returnRate, years);
+  // Every dollar contributed to a side account is cost basis, so only its growth is gain.
+  const sideRaw = (split, fv) => {
+    const annualWithdrawal = WITHDRAWAL_RATE * fv;
+    const gainShare = fv > 0 ? Math.max(0, 1 - (split.excessToTaxable * years) / fv) : 1;
+    return {
+      contribution: split.excessToTaxable,
+      basis: split.excessToTaxable * years,
+      futureValue: fv,
+      annualWithdrawal,
+      gainShare,
+      gains: annualWithdrawal * gainShare,
+    };
+  };
+  const rothSideRaw = sideRaw(rothSplit, excessRothTaxableFV);
+  const pretaxSideRaw = sideRaw(pretaxSplit, excessPretaxTaxableFV);
 
   // 4. Other accounts: grow to retirement, then take 4% from each
   const grown = {
@@ -286,43 +293,89 @@ export function compareRothVsTraditional(inputs) {
   // NOTE: no RMD sequencing or tax-efficient withdrawal ordering is modeled —
   // all accounts are treated as drawn simultaneously.
 
-  // 5 + 6. Social Security taxability and the gross-up are solved jointly: this
-  // account's own withdrawal feeds the combined-income test, so taxable SS can't
-  // be fixed up front.
-  const grossUp = solveGrossWithdrawal({
-    targetAfterTaxIncome,
-    ssBenefit,
-    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
-    otherRothWithdrawal: otherWithdrawals.roth,
-    otherTaxableWithdrawal: otherWithdrawals.taxableGross,
-    otherTaxableGainShare: existingGainShare,
-    filingStatus,
-    year,
-    probeSize: accountPretaxAnnualWithdrawal,
-  });
-  const effectiveRateRetirement = grossUp.retirementEffectiveTaxRate;
-  // What sets that rate: where the withdrawal lands in the brackets, how much
-  // Social Security it pulls into taxable income, and how much capital-gains
-  // tax it adds by pushing taxable-account gains into a higher bracket.
-  const rateDrivers = explainWithdrawalRate(grossUp, {
-    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
-    filingStatus,
-    year,
-  });
+  // 5+6+9+10. The rates, and the after-tax dollars they imply for Future Contributions'
+  // account + its taxable side account, together (sideAwareRates.js). Wrapped in a function
+  // because "Retirement years without Social Security" below needs the exact same thing with
+  // ssBenefit = 0 — everything else (the accounts, their side accounts, Existing Accounts) is
+  // identical between the two views; only Social Security differs.
+  const buildScenario = (ssBenefitForThisView) => {
+    const sideAware = calculateSideAwareRates({
+      other: otherWithdrawals,
+      ssBenefit: ssBenefitForThisView,
+      filingStatus,
+      year,
+      pretaxAccountWithdrawal: accountPretaxAnnualWithdrawal,
+      rothAccountWithdrawal: accountRothAnnualWithdrawal,
+      pretaxSide: { withdrawal: pretaxSideRaw.annualWithdrawal, gains: pretaxSideRaw.gains },
+      rothSide: { withdrawal: rothSideRaw.annualWithdrawal, gains: rothSideRaw.gains },
+    });
+    if (!sideAware.available) {
+      // $0 saved (or an equivalent edge case): there is nothing to measure, so every
+      // downstream dollar figure is 0.
+      const zeroSide = (raw) => ({ ...raw, taxRate: 0, afterTaxWithdrawal: 0 });
+      return {
+        sideAware,
+        annuity: {
+          roth: { afterTaxWithdrawal: 0, side: zeroSide(rothSideRaw), totalAfterTaxIncome: 0 },
+          pretax: { afterTaxWithdrawal: 0, side: zeroSide(pretaxSideRaw), totalAfterTaxIncome: 0 },
+        },
+      };
+    }
+    sideAware.lean = leanFromRates(sideAware.taxSavedNow, sideAware.effectiveRate);
 
-  // Overall effective rate in retirement: all tax owed on the whole first-year
-  // retirement stack (with this account's withdrawal) divided by the gross income
-  // received: Social Security plus every withdrawal, Roth included.
+    // Attribute the total tax to the account and each side account by the SAME stacking
+    // order sideAware used to compute effectiveRate/extraSideRate (Existing Accounts -> this
+    // scenario's side account -> (Pre-tax only) the account's own withdrawal), so the two
+    // pieces' after-tax dollars always sum EXACTLY to the total (tested to the cent against
+    // portfolioTax's independently-solved `atBaseline` figure, across 700+ inputs).
+    const st = sideAware.stacks;
+    const accountTax = st.preTaxWorld.totalTax - st.preTaxWorldBeforeAccount.totalTax;
+    const pretaxSideTax = st.preTaxWorldBeforeAccount.totalTax - st.existing.totalTax;
+    const rothSideTax = st.rothWorld.totalTax - st.existing.totalTax;
+    const withTax = (raw, tax) => {
+      const taxRate = raw.annualWithdrawal > 0 ? tax / raw.annualWithdrawal : 0;
+      return { ...raw, taxRate, afterTaxWithdrawal: raw.annualWithdrawal * (1 - taxRate) };
+    };
+    const rothSide = withTax(rothSideRaw, rothSideTax);
+    const pretaxSide = withTax(pretaxSideRaw, pretaxSideTax);
+    return {
+      sideAware,
+      annuity: {
+        roth: {
+          afterTaxWithdrawal: accountRothAnnualWithdrawal, // tax-free
+          side: rothSide,
+          totalAfterTaxIncome: accountRothAnnualWithdrawal + rothSide.afterTaxWithdrawal,
+        },
+        pretax: {
+          afterTaxWithdrawal: accountPretaxAnnualWithdrawal - accountTax,
+          side: pretaxSide,
+          totalAfterTaxIncome: accountPretaxAnnualWithdrawal - accountTax + pretaxSide.afterTaxWithdrawal,
+        },
+      },
+    };
+  };
+
+  const main = buildScenario(ssBenefit);
+
+  // Overall effective rate in retirement (Pre-tax scenario): all tax on the whole first-year
+  // retirement stack — Social Security, Existing Accounts, and Future Contributions' account
+  // plus its side account — divided by the gross income received (Roth withdrawals included,
+  // though untaxed: this is "share of everything you receive," not "share of taxable income").
   const retirementGrossIncome =
     ssBenefit +
     otherWithdrawals.pretaxGross +
     otherWithdrawals.roth +
     otherWithdrawals.taxableGross +
-    grossUp.grossWithdrawal;
+    pretaxSideRaw.annualWithdrawal +
+    accountPretaxAnnualWithdrawal;
   const overallEffectiveRateRetirement =
-    retirementGrossIncome > 0 ? grossUp.solutionStack.totalTax / retirementGrossIncome : 0;
+    main.sideAware.available && retirementGrossIncome > 0
+      ? main.sideAware.stacks.preTaxWorld.totalTax / retirementGrossIncome
+      : 0;
 
-  // 9. Calculation 1 — a single lump-sum contribution (capped at the IRS limit)
+  // 9. Calculation 1 — a single lump-sum contribution (capped at the IRS limit), taxed the
+  // same way the account's own withdrawal is (main.sideAware.effectiveRate): it's the same
+  // hypothetical, one year's contribution grown then withdrawn like the account.
   const lumpSum = {
     roth: {
       futureValue: futureValueLumpSum(rothSplit.toAccount, returnRate, years),
@@ -332,91 +385,35 @@ export function compareRothVsTraditional(inputs) {
     },
   };
   lumpSum.roth.afterTaxValue = lumpSum.roth.futureValue; // Roth is tax-free
-  lumpSum.pretax.afterTaxValue = lumpSum.pretax.futureValueGross * (1 - effectiveRateRetirement);
+  lumpSum.pretax.afterTaxValue =
+    lumpSum.pretax.futureValueGross * (1 - (main.sideAware.available ? main.sideAware.effectiveRate : 0));
 
-  // 10. Calculation 2 — ongoing annual contributions (capped at the IRS limit;
-  // FVs were hoisted above, before the gross-up solve — see the comment there)
+  // 10. Calculation 2 — ongoing annual contributions (capped at the IRS limit).
   const annuity = {
     roth: {
       futureValue: annuityRothFV,
-      annualWithdrawal: WITHDRAWAL_RATE * annuityRothFV,
-      afterTaxWithdrawal: WITHDRAWAL_RATE * annuityRothFV,
+      annualWithdrawal: accountRothAnnualWithdrawal,
+      ...main.annuity.roth,
+      totalFutureValue: annuityRothFV + excessRothTaxableFV,
     },
     pretax: {
       futureValue: annuityPretaxFV,
-      annualWithdrawal: WITHDRAWAL_RATE * annuityPretaxFV,
-      afterTaxWithdrawal: WITHDRAWAL_RATE * annuityPretaxFV * (1 - effectiveRateRetirement),
+      annualWithdrawal: accountPretaxAnnualWithdrawal,
+      ...main.annuity.pretax,
+      totalFutureValue: annuityPretaxFV + excessPretaxTaxableFV,
     },
   };
-
-  // 10b. The taxable side of Future Contributions (what didn't fit under the limit).
-  // Its 4% withdrawal is taxed as capital gain, stacked on top of everything else
-  // taxable in that scenario's first retirement year: Social Security, Existing
-  // Accounts' 4% withdrawals, and (Pre-tax scenario) the account's own 4% withdrawal.
-  // Rate = the extra tax it causes / the withdrawal.
-  // Every dollar contributed to it is cost basis, so only its growth is gain.
-  const sideGainShare = (split, fv) =>
-    fv > 0 ? Math.max(0, 1 - (split.excessToTaxable * years) / fv) : 1;
-  const sideTaxRate = (withdrawal, gains, accountPretaxWithdrawal, ss) => {
-    if (!(withdrawal > 0)) return 0;
-    const stack = (extra, extraGains) => {
-      const taxable = otherWithdrawals.taxableGross + extra;
-      return calculateRetirementTax({
-        pretaxWithdrawal: otherWithdrawals.pretaxGross + accountPretaxWithdrawal,
-        taxableWithdrawal: taxable,
-        taxableGainShare: taxable > 0 ? (otherWithdrawals.taxableGains + extraGains) / taxable : 1,
-        ssBenefit: ss,
-        filingStatus,
-        year,
-      }).totalTax;
-    };
-    return (stack(withdrawal, gains) - stack(0, 0)) / withdrawal;
-  };
-  const sideFor = (scenario, split, fv, ss) => {
-    const annualWithdrawal = WITHDRAWAL_RATE * fv;
-    const gainShare = sideGainShare(split, fv);
-    const gains = annualWithdrawal * gainShare;
-    const accountDraw = scenario === 'pretax' ? accountPretaxAnnualWithdrawal : 0;
-    const taxRate = sideTaxRate(annualWithdrawal, gains, accountDraw, ss);
-    return {
-      contribution: split.excessToTaxable,
-      basis: split.excessToTaxable * years,
-      futureValue: fv,
-      annualWithdrawal,
-      gainShare,
-      gains,
-      taxRate,
-      afterTaxWithdrawal: annualWithdrawal * (1 - taxRate),
-    };
-  };
-  for (const [scenario, split, fv] of [
-    ['roth', rothSplit, excessRothTaxableFV],
-    ['pretax', pretaxSplit, excessPretaxTaxableFV],
+  for (const [scenario, split] of [
+    ['roth', rothSplit],
+    ['pretax', pretaxSplit],
   ]) {
     const a = annuity[scenario];
-    a.side = sideFor(scenario, split, fv, ssBenefit);
-    a.totalFutureValue = a.futureValue + a.side.futureValue;
-    a.totalAfterTaxIncome = a.afterTaxWithdrawal + a.side.afterTaxWithdrawal;
     const l = lumpSum[scenario];
     const lumpSideFV = futureValueLumpSum(split.excessToTaxable, returnRate, years);
     l.side = { futureValue: lumpSideFV, afterTaxValue: lumpSideFV * (1 - a.side.taxRate) };
     l.totalFutureValue = (l.futureValue ?? l.futureValueGross) + lumpSideFV;
     l.totalAfterTaxValue = l.afterTaxValue + l.side.afterTaxValue;
   }
-
-  // 10c. The second way of working out the rates (sideAwareRates.js): the taxable account each
-  // scenario builds sits in the stack. Kept beside the original `rates` so the two can be compared.
-  const sideAware = calculateSideAwareRates({
-    other: otherWithdrawals,
-    ssBenefit,
-    filingStatus,
-    year,
-    pretaxAccountWithdrawal: annuity.pretax.annualWithdrawal,
-    rothAccountWithdrawal: annuity.roth.annualWithdrawal,
-    pretaxSide: { withdrawal: annuity.pretax.side.annualWithdrawal, gains: annuity.pretax.side.gains },
-    rothSide: { withdrawal: annuity.roth.side.annualWithdrawal, gains: annuity.roth.side.gains },
-  });
-  if (sideAware.available) sideAware.lean = leanFromRates(sideAware.taxSavedNow, sideAware.effectiveRate);
 
   // 11. Full-portfolio tax comparison. Each scenario's taxable bucket picks up
   // its own excess-over-the-limit contributions (0 when nothing was capped).
@@ -450,65 +447,19 @@ export function compareRothVsTraditional(inputs) {
     };
   }
 
-  // 12. "Years without Social Security": the same comparison with Social Security
-  // left out entirely (benefit = $0) — e.g. retirement years before benefits start —
-  // so the retirement income number has to come from the accounts. This strips out
-  // the Social Security phase-in and leaves plain brackets. The headline retirement
-  // rate is the BLENDED (effective) rate on this account's withdrawal, exactly as in
-  // the main comparison but with no phase-in. The marginal bracket of the last dollar
-  // is returned too, and the after-tax figure at that rate, for reference only.
-  const noSsGrossUp = solveGrossWithdrawal({
-    targetAfterTaxIncome,
-    ssBenefit: 0,
-    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
-    otherRothWithdrawal: otherWithdrawals.roth,
-    otherTaxableWithdrawal: otherWithdrawals.taxableGross,
-    otherTaxableGainShare: existingGainShare,
-    filingStatus,
-    year,
-    probeSize: accountPretaxAnnualWithdrawal,
-  });
-  // Signed taxable income at the top of the stack: with no Social Security it is
-  // just pre-tax withdrawals minus the standard deduction (negative = still sheltered).
-  const noSsTopOfStack =
-    otherWithdrawals.pretaxGross + noSsGrossUp.grossWithdrawal - current.standardDeduction;
-  const noSsMarginalRate = getMarginalRate(noSsTopOfStack, filingStatus, year);
-  const noSsPretaxAtMarginal = annuity.pretax.annualWithdrawal * (1 - noSsMarginalRate);
-  const noSsPretaxAtEffective =
-    annuity.pretax.annualWithdrawal * (1 - noSsGrossUp.retirementEffectiveTaxRate);
-  // The taxable side again, with no Social Security in the stack.
-  const noSsSide = {
-    roth: sideFor('roth', rothSplit, excessRothTaxableFV, 0),
-    pretax: sideFor('pretax', pretaxSplit, excessPretaxTaxableFV, 0),
-  };
-  const noSsRothTotal = annuity.roth.afterTaxWithdrawal + noSsSide.roth.afterTaxWithdrawal;
-  const noSsPretaxTotal = noSsPretaxAtEffective + noSsSide.pretax.afterTaxWithdrawal;
+  // 12. "Years without Social Security": the same comparison with Social Security left out
+  // entirely (benefit = $0) — e.g. retirement years before benefits start — using the exact
+  // same buildScenario as the main comparison above, just with ssBenefit = 0. This strips
+  // out the Social Security phase-in and leaves plain brackets.
+  const noSs = buildScenario(0);
   const withoutSocialSecurity = {
-    grossUp: noSsGrossUp,
-    rateDrivers: explainWithdrawalRate(noSsGrossUp, {
-      otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
-      filingStatus,
-      year,
-    }),
-    marginalRateRetirement: noSsMarginalRate,
-    effectiveRateRetirement: noSsGrossUp.retirementEffectiveTaxRate,
-    taxableIncomeAtTop: Math.max(0, noSsTopOfStack),
-    annuity: {
-      roth: {
-        afterTaxWithdrawal: annuity.roth.afterTaxWithdrawal,
-        side: noSsSide.roth,
-        totalAfterTaxIncome: noSsRothTotal,
-      },
-      pretax: {
-        afterTaxWithdrawal: noSsPretaxAtEffective, // at the blended rate (the headline)
-        afterTaxWithdrawalAtMarginal: noSsPretaxAtMarginal, // reference only
-        side: noSsSide.pretax,
-        totalAfterTaxIncome: noSsPretaxTotal,
-      },
-    },
+    sideAware: noSs.sideAware,
+    annuity: noSs.annuity,
     comparison: {
-      winner: winnerOf(noSsRothTotal, noSsPretaxTotal),
-      afterTaxIncomeDifference: Math.abs(noSsRothTotal - noSsPretaxTotal),
+      winner: winnerOf(noSs.annuity.roth.totalAfterTaxIncome, noSs.annuity.pretax.totalAfterTaxIncome),
+      afterTaxIncomeDifference: Math.abs(
+        noSs.annuity.roth.totalAfterTaxIncome - noSs.annuity.pretax.totalAfterTaxIncome,
+      ),
     },
   };
 
@@ -555,20 +506,26 @@ export function compareRothVsTraditional(inputs) {
         currentType,
       },
     },
-    // effectiveRetirement = tax caused by THIS account's withdrawals / those withdrawals.
-    // overallEffectiveRetirement = total tax / total gross income in retirement.
+    // effectiveRetirement = extra tax the account withdrawal causes, with each scenario's
+    // taxable side account already in the stack, ÷ that withdrawal (sideAwareRates.js).
+    // taxSavedNow = the tax saved today, net of any tax on investing the difference (equals
+    // marginalNow when nothing exceeds the IRS limit). overallEffectiveRetirement = total tax
+    // / total gross income in retirement (Pre-tax scenario).
     rates: {
       marginalNow: marginalRateNow,
-      effectiveRetirement: effectiveRateRetirement,
+      effectiveRetirement: main.sideAware.available ? main.sideAware.effectiveRate : 0,
+      taxSavedNow: main.sideAware.available ? main.sideAware.taxSavedNow : marginalRateNow,
       overallEffectiveRetirement: overallEffectiveRateRetirement,
       // 'pretax' | 'roth' | 'even' — the rule-of-thumb lean from the two rates above.
-      lean: leanFromRates(marginalRateNow, effectiveRateRetirement),
+      lean: main.sideAware.available ? main.sideAware.lean : 'even',
     },
-    rateDrivers,
-    // The duplicate rates block's numbers (sideAwareRates.js); { available: false } when there is no account withdrawal.
-    sideAware: { ...sideAware, marginalNow: marginalRateNow },
+    // The full rates calculation (sideAwareRates.js): { available: false } when there is no
+    // account withdrawal to measure (e.g. $0 saved). `rates` above mirrors its headline
+    // numbers; this carries the detail the walk-through and full-tax-breakdown views need
+    // (stacks, stackDetails, extraSideRate, ...).
+    sideAware: { ...main.sideAware, marginalNow: marginalRateNow },
     retirementOverall: {
-      totalTax: grossUp.solutionStack.totalTax,
+      totalTax: main.sideAware.available ? main.sideAware.stacks.preTaxWorld.totalTax : 0,
       grossIncome: retirementGrossIncome,
     },
     contribution,
@@ -576,7 +533,6 @@ export function compareRothVsTraditional(inputs) {
     limitCheck,
     grown,
     otherWithdrawals,
-    grossUp,
     lumpSum,
     annuity,
     // Section 2 verdict: which Future Contributions (account + taxable side) end up

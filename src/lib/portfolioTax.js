@@ -13,7 +13,7 @@
 //      capital gains tax is the GAIN part of the scaled taxable withdrawal
 //      (taxableGainShare; the rest is cost basis) run through the real
 //      0%/15%/20% capital-gains brackets, stacked on top of ordinary income —
-//      not a flat rate. (All in retirementTaxStack.js, shared with incomeNeed.js.)
+//      not a flat rate. (All in retirementTaxStack.js, shared with sideAwareRates.js.)
 //
 // A scale factor above 1 means the 4% baseline is not enough to fund the target
 // (k * 4% of the portfolio is being drawn per year); below 1 means it more than

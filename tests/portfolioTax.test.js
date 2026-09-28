@@ -147,14 +147,14 @@ describe('solvePortfolioWithdrawal — hand-verified scenarios', () => {
   });
 });
 
-describe('solvePortfolioWithdrawal — SS interaction, cross-checked against the gross-up hand calcs', () => {
+describe('solvePortfolioWithdrawal — SS interaction (HAND CALC)', () => {
   // With ONLY a pre-tax bucket, scaling the 4% baseline is the same problem as
-  // the single-account gross-up in incomeNeed.test.js, so the same hand-derived
-  // withdrawals must appear: pre-tax bucket 500k -> baseline 20,000.
+  // solving for a single account's gross withdrawal: pre-tax bucket 500k -> baseline 20,000.
   const buckets = { pretax: 500000, roth: 0, taxable: 0 };
 
   it('SS $20,000, target $40,000: G = 20,794.12, so k = 1.039706', () => {
-    // (see incomeNeed.test.js: 50% phase-in tier, tax 794.12, taxable SS 2,897.06)
+    // 50% phase-in tier: tax 794.12, taxable SS 2,897.06 (hand-derived from the IRS combined-income
+    // worksheet and the 2025 single brackets)
     const r = solvePortfolioWithdrawal(40000, buckets, 20000, 'single', Y);
     expect(r.withdrawals.pretax).toBeCloseTo(20794.12, 1);
     expect(r.scaleFactor).toBeCloseTo(1.039706, 5);

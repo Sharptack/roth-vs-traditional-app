@@ -131,10 +131,10 @@ function GapComponents({ batch }) {
   const points = batch.series[0].points;
   const xTicks = points.map((p) => p.x);
   const series = [
-    { key: 'now', label: 'Marginal rate while working', points: points.map((p) => ({ x: p.x, y: p.marginalNow })) },
+    { key: 'now', label: 'Tax saved now', points: points.map((p) => ({ x: p.x, y: p.taxSavedNow })) },
     {
       key: 'later',
-      label: 'Effective rate on withdrawals in retirement',
+      label: 'Effective rate on the account withdrawal',
       points: points.map((p) => ({ x: p.x, y: p.effectiveRetirement })),
     },
   ];
@@ -163,8 +163,8 @@ function GapComponents({ batch }) {
               <thead>
                 <tr>
                   <th className="row-head">{batch.xLabel}</th>
-                  <th>Marginal rate while working</th>
-                  <th>Effective rate in retirement</th>
+                  <th>Tax saved now</th>
+                  <th>Effective rate on the account withdrawal</th>
                   <th>Rate gap</th>
                 </tr>
               </thead>
@@ -172,7 +172,7 @@ function GapComponents({ batch }) {
                 {points.map((p) => (
                   <tr key={p.x}>
                     <th className="row-head">{formatX(batch, p.x)}</th>
-                    <td>{formatRate(p.marginalNow)}</td>
+                    <td>{formatRate(p.taxSavedNow)}</td>
                     <td>{formatRate(p.effectiveRetirement)}</td>
                     <td>{formatGapPoints(p.gap)}</td>
                   </tr>

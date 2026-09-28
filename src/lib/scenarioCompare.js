@@ -3,7 +3,7 @@
 // numbers. Formatting of the deltas is left to the UI.
 import { ACCOUNT_TYPES, CONTRIBUTION_TYPES, FILING_STATUSES } from './constants.js';
 import { formatCurrency, formatPercent } from './format.js';
-import { effectiveRateSteps, rateDriverRows } from './rateSteps.js';
+import { sideAwareRateSteps } from './rateSteps.js';
 
 const lifestyleText = (f) =>
   f === 1 ? 'Same as today' : `${Math.round(Math.abs(f - 1) * 100)}% ${f > 1 ? 'higher' : 'lower'} than today`;
@@ -61,8 +61,8 @@ export function headlineRows(result) {
   return [
     row('need', 'Retirement income number', result.retirementNeed.target, 'currency', 'total', 'key'),
     row('ssBenefit', 'Social Security benefit used', result.socialSecurity.annualBenefit, 'currency'),
-    row('marginalNow', 'Marginal rate while working', result.rates.marginalNow, 'percent', 'total', 'rate'),
-    row('effectiveRetirement', 'Effective rate on these withdrawals', result.rates.effectiveRetirement, 'percent', 'total', 'rate'),
+    row('taxSavedNow', 'Tax saved now, after any tax on investing it', result.rates.taxSavedNow, 'percent', 'total', 'rate'),
+    row('effectiveRetirement', 'Effective rate on the account withdrawal', result.rates.effectiveRetirement, 'percent', 'total', 'rate'),
     row('lean', 'Tends to favor', LEAN_TEXT[result.rates.lean], 'text', 'total'),
     row('contributionRoth', 'Contribution per year, Roth', result.contribution.roth, 'currency'),
     row('contributionPretax', 'Contribution per year, Pre-tax', result.contribution.pretax, 'currency'),
@@ -106,12 +106,18 @@ export function alignRows(baselineRows, currentRows) {
   });
 }
 
+const rateStepsFor = (result) =>
+  sideAwareRateSteps({
+    sideAware: result.sideAware,
+    socialSecurity: result.socialSecurity,
+    otherWithdrawals: result.otherWithdrawals,
+  });
+
 // Everything the comparison panel shows, from two compare.js inputs + results.
 export function compareScenarios(baseline, current) {
   return {
     changes: changedInputs(baseline.inputs, current.inputs),
     headline: alignRows(headlineRows(baseline.result), headlineRows(current.result)),
-    rateSteps: alignRows(effectiveRateSteps(baseline.result), effectiveRateSteps(current.result)),
-    drivers: alignRows(rateDriverRows(baseline.result), rateDriverRows(current.result)),
+    rateSteps: alignRows(rateStepsFor(baseline.result), rateStepsFor(current.result)),
   };
 }

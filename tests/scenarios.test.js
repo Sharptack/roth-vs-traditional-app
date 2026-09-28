@@ -40,18 +40,16 @@ describe('runScenarioPoint', () => {
     const overrides = { grossIncome: 100000, savings: 10000 };
     const direct = compareRothVsTraditional({ ...base, ...overrides, year: 2025 });
     const point = runScenarioPoint(base, overrides, 2025);
-    expect(point.marginalNow).toBe(direct.rates.marginalNow);
+    expect(point.taxSavedNow).toBe(direct.rates.taxSavedNow);
     expect(point.effectiveRetirement).toBe(direct.rates.effectiveRetirement);
     expect(point.rothAfterTax).toBe(direct.annuity.roth.totalAfterTaxIncome);
     expect(point.pretaxAfterTax).toBe(direct.annuity.pretax.totalAfterTaxIncome);
     expect(point.winner).toBe(direct.comparison.winner);
   });
 
-  it('HAND CALC: gap is marginal-now minus effective-retirement, exactly (a 22% vs 20% pair -> +2 points)', () => {
-    // A scenario in the 22% federal bracket (single, 2025) whose effective retirement
-    // rate happens to land lower than marginal, to exercise the subtraction directly.
+  it('HAND CALC: gap is tax-saved-now minus effective-retirement, exactly', () => {
     const point = runScenarioPoint(base, { grossIncome: 100000, savings: 10000 }, 2025);
-    expect(point.gap).toBeCloseTo(point.marginalNow - point.effectiveRetirement, 12);
+    expect(point.gap).toBeCloseTo(point.taxSavedNow - point.effectiveRetirement, 12);
   });
 
   it('HAND CALC: advantagePct is (roth - pretax) / pretax * 100', () => {
@@ -287,11 +285,10 @@ describe('runHeatmap (the break-even maps)', () => {
     const cell = balanceMap.rows.find((r) => r.value === 1000000).cells.find((c) => c.income === 50000);
     expect(cell.advantagePct).toBeGreaterThan(0);
     expect(cell.winner).toBe('roth');
-    // ...while with no existing balance Pre-tax wins at every income up to $300k; at $500k the later rate (about
-    // 28%) is close to today's 35% and the two are about even (Roth +0.4% in 2026)
+    // ...while with no existing balance Pre-tax wins at every income (the rate is now measured on
+    // the account's own, more modest withdrawal, not the much larger need-based one)
     for (const c of balanceMap.rows.find((r) => r.value === 0).cells) {
-      if (c.income <= 300000) expect(c.advantagePct).toBeLessThan(0);
-      else expect(Math.abs(c.advantagePct)).toBeLessThan(1);
+      expect(c.advantagePct).toBeLessThan(0);
     }
   });
 });

@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (449 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (426 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -68,14 +68,19 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   limit and returns the excess; both take an optional `age` for catch-up contributions; shared `getLimit`
   lookup so the two never disagree), `capitalGainsTax` (`calculateCapitalGainsTax`: real 0%/15%/20% brackets, gains stacked on top of ordinary income — see the model section below; also `calculateNiit`), `ficaTax` (`calculateEmploymentTaxes`: FICA + 1099 self-employment tax; `calculateFica` = W-2 only), `socialSecurityTax`
   (IRS combined-income formula), `socialSecurity` (simplified benefit estimator), `retirementTaxStack`
-  (shared tax on a retirement income stack), `solver` (monotonic binary search), `incomeNeed`
-  (gross-up for one account), `portfolioTax` (scale-factor solver across buckets), `growthCalculations`,
+  (shared tax on a retirement income stack), `solver` (monotonic binary search, used by `portfolioTax`),
+  `sideAwareRates` (`calculateSideAwareRates`: the Section 2 rate comparison — see the model section below;
+  `incomeNeed.js`, the older single-account gross-up solver this replaced, was deleted 2026-09-28), `taxBreakdown`
+  (`explainFullTax`: bracket-by-bracket decomposition of a `sideAwareRates` stack, for the "Show the full tax
+  calculation" dropdown — reads the same data files as `retirementTaxStack.js` so the two can't drift),
+  `portfolioTax` (scale-factor solver across buckets; a different, unaffected question — see its model section), `growthCalculations`,
   `contributionLimits`, `compare` (orchestrator; single source of every UI number), `constants`
   (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`,
   `shareInputs` (form values <-> link query string, plain-text scenario summary — see "Sharing a scenario"), `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
-  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line), `sideAwareRates` (the duplicate rates block's calculation — see its section).
-- `rateSteps.js`: the "How are the retirement rates calculated?" walk-through as data rows
-  (`effectiveRateSteps`, `rateDriverRows`), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
+  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line).
+- `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
+  steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
+  withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
   scenario comparison — one source for both. `scenarioCompare.js`: `changedInputs`, `headlineRows`,
   `alignRows` (line up two row lists by key, deltas), `compareScenarios`. `format.js` also has
   `formatValue`/`formatDelta` (rates change in "pts").
@@ -105,14 +110,16 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Route: `#/scenarios`, same hidden/mounted pattern as the article (`App.jsx`'s `useRoute`, generalized to
   "anything other than calculator" leaves/scroll-restores). Linked from the header and footer next to
   "How this works".
-- What it's for: charts the calculator's core theory — that the **rate gap** (`rates.marginalNow −
-  rates.effectiveRetirement`, i.e. marginal rate while working minus "Effective rate on these withdrawals")
+- What it's for: charts the calculator's core theory — that the **rate gap** (`rates.taxSavedNow −
+  rates.effectiveRetirement`, i.e. "Tax saved now" minus "Effective rate on the account withdrawal")
   predicts which side wins — across a set of hand-picked scenarios, so the relationship can be eyeballed
-  instead of taken on faith.
+  instead of taken on faith. Since the 2026-09-28 migration to `sideAwareRates.js` (see the model section
+  below), `gap * W` is an exact identity with the dollar difference between the two portfolios, not just an
+  empirical correlation, so the scatter's r² is a measure of chart-batch variety, not of model error.
 - Data flow: `src/data/scenarioBatches.js` (plain data: a `base` input object per batch + one or more
   `series`, each a list of `{x, overrides}` points) → `src/lib/scenarios.js`'s `runAllBatches` merges
   `base + overrides` and calls `compareRothVsTraditional` per point, extracting `gap` and `advantagePct`
-  (Roth's after-tax annuity withdrawal vs. Pre-tax's, as a % — the Section-2 "this account only" lens) →
+  (Roth's after-tax annuity withdrawal vs. Pre-tax's, as a % — the Section-2, Future-Contributions-only lens) →
   `ScenariosPage.jsx` renders one `LineChart` per batch (x = the swept variable, y = gap) plus one combined
   `ScatterChart` (x = gap, y = advantagePct, color+shape by batch, an OLS trend line from `src/lib/regression.js`).
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
@@ -184,8 +191,9 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   forms' radio groups separate).
 - Below the two forms the compare card shows: "What changed" (auto-detected), a headline table (retirement
   number, SS, both rates, lean, contributions, after-tax income, winner) with Baseline / With your change /
-  Change, and, open by default, "How the rates are calculated, side by side" (every rate step + "What sets
-  the rate" facts, each side with its own arithmetic). Buttons: "Reset changes" (re-copy the main inputs),
+  Change, and, open by default, "How the rates are calculated, side by side" (the `sideAwareRateSteps` three
+  steps, each side with its own arithmetic — the old "What sets the rate" narrative facts were removed along
+  with the rest of `rateDrivers` in the 2026-09-28 migration). Buttons: "Reset changes" (re-copy the main inputs),
   "Use these as my inputs" (second form becomes the main form, comparison closes), "Stop comparing".
 - Possible next steps (not built): also compare the retirement-number walk and the portfolio section; remember
   the comparison across reloads; named/saved scenarios (would need storage — see the backend future item).
@@ -204,8 +212,9 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 ## Taxable-account cost basis (2026-09-25d)
 - A taxable withdrawal is split pro-rata into cost basis (tax-free, NOT in SS combined income) and gain (LTCG
   brackets, IS in combined income). `calculateRetirementTax` takes `taxableGainShare` (default 1 = all gain,
-  the old behavior) and returns `capitalGains`; `solveGrossWithdrawal` takes `otherTaxableGainShare`;
-  `solvePortfolioWithdrawal` takes `{ taxableGainShare }` and returns `taxableGains`.
+  the old behavior) and returns `capitalGains`; `sideAwareRates.js`'s `calculateSideAwareRates` derives it per
+  stack from `other.taxableGains`/`other.taxableGross` plus each side account's own gains; `solvePortfolioWithdrawal`
+  takes `{ taxableGainShare }` and returns `taxableGains`.
 - Existing taxable accounts: input `otherTaxableBasis` (share of TODAY'S balance; form default '0.5', options
   0/25/50/75/100% in a select inside a collapsed `<details>` ("Cost basis of those taxable accounts: 50%") under the taxable balance, shown only when that balance > 0; the summary is highlighted when it differs in Compare a change; lib default 0 = all
   gain so older callers/tests are unchanged). Growth to retirement is all gain: gain share = 1 − basis$ / grown
@@ -229,8 +238,13 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 2. Retirement income number (after-tax need) = gross − income tax − FICA − debt payments ending −
    other expenses ending − retirement savings (as entered). Floored at 0. Payroll tax is subtracted because
    it stops at retirement. Then × `retirementLifestyle` (default 1; UI offers 0.6–2): a single multiplier
-   for people who expect to spend more/less in retirement (e.g. rising earnings). Higher lifestyle raises
-   the retirement bracket and can favor Roth.
+   for people who expect to spend more/less in retirement (e.g. rising earnings). Since the 2026-09-28
+   migration, `retirementLifestyle` affects ONLY this need and Section 3's portfolio solve (which scales its
+   withdrawals to hit whatever the need is) — it does NOT move Section 2's rate comparison at all, because
+   `sideAwareRates.js` measures the rate on Future Contributions' own natural 4% withdrawal, a fixed dollar
+   amount that has nothing to do with the need. (Under the pre-2026-09-28 model, a higher lifestyle could
+   raise a need-scaled withdrawal into a higher bracket and tip Section 2 toward Roth; that mechanism no
+   longer exists.)
 3. Social Security: user-entered benefit, or a simplified estimate (AIME = income capped at wage base / 12,
    bend-point PIA, claiming age = retirement age clamped to 62–70, FRA from birth year = year − age).
 4. Other balances grow at the chosen return to retirement; 4% of each is withdrawn. Pre-tax = ordinary
@@ -240,34 +254,26 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    doc comment for the derivation). Counts toward SS "other income". NOT a flat rate: a modest-income
    retiree can pay 0% on some or all of a taxable-account withdrawal, and a bigger Pre-tax withdrawal can
    push a FIXED taxable-account withdrawal into a higher LTCG bracket (a real, correct cross-account
-   effect — see incomeNeed.test.js's "capital gains stack on top of ordinary income" tests for a clean,
-   isolated, hand-verified example). **NIIT** (added 2026-09-25h): 3.8% × min(gains, MAGI − $200k Single /
+   effect — see retirementTaxStack.test.js for a clean, isolated, hand-verified example). **NIIT** (added 2026-09-25h): 3.8% × min(gains, MAGI − $200k Single /
    $250k MFJ); MAGI = Pre-tax withdrawals + taxable SS + gains (Roth and returned basis excluded).
    `calculateRetirementTax` returns `magi` and `niit` and includes it in `totalTax`, so every rate, the
    side account and Section 3 pick it up. Cross-account effect like the LTCG push: Pre-tax withdrawals are
-   not investment income but raise MAGI, exposing more gains (`rateDrivers.extraNiit`). Retirement only:
-   the model has no investment income during working years.
-5. **Effective rate on these withdrawals** (`rates.effectiveRetirement`; `incomeNeed`): binary-search the gross withdrawal G from *this* account
-   so total after-tax income = need. Rate = (extra tax caused by G) / G, i.e. incremental blended rate
-   including the Social Security phase-in. If other sources already cover the need (G = 0), the rate is
-   read from a **probe withdrawal sized to this account's own natural 4% withdrawal**
-   (`compare.js` computes the account's annuity FV *before* calling `solveGrossWithdrawal` and passes it
-   in as `probeSize`, specifically so the rate reported matches the size of withdrawal it actually gets
-   applied to elsewhere — see "Effective-rate probe size" below; `solveGrossWithdrawal` falls back to a
-   fixed $1,000 probe only if no `probeSize` is given). The result also exposes `probeSize`, `probeStack`
-   and `probeExtraTax` (the actual arithmetic behind the G = 0 rate) so the UI can show real numbers
-   instead of a misleading "$0 ÷ $0" — `solutionStack`/`totalTaxPaid` correctly stay at $0 when G = 0
-   (nothing is actually withdrawn); the probe fields are a separate, explicitly-hypothetical calculation.
-   Also `rates.overallEffectiveRetirement` = total tax on the whole
-   first-year retirement stack / total gross income (Social Security + every withdrawal incl. Roth) —
-   labelled "Overall effective rate in retirement"; `retirementOverall` holds the two amounts.
-   `result.rateDrivers` (and `withoutSocialSecurity.rateDrivers`) = `explainWithdrawalRate` in incomeNeed.js:
-   start/end ordinary bracket of the withdrawal the rate was measured on (G or the probe), how much of the
-   standard deduction other income (other Pre-tax draws + taxable SS) uses first, extra taxable SS, and the
-   extra tax split into ordinary vs. capital-gains (gains stacked on top get pushed up a bracket). The rate
-   ALREADY included the capital-gains push (totalTax includes it); this only exposes it for the UI.
-   `rates.lean` = `leanFromRates(marginalNow, effectiveRetirement)`: pretax/roth, "even" within 0.5 points —
+   not investment income but raise MAGI, exposing more gains to NIIT (visible in the "Show the full tax
+   calculation" breakdown's before/after NIIT rows, `taxBreakdown.js`). Retirement only: the model has no
+   investment income during working years.
+5. **Effective rate on the account withdrawal** (`rates.effectiveRetirement`; `sideAwareRates.js`'s
+   `calculateSideAwareRates`, the SOLE rate calculation since the 2026-09-28 migration — see "The rates
+   calculation" below for the full derivation, the formula, and how it replaced the old need-based
+   `incomeNeed.js` gross-up, now deleted). In brief: W = Future Contributions' own natural 4% withdrawal
+   (never a need-scaled or hypothetical amount); the rate is the extra tax W causes stacked on top of
+   Social Security + Existing Accounts + that scenario's taxable "side account" (see step 7), divided by W.
+   Every account with `savings > 0` always has a W > 0 to measure — there is no more "no withdrawal needed"
+   case. `rates.taxSavedNow` is the "now" side: the marginal rate, netted against any tax on the side
+   account's extra money when the IRS limit is exceeded (equals the plain marginal rate otherwise).
+   `rates.lean` = `leanFromRates(taxSavedNow, effectiveRetirement)`: pretax/roth, "even" within 0.5 points —
    the rule-of-thumb line under the rates (not the dollar verdict; the contribution cap can make them differ).
+   `result.sideAware` carries the full `calculateSideAwareRates` output (incl. `stacks` and `stackDetails`,
+   the four tax stacks the walk-through and "Show the full tax calculation" dropdown are built from).
 6. **Same take-home cost, then the limit** (`splitAtTakeHome` in compare.js, reworked 2026-09-25c). Take-home
    cost C: currently Roth -> C = savings; currently Pre-tax -> C = min(savings, limit)·(1−t) + max(0, savings −
    limit) (only the part under the limit is deducted; matches the need calc). Roth scenario: min(C, limit) to the
@@ -294,55 +300,78 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
    Taxable SS uses (pretax + taxable withdrawals) as "other income".
 9. No inflation is modeled: treat the return as a real (after-inflation) return; all dollars are today's.
 10. **Retirement years without Social Security** (`compare.js` -> `withoutSocialSecurity`; UI dropdown
-    under the Section 2 table): same comparison with Social Security set to $0 (e.g. years before benefits
-    start), so accounts must supply the whole need. **Headline rate = the blended effective rate on this
-    account's withdrawals with no SS phase-in** (same method as the main comparison). The marginal bracket of
-    the last dollar (other pre-tax draws + gross-up − standard deduction; 0% if sheltered) and the
-    after-tax figure at that rate (`afterTaxWithdrawalAtMarginal`) are reference only.
-    PROPERTY (tested): when this account is needed (gross-up > 0) and lifestyle <= 1, effective <= marginal
-    later <= marginal now, so this view can only tie or favor Pre-tax. Roth can win when (a) other accounts'
-    *forced* 4% draws already exceed the need (existing balances set the bracket), or (b) lifestyle > 1.
+    under the trade-off table, "Retirement years without Social Security"): the SAME `calculateSideAwareRates`
+    call with `ssBenefit` forced to 0, otherwise identical inputs — so Future Contributions' own withdrawal W
+    is identical to the main result, and only the tax on it changes. `withoutSocialSecurity.sideAware` holds
+    the result; `withoutSocialSecurity.comparison` is its own winner/dollar-difference, independent of the
+    main result's.
+    PROPERTY (tested, compare.test.js): the no-SS `effectiveRate` is never higher than the main result's
+    `rates.effectiveRetirement`, because removing Social Security can only remove tax caused by its phase-in,
+    never add any — true unconditionally, with no lifestyle or "is this account needed" caveat (those were
+    artifacts of the old need-based model). This view's own winner is NOT bounded by "can only tie or favor
+    Pre-tax": since W no longer depends on the need, a large existing Pre-tax balance whose own forced 4%
+    draw already sets a high bracket can make this view favor Roth even at lifestyle = 1 (see
+    compare.test.js's "big existing Pre-tax balances push the account withdrawal into a high bracket").
 
-## Duplicate rates block: the "new calculation" (2026-09-26) — TEMPORARY, one block will be removed
-The user asked for a second, parallel rates block so the old and new calculations can be compared; eventually one goes.
-- Wording (2026-09-28): the walk-through follows the SAME three-step shape as the original block (existing-accounts
-  income -> the difference -> add in the Future Contributions withdrawal), per the user's request, instead of the
-  four-step version first built. Step 1 is unchanged. Step 2, "the difference," is now where the taxable account
-  each scenario's Future Contributions build (once savings exceed the limit) lives, since that account is what
-  makes the two scenarios' pictures differ before the account withdrawal is even added; it prints a plain "nothing
-  to add in this step" note when nothing exceeds the limit, so Step 2 is always present (unlike the old block, whose
-  step CONTENT varies with hasGains but whose step COUNT never does). Step 3, "add the Pre-tax account's own
-  withdrawal and re-do the tax," mirrors the original's Step 3. A final, unnumbered "Putting the two rates together"
-  section assembles X vs e into the dollar difference — unnumbered because the original block never walks through
-  its marginal rate either, it just states it.
-- Where: a card titled "Tax rate comparison — new calculation" (id `sec2b`, card id `ratesNew`) directly below the original
-  "Tax rate comparison" (`sec2`, untouched). Numbers come from `result.sideAware` (`lib/sideAwareRates.js`, called in
-  compare.js step 10c); the walk-through rows are `sideAwareRateSteps` in `rateSteps.js`; the header headline is
-  `resultHeadlines().ratesNew`. The original `rates`, `rateDrivers`, its dropdown and every chart/verdict still use the old numbers.
-- Why: at $500k / $50k saved the old rates said Pre-tax, "comes out ahead" said Roth +0.4% and the portfolio section said Pre-tax
-  +2.8%. Cause: the effective rate (28.4%) was measured on the $354k withdrawal needed to hit the retirement income number
-  with only SS + Existing Accounts in the stack, then applied to the $92.6k the account really yields, and it ignored the taxable
-  accounts the two scenarios build from Future Contributions (the Pre-tax side invests the tax its deduction saved).
-- The calculation (first retirement year, 4% withdrawals; W = Pre-tax account, RW = Roth account, sideP / sideR = each scenario's
-  taxable account, extra = sideP - sideR): e = [tax(Existing + sideP + W) - tax(Existing + sideP)] / W (effective rate on the
-  account withdrawal WITH its scenario's taxable account in the stack); s = [tax(Existing + sideP) - tax(Existing + sideR)] / extra
-  (tax rate on the extra taxable money); X = [(W - RW) + extra(1 - s)] / W ("tax saved now, after the tax on investing it").
-  No taxable account: X = the marginal rate, X - e = today's rate gap. Capped at the limit: X = t(1 - s). Lean = leanFromRates(X, e).
-- IDENTITY (tested to the cent over 200+ combinations, and by hand in two cases): (X - e) x W = the exact after-tax income the
-  Pre-tax portfolio delivers minus the Roth portfolio's at a plain 4% (`portfolio.X.atBaseline`). So these rates cannot contradict the
-  exact dollar comparison. $500k case: 29.5% vs 23.6% = $5,492/yr for Pre-tax = the exact figure.
-- Evidence gathered before building (467 chart scenarios, clear-winner cases vs the exact 4% answer): the new rule agrees 100%; the old
-  rate lean 93%; the old "comes out ahead" (Section 2 dollars) 88%. Ingredients: keeping the old need-based rate with the extra-taxable
-  term 93%; measuring at the actual withdrawal but leaving the side out of the stack 99%; side in stack but ignoring the tax on the
-  extra money 98%. Measuring on the account's actual 4% withdrawal (not the need-based one) matters most. That is a CHOICE the user
-  approved by asking for it "the way you recommend"; the need-based rate stays visible in the original block.
-- NOT done yet (deliberately): the "comes out ahead" verdict, ScenarioCompare, the Visualization page and ARTICLE.md still use the old
-  numbers. When one block is chosen: switch the verdict/charts/compare/article to it and delete the other (and `sideAware` or the old
-  `rates`). The known limitation "effective rate is measured on the gap-filling withdrawal" applies only to the old block.
+## The rates calculation (sideAwareRates.js) — history and the 2026-09-28 migration
+For a few days (2026-09-26 to 2026-09-28) the app showed TWO parallel rates blocks — the original need-based
+one and a new "sideAware" one — side by side so the user could compare them (see the change log entries from
+that window for the day-by-day story). The user then chose the new one as canonical and asked to "migrate
+everything to the new calculation." This section describes the result, now the ONLY rates calculation.
+- Why the migration happened: at $500k income / $50k saved the OLD rates said Pre-tax, "comes out ahead" said
+  Roth +0.4% and the portfolio section said Pre-tax +2.8% — a direct contradiction between the headline rates
+  and the dollar verdicts. Cause: the old effective rate (28.4%) was measured on the $354k withdrawal needed
+  to hit the retirement income number with only SS + Existing Accounts in the stack, then applied to the
+  $92.6k Future Contributions actually yields, and it ignored the taxable "side account" the two scenarios
+  build once savings exceed the IRS limit (the Pre-tax side invests the tax its deduction saved).
+- The calculation (`calculateSideAwareRates` in `lib/sideAwareRates.js`; first retirement year, 4%
+  withdrawals; W = Pre-tax account's own withdrawal, RW = Roth account's own withdrawal, sideP / sideR = each
+  scenario's taxable side account, extra = sideP − sideR): e = [tax(Existing + sideP + W) − tax(Existing +
+  sideP)] / W (`rates.effectiveRetirement`, "Effective rate on the account withdrawal" — measured WITH the
+  Pre-tax scenario's side account already in the stack); s = [tax(Existing + sideP) − tax(Existing + sideR)]
+  / extra (the tax rate on the extra taxable money); X = [(W − RW) + extra(1 − s)] / W (`rates.taxSavedNow`,
+  "Tax saved now, after any tax on investing it"). No side account (savings fit under the limit): X = the
+  plain marginal rate, X − e = today's rate gap. Capped at the limit with no side account: X = t(1 − s).
+  `rates.lean` = `leanFromRates(X, e)`.
+- IDENTITY (tested to the cent over 200+ combinations, and by hand): (X − e) × W = the exact after-tax income
+  the Pre-tax portfolio delivers minus the Roth portfolio's, at a plain 4% withdrawal (`portfolio.X.atBaseline`).
+  So the rates can never contradict the exact dollar comparison — the bug above is structurally impossible now.
+- Order-dependent stacking is a deliberate, self-consistent choice: the side account (`sideP`/`sideR`) is
+  always stacked BEFORE the account's own withdrawal W, never after. This means the side account's OWN
+  reported tax rate (`annuity.X.side.taxRate` in compare.js) can be noticeably lower than it would be if
+  computed after W (e.g. it can land entirely in the 0% capital-gains bracket even when W alone would push
+  well past it) — see compare.test.js's "contribution limits: excess above the IRS limit defaults to a
+  taxable account" tests for worked examples. This is a real, intentional modeling choice (the side account
+  income exists independent of whether it's measured before or after W; the IDENTITY above holds regardless
+  of stacking order), not a bug — but it's worth remembering when eyeballing the side account's own rate.
+- Evidence gathered before choosing this over the old model (467 chart scenarios, clear-winner cases checked
+  against the exact 4% answer): the new rule agrees 100%; the old rate lean agreed 93%; the old "comes out
+  ahead" dollar verdict agreed 88%. Measuring on the account's actual 4% withdrawal (not a need-based one)
+  mattered the most of the individual fixes tried.
+- What the migration removed: `lib/incomeNeed.js` (`solveGrossWithdrawal`, `explainWithdrawalRate`) and
+  `tests/incomeNeed.test.js`, deleted entirely — no code imports them any more. `result.grossUp`,
+  `result.rateDrivers`, `result.withoutSocialSecurity.grossUp` and the "$1,000 probe" mechanism (see
+  "Effective-rate probe size" below, now historical) no longer exist. The "Tax rate comparison — new
+  calculation" duplicate card (`sec2b`) is gone; there is one "Tax rate comparison" card (`sec2`) again.
+  `ScenarioCompare.jsx`, `scenarios.js`, the Visualization page and ARTICLE.md were all updated to the new
+  numbers/terminology (see their sections and the change log). Two real behavior changes fell out of this and
+  needed separate fixes, not just renames: (1) `retirementLifestyle` no longer affects Section 2's rate or
+  winner at all (see model step 2) — ARTICLE.md's "If you expect to spend more, or less, in retirement" was
+  rewritten accordingly; (2) the "Retirement years without Social Security" section's "Reading this" note
+  used to claim this view "can only tie or favor Pre-tax" unless lifestyle > 1 — also no longer true (see
+  model step 10) — so that copy was rewritten in `ResultsSummary.jsx`'s `YearsWithoutSocialSecurity`, both
+  because it's now more subtle (a large existing Pre-tax balance can favor Roth here at ANY lifestyle) and to
+  keep the smoke tests (which enforce ARTICLE.md/UI consistency) passing.
+- The walk-through (`sideAwareRateSteps` in `rateSteps.js`) is three steps, unaffected in shape by this
+  migration (it was already built to match): Step 1, Existing Accounts' income; Step 2, "the difference" — the
+  taxable side account, if any (always shown, with a plain "nothing to add" note when nothing exceeds the
+  limit, so the step COUNT never changes, only its content); Step 3, add Future Contributions' own withdrawal
+  and re-do the tax. A final, unnumbered "Putting the two rates together" section assembles X vs e into the
+  dollar difference.
 
 ## Full tax calculation dropdown (2026-09-28)
-Nested inside the new block's "How are these rates calculated?": "Show the full tax calculation," a bracket-by-
-bracket breakdown for each scenario's FINAL stack (`sideAware.stackDetails.rothWorld` / `.preTaxWorld` — Social
+Nested inside "How are these rates calculated?": "Show the full tax calculation," a bracket-by-bracket
+breakdown for each scenario's FINAL stack (`sideAware.stackDetails.rothWorld` / `.preTaxWorld` — Social
 Security + Existing Accounts + that scenario's taxable side account + (Pre-tax only) the account's own withdrawal).
 New pure module `lib/taxBreakdown.js`, `explainFullTax`: same bracket tables and stacking order as
 `retirementTaxStack.js`'s `calculateRetirementTax` (which it does not replace or duplicate logic from — it reads
@@ -371,33 +400,17 @@ $24,500 for 2026..." newsroom announcement (both re-confirmed 2026-09-23). The o
 catch-up contribution for being 50 or older"). No UI code changes were needed beyond wiring `currentAge`
 through — the Section 2 capping sub-note and the limit alert already read from these functions.
 
-## Effective-rate probe size (2026-09-23)
-Bug report: lowering the retirement need (e.g. an expense going away) made the reported "Effective rate
-on these withdrawals" go UP, which looked backwards. Root cause: whenever other income already covers
-the target (gross-up G = 0), the OLD code read the rate from a fixed, arbitrary $1,000 probe withdrawal
-— completely unrelated to the size of the withdrawal that rate then gets APPLIED to elsewhere (the
-account's own 4% annual withdrawal, often tens of thousands of dollars). Right near a Social Security
-phase-in threshold this $1,000 sliver can land in a completely different, sometimes much CALMER (lower-
-rate) part of the stack than a realistically-sized withdrawal would — see incomeNeed.test.js's "a tiny
-$1,000 (default) probe reads 0%... a $20,000 probe... correctly reads 7.12%" for a hand-verified,
-side-by-side demonstration of exactly this gap. So crossing G = 0 didn't change the rate smoothly; it
-just swapped which arbitrary thing was being measured.
-Fix: `solveGrossWithdrawal` now accepts an optional `probeSize` (falls back to $1,000 if omitted, so
-callers that don't supply it — e.g. isolated `incomeNeed.test.js` calls — are unaffected). `compare.js`
-hoists the account's own annuity FV computation to BEFORE the gross-up solve (it never depended on the
-solve's result anyway) and passes `WITHDRAWAL_RATE * annuityPretaxFV` in as `probeSize` for both the
-main `grossUp` and the `withoutSocialSecurity` `noSsGrossUp` calls. PROPERTY (tested): the reported rate
-is now provably STABLE — it cannot change just because the target dropped further, as long as G stays 0
-(only a change in other income or the account's own size can move it); see compare.test.js's "the rate
-stays IDENTICAL as the target need drops further."
-Also fixed a related DISPLAY bug surfaced while investigating: the "How are the retirement rates
-calculated?" and "Retirement years without Social Security" dropdowns showed a literal "$0 ÷ $0" style
-formula next to the G = 0 rate, because `solutionStack`/`extraTax` correctly stay at $0 (nothing is
-really withdrawn) while the rate itself came from the invisible probe. `solveGrossWithdrawal` now always
-returns `probeSize`, `probeStack` and `probeExtraTax` too, and both dropdowns branch on `withdrawalNeeded`
-to show the REAL probe arithmetic ("$14,126 ÷ $56,676") instead. This did NOT touch the separate, still-
-open "Known limitations" item about the G > 0 case (rate measured on the gap-filling withdrawal, applied
-to the account's full 4% withdrawal) — that's a different mechanism and remains unresolved.
+## Effective-rate probe size (2026-09-23) — HISTORICAL, superseded 2026-09-28
+Bug report: lowering the retirement need (e.g. an expense going away) made the reported effective rate go UP,
+which looked backwards. Root cause: the old `incomeNeed.js` model measured the rate on a gross-up withdrawal
+G sized to close the gap between the need and other income; whenever other income already covered the target
+(G = 0), it fell back to reading the rate from a fixed, arbitrary $1,000 probe withdrawal, unrelated to the
+size of withdrawal that rate then got applied to elsewhere. The fix at the time sized that probe to the
+account's own natural 4% withdrawal instead of $1,000. The 2026-09-28 migration to `sideAwareRates.js` (see
+its section above) removed the whole G / probe distinction: the rate is now ALWAYS measured on the account's
+own natural withdrawal, for every scenario with `savings > 0` — there is no more "other income already covers
+it" special case, no probe, and `incomeNeed.js` itself was deleted. This section is kept only as a historical
+record of the bug and its first (superseded) fix.
 
 ## Contribution limits: excess now defaults to taxable (2026-09-22; amounts corrected 2026-09-25c, see model step 6)
 Previously `savings`/R/P compounded at their full entered value regardless of the IRS limit — a
@@ -430,8 +443,8 @@ the whole account) is still open — see "Known limitations."
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
 - **Page layout (2026-09-25g):** (1) "Retirement income number": hero value, SS + income-needed-from-portfolio
   facts, note, "How is this calculated?" dropdown. (2) **"Tax rate comparison"** card (named "Roth vs. Traditional" before 2026-09-26) (`id="sec2"`) holding ONLY the
-  rates: the marginal vs. effective rate pair (no subheading since 2026-09-26; the card title says it), the short lean phrase ("Tends to favor Roth" / "About even"; the
-  user removed the explanatory sentence and rule-of-thumb hint) and the "How are the retirement rates calculated?"
+  rates: the tax-saved-now vs. effective-rate pair (no subheading since 2026-09-26; the card title says it), the short lean phrase ("Tends to favor Roth" / "About even"; the
+  user removed the explanatory sentence and rule-of-thumb hint) and the "How are these rates calculated?"
   dropdown. (3) **"After-tax comparison"** card (was "The trade-off in dollars") (`id="sec-tradeoff"`, `TradeOff` component): limit alert, then
   ONE table (Roth / Pre-tax only, no Difference column, no "Tax on withdrawals" row) with three shaded groups:
   "What you put in" (current possible contribution); "A single year's contribution" (value at retirement, after-tax
@@ -447,9 +460,13 @@ the whole account) is still open — see "Known limitations."
   "this account" is absent from the results, form and article. Form fieldsets are titled "Future
   Contributions" and "Existing Accounts". (The IRS combined-income "other income" in the portfolio math note
   is a tax term and stays.)
-- Rate naming: "Effective rate on these withdrawals" = extra tax caused by this account's withdrawals ÷
-  those withdrawals (the number that drives the comparison). "Overall effective rate" = total tax ÷ gross
-  income. Do not call the former just "effective rate in retirement".
+- Rate naming: "Effective rate on the account withdrawal" = extra tax caused by Future Contributions' own
+  withdrawal, stacked on Social Security + Existing Accounts + that scenario's taxable side account, ÷ that
+  withdrawal (`rates.effectiveRetirement`; the number that drives the comparison). "Tax saved now, after any
+  tax on investing it" = `rates.taxSavedNow`, the "now" side. `rates.overallEffectiveRetirement` (total tax ÷
+  gross income, incl. Roth) is still computed but is NOT shown anywhere in the UI as of the 2026-09-28
+  migration (it was a reference line in the old rates block; no replacement was built — if it's wanted back,
+  it would need a new home, since the new rates card doesn't have an "outside the dropdown" reference-line slot).
 - Form: "Type of income" dropdown under gross income (W-2 / 1099 / Both, with a 1099-amount field for
   Both). Assumptions dropdown also holds "Expected retirement lifestyle".
 - Form: expected return lives in a collapsed **Assumptions** section (default 7%; summary shows the current
@@ -464,30 +481,33 @@ the whole account) is still open — see "Known limitations."
 - SS wage base lives only in `ficaRates.js`.
 
 ## Known limitations / open items
-- The effective rate is measured on the *gap-filling* withdrawal G but Section 2 applies it to the account's
-  full 4% withdrawal (this is the G > 0 case; the separate G = 0 probe-size issue was fixed 2026-09-23 —
-  see "Effective-rate probe size" above). For large accounts this overstates tax a bit (default MFJ case:
-  18.5% vs ~17.4%). Offered to the user as an optional refinement; not changed.
+- **RESOLVED 2026-09-28** (was the top item here): the effective rate used to be measured on a *need-based
+  gap-filling* withdrawal but applied to the account's full 4% withdrawal, which could overstate or understate
+  tax. `sideAwareRates.js` now measures the rate directly on the account's own actual 4% withdrawal — see "The
+  rates calculation" above. No known analogous gap remains.
+- The side account's own reported tax rate (`annuity.X.side.taxRate`) is measured BEFORE the account's own
+  withdrawal stacks on top of it (an intentional, self-consistent ordering choice — see "The rates
+  calculation" above), so it can read lower than a saver eyeballing "my side account's gain, stacked after
+  everything else" would expect. The combined dollar comparison is exact regardless; only the side account's
+  own displayed rate is order-dependent.
 - Not modeled: state tax, 65+ additional standard deduction and the temporary senior deduction (both
   would lower retirement tax), RMDs, employer match, raises, tax-efficient withdrawal order, IRA phase-outs,
   two-earner couples' separate wage bases. (Catch-up contributions ARE now modeled —
   see "Catch-up contributions" above — but only as a snapshot at today's age, not aging into a tier over
   a multi-decade projection.)
-- The lifestyle factor is one multiplier on the need. It does not model contributions made at a *higher
-  future* marginal rate when earnings rise (marginal-now stays today's), which would offset it toward
-  Pre-tax; time-varying contributions are a future feature.
-- The PROPERTY test in compare.test.js ("no-SS retirement bracket never exceeds today's") no longer
-  asserts effective <= marginal — capital-gains bracket-stacking can push the blended effective rate
-  above the ordinary marginal rate when a taxable balance is present (real effect, see above). The
-  "Roth (almost) never wins" half of the property is checked empirically over a grid, not proven.
+- The lifestyle factor is one multiplier on the retirement income number and Section 3's portfolio solve.
+  Since 2026-09-28 it no longer moves Section 2's rate comparison at all (see model step 2) — the account's
+  own withdrawal is fixed regardless of the need. It also does not model contributions made at a *higher
+  future* marginal rate when earnings rise (marginal-now/tax-saved-now stays today's), which would offset it
+  toward Pre-tax; time-varying contributions are a future feature.
 - 1099: self-employment tax IS modeled (see model step 1). Still simplified: income entered is *net*
   earnings (after business expenses); the 20% QBI deduction is not modeled (it would lower today's taxable
   income and can lower the marginal rate, tilting toward Roth for eligible owners); solo-401(k)/SEP limits
   are not modeled (the employee 401(k) limit is used, too low for someone who can also make the employer
   contribution); MFJ couples treated as one earner (single wage base).
 - A Roth/Traditional split is a future feature (the app warns at >= 90% of the contribution limit). The
-  "maxing out" side account IS modeled since 2026-09-25c (see model steps 6–7). Its tax uses the same
-  whole-account caveat as the main rate, and the marginal rate t is applied to the whole excess.
+  "maxing out" side account IS modeled since 2026-09-25c (see model steps 6–7) and, since 2026-09-28, its tax
+  is measured directly (not via a whole-account caveat) — see "The rates calculation" above.
 
 ## Data provenance (checked 2026-09-19)
 - Verified on irs.gov: 2025 and 2026 brackets, 2026 standard deduction, FICA rates, Additional Medicare
@@ -511,6 +531,28 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-28 (c) — Migrated everything to `sideAwareRates.js` as the sole rate calculation (see "The rates
+  calculation" above for the full detail); the "new calculation" duplicate card is gone, so there is one
+  "Tax rate comparison" card again. `lib/incomeNeed.js` and `tests/incomeNeed.test.js` deleted (no longer
+  imported anywhere): `result.grossUp`, `result.rateDrivers` and the "$1,000/probe" machinery no longer exist.
+  Updated: `ResultsSummary.jsx` (merged rates card, `RateWalkthrough` now guards `!sideAware.available` instead
+  of crashing — a real bug found and fixed mid-migration, since `YearsWithoutSocialSecurity` could reach it
+  with `$0` saved), `ScenarioCompare.jsx`, `scenarios.js`, `ScenariosPage.jsx`, ARTICLE.md (rewritten sections:
+  "Tax saved now, effective rate later", "How the calculator estimates your retirement tax rate" now the
+  three-step walk-through, the Social Security phase-in caveat paragraph, "Years without Social Security",
+  "If you expect to spend more, or less, in retirement"). Two real behavior changes fell out and needed their
+  own fixes: (1) `retirementLifestyle` no longer moves Section 2's rate/winner at all — only the retirement
+  income number and Section 3's portfolio solve (model step 2); (2) the "Retirement years without Social
+  Security" section's "Reading this" note claimed that view "can only tie or favor Pre-tax" outside a higher
+  lifestyle, which is no longer true (a large existing Pre-tax balance can favor Roth there at ANY lifestyle
+  now) — copy rewritten in `YearsWithoutSocialSecurity`. Every hand-verified test in `compare.test.js` and
+  `scenarioCompare.test.js` affected by the old need-based numbers was re-derived by hand against the new
+  model (not just adjusted to match the code) before being accepted; two of those hand-derivations (the
+  "contribution limits...savings $40,000" and "...AT the limit" side-account tests) surfaced that the side
+  account's own reported tax rate is now measured BEFORE the account's own withdrawal stacks on top of it —
+  a real, order-dependent modeling choice, documented in "Known limitations." 426 tests (453 immediately
+  before this change, minus the 27 in the deleted incomeNeed.test.js; no coverage was lost, since every
+  scenario it tested is either now meaningless under the new model or re-tested elsewhere).
 - 2026-09-28 (b) — "Show the full tax calculation" nested dropdown (see its section): every ordinary and capital-
   gains bracket, NIIT and the Social Security math, for each scenario's full stack. New `lib/taxBreakdown.js`
   (`explainFullTax`) and `sideAware.stackDetails`. The user is leaning toward adopting the new block as canonical;

@@ -1,6 +1,7 @@
 // Federal tax on one year of retirement income, given what is being withdrawn
-// from each kind of account. Shared by both solvers (incomeNeed.js and
-// portfolioTax.js) so the two can never drift apart on the tax rules.
+// from each kind of account. Shared by sideAwareRates.js (the Section 2 rate
+// comparison) and portfolioTax.js (the Section 3 solver) so the two can never
+// drift apart on the tax rules.
 //
 // Rules applied:
 //   - Social Security taxability is computed from "other income" =

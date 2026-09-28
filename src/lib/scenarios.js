@@ -5,19 +5,24 @@
 import { compareRothVsTraditional } from './compare.js';
 
 // One scenario's inputs -> the point the charts need.
-//   gap            = marginal rate now − effective rate on this account's
-//                     withdrawals in retirement (the predictor being tested)
+//   gap            = tax saved now (net of any tax on investing the difference) minus the
+//                     effective rate on the account withdrawal — sideAwareRates.js's rate
+//                     gap, already the exact predictor: gap * W equals the dollar difference
+//                     between the two scenarios' after-tax income (an identity, tested to the
+//                     cent in tests/sideAwareRates.test.js), so it and advantagePct below are
+//                     now exactly proportional, not just empirically correlated.
 //   advantagePct   = how much more (or less) after-tax annual income Roth
 //                     produces than Pre-tax, as a % of the Pre-tax figure
-//                     (the "did Roth actually win" outcome, Section 2's lens)
+//                     (the "did Roth actually win" outcome)
 export function runScenarioPoint(base, overrides, year) {
   const inputs = { ...base, ...overrides, year };
   const result = compareRothVsTraditional(inputs);
   if (!result.valid) {
     throw new Error(`Invalid scenario inputs: ${result.errors.join('; ')}`);
   }
-  const { marginalNow, effectiveRetirement } = result.rates;
-  const gap = marginalNow - effectiveRetirement;
+  const taxSavedNow = result.rates.taxSavedNow;
+  const effectiveRetirement = result.rates.effectiveRetirement;
+  const gap = taxSavedNow - effectiveRetirement;
   const rothAfterTax = result.annuity.roth.totalAfterTaxIncome;
   const pretaxAfterTax = result.annuity.pretax.totalAfterTaxIncome;
   const advantagePct = pretaxAfterTax !== 0 ? ((rothAfterTax - pretaxAfterTax) / pretaxAfterTax) * 100 : 0;
@@ -27,7 +32,7 @@ export function runScenarioPoint(base, overrides, year) {
 
   return {
     inputs,
-    marginalNow,
+    taxSavedNow,
     effectiveRetirement,
     gap,
     rothAfterTax,

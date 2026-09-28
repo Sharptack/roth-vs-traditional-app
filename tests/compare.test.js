@@ -7,8 +7,8 @@ import {
 } from '../src/lib/compare.js';
 import { estimateSocialSecurityBenefit } from '../src/lib/socialSecurity.js';
 import { futureValueAnnuity as futureValueAnnuityRef } from '../src/lib/growthCalculations.js';
-import { solveGrossWithdrawal } from '../src/lib/incomeNeed.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from '../src/lib/formInputs.js';
+import { explainFullTax } from '../src/lib/taxBreakdown.js';
 
 const baseInputs = {
   grossIncome: 100000,
@@ -60,19 +60,18 @@ describe('compareRothVsTraditional — end-to-end HAND CALC (no SS, no other acc
   //   marginal 22% (read before the deduction: 84,250); take-home = 100,000 - 11,249 - 7,650 = 81,101
   //   need = 81,101 - 10,000 = 71,101
   // Section 8:  P = 10,000; R = 10,000 x (1 - 0.22) = 7,800
-  // Gross-up (no other income, so no SS effects): T = taxable withdrawal in the 22% bracket
-  //   tax = 5,578.50 + 22% (T - 48,475) = 0.22 T - 5,086
-  //   net = (T + 15,750) - 0.22 T + 5,086 = 0.78 T + 20,836 = 71,101
-  //   T = 50,265 / 0.78 = 64,442.31;  G = 80,192.31;  tax = G - need = 9,091.31
-  //   effective rate = 9,091.31 / 80,192.31 = 0.11337
   // Growth: 1.07^30 = 7.612255; annuity factor = 6.612255 / 0.07 = 94.46079
   //   FV(P) = 944,607.86;  FV(R) = 7,800 x 94.46079 = 736,794.13
-  // Section 2 (annual 4% withdrawals):
-  //   Roth 29,471.77;  Pre-tax 37,784.31 x (1 - 0.11337) = 33,500.75  -> Pre-tax wins (11.3% < 22%)
-  // Section 3: Roth scenario = all Roth, so no tax; Pre-tax scenario = one pre-tax
-  //   bucket, so it IS the gross-up: pays 9,091.31, k = 80,192.31 / 37,784.31 = 2.1224
-  //   (Roth: k = 71,101 / 29,471.77 = 2.4125)
-  const eff = 9091.3077 / 80192.3077;
+  //   W = 4% x 944,607.86 = 37,784.31; RW = 4% x 736,794.13 = 29,471.77
+  // Rates (sideAwareRates.js; no Existing Accounts, no SS, no side account since $10,000 is well
+  // under the $23,500 2025 limit): the account's own withdrawal W is taxed alone.
+  //   taxable = 37,784.31 - 15,750 = 22,034.31
+  //   tax = 1,192.50 (10% x 11,925) + 12% x (22,034.31 - 11,925 = 10,109.31 -> 1,213.12) = 2,405.62
+  //   effective rate = 2,405.62 / 37,784.31 = 0.06367
+  //   tax saved now (no side account) = marginal rate = 0.22 (unchanged from Section 1)
+  // Section 2 (annual 4% withdrawals): Roth 29,471.77 (tax-free);
+  //   Pre-tax 37,784.31 - 2,405.62 = 35,378.70  -> Pre-tax wins (6.4% effective < 22% marginal)
+  const eff = 2405.6177 / 37784.3145;
   const r = compareRothVsTraditional(baseInputs);
 
   it('Section 1: current tax position and retirement income need', () => {
@@ -104,10 +103,11 @@ describe('compareRothVsTraditional — end-to-end HAND CALC (no SS, no other acc
     expect(r.contribution.roth).toBeCloseTo(7800, 6);
   });
 
-  it('Section 6: gross-up and effective retirement rate', () => {
-    expect(r.grossUp.grossWithdrawal).toBeCloseTo(80192.31, 1);
-    expect(r.grossUp.totalTaxPaid).toBeCloseTo(9091.31, 1);
-    expect(r.rates.effectiveRetirement).toBeCloseTo(0.11337, 4);
+  it('the rates (sideAwareRates.js): effective rate on the account withdrawal, tax saved now', () => {
+    expect(r.sideAware.accountWithdrawal).toBeCloseTo(37784.31, 1);
+    expect(r.sideAware.extraTaxFromAccount).toBeCloseTo(2405.62, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.06367, 4);
+    expect(r.rates.taxSavedNow).toBeCloseTo(0.22, 10);
   });
 
   it('Sections 9-10: growth of the contribution and after-tax income', () => {
@@ -118,13 +118,13 @@ describe('compareRothVsTraditional — end-to-end HAND CALC (no SS, no other acc
     expect(r.lumpSum.pretax.afterTaxValue).toBeCloseTo(10000 * 7.612255 * (1 - eff), 0);
     expect(r.annuity.roth.afterTaxWithdrawal).toBeCloseTo(29471.77, 1);
     expect(r.annuity.pretax.annualWithdrawal).toBeCloseTo(37784.31, 1);
-    expect(r.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(33500.75, -1);
+    expect(r.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(35378.7, 0);
   });
 
-  it('Section 2 verdict: Pre-tax wins because the retirement rate is below the current rate', () => {
-    expect(r.rates.effectiveRetirement).toBeLessThan(r.rates.marginalNow);
+  it('Section 2 verdict: Pre-tax wins because the effective rate is below tax saved now', () => {
+    expect(r.rates.effectiveRetirement).toBeLessThan(r.rates.taxSavedNow);
     expect(r.comparison.winner).toBe('pretax');
-    expect(r.comparison.afterTaxIncomeDifference).toBeCloseTo(33500.75 - 29471.77, -1);
+    expect(r.comparison.afterTaxIncomeDifference).toBeCloseTo(35378.7 - 29471.77, 0);
   });
 
   it('Section 11: the two scenarios are built from the right buckets', () => {
@@ -140,12 +140,14 @@ describe('compareRothVsTraditional — end-to-end HAND CALC (no SS, no other acc
     });
   });
 
-  it('Section 11: portfolio solver agrees with the single-account gross-up (cross-check)', () => {
+  it('Section 11: portfolio solver scales each scenario to hit the exact need (unaffected by the rates above — it solves independently)', () => {
+    // HAND CALC (unchanged from before the rates migration): T = 50,265 / 0.78 = 64,442.31;
+    // G = 80,192.31; tax = G - need = 9,091.31.
     expect(r.portfolio.roth.totalTaxPaid).toBe(0);
     expect(r.portfolio.roth.scaleFactor).toBeCloseTo(2.4125, 3);
     expect(r.portfolio.pretax.totalTaxPaid).toBeCloseTo(9091.31, 1);
     expect(r.portfolio.pretax.scaleFactor).toBeCloseTo(2.1224, 3);
-    expect(r.portfolio.pretax.totalGrossWithdrawal).toBeCloseTo(r.grossUp.grossWithdrawal, 2);
+    expect(r.portfolio.pretax.totalGrossWithdrawal).toBeCloseTo(80192.31, 1);
   });
 
   it('Section 11: both scenarios deliver the same after-tax income as the Section 1 need', () => {
@@ -170,7 +172,8 @@ describe('compareRothVsTraditional — wiring', () => {
     const r = compareRothVsTraditional({ ...baseInputs, debtPayments: 90000 });
     expect(r.retirementNeed.raw).toBeCloseTo(81101 - 90000 - 10000, 6);
     expect(r.retirementNeed.target).toBe(0);
-    expect(r.grossUp.grossWithdrawal).toBe(0);
+    // A $0 need doesn't mean $0 saved: the account itself still has its own natural withdrawal.
+    expect(r.sideAware.accountWithdrawal).toBeGreaterThan(0);
   });
 
   it('uses a known SS benefit as given', () => {
@@ -210,7 +213,7 @@ describe('compareRothVsTraditional — wiring', () => {
     expect(r.portfolio.roth.buckets.taxable).toBeCloseTo(r.portfolio.pretax.buckets.taxable, 6);
   });
 
-  it('other pre-tax money stacks under this account and lifts its effective rate', () => {
+  it('other pre-tax money is taxed ahead of this account and lifts its effective rate', () => {
     const without = compareRothVsTraditional(baseInputs);
     const withOther = compareRothVsTraditional({ ...baseInputs, otherPretaxBalance: 150000 });
     expect(withOther.rates.effectiveRetirement).toBeGreaterThan(without.rates.effectiveRetirement);
@@ -232,13 +235,13 @@ describe('compareRothVsTraditional — wiring', () => {
     expect(r.valid).toBe(true);
     expect(r.portfolio.roth.achievedAfterTaxIncome).toBeCloseTo(r.retirementNeed.target, 2);
     expect(r.portfolio.pretax.achievedAfterTaxIncome).toBeCloseTo(r.retirementNeed.target, 2);
-    // These other balances alone already fund the need, so no withdrawal from
-    // this account is required (the gross-up is 0 and income exceeds the target).
-    expect(r.grossUp.grossWithdrawal).toBe(0);
-    expect(r.grossUp.achievedAfterTaxIncome).toBeGreaterThan(r.retirementNeed.target);
+    // Section 3 (the portfolio solve, unaffected by the rates migration — it independently
+    // scales every bucket to hit the need exactly) needs less than a full 4% from every
+    // bucket to reach it here, since the balances are generous relative to the need.
+    expect(r.portfolio.pretax.scaleFactor).toBeLessThan(1);
   });
 
-  it('when a withdrawal IS required, the gross-up lands exactly on the target', () => {
+  it('when a withdrawal IS required, Section 3 lands exactly on the target', () => {
     const r = compareRothVsTraditional({
       ...baseInputs,
       grossIncome: 140000,
@@ -246,8 +249,8 @@ describe('compareRothVsTraditional — wiring', () => {
       otherPretaxBalance: 20000,
       otherRothBalance: 10000,
     });
-    expect(r.grossUp.grossWithdrawal).toBeGreaterThan(0);
-    expect(r.grossUp.achievedAfterTaxIncome).toBeCloseTo(r.retirementNeed.target, 2);
+    expect(r.portfolio.pretax.totalGrossWithdrawal).toBeGreaterThan(0);
+    expect(r.portfolio.pretax.achievedAfterTaxIncome).toBeCloseTo(r.retirementNeed.target, 2);
   });
 
   it('works with a 0% return', () => {
@@ -313,10 +316,11 @@ describe('compareRothVsTraditional — 2026 rules, end-to-end HAND CALC (no SS, 
   // under 2026 rules.
   //   taxable = 100,000 - 10,000 - 16,100 = 73,900; tax = 1,240 + 4,560 + 22% x 23,500 (5,170) = 10,970
   //   FICA 7,650;  take-home = 100,000 - 10,970 - 7,650 = 81,380;  need = 71,380
-  //   Gross-up, taxable T in the 22% bracket: tax = 5,800 + 0.22 (T - 50,400) = 0.22 T - 5,288
-  //     net = (T + 16,100) - 0.22 T + 5,288 = 0.78 T + 21,388 = 71,380
-  //     T = 49,992 / 0.78 = 64,092.31;  G = 80,192.31;  tax = G - 71,380 = 8,812.31
-  //     effective rate = 8,812.31 / 80,192.31 = 0.10989
+  // Rates (sideAwareRates.js): W = 37,784.31 (unchanged — growth doesn't depend on the tax year).
+  //   2026 single brackets: 10% to $12,400, 12% to $50,400; standard deduction $16,100.
+  //   taxable = 37,784.31 - 16,100 = 21,684.31
+  //   tax = 1,240.00 (10% x 12,400) + 12% x (21,684.31 - 12,400 = 9,284.31 -> 1,114.12) = 2,354.12
+  //   effective rate = 2,354.12 / 37,784.31 = 0.06230
   const r = compareRothVsTraditional({ ...baseInputs, year: 2026 });
 
   it('uses the 2026 data', () => {
@@ -327,10 +331,10 @@ describe('compareRothVsTraditional — 2026 rules, end-to-end HAND CALC (no SS, 
     expect(r.retirementNeed.target).toBeCloseTo(71380, 6);
   });
 
-  it('gross-up and effective rate', () => {
-    expect(r.grossUp.grossWithdrawal).toBeCloseTo(80192.31, 1);
-    expect(r.grossUp.totalTaxPaid).toBeCloseTo(8812.31, 1);
-    expect(r.rates.effectiveRetirement).toBeCloseTo(0.10989, 4);
+  it('the rates use the 2026 brackets and standard deduction', () => {
+    expect(r.sideAware.accountWithdrawal).toBeCloseTo(37784.31, 1);
+    expect(r.sideAware.extraTaxFromAccount).toBeCloseTo(2354.12, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.0623, 4);
   });
 
   it('contribution limit check uses the 2026 limit', () => {
@@ -340,79 +344,65 @@ describe('compareRothVsTraditional — 2026 rules, end-to-end HAND CALC (no SS, 
 });
 
 describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
-  // Single, 2025, $60,000 gross, saves $5,000 Pre-tax, ages 35 -> 65, 7%, no other accounts.
+  // Single, 2025, $60,000 gross, saves $5,000 Pre-tax, ages 35 -> 65, 7%, no other accounts,
+  // a KNOWN $24,000 Social Security benefit (nonzero, so the with/without comparison actually differs).
   //   taxable = 60,000 - 5,000 - 15,750 = 39,250; tax = 1,192.50 + 12% x 27,325 (3,279) = 4,471.50
   //   marginal 12% (before the deduction: 44,250 taxable)
-  //   FICA = 7.65% x 60,000 = 4,590;  take-home = 60,000 - 4,471.50 - 4,590 = 50,938.50
-  //   need = 50,938.50 - 5,000 = 45,938.50;   P = 5,000, R = 5,000 x 0.88 = 4,400
-  // Without Social Security the accounts must supply all 45,938.50 after tax. T in the 12% bracket:
-  //   net = 0.88 T + 15,988.50 = 45,938.50  ->  T = 29,950 / 0.88 = 34,034.09  (in 12%: OK)
-  //   G = 34,034.09 + 15,750 = 49,784.09;  tax = 0.12 T - 238.50 = 3,845.59
-  //   blended (effective) rate = 3,845.59 / 49,784.09 = 0.07725;  MARGINAL rate = 12%
-  // Annual 4% withdrawals (FV factor 94.46079): Roth 4,400 -> 415,627.5 -> 16,625.10.
-  //   Pre-tax 5,000 -> 472,303.9 -> 18,892.16;  x (1 - 0.07725) = 17,432.8 at the BLENDED rate
-  //   (the headline: same method as the main comparison, minus the Social Security phase-in),
-  //   or x (1 - 0.12) = 16,625.10 at the marginal rate (reference only). Marginal later (12%) =
-  //   marginal now (12%), so at the marginal rate the two are exactly equal: P x 0.88 = R.
-  const inputs = { ...baseInputs, grossIncome: 60000, savings: 5000 };
+  //   Annuity factor 94.46079: W (Pre-tax) = 5,000 x 94.46079 x 4% = 18,892.16; RW (Roth) = 4,400 x
+  //   94.46079 x 4% = 16,625.10 (both are the account's own withdrawal, same either way).
+  //
+  // WITHOUT Social Security (sideAware with ssBenefit = 0; no Existing Accounts, no side account):
+  //   taxable = 18,892.16 - 15,750 = 3,142.16 (all in the 10% bracket)
+  //   tax = 10% x 3,142.16 = 314.22;  effective rate = 314.22 / 18,892.16 = 0.01663
+  //
+  // WITH the $24,000 benefit (the main comparison): combined income = W + 0.5 x 24,000 = 18,892.16 +
+  //   12,000 = 30,892.16, between the single thresholds ($25,000 / $34,000) -> 50% tier:
+  //   taxableSS = min(0.5 x (30,892.16 - 25,000) = 2,946.08, 0.5 x 24,000 = 12,000) = 2,946.08
+  //   grossOrdinaryIncome = 18,892.16 + 2,946.08 = 21,838.24; taxable = 21,838.24 - 15,750 = 6,088.24
+  //   tax = 10% x 6,088.24 = 608.82 (baseline, SS alone, is $0: combined = 0.5 x 24,000 = 12,000 <
+  //   25,000 lower threshold, so 0 taxable SS and $0 tax)
+  //   extra tax = 608.82; effective rate = 608.82 / 18,892.16 = 0.03223
+  const inputs = { ...baseInputs, grossIncome: 60000, savings: 5000, socialSecurityBenefit: 24000 };
   const r = compareRothVsTraditional(inputs);
   const s = r.withoutSocialSecurity;
 
   it('Section 1 inputs for this case', () => {
     expect(r.current.tax).toBeCloseTo(4471.5, 6);
     expect(r.rates.marginalNow).toBe(0.12);
-    expect(r.retirementNeed.target).toBeCloseTo(45938.5, 6);
     expect(r.contribution.roth).toBeCloseTo(4400, 6);
   });
 
-  it('solves the gross-up with no Social Security', () => {
-    expect(s.grossUp.grossWithdrawal).toBeCloseTo(49784.09, 1);
-    expect(s.grossUp.totalTaxPaid).toBeCloseTo(3845.59, 1);
-    expect(s.grossUp.solutionStack.taxableSS).toBe(0);
-    expect(s.effectiveRateRetirement).toBeCloseTo(0.07725, 4);
+  it('the account withdrawal is identical with or without Social Security; the rate is not', () => {
+    expect(s.sideAware.accountWithdrawal).toBeCloseTo(r.sideAware.accountWithdrawal, 6);
+    expect(s.sideAware.accountWithdrawal).toBeCloseTo(18892.16, 1);
+    expect(s.sideAware.extraTaxFromAccount).toBeCloseTo(314.22, 1);
+    expect(s.sideAware.effectiveRate).toBeCloseTo(0.01663, 4);
+    expect(r.sideAware.extraTaxFromAccount).toBeCloseTo(608.82, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.03223, 4);
+    // Social Security's phase-in only ever ADDS tax, so the no-SS rate is always <= the with-SS one.
+    expect(s.sideAware.effectiveRate).toBeLessThan(r.rates.effectiveRetirement);
   });
 
-  it('reads the MARGINAL rate at the top of the stack', () => {
-    expect(s.marginalRateRetirement).toBe(0.12);
-    expect(s.taxableIncomeAtTop).toBeCloseTo(34034.09, 1);
-  });
-
-  it('headline compares Roth and Pre-tax at the BLENDED rate: Pre-tax wins (7.7% < 12% now)', () => {
-    expect(s.annuity.roth.afterTaxWithdrawal).toBeCloseTo(16625.1, 0);
-    expect(s.annuity.pretax.afterTaxWithdrawal).toBeCloseTo(17432.8, 0);
+  it('Pre-tax wins both ways (both rates are well under the 12% marginal), by a wider margin without SS', () => {
     expect(s.comparison.winner).toBe('pretax');
-    expect(s.comparison.afterTaxIncomeDifference).toBeCloseTo(17432.8 - 16625.1, 0);
-  });
-
-  it('the at-marginal-rate figure is reference only, and equals Roth exactly when the marginal rates match', () => {
-    expect(s.annuity.pretax.afterTaxWithdrawalAtMarginal).toBeCloseTo(s.annuity.roth.afterTaxWithdrawal, 4);
-    expect(s.annuity.pretax.afterTaxWithdrawal / s.annuity.pretax.afterTaxWithdrawalAtMarginal).toBeCloseTo(
-      (1 - s.effectiveRateRetirement) / (1 - 0.12),
-      8,
-    );
+    expect(r.comparison.winner).toBe('pretax');
+    expect(s.comparison.afterTaxIncomeDifference).toBeGreaterThan(r.comparison.afterTaxIncomeDifference);
   });
 
   it('ignores whatever Social Security benefit is entered', () => {
-    const withSS = compareRothVsTraditional({ ...inputs, socialSecurityBenefit: 24000 });
-    expect(withSS.withoutSocialSecurity.marginalRateRetirement).toBe(s.marginalRateRetirement);
-    expect(withSS.withoutSocialSecurity.grossUp.grossWithdrawal).toBeCloseTo(s.grossUp.grossWithdrawal, 6);
-    // ...while the with-Social-Security result does change
-    expect(withSS.grossUp.grossWithdrawal).toBeLessThan(s.grossUp.grossWithdrawal);
+    for (const ssBenefit of [0, 12000, 24000, 90000]) {
+      const q = compareRothVsTraditional({ ...baseInputs, grossIncome: 60000, savings: 5000, socialSecurityBenefit: ssBenefit });
+      expect(q.withoutSocialSecurity.sideAware.effectiveRate).toBeCloseTo(s.sideAware.effectiveRate, 10);
+    }
+    // ...while the with-Social-Security result does change with it
+    const noSS = compareRothVsTraditional({ ...baseInputs, grossIncome: 60000, savings: 5000, socialSecurityBenefit: 0 });
+    expect(noSS.rates.effectiveRetirement).toBeLessThan(r.rates.effectiveRetirement);
   });
 
-  it('PROPERTY: when this account is needed to fill the gap, the no-SS retirement bracket never exceeds today\'s, so Roth (almost) never wins', () => {
-    // Reason: when withdrawals from this account are needed (gross-up > 0), total pre-tax income Y solves
-    // net(Y) = need. Need <= today's take-home, so Y < today's gross income; brackets are monotone, so
-    // marginal later <= marginal now. (Not true when other accounts' forced 4% draws already exceed the
-    // need: see the next test.)
-    //
-    // NOTE ON THE EFFECTIVE RATE: we do NOT also assert effective <= marginal here. Capital gains
-    // brackets stack on top of ordinary income (capitalGainsTax.js), so a bigger withdrawal from THIS
-    // account can push a fixed taxable-account withdrawal from the 0% gains bracket into the 15% one.
-    // That extra tax is real and gets counted as 'extra tax caused by this withdrawal,' so the blended
-    // effective rate CAN exceed this account's own ordinary marginal rate when a taxable balance is
-    // present (see incomeNeed.test.js's capital-gains-stacking tests for a clean, isolated example).
-    // Empirically it still doesn't flip the verdict to Roth across this grid (checked below).
+  it('PROPERTY: the no-SS effective rate never exceeds the with-SS effective rate on the same account withdrawal', () => {
+    // Removing Social Security can only remove its phase-in tax, never add tax, so this holds for
+    // every scenario where there IS an account withdrawal to measure — no capital-gains-stacking or
+    // "is this account needed" caveats required (those were artifacts of the old need-based gross-up).
     for (const filingStatus of ['single', 'mfj']) {
       for (const grossIncome of [30000, 60000, 100000, 180000, 400000]) {
         for (const savings of [0, 5000, 20000]) {
@@ -425,66 +415,78 @@ describe('withoutSocialSecurity — the simple view (HAND CALC)', () => {
               otherPretaxBalance,
               otherRothBalance: 50000,
               otherTaxableBalance: 30000,
+              knowsSocialSecurity: true,
+              socialSecurityBenefit: 20000,
             });
             const label = JSON.stringify({ filingStatus, grossIncome, savings, otherPretaxBalance });
-            if (!(q.withoutSocialSecurity.grossUp.grossWithdrawal > 0)) continue; // other accounts already cover the need
-            expect(q.withoutSocialSecurity.marginalRateRetirement, label).toBeLessThanOrEqual(q.rates.marginalNow);
-            expect(q.withoutSocialSecurity.comparison.winner, label).not.toBe('roth');
+            if (!q.sideAware.available) continue; // $0 saved: nothing to measure
+            expect(q.withoutSocialSecurity.sideAware.effectiveRate, label).toBeLessThanOrEqual(
+              q.rates.effectiveRetirement + 1e-9,
+            );
           }
         }
       }
     }
   });
 
-  it('big existing Pre-tax balances can push the bracket ABOVE today\'s, favoring Roth (HAND CALC)', () => {
-    // Single, 2025, $30,000 gross: taxable 14,250 -> marginal 12% now. $2,000 saved (so both accounts hold something).
-    // $1,500,000 of other Pre-tax money x 1.07^30 (7.612255) = 11,418,383; 4% = 456,735 of taxable
-    // Pre-tax income every year, far more than the ~$25k need, so this account is not needed (G = 0)
-    // and the bracket is set by those existing balances: 456,735 - 15,750 = 440,985 -> 35% bracket.
+  it('big existing Pre-tax balances push the account withdrawal into a high bracket, favoring Roth (HAND CALC)', () => {
+    // Single, 2025, $30,000 gross: taxable 14,250 -> marginal 12% now. $2,000 saved.
+    // $1,500,000 of other Pre-tax money x 1.07^30 (7.612255) = 11,418,382.50; 4% = 456,735.30, taxed
+    // FIRST (Step 1), so the $2,000 account's own withdrawal (4% of 2,000 x 94.46079 = 7,556.86) lands
+    // entirely in the 35% bracket (456,735.30 - 15,750 = 440,985.30, already well past the $250,525
+    // threshold, and +7,556.86 stays under the next one at $626,350).
     const q = compareRothVsTraditional({ ...baseInputs, grossIncome: 30000, savings: 2000, otherPretaxBalance: 1500000 });
-    expect(q.rates.marginalNow).toBe(0.12);
-    expect(q.withoutSocialSecurity.grossUp.grossWithdrawal).toBe(0);
-    expect(q.withoutSocialSecurity.marginalRateRetirement).toBe(0.35);
+    expect(q.rates.taxSavedNow).toBeCloseTo(0.12, 10);
+    expect(q.withoutSocialSecurity.sideAware.effectiveRate).toBeCloseTo(0.35, 6);
     expect(q.withoutSocialSecurity.comparison.winner).toBe('roth');
   });
 
-  it('income below the standard deduction has a 0% marginal rate later, so Pre-tax beats Roth on paper', () => {
-    // Need 11,929 (see the 14,000 case above): T = 0, so the last dollar is still sheltered.
+  it('income below the standard deduction is untaxed either way, so the two are "even"', () => {
+    // W = 4% x 1,000 x 94.46079 = 3,778.43, below the $15,750 standard deduction on its own.
     const q = compareRothVsTraditional({ ...baseInputs, grossIncome: 14000, savings: 1000 });
-    expect(q.withoutSocialSecurity.marginalRateRetirement).toBe(0);
+    expect(q.withoutSocialSecurity.sideAware.effectiveRate).toBe(0);
     expect(q.withoutSocialSecurity.comparison.winner).toBe('even'); // 0% now, 0% later
   });
 
   it('is a plain object of numbers (no NaN) for awkward inputs', () => {
     for (const o of [
       { grossIncome: 10000 },
-      { savings: 0 },
       { debtPayments: 90000 },
       { otherPretaxBalance: 5000000 },
       { filingStatus: 'mfj', grossIncome: 300000, savings: 23500 },
     ]) {
       const q = compareRothVsTraditional({ ...baseInputs, ...o }).withoutSocialSecurity;
-      for (const v of [q.marginalRateRetirement, q.effectiveRateRetirement, q.annuity.pretax.afterTaxWithdrawal, q.annuity.roth.afterTaxWithdrawal]) {
+      for (const v of [q.sideAware.effectiveRate, q.annuity.pretax.afterTaxWithdrawal, q.annuity.roth.afterTaxWithdrawal]) {
         expect(Number.isFinite(v), JSON.stringify(o)).toBe(true);
       }
     }
+    // $0 saved: nothing to measure, but still no NaN/Infinity anywhere.
+    const zero = compareRothVsTraditional({ ...baseInputs, savings: 0 }).withoutSocialSecurity;
+    expect(zero.sideAware.available).toBe(false);
+    expect(Number.isFinite(zero.annuity.pretax.afterTaxWithdrawal)).toBe(true);
+    expect(Number.isFinite(zero.annuity.roth.afterTaxWithdrawal)).toBe(true);
   });
 });
 
 describe('retirement lifestyle factor (HAND CALC)', () => {
   // Single, 2025, $100,000 gross, $10,000 Pre-tax savings: need 71,101 at the same lifestyle (see above).
-  it('a 25% higher retirement lifestyle scales the need to 88,876.25', () => {
-    // need = 71,101 x 1.25 = 88,876.25.  Gross-up in the 22% bracket: 0.78 T + 20,836 = 88,876.25
-    //   T = 68,040.25 / 0.78 = 87,231.09 (in 22%);  G = 87,231.09 + 15,750 = 102,981.09
-    //   tax = G - need = 14,104.84;  effective rate = 14,104.84 / 102,981.09 = 0.13697
+  //
+  // Under the sideAware model, the account's own natural 4% withdrawal W (and so
+  // rates.effectiveRetirement/taxSavedNow and comparison.winner) does NOT depend on the retirement
+  // need at all — W = 4% x the annuity's future value, which is a function only of the contribution
+  // and growth, never of lifestyle. Lifestyle still scales retirementNeed.target, and Section 3's
+  // portfolio solver still scales its withdrawals to hit that target (portfolioTax.js is untouched
+  // by this migration) — but the Section 2 rate comparison no longer moves with it. This is a real
+  // behavior change from the old need-based gross-up model (documented in CLAUDE.md).
+  it('a 25% higher retirement lifestyle scales the need to 88,876.25, but not the account rate', () => {
     const r = compareRothVsTraditional({ ...baseInputs, retirementLifestyle: 1.25 });
     expect(r.retirementNeed.beforeLifestyleAdjustment).toBeCloseTo(71101, 6);
     expect(r.retirementNeed.lifestyleFactor).toBe(1.25);
     expect(r.retirementNeed.target).toBeCloseTo(88876.25, 6);
-    expect(r.grossUp.grossWithdrawal).toBeCloseTo(102981.09, 1);
-    expect(r.grossUp.totalTaxPaid).toBeCloseTo(14104.84, 1);
-    expect(r.rates.effectiveRetirement).toBeCloseTo(0.13697, 4);
-    // both portfolio scenarios are solved to the higher target
+    // same W and rate as lifestyle = 1 (see the end-to-end HAND CALC above: W = 37,784.31, eff = 0.06367)
+    expect(r.sideAware.accountWithdrawal).toBeCloseTo(37784.31, 1);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.06367, 4);
+    // Section 3's portfolio solver is unaffected: it still hits the higher target exactly
     expect(r.portfolio.roth.achievedAfterTaxIncome).toBeCloseTo(88876.25, 2);
   });
 
@@ -501,28 +503,25 @@ describe('retirement lifestyle factor (HAND CALC)', () => {
     expect(r.retirementNeed.target).toBeCloseTo(71101, 6);
   });
 
-  it('a much higher future lifestyle can push the retirement bracket ABOVE today\'s and favor Roth (HAND CALC)', () => {
-    // Single, 2025, $60,000 gross, $5,000 saved Pre-tax: need 45,938.50 (see above), marginal now 12%.
-    // Expect twice the lifestyle: need = 91,877.  22% bracket: 0.78 T + 20,836 = 91,877
-    //   T = 71,041 / 0.78 = 91,078.21 (in 22%);  G = 106,828.21;  tax = G - 91,877 = 14,951.21
-    //   blended rate = 14,951.21 / 106,828.21 = 0.13996 (> 12% now);  marginal later 22% (> 12%)
-    const r = compareRothVsTraditional({
-      ...baseInputs,
-      grossIncome: 60000,
-      savings: 5000,
-      retirementLifestyle: 2,
-    });
-    expect(r.rates.marginalNow).toBe(0.12);
-    expect(r.retirementNeed.target).toBeCloseTo(91877, 6);
-    expect(r.grossUp.grossWithdrawal).toBeCloseTo(106828.21, 1);
-    expect(r.rates.effectiveRetirement).toBeCloseTo(0.13996, 4);
-    expect(r.comparison.winner).toBe('roth');
-    expect(r.withoutSocialSecurity.marginalRateRetirement).toBe(0.22);
-    expect(r.withoutSocialSecurity.comparison.winner).toBe('roth');
+  it('PROPERTY: lifestyle changes the need and the Section 3 portfolio solve, never the account rate or the verdict', () => {
+    // Single, 2025, $60,000 gross, $5,000 saved Pre-tax: W = 18,892.16, eff = 0.01663, winner = pretax
+    // (marginal now 12% > eff 1.66%), unchanged at any lifestyle — even one big enough that the OLD
+    // need-based model would have pushed the bracket above 12% and flipped the verdict to Roth.
+    for (const retirementLifestyle of [0.8, 1, 1.25, 2, 3]) {
+      const r = compareRothVsTraditional({ ...baseInputs, grossIncome: 60000, savings: 5000, retirementLifestyle });
+      expect(r.sideAware.accountWithdrawal, retirementLifestyle).toBeCloseTo(18892.16, 1);
+      expect(r.rates.effectiveRetirement, retirementLifestyle).toBeCloseTo(0.01663, 4);
+      expect(r.comparison.winner, retirementLifestyle).toBe('pretax');
+      // ...only the need itself moves
+      expect(r.retirementNeed.target, retirementLifestyle).toBeCloseTo(45938.5 * retirementLifestyle, 6);
+    }
   });
 });
 
 describe('overall effective rate in retirement', () => {
+  // retirementOverall.grossIncome/totalTax are the same totals sideAwareRates measures its
+  // effectiveRate against (the "preTaxWorld" stack: Social Security + Existing Accounts + this
+  // account's own withdrawal), so overallEffectiveRetirement is total tax / that total gross income.
   it('equals total tax / total gross income (Social Security + every withdrawal, Roth included)', () => {
     const r = compareRothVsTraditional({
       ...baseInputs,
@@ -537,30 +536,35 @@ describe('overall effective rate in retirement', () => {
       r.otherWithdrawals.pretaxGross +
       r.otherWithdrawals.roth +
       r.otherWithdrawals.taxableGross +
-      r.grossUp.grossWithdrawal;
+      r.sideAware.accountWithdrawal;
     expect(r.retirementOverall.grossIncome).toBeCloseTo(gross, 6);
-    expect(r.retirementOverall.totalTax).toBeCloseTo(r.grossUp.solutionStack.totalTax, 6);
-    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(r.grossUp.solutionStack.totalTax / gross, 10);
+    expect(r.retirementOverall.totalTax).toBeCloseTo(r.sideAware.stacks.preTaxWorld.totalTax, 6);
+    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(r.sideAware.stacks.preTaxWorld.totalTax / gross, 10);
   });
 
   it('with a single pre-tax source it equals the effective rate on the withdrawal (HAND CALC)', () => {
-    // no Social Security, no other accounts: total gross = G = 80,192.31, total tax = 9,091.31
+    // no Social Security, no other accounts: total gross = W = 37,784.31, total tax = 2,405.62
+    // (see the end-to-end HAND CALC above); overall = 2,405.62 / 37,784.31 = 0.06367 = the same
+    // fraction sideAwareRates already computed, since there is only one income source to blend.
     const r = compareRothVsTraditional(baseInputs);
-    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(0.11337, 4);
+    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(0.06367, 4);
     expect(r.rates.overallEffectiveRetirement).toBeCloseTo(r.rates.effectiveRetirement, 10);
   });
 
   it('is lower than the rate on the withdrawals when Social Security and Roth money share the income (HAND CALC)', () => {
-    // Social Security 30,000 and 4% of a 50,000 Roth balance grown 30y (15,224.51) are mostly untaxed, and
-    // together they leave about 23,677 for this account to supply, so total tax / total gross income
-    // (spread over ~73,000) is well below the tax on the pre-tax withdrawal alone (spread over ~28,000).
+    // Social Security 30,000 (known) and 4% of a 50,000 Roth balance grown 30y (15,224.51) are mostly
+    // untaxed and join W = 37,784.31 in the gross total (83,008.82), while sideAwareRates.effectiveRate
+    // only measures the extra tax caused by W on top of them (4,861.62 / 83,008.82 = 0.05857 overall,
+    // vs 0.12867 on W alone).
     const r = compareRothVsTraditional({
       ...baseInputs,
       knowsSocialSecurity: true,
       socialSecurityBenefit: 30000,
       otherRothBalance: 50000,
     });
-    expect(r.grossUp.grossWithdrawal).toBeGreaterThan(0);
+    expect(r.sideAware.accountWithdrawal).toBeGreaterThan(0);
+    expect(r.rates.overallEffectiveRetirement).toBeCloseTo(0.05857, 4);
+    expect(r.rates.effectiveRetirement).toBeCloseTo(0.12867, 4);
     expect(r.rates.overallEffectiveRetirement).toBeLessThan(r.rates.effectiveRetirement);
   });
 });
@@ -693,11 +697,14 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     // Taxable side: FV 5,640 x 94.4607862 = 532,758.83; 4% = 21,310.35.
     //   Cost basis = every dollar contributed: 5,640 x 30 = 169,200, so the withdrawal is
     //   169,200 / 532,758.83 basis -> basis part = 4% x 169,200 = 6,768; gain = 14,542.35.
-    //   Stacked on 88,793.14 of ordinary income: ordinary taxable = 88,793.14 - 15,750 = 73,043.14,
-    //   already above the $48,350 top of the 0% gains bracket, so the gain is taxed at 15%:
-    //   2,181.35 -> after tax 19,129.00; rate on the whole withdrawal 2,181.35 / 21,310.35 = 10.236%.
-    // One year's side contribution: 5,640 x 7.6122550 = 42,933.12; after tax at that rate:
-    //   42,933.12 x (1 - 0.102362) = 38,538.36.
+    //
+    // The reported side.taxRate now measures the side account ALONE, stacked on Existing Accounts
+    // (here $0) but NOT the account's own withdrawal (sideAwareRates.js stacks the side account
+    // BEFORE the account, see its "preTaxWorldBeforeAccount" stack) — so it no longer includes the
+    // push from the account's own ordinary income. Here Existing = $0, so ordinary taxable income
+    // ahead of the gain is $0: the whole $15,750 standard deduction is unused and shelters gains too
+    // (capitalGainsTax.js), and 14,542.35 < 15,750, so the gain is entirely in the 0% bracket -> $0 tax.
+    // One year's side contribution: 5,640 x 7.6122550 = 42,933.12, also untaxed (same 0% shelter).
     const r = compareRothVsTraditional({ ...base, savings: 23500, currentType: 'roth' });
     expect(r.contributionSplit.roth.toAccount).toBe(23500);
     expect(r.contributionSplit.roth.excessToTaxable).toBe(0);
@@ -709,17 +716,17 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     expect(side.futureValue).toBeCloseTo(532758.83, 1);
     expect(side.annualWithdrawal).toBeCloseTo(21310.35, 1);
     expect(side.gains).toBeCloseTo(14542.35, 1);
-    expect(side.taxRate).toBeCloseTo(0.102362, 5);
-    expect(side.afterTaxWithdrawal).toBeCloseTo(19129.0, 1);
+    expect(side.taxRate).toBe(0);
+    expect(side.afterTaxWithdrawal).toBeCloseTo(21310.35, 1);
     expect(r.annuity.roth.side.futureValue).toBe(0);
 
     // Totals for Future Contributions = the account + its taxable side.
     expect(r.annuity.pretax.totalFutureValue).toBeCloseTo(2219828.48 + 532758.83, 1);
-    expect(r.annuity.pretax.totalAfterTaxIncome).toBeCloseTo(r.annuity.pretax.afterTaxWithdrawal + 19129.0, 1);
+    expect(r.annuity.pretax.totalAfterTaxIncome).toBeCloseTo(r.annuity.pretax.afterTaxWithdrawal + 21310.35, 1);
     expect(r.annuity.roth.totalAfterTaxIncome).toBeCloseTo(r.annuity.roth.afterTaxWithdrawal, 6);
     expect(r.lumpSum.pretax.side.futureValue).toBeCloseTo(42933.12, 1);
-    expect(r.lumpSum.pretax.side.afterTaxValue).toBeCloseTo(38538.36, 0);
-    expect(r.lumpSum.pretax.totalAfterTaxValue).toBeCloseTo(r.lumpSum.pretax.afterTaxValue + 38538.36, 0);
+    expect(r.lumpSum.pretax.side.afterTaxValue).toBeCloseTo(42933.12, 1);
+    expect(r.lumpSum.pretax.totalAfterTaxValue).toBeCloseTo(r.lumpSum.pretax.afterTaxValue + 42933.12, 1);
 
     // The verdict uses the totals.
     const { roth, pretax } = r.annuity;
@@ -729,7 +736,7 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     );
   });
 
-  it('currently Roth, savings $40,000: both scenarios spill over; Roth spillover is taxed at 0% (HAND CALC)', () => {
+  it('currently Roth, savings $40,000: both scenarios spill over; both sides are sheltered by the unused standard deduction (HAND CALC)', () => {
     // C = 40,000. Roth: 23,500 in, 16,500 to taxable.
     // Pre-tax: 23,500 in (costs 17,860), 40,000 - 17,860 = 22,140 to taxable (old model: 29,131.58).
     const r = compareRothVsTraditional({ ...base, savings: 40000, currentType: 'roth' });
@@ -746,17 +753,22 @@ describe('contribution limits: excess above the IRS limit defaults to a taxable 
     expect(r.portfolio.roth.buckets.taxable).toBeCloseTo(1558602.97, 1);
     expect(r.portfolio.pretax.buckets.taxable).toBeCloseTo(2091361.81, 1);
 
-    // Roth side: 4% = 62,344.12 with no ordinary income under it (the account is Roth):
-    //   the 15,750 standard deduction shelters the first gains, 62,344.12 - 15,750 = 46,594.12
-    //   is below $48,350, so it is all in the 0% bracket -> no tax.
+    // Roth side: 4% = 62,344.12; gain (FV 1,558,602.97 - basis 495,000) x 4% = 42,544.12. As
+    //   before, both sides are now measured BEFORE the account's own withdrawal, so this is
+    //   unchanged from the old model (the Roth account was never ordinary income anyway):
+    //   stacked with $0 ahead of it, gain < the $15,750 unused-deduction shelter is impossible here
+    //   (42,544.12 > 15,750), but the remaining 42,544.12 - 15,750 = 26,794.12 stays under the
+    //   $48,350 top of the 0% LTCG bracket -> still 0% tax.
     expect(r.annuity.roth.side.annualWithdrawal).toBeCloseTo(62344.12, 1);
     expect(r.annuity.roth.side.taxRate).toBe(0);
     expect(r.annuity.roth.side.afterTaxWithdrawal).toBeCloseTo(62344.12, 1);
-    // Pre-tax side: 4% = 83,654.47; basis part = 4% x (22,140 x 30 = 664,200) = 26,568;
-    //   gain 57,086.47 on top of 73,043.14 of ordinary taxable income: all at 15%
-    //   (total 130,129.61 < 533,400) -> tax 8,562.97, after tax 75,091.50.
+    // Pre-tax side: 4% = 83,654.47; gain (FV 2,091,361.81 - basis 664,200) x 4% = 57,086.47.
+    //   Stacked BEFORE the account (not on top of its 88,793.14 of ordinary income, unlike the old
+    //   model): 57,086.47 - 15,750 (unused deduction) = 41,336.47, still under the $48,350 0% top
+    //   -> $0 tax, so the after-tax withdrawal equals the full 83,654.47.
     expect(r.annuity.pretax.side.annualWithdrawal).toBeCloseTo(83654.47, 1);
-    expect(r.annuity.pretax.side.afterTaxWithdrawal).toBeCloseTo(75091.5, 1);
+    expect(r.annuity.pretax.side.taxRate).toBe(0);
+    expect(r.annuity.pretax.side.afterTaxWithdrawal).toBeCloseTo(83654.47, 1);
   });
 
   it('under the limit: nothing changes from the pre-cap behavior (backward-compatible)', () => {
@@ -825,10 +837,14 @@ describe('contribution limits: catch-up contributions raise the cap at age 50+ (
   });
 });
 
-describe('effective-rate probe size: stable and consistent when other income already covers the need', () => {
+describe('the effective rate no longer depends on the retirement need at all', () => {
   // Single, 2025, $60,000 gross (12% marginal), SS $40,000 (known), $15,000 saved Pre-tax,
-  // no other account balances. SS alone already covers modest targets, so the gross-up is
-  // always $0 here — only the PROBE used to report a rate differs from the old fixed $1,000.
+  // no other account balances. The OLD model measured the rate on a hypothetical "probe"
+  // withdrawal that had to be sized carefully once other income already covered the need
+  // (see the "effective-rate probe size" fix, 2026-09-23, in CLAUDE.md) — an entire class of
+  // bug that no longer exists under sideAwareRates.js: the rate is ALWAYS measured on the
+  // account's own actual 4% withdrawal, never a hypothetical stand-in, so it cannot move just
+  // because the target need changes (only a change in other income or the account's own size can).
   const base = {
     ...baseInputs,
     grossIncome: 60000,
@@ -839,53 +855,35 @@ describe('effective-rate probe size: stable and consistent when other income alr
     otherPretaxBalance: 0,
   };
 
-  it('the reported rate is now measured on the account\'s own withdrawal, not a fixed $1,000 (HAND CALC)', () => {
+  it('the rate is measured on the account\'s own withdrawal, whatever the target need is (HAND CALC)', () => {
     // P = $15,000 (currentType pretax). Annuity FV = 15,000 x 94.460786 = 1,416,911.79.
-    // Account's own 4% annual withdrawal = 56,676.47 — that is the probe size used.
-    // combined income at that probe = 56,676.47 + 0.5 x 40,000 = 76,676.47, well past the
-    //   $34,000 85%-taxable threshold, so taxableSS caps at 0.85 x 40,000 = $34,000.
+    // W (account's own 4% annual withdrawal) = 56,676.47.
+    // combined income at W = 56,676.47 + 0.5 x 40,000 = 76,676.47, well past the $34,000
+    //   85%-taxable threshold, so taxableSS caps at 0.85 x 40,000 = $34,000.
     // ordinary taxable income = 56,676.47 + 34,000 - 15,750 = 74,926.47
     // tax = 1,192.50 + 4,386 + 22% x (74,926.47 - 48,475 = 26,451.47) = 11,397.82
     // rate = 11,397.82 / 56,676.47 = 0.20110...
     const r = compareRothVsTraditional({ ...base, debtPayments: 0 });
-    expect(r.grossUp.grossWithdrawal).toBe(0);
+    expect(r.sideAware.accountWithdrawal).toBeCloseTo(56676.47, 1);
     expect(r.annuity.pretax.annualWithdrawal).toBeCloseTo(56676.47, 1);
     expect(r.rates.effectiveRetirement).toBeCloseTo(0.201103, 4);
-    // A fixed $1,000 probe on this same "other income" stack would have read 0% — completely
-    // hiding the real cost, because $1,000 never leaves the SS 0%-taxable zone.
-    const oldStyleProbe = solveGrossWithdrawal({
-      targetAfterTaxIncome: r.retirementNeed.target,
-      ssBenefit: 40000,
-      filingStatus: 'single',
-      year: 2025,
-    });
-    expect(oldStyleProbe.retirementEffectiveTaxRate).toBe(0);
   });
 
-  it('PROPERTY: the rate stays IDENTICAL as the target need drops further, as long as G stays 0', () => {
-    // This is the exact confusion reported: previously, lowering the need (e.g. an expense
-    // going away) could change the reported rate, because it changed WHERE a fixed $1,000
-    // probe landed relative to the target. Now the probe is tied to the account's own size,
-    // which does not depend on the target at all, so the rate cannot move just because the
-    // need dropped (only a change in other income or the account's own size can move it).
+  it('PROPERTY: the rate stays IDENTICAL as the target need changes (debt payments, expenses, lifestyle)', () => {
     const rates = [0, 5000, 10000, 15000].map((debtPayments) => {
       const r = compareRothVsTraditional({ ...base, debtPayments });
-      expect(r.grossUp.grossWithdrawal).toBe(0); // stays in the "other income covers it" regime
       return r.rates.effectiveRetirement;
     });
     for (const rate of rates) expect(rate).toBeCloseTo(rates[0], 10);
   });
 
-  it('the same fix applies to "Retirement years without Social Security"', () => {
+  it('the same is true for "Retirement years without Social Security"', () => {
     const withoutSS = (debtPayments) =>
       compareRothVsTraditional({ ...base, debtPayments, otherPretaxBalance: 2000000 })
         .withoutSocialSecurity;
-    // A large other-Pre-tax balance covers the no-SS need on its own -> G = 0 in both cases.
     const a = withoutSS(0);
     const b = withoutSS(5000);
-    expect(a.grossUp.grossWithdrawal).toBe(0);
-    expect(b.grossUp.grossWithdrawal).toBe(0);
-    expect(a.effectiveRateRetirement).toBeCloseTo(b.effectiveRateRetirement, 10);
+    expect(a.sideAware.effectiveRate).toBeCloseTo(b.sideAware.effectiveRate, 10);
   });
 });
 
@@ -932,33 +930,35 @@ describe('leanFromRates — the rule-of-thumb lean from the two rates', () => {
 
   it('is wired into the result', () => {
     expect(compareRothVsTraditional(baseInputs).rates.lean).toBe('pretax');
+    // Single, 2025, $30,000 gross (marginal now 12%), $2,000 saved, $1,500,000 existing Pre-tax:
+    // that balance's forced 4% withdrawal (~$456,735/yr) sets the account's bracket at 35% (see
+    // "big existing Pre-tax balances..." above), well above the 12% marginal now -> Roth.
     expect(
-      compareRothVsTraditional({ ...baseInputs, grossIncome: 60000, savings: 5000, retirementLifestyle: 2 }).rates.lean,
+      compareRothVsTraditional({ ...baseInputs, grossIncome: 30000, savings: 2000, otherPretaxBalance: 1500000 }).rates
+        .lean,
     ).toBe('roth');
   });
 });
 
-describe('rateDrivers — wired to the gross-up the rate came from', () => {
-  it('base case: nothing else is taxed first, so the withdrawal runs from 0% up to the 22% bracket', () => {
-    // G = 80,192.31, all of it this account's: the first 15,750 is under the deduction, the last dollar at 22%.
+describe('sideAware.stackDetails — the raw inputs behind each rate-walkthrough stack', () => {
+  it('base case: no Existing Accounts, so every stack before the account withdrawal is empty', () => {
     const r = compareRothVsTraditional(baseInputs);
-    expect(r.rateDrivers.hypothetical).toBe(false);
-    expect(r.rateDrivers.withdrawal).toBeCloseTo(80192.31, 1);
-    expect(r.rateDrivers.startBracket).toBe(0);
-    expect(r.rateDrivers.endBracket).toBe(0.22);
-    expect(r.rateDrivers.extraTax).toBeCloseTo(9091.31, 1);
-    expect(r.rateDrivers.extraCapitalGainsTax).toBe(0);
-    expect(r.withoutSocialSecurity.rateDrivers.withdrawal).toBeCloseTo(
-      r.withoutSocialSecurity.grossUp.grossWithdrawal,
-      6,
-    );
+    expect(r.sideAware.stackDetails.existing.pretaxWithdrawal).toBe(0);
+    expect(r.sideAware.stackDetails.existing.taxableWithdrawal).toBe(0);
+    expect(r.sideAware.stackDetails.preTaxWorld.pretaxWithdrawal).toBeCloseTo(r.sideAware.accountWithdrawal, 6);
+    expect(r.sideAware.stacks.existing.totalTax).toBe(0);
+    expect(r.sideAware.extraTaxFromAccount).toBeCloseTo(2405.62, 1);
+    expect(r.withoutSocialSecurity.sideAware.accountWithdrawal).toBeCloseTo(r.sideAware.accountWithdrawal, 6);
   });
 
-  it('other Pre-tax balances are taxed first and move the start bracket up', () => {
+  it('other Pre-tax balances show up in every stack ahead of the account withdrawal', () => {
     const r = compareRothVsTraditional({ ...baseInputs, otherPretaxBalance: 150000 });
-    expect(r.rateDrivers.otherPretaxWithdrawal).toBeCloseTo(r.otherWithdrawals.pretaxGross, 6);
-    expect(r.rateDrivers.deductionUsedBefore).toBe(15750);
-    expect(r.rateDrivers.startBracket).toBeGreaterThan(0);
+    expect(r.sideAware.stackDetails.existing.pretaxWithdrawal).toBeCloseTo(r.otherWithdrawals.pretaxGross, 6);
+    expect(r.sideAware.stackDetails.preTaxWorld.pretaxWithdrawal).toBeCloseTo(
+      r.otherWithdrawals.pretaxGross + r.sideAware.accountWithdrawal,
+      6,
+    );
+    expect(r.sideAware.stacks.existing.totalTax).toBeGreaterThan(0);
   });
 });
 
@@ -976,7 +976,9 @@ describe('Existing Accounts: taxable cost basis', () => {
   it('50% basis: only the growth and the other half are taxed (HAND CALC)', () => {
     // FV = 100,000 x 7.6122550 = 761,225.50; basis stays 50,000.
     // 4% withdrawal = 30,449.02; basis part = 4% x 50,000 = 2,000; gain = 28,449.02.
-    // Stack without Future Contributions: combined income = 28,449.02 + 20,000 = 48,449.02 (> 34,000)
+    // Stack without Future Contributions (sideAware.stacks.existing = Social Security + Existing
+    // Accounts only, the same "before the account" stack the rate walk-through's Step 1 shows):
+    //   combined income = 28,449.02 + 20,000 = 48,449.02 (> 34,000)
     //   taxable SS = min(0.85 x 40,000, 0.85 x (48,449.02 - 34,000) + 4,500)
     //              = min(34,000, 12,281.67 + 4,500) = 16,781.67
     //   ordinary taxable = 16,781.67 - 15,750 = 1,031.67 -> tax 103.17
@@ -984,8 +986,8 @@ describe('Existing Accounts: taxable cost basis', () => {
     const r = compareRothVsTraditional({ ...base, otherTaxableBasis: 0.5 });
     expect(r.otherWithdrawals.taxableGross).toBeCloseTo(30449.02, 1);
     expect(r.otherWithdrawals.taxableGains).toBeCloseTo(28449.02, 1);
-    expect(r.grossUp.baseStack.taxableSS).toBeCloseTo(16781.67, 1);
-    expect(r.grossUp.baseStack.totalTax).toBeCloseTo(103.17, 1);
+    expect(r.sideAware.stacks.existing.taxableSS).toBeCloseTo(16781.67, 1);
+    expect(r.sideAware.stacks.existing.totalTax).toBeCloseTo(103.17, 1);
   });
 
   it('omitting the basis treats the whole withdrawal as gain (backward compatible)', () => {
@@ -993,7 +995,7 @@ describe('Existing Accounts: taxable cost basis', () => {
     //   ordinary taxable = 2,731.67 -> tax 273.17; gains 2,731.67 + 30,449.02 < 48,350 -> 0%
     const r = compareRothVsTraditional(base);
     expect(r.otherWithdrawals.taxableGains).toBeCloseTo(30449.02, 1);
-    expect(r.grossUp.baseStack.totalTax).toBeCloseTo(273.17, 1);
+    expect(r.sideAware.stacks.existing.totalTax).toBeCloseTo(273.17, 1);
   });
 
   it('rejects a basis outside 0-100%', () => {
@@ -1009,13 +1011,20 @@ describe('Net Investment Income Tax flows through the comparison', () => {
     toCompareInputs({ ...DEFAULT_FORM_VALUES, grossIncome: '300000', otherPretaxBalance: '300000', otherTaxableBalance: '600000' }, 2025),
   );
 
-  it('the rate walk-through parts still add up to the extra tax, NIIT included', () => {
-    const d = r.rateDrivers;
-    expect(d.extraNiit).toBeGreaterThan(0);
-    expect(d.extraTax).toBeCloseTo(d.extraOrdinaryTax + d.extraCapitalGainsTax + d.extraNiit, 6);
-    // G = 0 here, so the rate is read from the probe
-    expect(d.hypothetical).toBe(true);
-    expect(d.extraTax).toBeCloseTo(r.grossUp.probeExtraTax, 6);
+  it('the full tax breakdown (taxBreakdown.js) on the before/after stacks still adds up to extraTaxFromAccount, NIIT included', () => {
+    // explainFullTax on sideAware.stackDetails' preTaxWorld (Existing + this account's withdrawal)
+    // and preTaxWorldBeforeAccount (Existing only) decomposes each into ordinary tax, capital-gains
+    // tax and NIIT; the DIFFERENCE in each piece must sum to exactly extraTaxFromAccount, the same
+    // number effectiveRate is built from.
+    const before = explainFullTax(r.sideAware.stackDetails.preTaxWorldBeforeAccount);
+    const after = explainFullTax(r.sideAware.stackDetails.preTaxWorld);
+    const extraNiit = after.niit - before.niit;
+    const extraOrdinaryTax = after.ordinaryTax - before.ordinaryTax;
+    const extraCapitalGainsTax = after.capitalGainsTax - before.capitalGainsTax;
+    expect(extraNiit).toBeGreaterThan(0);
+    expect(r.sideAware.extraTaxFromAccount).toBeCloseTo(extraOrdinaryTax + extraCapitalGainsTax + extraNiit, 6);
+    expect(after.totalTax).toBeCloseTo(r.sideAware.stacks.preTaxWorld.totalTax, 6);
+    expect(before.totalTax).toBeCloseTo(r.sideAware.stacks.preTaxWorldBeforeAccount.totalTax, 6);
   });
 
   it('both portfolio scenarios carry the NIIT in their total tax', () => {

@@ -118,9 +118,8 @@ describe('ResultsSummary', () => {
     const html = render();
     for (const text of [
       'Retirement income number',
-      'Marginal rate while working',
-      'Effective rate on these withdrawals',
-      'Overall effective rate',
+      'Tax saved now, after any tax on investing it',
+      'Effective rate on the account withdrawal',
       'Current possible contribution',
       'After-tax comparison',
       'A single year’s contribution',
@@ -172,7 +171,7 @@ describe('ResultsSummary', () => {
     expect(html.indexOf('id="sec2"')).toBeLessThan(html.indexOf('id="sec-tradeoff"'));
     expect(html.indexOf('id="sec-tradeoff"')).toBeLessThan(html.indexOf('id="sec3"'));
     // the rates block holds only the rates: no table
-    for (const label of ['Marginal rate while working', 'Effective rate on these withdrawals', 'How are the retirement rates calculated?']) {
+    for (const label of ['Tax saved now, after any tax on investing it', 'Effective rate on the account withdrawal', 'How are these rates calculated?']) {
       expect(sec2, label).toContain(label);
     }
     expect(sec2).not.toContain('Your tax rate now vs. later'); // the card title says it
@@ -219,20 +218,21 @@ describe('ResultsSummary', () => {
   });
 
   it('shows one short lean line under the rates, above the rates dropdown', () => {
-    // no Social Security, no other accounts: 11.3% later vs 22% now -> leans Pre-tax
+    // no Social Security, no other accounts: 6.4% later vs 22% now -> leans Pre-tax
     const html = render({ otherPretaxBalance: '0', debtPayments: '0', knowsSocialSecurity: 'yes', socialSecurityBenefit: '0' });
     const lean = html.indexOf('class="rate-lean"');
     expect(lean).toBeGreaterThan(html.indexOf('class="rate-pair"'));
-    expect(lean).toBeLessThan(html.indexOf('How are the retirement rates calculated?'));
+    expect(lean).toBeLessThan(html.indexOf('How are these rates calculated?'));
     expect(html).toContain('Tends to favor Pre-tax (Traditional)');
     // just the lean: no sentence restating the two rates, no rule-of-thumb hint
     expect(html).not.toContain('Rule of thumb');
     expect(html).not.toContain('within half a percentage point');
-    // a 2x lifestyle at $60k pushes the retirement rate above 12%: leans Roth
-    const roth = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0', retirementLifestyle: '2' });
+    // a large existing Pre-tax balance sets the account's bracket well above today's -> leans Roth
+    // (unlike the old model, the retirement lifestyle no longer affects the rates at all — see CLAUDE.md)
+    const roth = render({ grossIncome: '30000', savings: '2000', otherPretaxBalance: '1500000', knowsSocialSecurity: 'yes', socialSecurityBenefit: '0' });
     expect(roth).toContain('Tends to favor Roth');
-    // the defaults land in the Social Security phase-in: 22.2% later vs 22% now
-    expect(render()).toContain('About even');
+    // $70,000 gross, $10,000 saved, estimated Social Security: the two rates land within half a point
+    expect(render({ grossIncome: '70000', savings: '10000' })).toContain('About even');
   });
 
   it('shows the Pre-tax deduction in the retirement-number calculation, and says so for Roth', () => {
@@ -248,53 +248,70 @@ describe('ResultsSummary', () => {
     expect(rothSec1).toContain('Your savings are Roth, so they come out after income tax');
   });
 
-  it('shows capital-gains tax in the rate calculation, and explains when the withdrawal pushes gains up', () => {
-    // A large taxable balance plus existing Pre-tax money: this account's withdrawal pushes gains out of 0%.
+  it('shows capital-gains tax bracket-by-bracket in the full tax calculation, and shows the withdrawal pushing gains up', () => {
+    // A large taxable balance plus existing Pre-tax money: the Roth scenario's ordinary income
+    // (43,142) is still below the $48,350 top of the 0% gains bracket, so part of its gain is
+    // untaxed; the Pre-tax scenario's ordinary income (80,926, the account's own withdrawal
+    // included) is already past it, so the SAME gain is taxed entirely at 15% — the capital-gains
+    // push the rate walk-through's Step 3 describes, made concrete.
     const html = render({ otherTaxableBalance: '150000', otherPretaxBalance: '100000' });
-    const start = html.indexOf('How are the retirement rates calculated?');
+    const start = html.indexOf('Show the full tax calculation');
     const dropdown = html.slice(start, html.indexOf('</details>', start));
-    expect(dropdown).toContain('Capital-gains tax on taxable-account withdrawals');
-    expect(dropdown).toContain('of which extra capital-gains tax');
-    expect(dropdown).toContain('Capital gains pushed into a higher bracket.');
+    expect(dropdown).toContain('Capital-gains tax');
+    expect(dropdown).toContain('…of which capital gain, stacked on top of ordinary income');
+    expect(dropdown).toContain('0% on $5,208 ($43,142 to $48,350)'); // Roth scenario: partly sheltered
+    expect(dropdown).toContain('15% on $42,674 ($80,926 to $123,600)'); // Pre-tax scenario: all at 15%
     // ...and nothing about capital gains when there is no taxable account
     const none = render({ otherTaxableBalance: '0' });
-    expect(none).not.toContain('Capital-gains tax on taxable-account withdrawals');
+    expect(none).not.toContain('Capital-gains tax');
   });
 
   it('shows the Net Investment Income Tax when gains pass the MAGI threshold', () => {
     // High income, a large taxable balance: MAGI is over $200,000 and the withdrawal adds NIIT.
     const html = render({ grossIncome: '300000', otherPretaxBalance: '300000', otherTaxableBalance: '600000' });
-    const start = html.indexOf('How are the retirement rates calculated?');
+    const start = html.indexOf('Show the full tax calculation');
     const dropdown = html.slice(start, html.indexOf('</details>', start));
-    expect(dropdown).toContain('Net Investment Income Tax (3.8% on gains');
-    expect(dropdown).toContain('of which extra Net Investment Income Tax');
-    expect(html).toContain('The Net Investment Income Tax.');
+    expect(dropdown).toContain('NIIT: 3.8% × the lesser of gains and MAGI over $200,000');
+    expect(dropdown).toContain('Net Investment Income Tax');
+    expect(dropdown).toContain('Modified AGI (for the NIIT test)');
+    // Section 3's "Show the calculation" also notes it, since both portfolio scenarios owe it here
     expect(html).toContain('the gain also owes the 3.8% Net Investment Income Tax');
     // ...and none of it for the default (modest-income) case
     expect(render()).not.toContain('Net Investment Income Tax');
   });
 
-  it('explains that other Pre-tax accounts are taxed first and push the rate up', () => {
+  it('shows existing Pre-tax accounts as taxed income in Step 1, raising the tax on that income', () => {
     const html = render({ otherPretaxBalance: '100000' });
-    expect(html).toContain('What sets the rate on these withdrawals');
-    expect(html).toContain('Income that&rsquo;s taxed first.'.replace('&rsquo;', '’'));
-    expect(html).toContain('from your Pre-tax Existing Accounts');
+    expect(html).toContain('Step 1: income from Social Security and Existing Accounts');
+    // $100,000 grown 30y x 4% = $30,449; taxed (no standard deduction left after it and SS)
+    expect(html).toContain('Existing Accounts, Pre-tax (4% withdrawal)</span><span>$30,449</span>');
+    expect(html).toContain('Tax on that income</span><span>$3,410</span>');
     const none = render({ otherPretaxBalance: '0', otherTaxableBalance: '0', knowsSocialSecurity: 'yes', socialSecurityBenefit: '0' });
-    expect(none).toContain('Pre-tax Existing\n        Accounts would change this'.replace(/\s+/g, ' '));
+    expect(none).toContain('Existing Accounts, Pre-tax (4% withdrawal)</span><span>$0</span>');
+    expect(none).toContain('Tax on that income</span><span>$0</span>');
   });
 
-  it('keeps "How the rates fit together" inside the rates dropdown, not loose on the page', () => {
+  it('keeps "How the rates fit together" inside a rates dropdown, not loose on the page', () => {
     const html = render();
-    const start = html.indexOf('How are the retirement rates calculated?');
+    const start = html.indexOf('How are these rates calculated?');
     const dropdown = html.slice(start, html.indexOf('</details>', start));
     expect(dropdown).toContain('How the rates fit together.');
-    // exactly one copy on the whole page, and it is the one inside the dropdown
-    expect(html.split('How the rates fit together.').length - 1).toBe(1);
+    // it appears twice: the main rates card and "Retirement years without Social Security" share
+    // the same walk-through component, each in its own dropdown — never loose on the page
+    expect(html.split('How the rates fit together.').length - 1).toBe(2);
+    let from = 0;
+    for (let i = 0; i < 2; i++) {
+      const at = html.indexOf('How the rates fit together.', from);
+      expect(at).toBeGreaterThan(-1);
+      // immediately inside a details-body, itself inside an open <details>
+      expect(html.slice(Math.max(0, at - 200), at)).toContain('<div class="details-body">');
+      from = at + 1;
+    }
     // it comes before the step-by-step explanation
     expect(dropdown.indexOf('How the rates fit together.')).toBeLessThan(dropdown.indexOf('Step 1: income from Social Security and Existing Accounts'));
   });
 
-  it('highlights the effective rate on withdrawals in a paired box with the marginal rate, no explanatory lead-in', () => {
+  it('highlights the two rates in a paired box, no explanatory lead-in or verdict sentence', () => {
     const html = render();
     // the calculator stays numbers-first: no "number that matters" lead sentence, no lean verdict
     expect(html).not.toContain('The number that matters most');
@@ -303,16 +320,15 @@ describe('ResultsSummary', () => {
     expect(html).not.toContain('Pre-tax is most likely better');
     expect(html).not.toContain('Roth is most likely better');
     expect(html).toContain('class="rate-pair-item highlight"');
-    // the highlighted pair holds exactly marginal-now and effective-on-withdrawals
-    const pairEnd = html.indexOf('How are the retirement rates calculated?');
+    // the highlighted pair holds exactly tax-saved-now and effective-on-the-account-withdrawal
+    const pairEnd = html.indexOf('How are these rates calculated?');
     const pair = html.slice(html.indexOf('class="rate-pair"'), pairEnd);
-    expect(pair).toContain('Marginal rate while working');
-    expect(pair).toContain('Effective rate on these withdrawals');
-    expect(pair).not.toContain('Overall effective rate');
-    // no plain reference line outside the dropdown either — the overall rate lives ONLY in the dropdown now
+    expect(pair).toContain('Tax saved now, after any tax on investing it');
+    expect(pair).toContain('Effective rate on the account withdrawal');
+    // the old "overall effective rate" reference line is gone entirely (folded into the account's
+    // own effective rate, which now already includes every account in the stack)
+    expect(html).not.toContain('Overall effective rate');
     expect(html).not.toContain('rate-side-note');
-    expect(html).toContain('Overall effective rate (');
-    expect(html).toContain('overall effective rate</strong> is simply all the tax you owe in retirement');
   });
 
   it('shows the Social Security benefit used and the portfolio need directly below the hero number, above "How is this calculated?"', () => {
@@ -377,21 +393,24 @@ describe('ResultsSummary', () => {
 
   it('has a dropdown showing how the effective rate is calculated', () => {
     const html = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '20000', otherPretaxBalance: '0' });
-    expect(html).toContain('How are the retirement rates calculated?');
+    expect(html).toContain('How are these rates calculated?');
     expect(html).toContain('Extra tax caused by the withdrawal');
-    expect(html).toContain('The Social Security phase-in.');
-    expect(html).toContain('That is why this rate can be higher than your tax');
+    // the Social Security phase-in shows up as a real number: the account's own withdrawal makes
+    // more of the $20,000 benefit taxable ($0 -> $16,217, well under the $17,000 max at 85%)
+    expect(html).toContain('Taxable part of Social Security, with the withdrawal ($0 without it)</span><span>$16,217</span>');
   });
 
-  it('explains when no withdrawal is needed from this account', () => {
-    const html = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '90000' });
-    expect(html).toContain('no withdrawal from');
-  });
-
-  it('shows the actual probe arithmetic instead of "$0 ÷ $0" when no withdrawal is needed', () => {
-    const html = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '90000' });
-    expect(html).toContain('own natural withdrawal (4% of their projected value)');
-    expect(html).not.toContain('÷ $0)');
+  it('shows a plain "nothing to compare" message when there is nothing saved — no hypothetical probe', () => {
+    // Under sideAwareRates.js every account with savings > 0 always has its own natural withdrawal
+    // to measure, whatever else (Social Security, existing balances) covers the need — the old
+    // "no withdrawal needed, so read a hypothetical probe" case no longer exists at all; a large
+    // Social Security benefit no longer produces this message.
+    const html = render({ savings: '0' });
+    const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec-tradeoff"'));
+    expect(sec2).toContain('There is no withdrawal from Future Contributions to measure, so there is no rate to compare.');
+    expect(sec2).not.toContain('÷ $0)');
+    const bigSS = render({ knowsSocialSecurity: 'yes', socialSecurityBenefit: '90000' });
+    expect(bigSS).not.toContain('There is no withdrawal from Future Contributions to measure');
   });
 
   it('names the catch-up contribution in the limit alert for a 50+ saver over the base limit', () => {
@@ -427,42 +446,61 @@ describe('ResultsSummary', () => {
     expect(sec2).toContain('cost you the same take-home pay');
   });
 
-  it('explains what "Future Contributions" and "Existing Accounts" mean in the effective-rate dropdown', () => {
+  it('names "Future Contributions" and "Existing Accounts" throughout the three-step rate walk-through, never "this account"', () => {
     const html = render();
-    expect(html).toContain('<strong>Future Contributions</strong> are the savings you make from now until retirement');
-    expect(html).toContain('<strong>Existing Accounts</strong>');
     expect(html).toContain('Step 1: income from Social Security and Existing Accounts');
-    expect(html).toContain('Step 2: what Future Contributions have to supply');
-    expect(html).toContain('Still needed from Future Contributions, after tax');
+    expect(html).toContain(
+      'Step 2: the difference — the taxable account each scenario&#x27;s Future Contributions build',
+    );
+    expect(html).toContain("Step 3: add the Pre-tax account&#x27;s own withdrawal and re-do the tax");
     // the old "this account" wording is gone from the results
     expect(html).not.toMatch(/this account/i);
-    expect(html).not.toContain('Gap left after other sources');
-    expect(html).not.toContain('before this account');
   });
 
-  it('has the retirement-years-without-Social-Security section, using the blended rate', () => {
+  it('has the retirement-years-without-Social-Security section, using the account\'s own effective rate', () => {
     const html = render();
     expect(html).toContain('Retirement years without Social Security');
     expect(html).not.toContain('Simple view');
-    expect(html).toContain('the blended rate: the extra tax they cause, divided by the');
-    expect(html).toContain('Effective rate on the withdrawal');
-    expect(html).toContain('Bracket the last dollar falls in (for reference)');
+    expect(html).toContain('Effective rate on the account withdrawal');
+    // the defaults ($100,000, $10,000 saved) win Pre-tax without Social Security: 13.1% < 22.0%
+    expect(html).toContain('is below the tax saved now');
     expect(html).toContain('the effect of Social Security');
     // the old marginal-vs-marginal headline and the "stricter rule of thumb" remark are gone
     expect(html).not.toContain('stricter rule of thumb');
     expect(html).not.toContain('Marginal rate in retirement (bracket of the last dollar)');
   });
 
-  it('explains that a higher retirement lifestyle can favor Roth, in that section', () => {
-    // gross 60k saved 5k, 2x lifestyle: retirement bracket (22%) exceeds today\'s (12%)
-    const html = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0', retirementLifestyle: '2' });
-    expect(html).toContain('you expect to spend more in retirement than you do');
-    expect(html).toContain('That is how');
+  it('the "Retirement years without Social Security" reading note no longer keys off lifestyle', () => {
+    // Fixed as part of the migration: under sideAwareRates.js the retirement lifestyle does not
+    // change this view's rate at all (see the "retirement lifestyle factor" HAND CALC tests in
+    // compare.test.js), so the old lifestyle-specific "That is how a higher-earning future can
+    // favor Roth" copy was no longer true and was removed. The note is now the same regardless of
+    // the chosen lifestyle.
+    const withLifestyle = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0', retirementLifestyle: '2' });
+    const plain = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0' });
+    const note = (html) => html.slice(html.indexOf('<strong>Reading this:</strong> removing Social Security'));
+    expect(note(withLifestyle).slice(0, 400)).toBe(note(plain).slice(0, 400));
+    expect(withLifestyle).toContain('depends only on your Existing Accounts');
+    expect(withLifestyle).not.toContain('you expect to spend more in retirement');
   });
 
-  it('explains the forced-draw case in the simple view when other accounts already cover the need', () => {
+  it('explains a big existing Pre-tax balance setting the no-Social-Security bracket, favoring Roth', () => {
+    // grossIncome 30k, savings 2k, a $1,500,000 existing Pre-tax balance: its own forced 4% draw
+    // ($456,735/yr) sets the bracket well before this account's small withdrawal is even added,
+    // pushing the no-SS effective rate (35.0%) above today's marginal rate (12.0%) -> Roth.
+    const html = render({ grossIncome: '30000', savings: '2000', otherPretaxBalance: '1500000' });
+    const section = html.slice(html.indexOf('Retirement years without Social Security'));
+    expect(section).toContain('Existing Accounts, Pre-tax (4% withdrawal)</span><span>$456,735</span>');
+    expect(section).toContain('Roth comes out ahead');
+    expect(section).toContain('is above the tax saved now');
+  });
+
+  it('shows nothing saved to measure when Future Contributions are $0, even with a huge existing balance', () => {
     const html = render({ grossIncome: '30000', savings: '0', otherPretaxBalance: '1500000' });
-    expect(html).toContain('your Existing Accounts alone already produce more taxable');
+    const section = html.slice(html.indexOf('Retirement years without Social Security'));
+    expect(section).toContain('There is no withdrawal from Future Contributions to measure, so there is no rate to compare.');
+    expect(section).toContain('There is nothing saved to compare.');
+    expect(section).toContain('there is nothing saved to measure a rate on');
   });
 
   it('lists validation errors instead of results for bad input', () => {
@@ -616,8 +654,8 @@ describe('ScenariosPage', () => {
 
   it('shows the two rates as separate lines, and says the gap is the distance between them', () => {
     expect(html).toContain('What the rate gap is made of');
-    expect(html).toContain('Marginal rate while working');
-    expect(html).toContain('Effective rate on withdrawals in retirement');
+    expect(html).toContain('Tax saved now');
+    expect(html).toContain('Effective rate on the account withdrawal');
     expect(html).toContain('The rate gap is the vertical distance between them.');
   });
 
@@ -708,7 +746,8 @@ describe('ScenarioCompare', () => {
     expect(html).toContain('How the rates are calculated, side by side');
     expect(html).toContain('Step 1: income from Social Security and Existing Accounts');
     expect(html).toContain('Extra tax caused by the withdrawal');
-    expect(html).toContain('Bracket of its last dollar');
+    expect(html).toContain('Tax saved now, after any tax on investing it');
+    expect(html).toContain('Effective rate on the account withdrawal');
     expect(html).toContain('Reset changes');
     expect(html).toContain('Use these as my inputs');
     expect(html).toContain('Stop comparing');
@@ -805,8 +844,8 @@ describe('Comparing a change: emphasis', () => {
       <ScenarioCompare baseline={scenario()} current={scenario({ grossIncome: '130000' })} onStart={() => {}} onStop={() => {}} />,
     );
     expect(html).toMatch(/class="total-row emph-key"><th scope="row">Retirement income number/);
-    expect(html).toMatch(/class="total-row emph-rate"><th scope="row">Marginal rate while working/);
-    expect(html).toMatch(/class="total-row emph-rate"><th scope="row">Effective rate on these withdrawals/);
+    expect(html).toMatch(/class="total-row emph-rate"><th scope="row">Tax saved now, after any tax on investing it/);
+    expect(html).toMatch(/class="total-row emph-rate"><th scope="row">Effective rate on the account withdrawal/);
     expect((html.match(/emph-rate/g) ?? []).length).toBe(2);
   });
 });
@@ -836,16 +875,20 @@ describe('Existing taxable accounts: cost basis dropdown', () => {
   });
 });
 
-describe("Rate walk-through when no withdrawal is needed", () => {
-  it("shows how the extra tax on the hypothetical withdrawal is worked out", () => {
+describe("Rate walk-through with large Existing Accounts", () => {
+  it("shows how the extra tax the account's own withdrawal causes is worked out (before/after totals)", () => {
+    // Under sideAwareRates.js every account with savings > 0 measures its OWN actual withdrawal —
+    // there is no more hypothetical "hasn't been withdrawn yet" probe case (see compare.test.js's
+    // "the effective rate no longer depends on the retirement need at all"). The Step 3 arithmetic
+    // still shows the before/after totals the extra tax is derived from.
     const result = compareRothVsTraditional(
       toCompareInputs({ ...DEFAULT_FORM_VALUES, otherPretaxBalance: "400000", otherTaxableBalance: "200000" }),
     );
-    expect(result.grossUp.grossWithdrawal).toBe(0);
+    expect(result.sideAware.accountWithdrawal).toBeGreaterThan(0);
     const html = renderToStaticMarkup(<ResultsSummary result={result} />);
-    expect(html).toContain("Taxable income after the standard deduction, with that withdrawal added");
-    expect(html).toContain("Total tax, with that withdrawal added");
-    expect(html).toMatch(/Extra tax that withdrawal would cause \(\$[\d,]+ − \$[\d,]+ without it\)/);
+    expect(html).toContain("Total tax with the withdrawal");
+    expect(html).toContain("Total tax without it");
+    expect(html).toMatch(/Extra tax caused by the withdrawal \(\$[\d,]+ − \$[\d,]+\)/);
   });
 });
 
@@ -890,7 +933,6 @@ describe('Collapsible sections', () => {
     expect(titles).toEqual([
       'Retirement income number',
       'Tax rate comparison',
-      'Tax rate comparison — new calculation',
       'After-tax comparison',
       'Total portfolio tax comparison',
     ]);
@@ -901,27 +943,19 @@ describe('Collapsible sections', () => {
     expect(html).toMatch(/class="collapsible card collapsible-card open key-card" aria-labelledby="sec2"/);
   });
 
-  it('shows a duplicate, new-calculation rates block below the original and leaves the original as it was', () => {
+  it('the rates card is a single block (the "new calculation" duplicate has been merged away)', () => {
     const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
-    const orig = html.indexOf('id="sec2"');
-    const dup = html.indexOf('id="sec2b"');
-    const next = html.indexOf('id="sec-tradeoff"');
-    expect(orig).toBeGreaterThan(-1);
-    expect(dup).toBeGreaterThan(orig);
-    expect(next).toBeGreaterThan(dup);
-    const original = html.slice(orig, dup);
-    const duplicate = html.slice(dup, next);
-    // the original block keeps its labels and its own dropdown
-    expect(original).toContain('Marginal rate while working');
-    expect(original).toContain('Effective rate on these withdrawals');
-    expect(original).toContain('How are the retirement rates calculated?');
-    expect(original).not.toContain('Tax saved now');
-    // the duplicate has the new pair, its own dropdown, and the in-dollars cross-check
-    expect(duplicate).toContain('Tax saved now, after any tax on investing it');
-    expect(duplicate).toContain('Effective rate on the account withdrawals');
-    expect(duplicate).toContain('How are these rates calculated?');
-    expect(duplicate).toContain('comes out ahead by');
-    expect(duplicate).not.toMatch(/this account/i);
+    expect(html).not.toContain('id="sec2b"');
+    expect(html).not.toContain('Tax rate comparison — new calculation');
+    const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec-tradeoff"'));
+    // the merged block uses the new-methodology pair, its own dropdown, and the in-dollars cross-check
+    expect(sec2).toContain('Tax saved now, after any tax on investing it');
+    expect(sec2).toContain('Effective rate on the account withdrawal');
+    expect(sec2).toContain('How are these rates calculated?');
+    expect(sec2).toContain('comes out ahead by');
+    expect(sec2).not.toMatch(/this account/i);
+    // only one copy of the rates dropdown summary on the whole page section
+    expect(sec2.split('How are these rates calculated?').length - 1).toBe(1);
     expect(html).not.toMatch(/NaN|Infinity/);
   });
 

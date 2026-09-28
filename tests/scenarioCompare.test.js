@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
 import { alignRows, changedInputs, compareScenarios } from '../src/lib/scenarioCompare.js';
-import { effectiveRateSteps } from '../src/lib/rateSteps.js';
+import { sideAwareRateSteps } from '../src/lib/rateSteps.js';
 
 const baseInputs = {
   grossIncome: 100000,
@@ -78,13 +78,16 @@ describe('alignRows', () => {
 });
 
 describe('compareScenarios — raise gross income from $100,000 to $120,000 (2025 single, HAND CALC)', () => {
-  // Baseline (compare.test.js): need 71,101; G = 80,192.31; extra tax 9,091.31; rate 0.11337.
-  // $120,000, $10,000 Pre-tax:
-  //   taxable = 120,000 - 10,000 - 15,750 = 94,250
-  //   tax = 5,578.50 + 22% x (94,250 - 48,475 = 45,775) 10,070.50 = 15,649
-  //   FICA 7.65% x 120,000 = 9,180;  take-home = 120,000 - 15,649 - 9,180 = 95,171;  need = 85,171
-  //   gross-up, 22% bracket: 0.78 T + 20,836 = 85,171 -> T = 64,335 / 0.78 = 82,480.77
-  //   G = 98,230.77;  extra tax = G - need = 13,059.77;  rate = 13,059.77 / 98,230.77 = 0.13295
+  // Savings ($10,000) and every other input stay fixed, so the account's own 4% withdrawal W is
+  // IDENTICAL in both scenarios: FV = 10,000 x [(1.07^30 - 1) / 0.07] = 10,000 x 94.4608 = 944,608.15;
+  // W = 4% x 944,608.15 = 37,784.33. Existing Accounts and Social Security are both $0, so the
+  // effective rate on W is also identical between the two: taxable = 37,784.33 - 15,750 (2025 single
+  // standard deduction) = 22,034.33; tax = 10% x 11,925 (1,192.50) + 12% x (22,034.33 - 11,925 =
+  // 10,109.33 -> 1,213.12) = 2,405.62; effective rate = 2,405.62 / 37,784.33 = 0.06367.
+  // Only "tax saved now" (no side account here, so it's just the marginal rate on the next dollar of
+  // pay, read BEFORE the standard deduction moves) changes: at $100,000, taxable-before-brackets =
+  // 100,000 - 15,750 = 84,250, in the 22% bracket; at $120,000, 120,000 - 15,750 = 104,250, in the
+  // 24% bracket (starts at 103,350).
   const c = compareScenarios(run(baseInputs), run({ ...baseInputs, grossIncome: 120000 }));
   const row = (rows, key) => rows.find((r) => r.key === key);
 
@@ -92,54 +95,59 @@ describe('compareScenarios — raise gross income from $100,000 to $120,000 (202
     expect(c.changes).toEqual([{ label: 'Gross income', from: '$100,000', to: '$120,000' }]);
   });
 
-  it('headline: retirement number and effective rate, both sides and the change', () => {
+  it('headline: retirement number changes, the effective rate does not, tax saved now does', () => {
     const need = row(c.headline, 'need');
     expect(need.baseline.value).toBeCloseTo(71101, 6);
     expect(need.current.value).toBeCloseTo(85171, 6);
     expect(need.delta).toBeCloseTo(14070, 6);
     const eff = row(c.headline, 'effectiveRetirement');
-    expect(eff.current.value).toBeCloseTo(0.13295, 4);
-    expect(eff.delta).toBeCloseTo(0.13295 - 0.11337, 4);
+    expect(eff.baseline.value).toBeCloseTo(0.06367, 4);
+    expect(eff.current.value).toBeCloseTo(0.06367, 4);
+    expect(eff.delta).toBeCloseTo(0, 6);
+    const saved = row(c.headline, 'taxSavedNow');
+    expect(saved.baseline.value).toBeCloseTo(0.22, 10);
+    expect(saved.current.value).toBeCloseTo(0.24, 10);
     expect(row(c.headline, 'lean').current.value).toBe('Pre-tax (Traditional)');
   });
 
-  it('rate steps line up step by step, with each side\'s own arithmetic', () => {
-    const gross = row(c.rateSteps, 'grossWithdrawal');
-    expect(gross.baseline.value).toBeCloseTo(80192.31, 1);
-    expect(gross.current.value).toBeCloseTo(98230.77, 1);
+  it('rate steps: Step 2 has nothing to add (no side account), Step 3 is identical on both sides', () => {
+    expect(row(c.rateSteps, 'noSide')).toBeTruthy();
+    const w = row(c.rateSteps, 'w');
+    expect(w.baseline.value).toBeCloseTo(37784.33, 1);
+    expect(w.current.value).toBeCloseTo(37784.33, 1);
     const extra = row(c.rateSteps, 'extraTax');
-    expect(extra.current.value).toBeCloseTo(13059.77, 1);
-    expect(extra.delta).toBeCloseTo(13059.77 - 9091.31, 1);
-    expect(row(c.rateSteps, 'stillNeeded').current.detail).toBe('$85,171 − $0');
-    expect(row(c.rateSteps, 'effectiveRate').current.detail).toBe('$13,060 ÷ $98,231');
-  });
-
-  it('drivers: nothing taxed first in either, last dollar in the 22% bracket in both', () => {
-    expect(row(c.drivers, 'driverStart').delta).toBe(0);
-    expect(row(c.drivers, 'driverEnd').current.value).toBe(0.22);
+    expect(extra.baseline.value).toBeCloseTo(2405.62, 1);
+    expect(extra.current.value).toBeCloseTo(2405.62, 1);
+    expect(extra.delta).toBeCloseTo(0, 1);
+    const eff = row(c.rateSteps, 'effective');
+    expect(eff.current.detail).toBe('$2,406 ÷ $37,784');
   });
 });
 
-describe('effectiveRateSteps', () => {
-  it('uses the probe rows when no withdrawal is needed, and never shows "÷ $0"', () => {
-    // SS $90,000 alone covers the need, so G = 0 and the rate comes from the probe.
-    const r = compareRothVsTraditional({ ...baseInputs, socialSecurityBenefit: 90000 });
-    const rows = effectiveRateSteps(r);
-    const keys = rows.map((x) => x.key);
-    expect(keys).toContain('probeSize');
-    expect(keys).not.toContain('solutionTaxableSS');
-    const eff = rows.find((x) => x.key === 'effectiveRate');
-    expect(eff.detail).not.toMatch(/÷ \$0$/);
-    expect(eff.value).toBe(r.rates.effectiveRetirement);
+describe('sideAwareRateSteps', () => {
+  const stepsFor = (result) =>
+    sideAwareRateSteps({ sideAware: result.sideAware, socialSecurity: result.socialSecurity, otherWithdrawals: result.otherWithdrawals });
+
+  it('is empty when there is no account withdrawal to measure ($0 saved)', () => {
+    const r = compareRothVsTraditional({ ...baseInputs, savings: 0 });
+    expect(stepsFor(r)).toEqual([]);
   });
 
-  it('splits tax into ordinary and capital-gains rows when there is a taxable account', () => {
+  it('Step 1 shows the existing taxable account and its gains when there is one', () => {
     const r = compareRothVsTraditional({ ...baseInputs, otherTaxableBalance: 100000 });
-    const keys = effectiveRateSteps(r).map((x) => x.key);
-    expect(keys).toContain('baseCapitalGainsTax');
-    expect(keys).toContain('solutionOrdinaryTax');
-    expect(effectiveRateSteps(compareRothVsTraditional(baseInputs)).map((x) => x.key)).not.toContain(
-      'baseCapitalGainsTax',
-    );
+    const keys = stepsFor(r).map((x) => x.key);
+    expect(keys).toContain('otherTaxable');
+    expect(keys).toContain('otherGains');
+    expect(stepsFor(compareRothVsTraditional(baseInputs)).map((x) => x.key)).not.toContain('otherTaxable');
+  });
+
+  it('Step 2 shows the side-account rows only when savings exceed the IRS limit', () => {
+    const under = stepsFor(compareRothVsTraditional(baseInputs)); // $10,000 saved, well under the limit
+    expect(under.map((x) => x.key)).toContain('noSide');
+    const over = stepsFor(compareRothVsTraditional({ ...baseInputs, savings: 30000 }));
+    const overKeys = over.map((x) => x.key);
+    expect(overKeys).toContain('extraSide');
+    expect(overKeys).toContain('extraSideRate');
+    expect(overKeys).not.toContain('noSide');
   });
 });

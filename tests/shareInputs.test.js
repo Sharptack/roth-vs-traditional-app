@@ -34,7 +34,7 @@ describe('shareText', () => {
     expect(text).toContain('- Gross income: $100,000');
     expect(text).toContain('- Retirement age: 65');
     expect(text).toContain('- Retirement income number: $');
-    expect(text).toContain('- Effective rate on these withdrawals:');
+    expect(text).toContain('- Effective rate on the account withdrawal:');
     expect(text).not.toContain('Compared with a change');
   });
 
