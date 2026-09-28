@@ -187,6 +187,14 @@ export function rateDriverRows(result) {
 
 // The duplicate ("new calculation") rates block's walk-through, from result.sideAware
 // (sideAwareRates.js). Empty when there is no account withdrawal to measure.
+// Same three-step shape as effectiveRateSteps above (income from elsewhere -> the
+// difference that matters -> add in the withdrawal from Future Contributions), with the
+// taxable account each scenario's Future Contributions build (once savings exceed the IRS
+// limit) folded into Step 2, "the difference": it's what makes the two scenarios' pictures
+// differ before the account withdrawal is even added. A final, unnumbered "Putting the two
+// rates together" line assembles the two rates into the dollar comparison, mirroring how the
+// block above simply states the marginal rate (no walk-through needed) beside the effective
+// rate it does walk through.
 export function sideAwareRateSteps(result) {
   const s = result.sideAware;
   if (!s.available) return [];
@@ -206,20 +214,27 @@ export function sideAwareRateSteps(result) {
           money('nOtherGains', '…of which gains (taxed; the rest is cost basis)', o.taxableGains),
         ]
       : []),
-    money('nExistingTax', 'Tax on that income', st.existing.totalTax),
+    money('nExistingTax', 'Tax on that income', st.existing.totalTax, 'total'),
+
+    heading('nStep2', "Step 2: the difference — the taxable account each scenario's Future Contributions build"),
   ];
 
   if (hasSide) {
     rows.push(
-      heading('nStep2', 'Step 2: the taxable accounts Future Contributions build (savings above the IRS limit)'),
-      money('nRothSide', 'Roth scenario: its taxable account (4% withdrawal)', s.rothSide.withdrawal, 'sub', `${$(s.rothSide.gains)} of it gains`),
-      money('nPretaxSide', 'Pre-tax scenario: its taxable account (4% withdrawal)', s.pretaxSide.withdrawal, 'sub', `${$(s.pretaxSide.gains)} of it gains`),
-      money('nExtraSide', 'Extra taxable money the Pre-tax scenario holds (the tax its deduction saved, invested)', s.extraSide.withdrawal),
-      money('nTaxPretaxSide', "Total tax with the Pre-tax scenario's taxable account added", st.preTaxWorldBeforeAccount.totalTax),
-      money('nTaxRothSide', "Total tax with the Roth scenario's taxable account added", st.rothWorld.totalTax),
+      money('nRothSide', "Roth scenario's taxable account (4% withdrawal)", s.rothSide.withdrawal, 'sub', `${$(s.rothSide.gains)} of it gains`),
+      money('nPretaxSide', "Pre-tax scenario's taxable account (4% withdrawal)", s.pretaxSide.withdrawal, 'sub', `${$(s.pretaxSide.gains)} of it gains`),
+      money(
+        'nExtraSide',
+        'Extra taxable money the Pre-tax scenario holds (the tax its deduction saved, invested)',
+        s.extraSide.withdrawal,
+        'sub',
+        `${$(s.pretaxSide.withdrawal)} − ${$(s.rothSide.withdrawal)}`,
+      ),
+      money('nTaxRothSide', "Tax with the Roth scenario's taxable account added", st.rothWorld.totalTax),
+      money('nTaxPretaxSide', "Tax with the Pre-tax scenario's taxable account added", st.preTaxWorldBeforeAccount.totalTax),
       money(
         'nExtraSideTax',
-        'Extra tax on the extra taxable money',
+        'Extra tax on that extra money',
         s.extraSideTax,
         'sub',
         `${$(st.preTaxWorldBeforeAccount.totalTax)} − ${$(st.rothWorld.totalTax)}`,
@@ -233,10 +248,17 @@ export function sideAwareRateSteps(result) {
         kind: 'total',
       },
     );
+  } else {
+    rows.push({
+      key: 'nNoSide',
+      label:
+        "None of your Future Contributions exceed the IRS limit, so neither scenario has a taxable account here — nothing to add in this step",
+      kind: 'sub',
+    });
   }
 
   rows.push(
-    heading('nStep3', `Step ${hasSide ? 3 : 2}: add the Pre-tax account's withdrawal to that stack and re-do the tax`),
+    heading('nStep3', "Step 3: add the Pre-tax account's own withdrawal and re-do the tax"),
     money('nW', 'Pre-tax account withdrawal (4% of its projected value)', s.accountWithdrawal),
     money(
       'nTaxableSS',
@@ -263,9 +285,8 @@ export function sideAwareRateSteps(result) {
       kind: 'total',
     },
 
-    heading('nStep4', `Step ${hasSide ? 4 : 3}: put the two together`),
+    heading('nFinal', 'Putting the two rates together'),
     money('nRothW', 'Roth account withdrawal (tax-free)', s.rothAccountWithdrawal),
-    money('nMore', 'How much more the Pre-tax account delivers, before tax', s.accountWithdrawal - s.rothAccountWithdrawal),
     ...(hasSide
       ? [
           money(

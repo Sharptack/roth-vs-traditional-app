@@ -305,6 +305,16 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 
 ## Duplicate rates block: the "new calculation" (2026-09-26) — TEMPORARY, one block will be removed
 The user asked for a second, parallel rates block so the old and new calculations can be compared; eventually one goes.
+- Wording (2026-09-28): the walk-through follows the SAME three-step shape as the original block (existing-accounts
+  income -> the difference -> add in the Future Contributions withdrawal), per the user's request, instead of the
+  four-step version first built. Step 1 is unchanged. Step 2, "the difference," is now where the taxable account
+  each scenario's Future Contributions build (once savings exceed the limit) lives, since that account is what
+  makes the two scenarios' pictures differ before the account withdrawal is even added; it prints a plain "nothing
+  to add in this step" note when nothing exceeds the limit, so Step 2 is always present (unlike the old block, whose
+  step CONTENT varies with hasGains but whose step COUNT never does). Step 3, "add the Pre-tax account's own
+  withdrawal and re-do the tax," mirrors the original's Step 3. A final, unnumbered "Putting the two rates together"
+  section assembles X vs e into the dollar difference — unnumbered because the original block never walks through
+  its marginal rate either, it just states it.
 - Where: a card titled "Tax rate comparison — new calculation" (id `sec2b`, card id `ratesNew`) directly below the original
   "Tax rate comparison" (`sec2`, untouched). Numbers come from `result.sideAware` (`lib/sideAwareRates.js`, called in
   compare.js step 10c); the walk-through rows are `sideAwareRateSteps` in `rateSteps.js`; the header headline is
@@ -329,6 +339,20 @@ The user asked for a second, parallel rates block so the old and new calculation
 - NOT done yet (deliberately): the "comes out ahead" verdict, ScenarioCompare, the Visualization page and ARTICLE.md still use the old
   numbers. When one block is chosen: switch the verdict/charts/compare/article to it and delete the other (and `sideAware` or the old
   `rates`). The known limitation "effective rate is measured on the gap-filling withdrawal" applies only to the old block.
+
+## Full tax calculation dropdown (2026-09-28)
+Nested inside the new block's "How are these rates calculated?": "Show the full tax calculation," a bracket-by-
+bracket breakdown for each scenario's FINAL stack (`sideAware.stackDetails.rothWorld` / `.preTaxWorld` — Social
+Security + Existing Accounts + that scenario's taxable side account + (Pre-tax only) the account's own withdrawal).
+New pure module `lib/taxBreakdown.js`, `explainFullTax`: same bracket tables and stacking order as
+`retirementTaxStack.js`'s `calculateRetirementTax` (which it does not replace or duplicate logic from — it reads
+the same three data files directly and decomposes into rows), so the two are tested to always agree on every
+subtotal (ordinary tax, capital-gains tax, NIIT, total), not just the total. Shows: SS benefit and its taxable part,
+AGI, standard deduction, ordinary taxable income with each bracket's slice and tax, the taxable-account withdrawal
+split into basis/gain with each capital-gains bracket's slice and tax, MAGI and the NIIT calc. `sideAwareRates.js`
+now also returns `stackDetails` (the four stacks' raw inputs, parallel to `stacks`) so the UI never has to
+reconstruct them. Hand-verified tests (3 cases: ordinary-only spanning 3 brackets, gains split across 0%/15%,
+SS phase-in + NIIT together) plus a 200+-input grid asserting agreement with `calculateRetirementTax` to the cent.
 
 ## Catch-up contributions (2026-09-23)
 `data/contributionLimits.js` entries changed shape from a plain number to `{ base, catchUp50,
@@ -487,6 +511,16 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-28 (b) — "Show the full tax calculation" nested dropdown (see its section): every ordinary and capital-
+  gains bracket, NIIT and the Social Security math, for each scenario's full stack. New `lib/taxBreakdown.js`
+  (`explainFullTax`) and `sideAware.stackDetails`. The user is leaning toward adopting the new block as canonical;
+  not yet done — see the "NOT done yet" list in the duplicate-block section (verdict, ScenarioCompare, Visualization,
+  ARTICLE.md, and the "Retirement years without Social Security" dropdown all still use the old rates only). 455 tests.
+- 2026-09-28 — Reworded the new-calculation block's walk-through from 4 steps to the SAME 3-step shape as the
+  original (existing-accounts income -> the difference -> add the withdrawal), at the user's request: the taxable-
+  account tax now lives inside Step 2 ("the difference"), which is always shown (a plain note when nothing exceeds
+  the IRS limit) rather than appearing/disappearing. No calculation changed, only the walk-through's structure and
+  wording. 449 tests.
 - 2026-09-26 (d) — Duplicate "Tax rate comparison — new calculation" block (see its section): rates that include each scenario's taxable
   account and are measured on the account's actual 4% withdrawal, with a walk-through; the original block is unchanged. New
   `lib/sideAwareRates.js` (two hand-verified tests, the to-the-cent identity with the exact dollar comparison over 200+ inputs, the

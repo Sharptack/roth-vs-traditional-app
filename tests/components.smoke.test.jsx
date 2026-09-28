@@ -925,15 +925,24 @@ describe('Collapsible sections', () => {
     expect(html).not.toMatch(/NaN|Infinity/);
   });
 
-  it('the new block shows the taxable-account step only when savings exceed the IRS limit', () => {
+  it('the new block always shows Step 2, with content only when savings exceed the IRS limit', () => {
+    const step2Heading = "Step 2: the difference — the taxable account each scenario's Future Contributions build".replace(
+      "'",
+      '&#x27;',
+    );
     const under = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
-    expect(under).not.toContain('the taxable accounts Future Contributions build');
+    expect(under).toContain(step2Heading);
+    expect(under).toContain('nothing to add in this step');
+    expect(under).not.toContain('Extra taxable money the Pre-tax scenario holds');
+    expect(under).not.toContain('Tax rate on the extra taxable money');
     const over = renderToStaticMarkup(
       <ResultsSummary result={compareRothVsTraditional(toCompareInputs({ ...DEFAULT_FORM_VALUES, grossIncome: '500000', savings: '50000', otherPretaxBalance: '0' }, 2026))} />,
     );
-    expect(over).toContain('Step 2: the taxable accounts Future Contributions build');
+    expect(over).toContain(step2Heading);
     expect(over).toContain('Extra taxable money the Pre-tax scenario holds');
     expect(over).toContain('Tax rate on the extra taxable money');
+    expect(over).toContain("Step 3: add the Pre-tax account's own withdrawal and re-do the tax".replace("'", '&#x27;'));
+    expect(over).toContain('Putting the two rates together');
     expect(over).not.toMatch(/NaN|Infinity/);
   });
 

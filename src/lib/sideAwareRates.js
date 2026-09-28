@@ -45,17 +45,21 @@ export function calculateSideAwareRates({
   const W = pretaxAccountWithdrawal;
   if (!(W > 0)) return { available: false };
 
-  const stack = (accountPretax, side) => {
+  // The raw inputs behind each stack, kept alongside the totals so a "show the full tax
+  // calculation" view can re-run them through explainFullTax (taxBreakdown.js) for a
+  // bracket-by-bracket breakdown, without duplicating the stacking logic here.
+  const stackInputs = (accountPretax, side) => {
     const taxable = other.taxableGross + side.withdrawal;
-    return calculateRetirementTax({
+    return {
       pretaxWithdrawal: other.pretaxGross + accountPretax,
       taxableWithdrawal: taxable,
       taxableGainShare: taxable > 0 ? (other.taxableGains + side.gains) / taxable : 1,
       ssBenefit,
       filingStatus,
       year,
-    });
+    };
   };
+  const stack = (accountPretax, side) => calculateRetirementTax(stackInputs(accountPretax, side));
 
   const extraSide = {
     withdrawal: Math.max(0, pretaxSide.withdrawal - rothSide.withdrawal),
@@ -68,6 +72,13 @@ export function calculateSideAwareRates({
     rothWorld: stack(0, rothSide), // + the Roth scenario's taxable account
     preTaxWorldBeforeAccount: stack(0, pretaxSide), // + the Pre-tax scenario's taxable account
     preTaxWorld: stack(W, pretaxSide), // + the Pre-tax account's own withdrawal
+  };
+  // Same four keys, but the raw inputs each stack was built from (see stackInputs above).
+  const stackDetails = {
+    existing: stackInputs(0, NO_SIDE),
+    rothWorld: stackInputs(0, rothSide),
+    preTaxWorldBeforeAccount: stackInputs(0, pretaxSide),
+    preTaxWorld: stackInputs(W, pretaxSide),
   };
 
   const extraSideTax = stacks.preTaxWorldBeforeAccount.totalTax - stacks.rothWorld.totalTax;
@@ -93,5 +104,6 @@ export function calculateSideAwareRates({
     // Pre-tax minus Roth, in after-tax income per year of retirement (negative = Roth ahead).
     dollarDifference: gap * W,
     stacks,
+    stackDetails,
   };
 }

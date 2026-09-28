@@ -94,6 +94,7 @@ describe('calculateSideAwareRates', () => {
 
 // ---- wired into compare.js: result.sideAware ----
 import { compareRothVsTraditional } from '../src/lib/compare.js';
+import { explainFullTax } from '../src/lib/taxBreakdown.js';
 
 const scenario = {
   filingStatus: 'single',
@@ -176,5 +177,16 @@ describe('result.sideAware (in compare.js)', () => {
   it('is { available: false } when nothing is being saved', () => {
     const r = compareRothVsTraditional({ ...scenario, grossIncome: 100000, savings: 0 });
     expect(r.sideAware.available).toBe(false);
+  });
+});
+
+describe('result.sideAware.stackDetails (raw inputs, for a full tax breakdown view)', () => {
+  it('feeding stackDetails.preTaxWorld / rothWorld into explainFullTax reproduces the stacks totals exactly', () => {
+    const r = compareRothVsTraditional({ ...scenario, grossIncome: 500000, savings: 50000 });
+    const s = r.sideAware;
+    for (const key of ['existing', 'rothWorld', 'preTaxWorldBeforeAccount', 'preTaxWorld']) {
+      const full = explainFullTax(s.stackDetails[key]);
+      expect(full.totalTax).toBeCloseTo(s.stacks[key].totalTax, 6);
+    }
   });
 });

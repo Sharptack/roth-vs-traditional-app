@@ -3,6 +3,7 @@ import { resultHeadlines } from '../lib/sectionSummaries.js';
 import Collapsible, { toggleId } from './Collapsible.jsx';
 import { formatCurrency, formatPercent, formatValue } from '../lib/format.js';
 import { effectiveRateSteps, sideAwareRateSteps } from '../lib/rateSteps.js';
+import { explainFullTax } from '../lib/taxBreakdown.js';
 
 const $ = (n) => formatCurrency(n);
 const minus = (n) => `−${formatCurrency(n)}`;
@@ -755,6 +756,81 @@ function TaxRates({ result }) {
 // Same question, worked out with the taxable account each scenario builds from its Future
 // Contributions in the stack (lib/sideAwareRates.js). Temporary: one of the two blocks will go.
 
+// Every ordinary and capital-gains bracket this stack touches, plus the Social Security
+// and NIIT math behind it — the full "how the IRS actually gets to that number" view.
+function BracketRows({ rows, unit }) {
+  return rows.map((r) => (
+    <Row
+      key={`${unit}-${r.from}`}
+      label={`${formatPercent(r.rate, 0)} on ${$(r.amount)} (${$(r.from)} to ${r.to === Infinity ? '∞' : $(r.to)})`}
+      value={$(r.tax)}
+      kind="sub"
+    />
+  ));
+}
+
+function FullTaxCalculation({ title, d }) {
+  return (
+    <div className="full-tax-scenario">
+      <p className="subhead">{title}</p>
+      <div className="calc">
+        <Row label="Social Security benefit" value={$(d.ssBenefit)} kind="sub" />
+        <Row label="Taxable part of Social Security" value={$(d.taxableSS)} kind="sub" />
+        <Row label="Pre-tax withdrawals" value={$(d.pretaxWithdrawal)} kind="sub" />
+        <Row label="Adjusted gross income (AGI)" value={$(d.grossOrdinaryIncome + d.capitalGains)} kind="sub" />
+        <Row label="Standard deduction" value={minus(d.standardDeduction)} kind="sub" />
+        <Row label="Ordinary taxable income" value={$(d.ordinaryTaxableIncome)} kind="total" />
+        {d.ordinaryRows.length > 0 ? (
+          <BracketRows rows={d.ordinaryRows} unit="ord" />
+        ) : (
+          <Row label="Fully sheltered by the standard deduction" value="$0" kind="sub" />
+        )}
+        <Row label="Income tax" value={$(d.ordinaryTax)} kind="total" />
+
+        {d.taxableWithdrawal > 0 && (
+          <>
+            <Row label="Taxable-account withdrawal" value={$(d.taxableWithdrawal)} kind="sub" />
+            <Row label="…of which cost basis (tax-free, returned)" value={$(d.taxableBasis)} kind="sub" />
+            <Row label="…of which capital gain, stacked on top of ordinary income" value={$(d.capitalGains)} kind="sub" />
+            {d.gainsRows.length > 0 ? (
+              <BracketRows rows={d.gainsRows} unit="cg" />
+            ) : (
+              <Row label="Fully sheltered by unused standard deduction" value="$0" kind="sub" />
+            )}
+            <Row label="Capital-gains tax" value={$(d.capitalGainsTax)} kind="total" />
+            <Row label="Modified AGI (for the NIIT test)" value={$(d.magi)} kind="sub" />
+            <Row
+              label={`NIIT: ${formatPercent(d.niitRate, 1)} × the lesser of gains and MAGI over ${$(d.niitThreshold)}`}
+              value={$(d.niitBase)}
+              kind="sub"
+            />
+            <Row label="Net Investment Income Tax" value={$(d.niit)} kind="total" />
+          </>
+        )}
+        <Row label="Total tax" value={$(d.totalTax)} kind="total" />
+      </div>
+    </div>
+  );
+}
+
+function FullTaxBreakdown({ result }) {
+  const st = result.sideAware.stackDetails;
+  return (
+    <details className="details">
+      <summary>Show the full tax calculation</summary>
+      <div className="details-body full-tax-breakdown">
+        <p className="hint">
+          Every bracket, for each scenario&rsquo;s full picture: Social Security, Existing
+          Accounts, the taxable account Future Contributions build, and (Pre-tax only) the
+          account&rsquo;s own withdrawal.
+        </p>
+        <FullTaxCalculation title="Roth scenario" d={explainFullTax(st.rothWorld)} />
+        <FullTaxCalculation title="Pre-tax scenario" d={explainFullTax(st.preTaxWorld)} />
+      </div>
+    </details>
+  );
+}
+
 function SideAwareRateMath({ result }) {
   const s = result.sideAware;
   const hasSide = s.extraSide.withdrawal > 0.5;
@@ -763,21 +839,23 @@ function SideAwareRateMath({ result }) {
       <summary>How are these rates calculated?</summary>
       <div className="details-body">
         <p className="note">
-          <strong>What is different from the block above.</strong> (1) The taxable account each scenario
-          builds from Future Contributions is in the stack. Capital gains sit on top of ordinary income, so a
-          bigger taxable account loses the cheap 0% bracket to the Pre-tax withdrawal, makes more Social
-          Security taxable and can add the 3.8% investment tax. (2) The rate is measured on the withdrawal the
-          Pre-tax account actually produces (4% of its projected value), not on the larger withdrawal needed to
-          reach the retirement income number. (3) When savings exceed the IRS limit, the tax the Pre-tax
-          deduction saves is invested in a taxable account, so the comparison is the tax saved now{' '}
-          <em>after the tax on investing it</em> against the tax paid later on the account withdrawal.
-          {!hasSide && ' Nothing here exceeds the limit, so the first rate is simply your marginal rate.'}
+          <strong>The same three steps as the block above, with one difference folded in.</strong> Step 2 is
+          now where the two scenarios' pictures start to differ: once savings exceed the IRS limit, the tax a
+          Pre-tax contribution saves gets invested in a taxable account instead, and the Roth and Pre-tax
+          scenarios end up holding different amounts there. Those gains sit on top of ordinary income, so a
+          bigger taxable account can lose the cheap 0% bracket to Step 3's withdrawal, make more Social
+          Security taxable, or add the 3.8% investment tax &mdash; Step 2 works out the tax rate on that
+          difference. Step 3 then measures the rate on the withdrawal the Pre-tax account actually produces
+          (4% of its projected value), not the larger, need-based withdrawal used above. The rates are put
+          together at the end: the tax saved now, after any tax on investing it, against the effective rate
+          on the account withdrawal.
         </p>
         <div className="calc">
           {sideAwareRateSteps(result).map((row) => (
             <StepRow key={row.key} row={row} />
           ))}
         </div>
+        <FullTaxBreakdown result={result} />
       </div>
     </details>
   );

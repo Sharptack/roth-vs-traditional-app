@@ -1527,3 +1527,13 @@ th.win .th-sub {
   border-top: 2px dashed var(--accent);
   flex: 0 0 auto;
 }
+
+.full-tax-breakdown .full-tax-scenario + .full-tax-scenario {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.full-tax-breakdown .subhead {
+  margin: 0 0 8px;
+}
