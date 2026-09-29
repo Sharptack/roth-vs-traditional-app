@@ -37,6 +37,15 @@ is **also the public "How this works" page** — see "Article page" below.
   - **Two tiers:** the current Roth calculator stays open with no login; each calculator gets a simplified free
     version and, later, a signed-in version that saves client data. Both tiers share `src/lib` and the household
     shape (a simpler version fills unasked inputs with defaults); the free tier stores nothing on a server.
+  - **App structure** (2026-09-29): a homepage with the shared inputs and a tile per calculator (headline number);
+    each calculator on its own page with the current Roth layout (its own inputs, then the shared inputs, in the
+    left column; report cards on the right), linking back home. Calculator-only inputs live in the household
+    object under the calculator's name. The shell is built in phase 2 with the tax calculator.
+  - **Tax engine income grouping** (2026-09-29): by tax treatment, not source — W-2 and 1099 per person;
+    `ordinaryIncome` (Pre-tax withdrawals, Roth conversions, pensions: ordinary rates, no FICA, not NIIT);
+    `investmentOrdinaryIncome` (interest, non-qualified dividends, short-term gains: ordinary rates + NIIT);
+    `preferentialIncome` (long-term gains, qualified dividends); `socialSecurity`.
+  - Open questions answered 2026-09-29 are ticked in the plan doc (remove `result.old` first, in phase 1).
 - **Exposure check:** the GitHub repo is public and the Netlify site is open to anyone with the link, and
   ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
   proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
