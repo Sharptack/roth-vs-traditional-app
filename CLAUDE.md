@@ -27,6 +27,16 @@ is **also the public "How this works" page** — see "Article page" below.
     numbers can feed comparisons, summaries and an aggregate page.
   - Don't build the multi-calculator shell (routing, shared input store, aggregate page) until a second
     calculator exists; note ideas here instead.
+- **Roadmap** (set by the user 2026-09-29): the implementation plan lives in a Claude doc,
+  https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45 (household model -> single-year tax engine `calculateYearTax` +
+  tax calculator page -> RMDs -> year-by-year projection -> projection page -> lifetime Roth vs. Pre-tax -> withdrawal
+  strategies). The Roth calculator is NOT rebuilt; it moves onto the shared tax engine. Two decisions recorded there:
+  - **Inflation:** everything stays in today's dollars (real return, brackets/limits fixed because the law indexes
+    them), but thresholds written as fixed dollar amounts (Social Security taxability, NIIT, Additional Medicare,
+    the senior deduction if modeled) shrink each year at an inflation input, via `thresholdScale` in the engine.
+  - **Two tiers:** the current Roth calculator stays open with no login; each calculator gets a simplified free
+    version and, later, a signed-in version that saves client data. Both tiers share `src/lib` and the household
+    shape (a simpler version fills unasked inputs with defaults); the free tier stores nothing on a server.
 - **Exposure check:** the GitHub repo is public and the Netlify site is open to anyone with the link, and
   ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
   proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
@@ -699,6 +709,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-29 (d) — No code change. Recorded the roadmap (plan doc link), the inflation-on-fixed-thresholds
+  decision and the free / signed-in two-tier direction under "Audience and direction".
 - 2026-09-29 (c) — New "Splitting your contribution" card: a Roth/Pre-tax blend explorer (see its own
   section above for the full detail) — a slider over 101 precomputed points, a "Jump to the best mix"
   button, and a chart of after-tax income vs. Roth share, with a note explaining whether blending finds
