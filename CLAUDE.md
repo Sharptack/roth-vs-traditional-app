@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (428 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (455 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -408,6 +408,58 @@ everything to the new calculation." This section describes the result, now the O
   and re-do the tax. A final, unnumbered "Putting the two rates together" section assembles X vs e into the
   dollar difference.
 
+## `result.old` — TEMPORARY duplicate of the pre-migration calculation (added 2026-09-29)
+The user asked to bring the old (pre-2026-09-28) need-based calculation back, restored from git history
+(commit `92b16f0`, the commit right before the migration — see "The rates calculation" above), so the two
+methodologies can be compared side by side again while they test some scenarios. **This is temporary and
+will be removed** — the user's own words: "We'll remove it again, but I am interested in testing some
+things." Nothing above this section changed; this is a pure addition.
+- `compare.js`: a clearly-marked block near the end of `compareRothVsTraditional` (search
+  `TEMPORARY (2026-09-29)`) recomputes the old `grossUp` (via restored `lib/incomeNeed.js`), `rateDrivers`,
+  old-style `rates` (`effectiveRetirement`/`overallEffectiveRetirement`/`lean` from the grossUp, not
+  sideAware), old `annuity`/`lumpSum`/`comparison` (old side-account tax: stacked AFTER the account's own
+  withdrawal, via a restored `oldSideTaxRate`/`oldSideFor` using `calculateRetirementTax` directly — the
+  opposite stacking order from `sideAwareRates.js`, which is the #1 source of numeric disagreement between
+  the two), and old `withoutSocialSecurity` (old `grossUp`/`rateDrivers`/`marginalRateRetirement` +
+  `afterTaxWithdrawalAtMarginal`, reference-only, from the restored `getMarginalRate`). All of it is nested
+  under one new field, `result.old`, so it can never collide with the current top-level fields (which are
+  untouched and still power everything already built, including "Your portfolio at retirement").
+  `rothSideRaw`/`pretaxSideRaw`/`lumpSum.X.side.futureValue` (already computed for the current methodology)
+  are reused as-is where the underlying dollar amounts don't depend on which methodology taxes them.
+- `lib/incomeNeed.js` and `tests/incomeNeed.test.js`: restored verbatim (`git show 92b16f0:<path>`).
+- `lib/rateSteps.js`: `effectiveRateSteps` and `rateDriverRows` restored (search `TEMPORARY (2026-09-29)` at
+  the bottom of the file), adapted to read `result.old.{grossUp,rateDrivers,retirementOverall,rates}` instead
+  of the top level (shared fields — `otherWithdrawals`, `socialSecurity`, `retirementNeed`,
+  `current.standardDeduction` — are unchanged and still read from the top level, since they don't depend on
+  which rate methodology is used).
+- `ResultsSummary.jsx`: a whole new, clearly-marked section (search `TEMPORARY (2026-09-29)`) with
+  `ExtraTaxSplitOld`, `RateDriversOld`, `EffectiveRateMathOld`, `YearsWithoutSocialSecurityOld` (+its verdict
+  helper), and `TaxRatesOld` — all restored old copy, reading `result.old.*`. One new `RESULT_CARDS` entry,
+  `{ id: 'ratesOld', headingId: 'sec2-old', title: 'Tax rate comparison — old calculation' }`, sits directly
+  after the current "Tax rate comparison" card (`sec2`) and before "After-tax comparison" — including its OWN
+  "Retirement years without Social Security (old calculation)" dropdown (nested inside it, not added to the
+  current `TradeOff` card, so all old-methodology UI is contained in one card for easy removal). Its own
+  `<p className="hint">` labels it "Temporary, for comparison." `sectionSummaries.js` gained a matching
+  `ratesOld` headline key.
+- Sanity-checked: at the defaults, `result.old.grossUp.grossWithdrawal` and `.rates.effectiveRetirement` match
+  the exact pre-migration values to the decimal (verified against numbers hand-derived before 2026-09-28), and
+  the full test suite (455 tests) plus the existing "no NaN/Infinity anywhere" smoke test (unscoped — covers
+  the whole page, old card included) pass with no changes to any already-passing assertion about the CURRENT
+  methodology's numbers.
+- Test changes were adjustments only, not new coverage of the old card's own content — a few existing smoke
+  tests that assert something is absent from "the page" now use a new `withoutOldRatesCard` helper in
+  `components.smoke.test.jsx` (cuts the `sec2-old` `<section>` out of the rendered HTML) so they keep testing
+  the CURRENT methodology specifically, unaffected by the old card legitimately reusing old phrasing nearby.
+- **Removal checklist**, when the comparison is done: delete `lib/incomeNeed.js`, `tests/incomeNeed.test.js`;
+  in `compare.js`, delete the block marked `TEMPORARY (2026-09-29)` (down to `const rothTax = ...`), its two
+  extra imports, and `old,` from the return object; in `rateSteps.js`, delete everything from the
+  `TEMPORARY (2026-09-29)` marker to the end of the file; in `ResultsSummary.jsx`, delete the whole marked
+  section (`ExtraTaxSplitOld` through `TaxRatesOld`) and the `ratesOld` `RESULT_CARDS` entry; in
+  `sectionSummaries.js`, delete the `ratesOld` headline key; in `components.smoke.test.jsx`, delete
+  `withoutOldRatesCard` and revert its three call sites to the plain `render()`/`html` they replaced (and drop
+  the "shows each results card..." title and `sectionSummaries.test.js`'s `old`/`ratesOld` additions). Re-run
+  the full suite after.
+
 ## Full tax calculation dropdown (2026-09-28)
 Nested inside "How are these rates calculated?": "Show the full tax calculation," a bracket-by-bracket
 breakdown for each scenario's FINAL stack (`sideAware.stackDetails.rothWorld` / `.preTaxWorld` — Social
@@ -573,6 +625,11 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-29 — TEMPORARY: restored the pre-2026-09-28 need-based rate calculation from git history
+  (commit `92b16f0`) alongside the current one, at the user's request, so they can compare the two while
+  testing some scenarios (see `result.old` above for the full detail and the removal checklist). New "Tax
+  rate comparison — old calculation" card between the current rates card and the after-tax comparison. Pure
+  restoration/addition — nothing about the current methodology changed. 455 tests.
 - 2026-09-28 (d) — New "Your portfolio at retirement" card between the retirement number and the tax rate
   comparison (see its own section above): contribution difference, Existing Accounts and Future Contributions
   each grown and split by account type, and the total, ending with a hand-off line into the rate comparison's

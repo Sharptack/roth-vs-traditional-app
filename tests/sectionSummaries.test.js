@@ -79,6 +79,8 @@ describe('resultHeadlines', () => {
       roth: { totalTaxPaid: 8000, totalValue: 940608.15 },
       pretax: { totalTaxPaid: 11250.6, totalValue: 1147211.98 },
     },
+    // TEMPORARY (2026-09-29): result.old, for the duplicate "old calculation" card's headline.
+    old: { rates: { marginalNow: 0.22, effectiveRetirement: 0.2938, lean: 'pretax' } },
   };
 
   it('formats each card headline', () => {
@@ -86,6 +88,7 @@ describe('resultHeadlines', () => {
       need: '$65,380 a year after tax',
       buildup: '$940,608 Roth vs. $1,147,212 Pre-tax at retirement',
       rates: '22.0% now vs. 12.3% in retirement · tends to favor Pre-tax',
+      ratesOld: '22.0% now vs. 29.4% in retirement · tends to favor Pre-tax',
       tradeoff: 'Pre-tax ahead by $1,234 a year after tax',
       portfolio: 'Tax a year: All-Roth $8,000 vs. All-Pre-tax $11,251',
     });

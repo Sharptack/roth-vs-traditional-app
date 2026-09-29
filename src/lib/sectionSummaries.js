@@ -100,6 +100,10 @@ export function resultHeadlines(result) {
     need: `${formatCurrency(retirementNeed.target)} a year after tax`,
     buildup: `${formatCurrency(portfolio.roth.totalValue)} Roth vs. ${formatCurrency(portfolio.pretax.totalValue)} Pre-tax at retirement`,
     rates: `${formatPercent(rates.marginalNow)} now vs. ${formatPercent(rates.effectiveRetirement)} in retirement · ${LEAN_SHORT[rates.lean]}`,
+    // TEMPORARY (2026-09-29): see result.old and CLAUDE.md's removal checklist.
+    ratesOld: result.old
+      ? `${formatPercent(result.old.rates.marginalNow)} now vs. ${formatPercent(result.old.rates.effectiveRetirement)} in retirement · ${LEAN_SHORT[result.old.rates.lean]}`
+      : '',
     tradeoff:
       comparison.winner === 'even'
         ? 'About even'

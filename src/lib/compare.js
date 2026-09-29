@@ -22,11 +22,17 @@
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
-import { calculateTaxFromGross } from './taxCalculations.js';
+import { calculateTaxFromGross, getMarginalRate } from './taxCalculations.js';
 import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
 import { calculateSideAwareRates } from './sideAwareRates.js';
+// TEMPORARY (2026-09-29): the pre-2026-09-28 need-based rate calculation, restored from git
+// history (commit 92b16f0) alongside the current sideAware-based one so the user can compare
+// them side by side. Everything it touches lives under `result.old` — see its section in
+// CLAUDE.md for the removal checklist when the comparison is done.
+import { explainWithdrawalRate, solveGrossWithdrawal } from './incomeNeed.js';
+import { calculateRetirementTax } from './retirementTaxStack.js';
 import { checkContributionLimit, splitAtContributionLimit } from './contributionLimits.js';
 import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
 import {
@@ -463,6 +469,184 @@ export function compareRothVsTraditional(inputs) {
     },
   };
 
+  // ==================================================================
+  // TEMPORARY (2026-09-29): the pre-2026-09-28 need-based rate calculation, restored from
+  // git history (commit 92b16f0) so it can run side by side with the sideAware-based one
+  // above for comparison. Everything below feeds `result.old` only — nothing above this
+  // point was changed, and nothing else in the result reads from this block. See CLAUDE.md's
+  // "result.old (TEMPORARY duplicate, 2026-09-29)" section for what to delete when done.
+  const oldGrossUp = solveGrossWithdrawal({
+    targetAfterTaxIncome,
+    ssBenefit,
+    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
+    otherRothWithdrawal: otherWithdrawals.roth,
+    otherTaxableWithdrawal: otherWithdrawals.taxableGross,
+    otherTaxableGainShare: existingGainShare,
+    filingStatus,
+    year,
+    probeSize: accountPretaxAnnualWithdrawal,
+  });
+  const oldEffectiveRateRetirement = oldGrossUp.retirementEffectiveTaxRate;
+  const oldRateDrivers = explainWithdrawalRate(oldGrossUp, {
+    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
+    filingStatus,
+    year,
+  });
+  const oldRetirementGrossIncome =
+    ssBenefit +
+    otherWithdrawals.pretaxGross +
+    otherWithdrawals.roth +
+    otherWithdrawals.taxableGross +
+    oldGrossUp.grossWithdrawal;
+  const oldOverallEffectiveRateRetirement =
+    oldRetirementGrossIncome > 0 ? oldGrossUp.solutionStack.totalTax / oldRetirementGrossIncome : 0;
+
+  // The old, pre-migration way of taxing the taxable side account: stacked on Existing
+  // Accounts, Social Security, AND (Pre-tax scenario only) this account's own withdrawal —
+  // unlike sideAwareRates.js, which stacks the side account BEFORE the account. This is the
+  // main source of numeric disagreement between the old and new side-account tax rates.
+  const oldSideTaxRate = (withdrawal, gains, accountPretaxWithdrawal, ss) => {
+    if (!(withdrawal > 0)) return 0;
+    const stack = (extra, extraGains) => {
+      const taxable = otherWithdrawals.taxableGross + extra;
+      return calculateRetirementTax({
+        pretaxWithdrawal: otherWithdrawals.pretaxGross + accountPretaxWithdrawal,
+        taxableWithdrawal: taxable,
+        taxableGainShare: taxable > 0 ? (otherWithdrawals.taxableGains + extraGains) / taxable : 1,
+        ssBenefit: ss,
+        filingStatus,
+        year,
+      }).totalTax;
+    };
+    return (stack(withdrawal, gains) - stack(0, 0)) / withdrawal;
+  };
+  const oldSideFor = (scenario, raw, ss) => {
+    const accountDraw = scenario === 'pretax' ? accountPretaxAnnualWithdrawal : 0;
+    const taxRate = oldSideTaxRate(raw.annualWithdrawal, raw.gains, accountDraw, ss);
+    return { ...raw, taxRate, afterTaxWithdrawal: raw.annualWithdrawal * (1 - taxRate) };
+  };
+
+  const oldRothSide = oldSideFor('roth', rothSideRaw, ssBenefit);
+  const oldPretaxSide = oldSideFor('pretax', pretaxSideRaw, ssBenefit);
+  const oldAnnuity = {
+    roth: {
+      futureValue: annuityRothFV,
+      annualWithdrawal: accountRothAnnualWithdrawal,
+      afterTaxWithdrawal: accountRothAnnualWithdrawal,
+      side: oldRothSide,
+      totalFutureValue: annuityRothFV + oldRothSide.futureValue,
+      totalAfterTaxIncome: accountRothAnnualWithdrawal + oldRothSide.afterTaxWithdrawal,
+    },
+    pretax: {
+      futureValue: annuityPretaxFV,
+      annualWithdrawal: accountPretaxAnnualWithdrawal,
+      afterTaxWithdrawal: accountPretaxAnnualWithdrawal * (1 - oldEffectiveRateRetirement),
+      side: oldPretaxSide,
+      totalFutureValue: annuityPretaxFV + oldPretaxSide.futureValue,
+      totalAfterTaxIncome:
+        accountPretaxAnnualWithdrawal * (1 - oldEffectiveRateRetirement) + oldPretaxSide.afterTaxWithdrawal,
+    },
+  };
+
+  // Reuses the base/side future values the current lumpSum already computed (identical
+  // either way — only the tax rate applied to them differs between old and new).
+  const oldLumpSum = {
+    roth: { futureValue: lumpSum.roth.futureValue, afterTaxValue: lumpSum.roth.futureValue },
+    pretax: {
+      futureValueGross: lumpSum.pretax.futureValueGross,
+      afterTaxValue: lumpSum.pretax.futureValueGross * (1 - oldEffectiveRateRetirement),
+    },
+  };
+  oldLumpSum.roth.side = {
+    futureValue: lumpSum.roth.side.futureValue,
+    afterTaxValue: lumpSum.roth.side.futureValue * (1 - oldRothSide.taxRate),
+  };
+  oldLumpSum.roth.totalFutureValue = oldLumpSum.roth.futureValue + oldLumpSum.roth.side.futureValue;
+  oldLumpSum.roth.totalAfterTaxValue = oldLumpSum.roth.afterTaxValue + oldLumpSum.roth.side.afterTaxValue;
+  oldLumpSum.pretax.side = {
+    futureValue: lumpSum.pretax.side.futureValue,
+    afterTaxValue: lumpSum.pretax.side.futureValue * (1 - oldPretaxSide.taxRate),
+  };
+  oldLumpSum.pretax.totalFutureValue = oldLumpSum.pretax.futureValueGross + oldLumpSum.pretax.side.futureValue;
+  oldLumpSum.pretax.totalAfterTaxValue = oldLumpSum.pretax.afterTaxValue + oldLumpSum.pretax.side.afterTaxValue;
+
+  const oldComparison = {
+    winner: winnerOf(oldAnnuity.roth.totalAfterTaxIncome, oldAnnuity.pretax.totalAfterTaxIncome),
+    afterTaxIncomeDifference: Math.abs(
+      oldAnnuity.roth.totalAfterTaxIncome - oldAnnuity.pretax.totalAfterTaxIncome,
+    ),
+  };
+
+  // "Retirement years without Social Security", old methodology.
+  const oldNoSsGrossUp = solveGrossWithdrawal({
+    targetAfterTaxIncome,
+    ssBenefit: 0,
+    otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
+    otherRothWithdrawal: otherWithdrawals.roth,
+    otherTaxableWithdrawal: otherWithdrawals.taxableGross,
+    otherTaxableGainShare: existingGainShare,
+    filingStatus,
+    year,
+    probeSize: accountPretaxAnnualWithdrawal,
+  });
+  const oldNoSsTopOfStack =
+    otherWithdrawals.pretaxGross + oldNoSsGrossUp.grossWithdrawal - current.standardDeduction;
+  const oldNoSsMarginalRate = getMarginalRate(oldNoSsTopOfStack, filingStatus, year);
+  const oldNoSsPretaxAtMarginal = accountPretaxAnnualWithdrawal * (1 - oldNoSsMarginalRate);
+  const oldNoSsPretaxAtEffective =
+    accountPretaxAnnualWithdrawal * (1 - oldNoSsGrossUp.retirementEffectiveTaxRate);
+  const oldNoSsSide = {
+    roth: oldSideFor('roth', rothSideRaw, 0),
+    pretax: oldSideFor('pretax', pretaxSideRaw, 0),
+  };
+  const oldNoSsRothTotal = accountRothAnnualWithdrawal + oldNoSsSide.roth.afterTaxWithdrawal;
+  const oldNoSsPretaxTotal = oldNoSsPretaxAtEffective + oldNoSsSide.pretax.afterTaxWithdrawal;
+  const oldWithoutSocialSecurity = {
+    grossUp: oldNoSsGrossUp,
+    rateDrivers: explainWithdrawalRate(oldNoSsGrossUp, {
+      otherPretaxWithdrawal: otherWithdrawals.pretaxGross,
+      filingStatus,
+      year,
+    }),
+    marginalRateRetirement: oldNoSsMarginalRate,
+    effectiveRateRetirement: oldNoSsGrossUp.retirementEffectiveTaxRate,
+    taxableIncomeAtTop: Math.max(0, oldNoSsTopOfStack),
+    annuity: {
+      roth: {
+        afterTaxWithdrawal: accountRothAnnualWithdrawal,
+        side: oldNoSsSide.roth,
+        totalAfterTaxIncome: oldNoSsRothTotal,
+      },
+      pretax: {
+        afterTaxWithdrawal: oldNoSsPretaxAtEffective, // at the blended rate (the headline)
+        afterTaxWithdrawalAtMarginal: oldNoSsPretaxAtMarginal, // reference only
+        side: oldNoSsSide.pretax,
+        totalAfterTaxIncome: oldNoSsPretaxTotal,
+      },
+    },
+    comparison: {
+      winner: winnerOf(oldNoSsRothTotal, oldNoSsPretaxTotal),
+      afterTaxIncomeDifference: Math.abs(oldNoSsRothTotal - oldNoSsPretaxTotal),
+    },
+  };
+
+  const old = {
+    rates: {
+      marginalNow: marginalRateNow,
+      effectiveRetirement: oldEffectiveRateRetirement,
+      overallEffectiveRetirement: oldOverallEffectiveRateRetirement,
+      lean: leanFromRates(marginalRateNow, oldEffectiveRateRetirement),
+    },
+    rateDrivers: oldRateDrivers,
+    grossUp: oldGrossUp,
+    retirementOverall: { totalTax: oldGrossUp.solutionStack.totalTax, grossIncome: oldRetirementGrossIncome },
+    lumpSum: oldLumpSum,
+    annuity: oldAnnuity,
+    comparison: oldComparison,
+    withoutSocialSecurity: oldWithoutSocialSecurity,
+  };
+  // ==================== end TEMPORARY old-calculation block ====================
+
   const rothTax = portfolio.roth.totalTaxPaid;
   const pretaxTax = portfolio.pretax.totalTaxPaid;
   const taxDifference = {
@@ -546,5 +730,7 @@ export function compareRothVsTraditional(inputs) {
     portfolio,
     taxDifference,
     withoutSocialSecurity,
+    // TEMPORARY (2026-09-29): see the block above and CLAUDE.md's "result.old" section.
+    old,
   };
 }

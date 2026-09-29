@@ -20,6 +20,18 @@ const render = (overrides = {}) =>
     />,
   );
 
+// TEMPORARY (2026-09-29): cuts the duplicate "old calculation" card (result.old, id "sec2-old")
+// out of a rendered page, so tests written for the CURRENT (sideAware) methodology's page keep
+// testing only that, unaffected by the restored old card sitting between it and the after-tax
+// comparison card. Remove this helper (and its call sites) along with the old card itself.
+const withoutOldRatesCard = (html) => {
+  const oldStart = html.indexOf('aria-labelledby="sec2-old"');
+  if (oldStart === -1) return html;
+  const oldSectionStart = html.lastIndexOf('<section', oldStart);
+  const nextSectionStart = html.indexOf('<section', oldStart);
+  return html.slice(0, oldSectionStart) + html.slice(nextSectionStart);
+};
+
 describe('InputForm', () => {
   const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
 
@@ -327,7 +339,10 @@ describe('ResultsSummary', () => {
   });
 
   it('keeps "How the rates fit together" inside a rates dropdown, not loose on the page', () => {
-    const html = render();
+    // TEMPORARY (2026-09-29): a duplicate "old calculation" card is on the page for comparison
+    // (see result.old); it happens to reuse the same lead sentence, so these checks are scoped
+    // to exclude it, to keep testing the CURRENT (sideAware) methodology's own page specifically.
+    const html = withoutOldRatesCard(render());
     const start = html.indexOf('How are these rates calculated?');
     const dropdown = html.slice(start, html.indexOf('</details>', start));
     expect(dropdown).toContain('How the rates fit together.');
@@ -347,7 +362,9 @@ describe('ResultsSummary', () => {
   });
 
   it('highlights the two rates in a paired box, no explanatory lead-in or verdict sentence', () => {
-    const html = render();
+    // TEMPORARY (2026-09-29): see the note in the previous test — scoped to exclude the
+    // duplicate "old calculation" card, which legitimately still says "Overall effective rate".
+    const html = withoutOldRatesCard(render());
     // the calculator stays numbers-first: no "number that matters" lead sentence, no lean verdict
     expect(html).not.toContain('The number that matters most');
     expect(html).not.toContain('rate-verdict');
@@ -516,7 +533,10 @@ describe('ResultsSummary', () => {
     const note = (html) => html.slice(html.indexOf('<strong>Reading this:</strong> removing Social Security'));
     expect(note(withLifestyle).slice(0, 400)).toBe(note(plain).slice(0, 400));
     expect(withLifestyle).toContain('depends only on your Existing Accounts');
-    expect(withLifestyle).not.toContain('you expect to spend more in retirement');
+    // TEMPORARY (2026-09-29): the duplicate "old calculation" card legitimately still has this
+    // exact lifestyle-specific copy restored verbatim, so this check is scoped to exclude it —
+    // it's the CURRENT methodology's card that must no longer say it.
+    expect(withoutOldRatesCard(withLifestyle)).not.toContain('you expect to spend more in retirement');
   });
 
   it('explains a big existing Pre-tax balance setting the no-Social-Security bracket, favoring Roth', () => {
@@ -965,10 +985,12 @@ describe('Collapsible sections', () => {
   it('shows each results card with its headline, all open', () => {
     const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
     const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
+    // TEMPORARY (2026-09-29): includes the duplicate "old calculation" card (see result.old).
     expect(titles).toEqual([
       'Retirement income number',
       'Your portfolio at retirement',
       'Tax rate comparison',
+      'Tax rate comparison — old calculation',
       'After-tax comparison',
       'Total portfolio tax comparison',
     ]);
