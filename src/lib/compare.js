@@ -148,7 +148,7 @@ export function leanFromRates(marginalNow, effectiveRetirement) {
   return gap > 0 ? 'pretax' : 'roth';
 }
 
-function winnerOf(rothValue, pretaxValue) {
+export function winnerOf(rothValue, pretaxValue) {
   const larger = Math.max(rothValue, pretaxValue);
   if (larger === 0 || Math.abs(rothValue - pretaxValue) / larger < EVEN_TOLERANCE) return 'even';
   return rothValue > pretaxValue ? 'roth' : 'pretax';

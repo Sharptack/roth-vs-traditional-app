@@ -52,6 +52,24 @@ const formatBalanceLabel = (balance) =>
 export const PRETAX_BALANCES = [0, 50000, 100000, 250000, 500000, 750000, 1000000, 1500000, 2000000];
 export const TAXABLE_BALANCES = [0, 50000, 100000, 250000, 500000, 750000, 1000000];
 
+// Future incomes swept by the "earning more later" batches (x axis), and their shared setup.
+// These run through risingIncome.js (`engine: 'risingIncome'`), not compare.js: the decision is
+// the contributions made during the 10 years at today's income; the 30 years at the later income
+// are saved too and sit under them in the retirement tax stack, and Social Security reflects the
+// whole earnings path.
+export const FUTURE_INCOMES = [
+  20000, 25000, 40000, 50000, 60000, 75000, 100000, 125000, 150000, 200000, 250000, 300000, 500000,
+];
+const RISING_BASE = {
+  filingStatus: 'single',
+  accountType: '401k',
+  currentAge: 25,
+  raiseAge: 35,
+  retirementAge: 65,
+  savingsRate: 0.1,
+  returnRate: 0.07,
+};
+
 // Retirement ages swept by the retirement-age batch (35 is the current age there).
 export const RETIREMENT_AGES = Array.from({ length: 16 }, (_, i) => 55 + i);
 
@@ -169,9 +187,9 @@ export const SCENARIO_BATCHES = [
   },
   {
     key: 'lifestyleSweep',
-    title: 'Spending more in retirement, at different incomes',
+    title: 'Spending more in retirement, on its own, changes nothing',
     description:
-      'Age 35, retiring at 65, saving 10% of gross income, no debt or other expenses ending at retirement, no other balances — retirement lifestyle scaled from 1× (same as today) up to 2× (100% higher).',
+      'Age 35, retiring at 65, saving 10% of gross income, no debt or other expenses ending at retirement, no other balances — retirement lifestyle scaled from 1× (same as today) up to 2× (100% higher). The lines are flat on purpose: planning to spend more does not change what was saved, what it grows to, or the tax on withdrawing it. Roth vs. Pre-tax depends on how much taxable income you will have in retirement, not on your spending target. Spending more only changes the answer when something pays for it, such as higher earnings later (the next two charts).',
     xLabel: 'Retirement lifestyle vs. today',
     xType: 'multiple',
     base: { ...BASE, currentAge: 35, retirementAge: 65 },
@@ -182,6 +200,40 @@ export const SCENARIO_BATCHES = [
         x: lifestyle,
         overrides: { ...bySavingsRate(income, 0.1), retirementLifestyle: lifestyle },
       })),
+    })),
+  },
+  {
+    key: 'risingIncomeSweep',
+    engine: 'risingIncome',
+    title: 'Earning more later: should the early contributions be Roth?',
+    description:
+      "What a higher future income actually changes is the retirement tax stack: bigger later savings and a bigger Social Security benefit. Age 25, earning $20k, $40k, or $60k today, then the income across from age 35 to retirement at 65, saving 10% of pay throughout. Charted: Roth vs. Pre-tax for the contributions made in the first 10 years. The later, bigger savings are held Pre-tax and are withdrawn in retirement too, so they sit underneath today's in the tax stack, and Social Security is estimated from the whole earnings path. (Where the later income equals today's, this still differs from the first chart: only the first 10 years are being decided, measured on top of the 30 years that follow.)",
+    xLabel: 'Income from age 35',
+    xType: 'currency',
+    base: RISING_BASE,
+    series: [20000, 40000, 60000].map((incomeNow) => ({
+      key: `now${incomeNow}`,
+      label: `$${incomeNow / 1000}k today`,
+      points: FUTURE_INCOMES.map((incomeLater) => ({ x: incomeLater, overrides: { incomeNow, incomeLater } })),
+    })),
+  },
+  {
+    key: 'risingIncomeLaterType',
+    engine: 'risingIncome',
+    title: 'Earning more later: it depends on how the later savings are held',
+    description:
+      "Same as above for someone earning $20k today, with the savings from the higher-earning years held all Pre-tax, half and half, or all Roth. Roth now pays off only when something else, like those later Pre-tax savings, fills the low retirement brackets first. If the later savings go to Roth, Social Security alone rarely does, and today's contributions are better off Pre-tax.",
+    xLabel: 'Income from age 35',
+    xType: 'currency',
+    base: { ...RISING_BASE, incomeNow: 20000 },
+    series: [
+      { key: 'laterPretax', label: 'Later savings all Pre-tax', laterRothShare: 0 },
+      { key: 'laterHalf', label: 'Half and half', laterRothShare: 0.5 },
+      { key: 'laterRoth', label: 'Later savings all Roth', laterRothShare: 1 },
+    ].map(({ key, label, laterRothShare }) => ({
+      key,
+      label,
+      points: FUTURE_INCOMES.map((incomeLater) => ({ x: incomeLater, overrides: { incomeLater, laterRothShare } })),
     })),
   },
   {

@@ -292,3 +292,18 @@ describe('runHeatmap (the break-even maps)', () => {
     }
   });
 });
+
+describe('earning-more-later batches (engine: risingIncome)', () => {
+  it('run through risingIncome.js: $20k today -> $100k from 35 is the hand-verified +20.43% (risingIncome.test.js)', () => {
+    const batch = runScenarioBatch(SCENARIO_BATCHES.find((b) => b.key === 'risingIncomeSweep'), 2026);
+    const point = batch.series.find((s) => s.key === 'now20000').points.find((p) => p.x === 100000);
+    expect(point.advantagePct).toBeCloseTo(20.427, 2);
+    expect(point.winner).toBe('roth');
+  });
+
+  it('later savings all Roth: today\'s contributions stay Pre-tax at 10% at every income through $250k', () => {
+    const batch = runScenarioBatch(SCENARIO_BATCHES.find((b) => b.key === 'risingIncomeLaterType'), 2026);
+    const allRoth = batch.series.find((s) => s.key === 'laterRoth').points.filter((p) => p.x <= 250000);
+    for (const p of allRoth) expect(p.advantagePct).toBeCloseTo(-10, 6);
+  });
+});

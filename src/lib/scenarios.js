@@ -3,6 +3,7 @@
 // the "Visualization" page charts. Pure and framework-free — no new financial
 // logic lives here, just wiring and extraction on top of already-tested compare.js.
 import { compareRothVsTraditional } from './compare.js';
+import { compareWithRisingIncome } from './risingIncome.js';
 
 // One scenario's inputs -> the point the charts need.
 //   gap            = tax saved now (net of any tax on investing the difference) minus the
@@ -43,6 +44,14 @@ export function runScenarioPoint(base, overrides, year) {
   };
 }
 
+// The same point shape for a batch with `engine: 'risingIncome'` (income rises partway to
+// retirement; see risingIncome.js).
+export function runRisingIncomePoint(base, overrides, year) {
+  const inputs = { ...base, ...overrides, year };
+  const { detail, ...point } = compareWithRisingIncome(inputs);
+  return { inputs, ...point };
+}
+
 // A break-even map: one scenario per (row, income) cell. `def` is an entry of HEATMAPS in
 // scenarioBatches.js; each row is one value of the row variable, cells run across incomes.
 export function runHeatmap(def, year) {
@@ -59,13 +68,14 @@ export function runHeatmap(def, year) {
 }
 
 export function runScenarioBatch(batch, year) {
+  const runPoint = batch.engine === 'risingIncome' ? runRisingIncomePoint : runScenarioPoint;
   return {
     ...batch,
     series: batch.series.map((series) => ({
       ...series,
       points: series.points.map(({ x, overrides }) => ({
         x,
-        ...runScenarioPoint(batch.base, overrides, year),
+        ...runPoint(batch.base, overrides, year),
       })),
     })),
   };

@@ -53,7 +53,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (477 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (484 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -98,7 +98,9 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `shareInputs` (form values <-> link query string, plain-text scenario summary — see "Sharing a scenario"), `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
   `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line),
   `blend` (`splitBlended`, `evaluateBlend`, `findOptimalBlend` — the Roth/Pre-tax split explorer, see its
-  own section below).
+  own section below), `risingIncome` (`compareWithRisingIncome`: Roth vs. Pre-tax for the contributions made while
+  income is low, when it rises later — the Visualization page's "Earning more later" charts; see that section).
+  `compare.js` exports `winnerOf` (the 0.5% "even" rule) so risingIncome.js reuses it.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -161,6 +163,30 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   Every chart has a hover/focus tooltip and a "Show the numbers" `<details>` table underneath as the
   non-interactive fallback.
 
+- **"Earning more later" charts** (added 2026-09-29, at the user's request: "someone making $20k today who expects
+  $100k later"). Two batches, `risingIncomeSweep` (today $20k/$40k/$60k, x = income from 35) and
+  `risingIncomeLaterType` ($20k today; later savings all Pre-tax / half / all Roth), placed after the lifestyle chart.
+  They carry `engine: 'risingIncome'`, so `scenarios.js` runs them through `lib/risingIncome.js`
+  (`runRisingIncomePoint`) instead of compare.js; same point shape, so the page, tables and scatter need no changes.
+  Why a new function: the retirement lifestyle multiplier can't show this — since the 2026-09-28 migration it no
+  longer moves the rate comparison at all, and the "Spending more in retirement" chart is now FLAT lines (checked
+  2026-09-29). The user chose to KEEP it, retitled "Spending more in retirement, on its own, changes nothing",
+  with a caption saying the flatness is the point: Roth vs. Pre-tax depends on retirement taxable income, not the
+  spending target. The same framing is in ARTICLE.md ("If you expect to spend more, or less, in retirement"). What higher future income really
+  changes is the retirement tax stack. The model: age 25, income rises at 35, retire 65, 10% saved throughout.
+  The decision = the contributions of the 10 years at today's income (today's marginal rate, splitAtTakeHome, grown
+  10 years then 30 more). The later years' savings (10% of the later income, capped at the IRS limit at the raise
+  age, excess to a taxable account, all basis) sit UNDER them in the stack like an Existing Account. Social Security:
+  AIME from the average of each working year's earnings (each capped at the wage base). Then
+  `calculateSideAwareRates`, so the gap x W identity still holds (tested). Findings: with later savings Pre-tax, Roth
+  wins for the early contributions once later income passes about $40k at $20k today, tracking the retirement
+  bracket of the top slice (+15.4% = 22% later vs. 10% now, +18.4% = 24%), with spikes in the Social Security
+  phase-in band (half-and-half at $200k: +40%, 22% x 1.85); with later savings Roth, Pre-tax wins (-10%, the 10%
+  rate now vs. 0% later) all the way to $250k. Note the stacking order: the early slice is measured ON TOP of the
+  later savings (the incremental view used everywhere), so even with no raise these points differ from the
+  calculator's flat-income answer, and the card says so. Tests: `tests/risingIncome.test.js` (two hand-verified
+  cases, reproduces compare.js exactly when the raise is at retirement, the identity), two wiring tests in
+  scenarios.test.js. Not modeled: the later contributions' own Roth/Pre-tax decision is an input, not optimized.
 - Page layout (2026-09-25k, simplified at the user's request — no repeated explanations, "let the graphs speak"):
   the rule of thumb appears ONCE, as a highlighted callout in the intro; every batch card is a title, one sentence of
   setup, and ONE line chart of Roth's advantage (`advantagePct`), with the area above the zero line tinted blue and
@@ -718,6 +744,12 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-29 (e) — Visualization: two "Earning more later" charts (see the Scenario charts section), backed by the
+  new pure `lib/risingIncome.js` (hand-verified tests). Found and recorded that the existing lifestyle chart is flat
+  under the current model. `compare.js` now exports `winnerOf`. 484 tests.
+- 2026-09-29 (f) — Kept the flat lifestyle chart with a new title and a caption explaining why it is flat; the
+  "Earning more later" chart and ARTICLE.md now say that retirement taxable income, not the spending target, decides
+  Roth vs. Pre-tax (and that higher future income only favors Roth now if the later savings are Pre-tax). 484 tests.
 - 2026-09-29 (d) — No code change. Recorded the roadmap (plan doc link), the inflation-on-fixed-thresholds
   decision and the free / signed-in two-tier direction under "Audience and direction".
 - 2026-09-29 (c) — New "Splitting your contribution" card: a Roth/Pre-tax blend explorer (see its own
