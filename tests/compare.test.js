@@ -1035,3 +1035,65 @@ describe('Net Investment Income Tax flows through the comparison', () => {
     }
   });
 });
+
+describe('result.blend — the Roth/Pre-tax split explorer (blend.js), wired into compare.js', () => {
+  it('is unavailable when nothing is saved', () => {
+    const r = compareRothVsTraditional({ ...baseInputs, savings: 0 });
+    expect(r.blend.available).toBe(false);
+    expect(r.blend.points).toBeUndefined();
+  });
+
+  it('at r=0 and r=1, matches the pure Pre-tax/Roth scenarios exactly (HAND CALC anchor)', () => {
+    // Same defaults as the end-to-end HAND CALC above: no SS, no Existing Accounts.
+    // r=0 (all Pre-tax of the take-home budget) must reproduce annuity.pretax.totalAfterTaxIncome
+    // exactly, and r=1 must reproduce annuity.roth.totalAfterTaxIncome exactly, since blend.js's
+    // splitBlended(...,0)/(...,1) are proven (and tested in blend.test.js) to exactly reproduce
+    // splitAtTakeHome's own two branches.
+    const r = compareRothVsTraditional(baseInputs);
+    expect(r.blend.available).toBe(true);
+    expect(r.blend.points).toHaveLength(101);
+    const pure0 = r.blend.points[0];
+    const pure1 = r.blend.points[r.blend.points.length - 1];
+    expect(pure0.rothShare).toBe(0);
+    expect(pure1.rothShare).toBe(1);
+    expect(pure0.totalAfterTaxIncome).toBeCloseTo(r.annuity.pretax.totalAfterTaxIncome, 1);
+    expect(pure1.totalAfterTaxIncome).toBeCloseTo(r.annuity.roth.totalAfterTaxIncome, 1);
+    // and the "best" point can only ever be at least as good as either pure strategy
+    expect(r.blend.best.totalAfterTaxIncome).toBeGreaterThanOrEqual(pure0.totalAfterTaxIncome - 0.01);
+    expect(r.blend.best.totalAfterTaxIncome).toBeGreaterThanOrEqual(pure1.totalAfterTaxIncome - 0.01);
+    // in this low-withdrawal default case Pre-tax dominates outright, so the best IS the r=0 end
+    expect(r.blend.best.rothShare).toBe(0);
+  });
+
+  it('finds a genuine interior optimum in the same scenario blend.test.js hand-verifies', () => {
+    // $60,000 income, $10,000 saved, $20,000 known Social Security, no Existing Accounts.
+    const r = compareRothVsTraditional({
+      ...baseInputs,
+      grossIncome: 60000,
+      savings: 10000,
+      knowsSocialSecurity: true,
+      socialSecurityBenefit: 20000,
+    });
+    expect(r.blend.best.rothShare).toBeGreaterThan(0.3);
+    expect(r.blend.best.rothShare).toBeLessThan(0.8);
+    const pure0 = r.blend.points[0];
+    const pure1 = r.blend.points[r.blend.points.length - 1];
+    expect(r.blend.best.totalAfterTaxIncome).toBeGreaterThan(pure0.totalAfterTaxIncome + 1000);
+    expect(r.blend.best.totalAfterTaxIncome).toBeGreaterThan(pure1.totalAfterTaxIncome + 1000);
+  });
+
+  it('uses the SAME take-home cost as the current savings/currentType, not a different budget', () => {
+    const pretaxSaver = compareRothVsTraditional({ ...baseInputs, savings: 10000, currentType: 'pretax' });
+    const rothSaver = compareRothVsTraditional({ ...baseInputs, savings: 7800, currentType: 'roth' });
+    // both cost 7,800 in take-home pay (see "Pre-tax savings are deducted before income tax" above),
+    // so their blend curves' pure endpoints must land on the same two numbers, just possibly reversed
+    expect(pretaxSaver.blend.points[0].totalAfterTaxIncome).toBeCloseTo(
+      rothSaver.blend.points[0].totalAfterTaxIncome,
+      1,
+    );
+    expect(pretaxSaver.blend.points[100].totalAfterTaxIncome).toBeCloseTo(
+      rothSaver.blend.points[100].totalAfterTaxIncome,
+      1,
+    );
+  });
+});

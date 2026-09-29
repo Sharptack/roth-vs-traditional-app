@@ -81,6 +81,11 @@ describe('resultHeadlines', () => {
     },
     // TEMPORARY (2026-09-29): result.old, for the duplicate "old calculation" card's headline.
     old: { rates: { marginalNow: 0.22, effectiveRetirement: 0.2938, lean: 'pretax' } },
+    blend: {
+      available: true,
+      best: { rothShare: 0.56, totalAfterTaxIncome: 35103.67 },
+      points: [{ totalAfterTaxIncome: 33432.7 }, { totalAfterTaxIncome: 33250.2 }],
+    },
   };
 
   it('formats each card headline', () => {
@@ -90,6 +95,7 @@ describe('resultHeadlines', () => {
       rates: '22.0% now vs. 12.3% in retirement · tends to favor Pre-tax',
       ratesOld: '22.0% now vs. 29.4% in retirement · tends to favor Pre-tax',
       tradeoff: 'Pre-tax ahead by $1,234 a year after tax',
+      blend: 'Best mix: 56% Roth, $1,671/yr more than either pure strategy',
       portfolio: 'Tax a year: All-Roth $8,000 vs. All-Pre-tax $11,251',
     });
   });
@@ -97,5 +103,19 @@ describe('resultHeadlines', () => {
   it('says "About even" when neither side wins', () => {
     const even = { ...result, comparison: { winner: 'even', afterTaxIncomeDifference: 3 } };
     expect(resultHeadlines(even).tradeoff).toBe('About even');
+  });
+
+  it('blend headline: "Nothing saved to split" when unavailable, "all Pre-tax/Roth" when a pure strategy wins', () => {
+    const none = { ...result, blend: { available: false } };
+    expect(resultHeadlines(none).blend).toBe('Nothing saved to split');
+    const purePretax = {
+      ...result,
+      blend: {
+        available: true,
+        best: { rothShare: 0, totalAfterTaxIncome: 35378.69 },
+        points: [{ totalAfterTaxIncome: 35378.69 }, { totalAfterTaxIncome: 29471.77 }],
+      },
+    };
+    expect(resultHeadlines(purePretax).blend).toBe('Best mix: all Pre-tax');
   });
 });

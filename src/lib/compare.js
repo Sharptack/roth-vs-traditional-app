@@ -27,6 +27,7 @@ import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
 import { calculateSideAwareRates } from './sideAwareRates.js';
+import { findOptimalBlend } from './blend.js';
 // TEMPORARY (2026-09-29): the pre-2026-09-28 need-based rate calculation, restored from git
 // history (commit 92b16f0) alongside the current sideAware-based one so the user can compare
 // them side by side. Everything it touches lives under `result.old` — see its section in
@@ -298,6 +299,36 @@ export function compareRothVsTraditional(inputs) {
   };
   // NOTE: no RMD sequencing or tax-efficient withdrawal ordering is modeled —
   // all accounts are treated as drawn simultaneously.
+
+  // Roth/Pre-tax blend explorer (blend.js): mixes this year's contribution between Roth and
+  // Pre-tax within the SAME account, at the SAME take-home cost as today's actual
+  // savings/currentType (contributionSplit.takeHomeCost) — a genuine "what if you split this
+  // same budget differently" exploration, not a separate what-if income. Skipped when there is
+  // nothing to split ($0 saved).
+  let blend = { available: false };
+  if (contributionSplit.takeHomeCost > 0.5) {
+    const existingOnlyTax = calculateRetirementTax({
+      pretaxWithdrawal: otherWithdrawals.pretaxGross,
+      taxableWithdrawal: otherWithdrawals.taxableGross,
+      taxableGainShare: otherWithdrawals.taxableGainShare,
+      ssBenefit,
+      filingStatus,
+      year,
+    }).totalTax;
+    const { points, best } = findOptimalBlend({
+      takeHomeCost: contributionSplit.takeHomeCost,
+      marginalRate: marginalRateNow,
+      limit: limitCheck.limit,
+      returnRate,
+      years,
+      other: otherWithdrawals,
+      existingTax: existingOnlyTax,
+      ssBenefit,
+      filingStatus,
+      year,
+    });
+    blend = { available: true, points, best };
+  }
 
   // 5+6+9+10. The rates, and the after-tax dollars they imply for Future Contributions'
   // account + its taxable side account, together (sideAwareRates.js). Wrapped in a function
@@ -730,6 +761,7 @@ export function compareRothVsTraditional(inputs) {
     portfolio,
     taxDifference,
     withoutSocialSecurity,
+    blend,
     // TEMPORARY (2026-09-29): see the block above and CLAUDE.md's "result.old" section.
     old,
   };

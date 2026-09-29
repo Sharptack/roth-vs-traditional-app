@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (455 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (477 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -77,7 +77,9 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `contributionLimits`, `compare` (orchestrator; single source of every UI number), `constants`
   (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`,
   `shareInputs` (form values <-> link query string, plain-text scenario summary — see "Sharing a scenario"), `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
-  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line).
+  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line),
+  `blend` (`splitBlended`, `evaluateBlend`, `findOptimalBlend` — the Roth/Pre-tax split explorer, see its
+  own section below).
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -408,6 +410,72 @@ everything to the new calculation." This section describes the result, now the O
   and re-do the tax. A final, unnumbered "Putting the two rates together" section assembles X vs e into the
   dollar difference.
 
+## "Splitting your contribution" — the Roth/Pre-tax blend explorer (added 2026-09-29)
+The user asked what it would take to model mixing Roth and Pre-tax within the same year's Future
+Contributions (not just picking one pure strategy), and whether an optimal split is even computable.
+Answer: yes, and it's a genuine, non-trivial question in THIS model specifically — "tax saved now" is
+close to flat (your marginal rate on one year's contribution), but "effective rate later" is a CURVE
+that rises as the Pre-tax slice grows (bracket climbing, the Social Security phase-in band, capital-gains
+stacking from a side account), so where that curve crosses today's marginal rate partway through, a mix
+can beat either pure extreme. New card, own section, no changes to any existing Roth/Pre-tax table (the
+user chose this UI shape explicitly over a "third column everywhere" alternative, given the much larger
+surface area the latter would touch).
+- **`lib/blend.js`** (pure, hand-verified tests in `tests/blend.test.js`): `splitBlended(takeHomeCost, marginalRate,
+  limit, rothShare)` generalizes `compare.js`'s `splitAtTakeHome` from "all-Roth or all-Pre-tax" to an
+  arbitrary Roth SHARE OF THE ACCOUNT DOLLARS (0-1) — the same thing a real 401(k)'s Roth/Traditional
+  deferral election splits. `A_uncapped = C / (1 - (1-r)*t)`, `A = min(A_uncapped, limit)`,
+  `rothToAccount = r*A`, `pretaxToAccount = (1-r)*A`, `excessToTaxable = C - A*(1-(1-r)*t)`. PROVEN
+  algebraically (and tested directly against `splitAtTakeHome`) that `r=0` and `r=1` exactly reproduce
+  its pretax/roth branches respectively, for any C/t/limit, capped or not — a blend is a genuine
+  generalization of the existing rule, not a new one. `evaluateBlend({ rothShare, takeHomeCost,
+  marginalRate, limit, returnRate, years, other, existingTax, ssBenefit, filingStatus, year })` grows each
+  piece to retirement and reuses `calculateRetirementTax` directly (same as `sideAwareRates.js`) to work
+  out the total after-tax income at that split, with Existing Accounts (`other`) and Social Security
+  already in the stack (`existingTax` = tax on those alone) so the account's own tax is the extra tax it
+  causes on top of them — the same incremental measure the rest of the app uses. `findOptimalBlend(params,
+  steps = 101)` evaluates a DENSE GRID (not a faster search: bracket edges and the SS phase-in can put a
+  kink in the curve, so nothing assumes smoothness/concavity) and returns every point (for the chart) plus
+  the best one.
+- **`compare.js`**: `result.blend` = `{ available, points, best }` (`available: false` when nothing is
+  saved — `contributionSplit.takeHomeCost` is 0). Uses the SAME take-home cost as today's actual
+  `savings`/`currentType` (`contributionSplit.takeHomeCost`), so it's a genuine "what if you split this
+  same budget differently" exploration, not a separate what-if income. `existingTax` is computed with a
+  direct `calculateRetirementTax` call (Existing Accounts + Social Security only), independent of
+  `sideAware.available`, so it works even when there's nothing to blend (though blend is skipped
+  entirely in that case anyway).
+- **`ResultsSummary.jsx`** (`BlendExplorer`, card id `blend`, `id="sec-blend"`, between "After-tax
+  comparison" and "Total portfolio tax comparison"): a `<strong>Here, blending helps</strong>` /
+  `<strong>Here, a pure strategy already wins</strong>` note (the latter whenever the optimum sits at
+  either end AND the gain over the better pure strategy is under $0.50 — i.e. genuinely nothing to find,
+  not just a rounding artifact); a native `<input type="range">` (0-100, `accent-color: var(--accent)`,
+  no custom thumb/track styling) that indexes directly into the 101 precomputed `blend.points` — no
+  live recomputation in the browser, the slider is pure UI state over already-computed data, initialized
+  to the optimal index on mount; a small facts list (to Roth / to Pre-tax / to a taxable account when over
+  the limit / after-tax income); a "Jump to the best mix" button; a `LineChart` of the whole curve (101
+  points, `includeZero={false}` — see below); a "Show the numbers" `<details>` table (every 5 points plus
+  the exact best one), matching the Visualization page's "chart + non-interactive fallback table"
+  convention. `sectionSummaries.js` gained a `blend` headline ("Best mix: 56% Roth, $1,671/yr more than
+  either pure strategy", or "Best mix: all Pre-tax"/"all Roth" when a pure strategy wins, or "Nothing
+  saved to split").
+- **`charts/LineChart.jsx`** gained an `includeZero` prop (default `true`, so the Visualization page's
+  existing rate-gap charts are unaffected). Found while screenshotting this feature: the chart's y-axis
+  always forced $0 into view, which is right for a rate-gap chart centered on zero but wrong here — the
+  values are always positive and cluster in a narrow few-thousand-dollar band, so forcing $0 into view
+  squashed the whole interesting hump into a thin sliver at the top of the chart. `BlendExplorer` passes
+  `includeZero={false}`.
+- Also added, same session: a "Show the calculation" dropdown (`AfterTaxIncomeMath`) under the After-tax
+  comparison table's "After-tax income it generates" row — each side's account withdrawal and its tax,
+  plus the taxable side account's own withdrawal and tax when there is one. Pure presentation, no new
+  math (see the "Page layout" Decisions bullet above for the detail). This is why the "shows Adjusted
+  Gross Income (AGI)..." smoke test now scopes to `sec3` — "Show the calculation" is no longer a unique
+  label on the page.
+- Not built (possible follow-ups, noted rather than done prematurely): marking the current slider
+  position and/or the optimum directly on the chart itself (LineChart assumes every series has the same
+  number of points at the same x-positions, so a sparse single-point marker series doesn't fit its
+  current design without changes); extending "Compare a change" or the Visualization page to include a
+  blended scenario; letting a blend become one of Section 3's whole-portfolio scenarios (today Section 3
+  is still exactly All-Roth vs. All-Pre-tax, unaffected by this).
+
 ## `result.old` — TEMPORARY duplicate of the pre-migration calculation (added 2026-09-29)
 The user asked to bring the old (pre-2026-09-28) need-based calculation back, restored from git history
 (commit `92b16f0`, the commit right before the migration — see "The rates calculation" above), so the two
@@ -545,8 +613,14 @@ the whole account) is still open — see "Known limitations."
   ONE table (Roth / Pre-tax only, no Difference column, no "Tax on withdrawals" row) with three shaded groups:
   "What you put in" (current possible contribution); "A single year's contribution" (value at retirement, after-tax
   value); "Contributing every year until retirement" (Future Contributions at retirement, after-tax income it
-  generates). Future Contributions only. Then "Why is the Pre-tax side bigger?" and "Retirement years without
-  Social Security" dropdowns. (5) "Total portfolio tax comparison" (`id="sec3"`).
+  generates). Future Contributions only. Then, added 2026-09-29, "Show the calculation" (`AfterTaxIncomeMath`):
+  each side's account withdrawal (4%) and its tax (Roth $0; Pre-tax at `rates.effectiveRetirement`), plus the
+  taxable side account's own withdrawal and tax when `annuity.X.side.futureValue > 0` — no new math, purely a
+  breakdown of `annuity.X.{annualWithdrawal,afterTaxWithdrawal,side,totalAfterTaxIncome}`, which already summed
+  to the "After-tax income it generates" row. Then "Why is the Pre-tax side bigger?" and "Retirement years without
+  Social Security" dropdowns. (5) "Total portfolio tax comparison" (`id="sec3"`) — also has its own "Show the
+  calculation" dropdown (`PortfolioMath`, pre-existing); the AGI-ordering smoke test is scoped to `sec3`'s copy
+  since the label is no longer unique on the page.
   Cells show "incl. $X in a taxable account (over the IRS limit)" when a taxable side exists.
 - **Terminology (user, 2026-09-25c):** the savings being decided on = **"Future Contributions"** (capitalized);
   all other retirement/investment balances collectively = **"Existing Accounts"**. Never "this account",
@@ -625,6 +699,19 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-29 (c) — New "Splitting your contribution" card: a Roth/Pre-tax blend explorer (see its own
+  section above for the full detail) — a slider over 101 precomputed points, a "Jump to the best mix"
+  button, and a chart of after-tax income vs. Roth share, with a note explaining whether blending finds
+  anything a pure strategy didn't. New `lib/blend.js` (`splitBlended`, `evaluateBlend`, `findOptimalBlend`),
+  hand-verified including a genuine interior-optimum example (55-56% Roth beating both pure strategies by
+  over $1,600/yr in a Social-Security-phase-in scenario). `result.blend` in compare.js. `LineChart` gained
+  an `includeZero` prop (found while screenshotting: forcing $0 into view squashed this chart's narrow,
+  always-positive value range into a sliver). 477 tests.
+- 2026-09-29 (b) — "Show the calculation" dropdown for the After-tax comparison card's "After-tax income it
+  generates" row (see the Page layout section above): each side's account withdrawal and its tax, plus the
+  taxable side account's own withdrawal and tax when there is one. Pure presentation, no new math. Fixed the
+  "shows Adjusted Gross Income (AGI)..." smoke test, which had assumed "Show the calculation" was unique on
+  the page (now scoped to `sec3`). 456 tests.
 - 2026-09-29 — TEMPORARY: restored the pre-2026-09-28 need-based rate calculation from git history
   (commit `92b16f0`) alongside the current one, at the user's request, so they can compare the two while
   testing some scenarios (see `result.old` above for the full detail and the removal checklist). New "Tax

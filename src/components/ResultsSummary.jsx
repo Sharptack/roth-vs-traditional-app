@@ -4,6 +4,7 @@ import Collapsible, { toggleId } from './Collapsible.jsx';
 import { formatCurrency, formatPercent, formatValue } from '../lib/format.js';
 import { effectiveRateSteps, sideAwareRateSteps } from '../lib/rateSteps.js';
 import { explainFullTax } from '../lib/taxBreakdown.js';
+import LineChart from './charts/LineChart.jsx';
 
 const $ = (n) => formatCurrency(n);
 const minus = (n) => `−${formatCurrency(n)}`;
@@ -481,6 +482,93 @@ function SideNote({ amount, per = '' }) {
   );
 }
 
+// How "After-tax income it generates" is worked out: each side's account withdrawal taxed at
+// that scenario's own rate (tax-free for Roth, at the effective rate on the account withdrawal
+// for Pre-tax), plus the taxable side account's own withdrawal and tax, when there is one.
+function AfterTaxIncomeMath({ result }) {
+  const { annuity, rates } = result;
+  const hasSide = annuity.roth.side.futureValue > 0.5 || annuity.pretax.side.futureValue > 0.5;
+  const pretaxAccountTax = annuity.pretax.annualWithdrawal - annuity.pretax.afterTaxWithdrawal;
+  return (
+    <details className="details">
+      <summary>Show the calculation</summary>
+      <div className="details-body">
+        <p>
+          Each side&rsquo;s Future Contributions withdrawal (4% of its projected value) is taxed at
+          that scenario&rsquo;s own rate &mdash; tax-free for Roth, at the effective rate on the
+          account withdrawal for Pre-tax
+          {hasSide && (
+            <>
+              {' '}
+              &mdash; and, since some of it spilled into a taxable account over the IRS limit, that
+              account&rsquo;s own withdrawal is taxed separately, at its own rate
+            </>
+          )}
+          .
+        </p>
+        <div className="table-wrap">
+          <table className="calc-table">
+            <thead>
+              <tr>
+                <th scope="col" className="row-head"></th>
+                <th scope="col">Roth</th>
+                <th scope="col">Pre-tax (Traditional)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Account withdrawal (4% of Future Contributions)</th>
+                <td>{$(annuity.roth.annualWithdrawal)}</td>
+                <td>{$(annuity.pretax.annualWithdrawal)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Tax on it</th>
+                <td>$0, tax-free</td>
+                <td>
+                  {formatPercent(rates.effectiveRetirement)} of {$(annuity.pretax.annualWithdrawal)} =
+                  {' '}{$(pretaxAccountTax)}
+                </td>
+              </tr>
+              <tr className="total-row">
+                <th scope="row">After-tax</th>
+                <td>{$(annuity.roth.afterTaxWithdrawal)}</td>
+                <td>{$(annuity.pretax.afterTaxWithdrawal)}</td>
+              </tr>
+              {hasSide && (
+                <>
+                  <tr>
+                    <th scope="row">
+                      Taxable side account withdrawal
+                      <span className="th-sub">Over the IRS limit, 4% of its projected value</span>
+                    </th>
+                    <td>{$(annuity.roth.side.annualWithdrawal)}</td>
+                    <td>{$(annuity.pretax.side.annualWithdrawal)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Tax on it</th>
+                    <td>{formatPercent(annuity.roth.side.taxRate)}</td>
+                    <td>{formatPercent(annuity.pretax.side.taxRate)}</td>
+                  </tr>
+                  <tr className="total-row">
+                    <th scope="row">After-tax</th>
+                    <td>{$(annuity.roth.side.afterTaxWithdrawal)}</td>
+                    <td>{$(annuity.pretax.side.afterTaxWithdrawal)}</td>
+                  </tr>
+                </>
+              )}
+              <tr className="total-row">
+                <th scope="row">After-tax income it generates</th>
+                <td>{$(annuity.roth.totalAfterTaxIncome)}</td>
+                <td>{$(annuity.pretax.totalAfterTaxIncome)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  );
+}
+
 // Section 2: the two rates the decision turns on, in their own block.
 // After-tax comparison (the trade-off in dollars): Future Contributions only, in its own block below the rates.
 function TradeOff({ result }) {
@@ -560,6 +648,7 @@ function TradeOff({ result }) {
           </tbody>
         </table>
       </div>
+      <AfterTaxIncomeMath result={result} />
       <details className="details">
         <summary>Why is the Pre-tax side bigger?</summary>
         <div className="details-body">
@@ -594,6 +683,149 @@ function TradeOff({ result }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Splitting your contribution (blend.js): a Roth/Pre-tax mix explorer  */
+/* ------------------------------------------------------------------ */
+
+// A compact stat row for the blend explorer's own small facts list (not the shared `Stat`,
+// which is sized for the hero number).
+function BlendFact({ label, value }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function BlendExplorer({ result }) {
+  const { blend, contributionSplit } = result;
+  const optimalIndex = blend.available ? Math.round(blend.best.rothShare * 100) : 50;
+  const [index, setIndex] = useState(optimalIndex);
+  if (!blend.available) {
+    return <p className="hint">There is nothing saved yet to split.</p>;
+  }
+  const clampedIndex = Math.min(100, Math.max(0, index));
+  const point = blend.points[clampedIndex];
+  const pure0 = blend.points[0];
+  const pure1 = blend.points[100];
+  const betterPure = Math.max(pure0.totalAfterTaxIncome, pure1.totalAfterTaxIncome);
+  const gainOverBetterPure = blend.best.totalAfterTaxIncome - betterPure;
+  const atOptimal = clampedIndex === optimalIndex;
+  const hasInteriorOptimum = optimalIndex > 0 && optimalIndex < 100 && gainOverBetterPure > 0.5;
+
+  return (
+    <>
+      <p className="hint">
+        Instead of putting all of it in one or the other, this splits Future Contributions&rsquo;{' '}
+        {$(contributionSplit.takeHomeCost)} take-home cost between Roth and Pre-tax within the
+        same account &mdash; the same thing a real 401(k)&rsquo;s Roth/Traditional deferral
+        election splits &mdash; and re-runs the tax at every mix from all-Pre-tax to all-Roth.
+      </p>
+
+      {hasInteriorOptimum ? (
+        <p className="note">
+          <strong>Here, blending helps.</strong> The best mix ({optimalIndex}% Roth) delivers{' '}
+          {$(gainOverBetterPure)} a year more than either pure strategy &mdash; because the
+          effective rate on the Pre-tax slice climbs as that slice grows (brackets, the Social
+          Security phase-in, or capital-gains stacking), a mix can land below where either
+          extreme lands.
+        </p>
+      ) : (
+        <p className="note">
+          <strong>Here, a pure strategy already wins.</strong> The curve below only falls (or only
+          rises) from one end to the other, so the best mix is {optimalIndex === 0 ? 'all Pre-tax' : 'all Roth'}{' '}
+          &mdash; blending doesn&rsquo;t find anything a pure strategy didn&rsquo;t already have.
+        </p>
+      )}
+
+      <div className="blend-slider">
+        <label htmlFor="blend-range">
+          Roth share of the contribution: <strong>{clampedIndex}%</strong>
+          {atOptimal && <span className="blend-optimal-flag"> (the best mix)</span>}
+        </label>
+        <input
+          id="blend-range"
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={clampedIndex}
+          onChange={(e) => setIndex(Number(e.target.value))}
+        />
+      </div>
+
+      <dl className="facts blend-facts">
+        <BlendFact label="To Roth" value={$(point.rothToAccount)} />
+        <BlendFact label="To Pre-tax" value={$(point.pretaxToAccount)} />
+        {point.excessToTaxable > 0.5 && (
+          <BlendFact label="To a taxable account (over the IRS limit)" value={$(point.excessToTaxable)} />
+        )}
+        <BlendFact label="After-tax income it generates" value={$(point.totalAfterTaxIncome)} />
+      </dl>
+
+      <button type="button" className="link-button" onClick={() => setIndex(optimalIndex)}>
+        Jump to the best mix ({optimalIndex}% Roth, {$(blend.best.totalAfterTaxIncome)}/yr)
+      </button>
+
+      <LineChart
+        series={[
+          {
+            key: 'blend',
+            label: 'After-tax income it generates',
+            points: blend.points.map((p, i) => ({ x: i, y: p.totalAfterTaxIncome })),
+          },
+        ]}
+        xTicks={blend.points.map((_, i) => i)}
+        formatX={(x) => `${x}%`}
+        formatY={(y) => $(y)}
+        xLabel="Roth share of the contribution"
+        yLabel="After-tax income it generates"
+        includeZero={false}
+      />
+
+      <details className="details">
+        <summary>Show the numbers</summary>
+        <div className="details-body">
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Roth share</th>
+                  <th scope="col">To Roth</th>
+                  <th scope="col">To Pre-tax</th>
+                  <th scope="col">After-tax income</th>
+                </tr>
+              </thead>
+              <tbody>
+                {blend.points
+                  .filter((_, i) => i % 5 === 0 || i === optimalIndex)
+                  .map((p, i, arr) => (
+                    <tr
+                      key={p.rothShare}
+                      className={Math.round(p.rothShare * 100) === optimalIndex ? 'total-row' : ''}
+                    >
+                      <th scope="row">
+                        {formatPercent(p.rothShare, 0)}
+                        {Math.round(p.rothShare * 100) === optimalIndex && ' (best)'}
+                      </th>
+                      <td>{$(p.rothToAccount)}</td>
+                      <td>{$(p.pretaxToAccount)}</td>
+                      <td>{$(p.totalAfterTaxIncome)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="hint">
+            Every 5 percentage points, plus the single best mix found. The chart above is drawn
+            from all 101 points (every 1%); hover or focus it for the exact figure at any share.
+          </p>
+        </div>
+      </details>
+    </>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Tax rates (top of section 2) and total portfolio comparison (3)      */
@@ -1424,6 +1656,7 @@ const RESULT_CARDS = [
   // "TEMPORARY" block above TaxRatesOld's definition for the full removal checklist.
   { id: 'ratesOld', headingId: 'sec2-old', title: 'Tax rate comparison — old calculation', Body: TaxRatesOld, className: 'key-card' },
   { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'After-tax comparison', Body: TradeOff },
+  { id: 'blend', headingId: 'sec-blend', title: 'Splitting your contribution', Body: BlendExplorer },
   { id: 'portfolio', headingId: 'sec3', title: 'Total portfolio tax comparison', Body: PortfolioComparison },
 ];
 

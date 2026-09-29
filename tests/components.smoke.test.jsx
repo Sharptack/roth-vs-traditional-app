@@ -251,6 +251,37 @@ describe('ResultsSummary', () => {
     expect(sec3).not.toContain('Marginal rate while working');
   });
 
+  it('shows a calculation dropdown for "After-tax income it generates" (HAND CALC)', () => {
+    // $100,000/$10,000 default: W = 37,784.31 (see compare.test.js), no side account.
+    const html = render();
+    const trade = html.slice(html.indexOf('id="sec-tradeoff"'), html.indexOf('id="sec3"'));
+    const dropdown = trade.slice(trade.indexOf('Show the calculation'), trade.indexOf('</details>', trade.indexOf('Show the calculation')));
+    expect(dropdown).toContain('Account withdrawal (4% of Future Contributions)</th><td>$29,472</td><td>$37,784</td>');
+    expect(dropdown).toContain('Tax on it</th><td>$0, tax-free</td><td>24.6% of $37,784 = $9,308</td>');
+    expect(dropdown).toContain('After-tax income it generates</th><td>$29,472</td><td>$28,476</td>');
+    // no side-account rows when nothing exceeds the IRS limit
+    expect(dropdown).not.toContain('Taxable side account withdrawal');
+    expect(dropdown).not.toContain('spilled into a taxable account');
+
+    // Over the limit: $150,000 income, $30,000 saved — both sides spill over (see
+    // compare.test.js's "contribution limits" hand calcs for the underlying numbers).
+    const over = render({ grossIncome: '150000', savings: '30000', otherPretaxBalance: '0' });
+    const tradeOver = over.slice(over.indexOf('id="sec-tradeoff"'), over.indexOf('id="sec3"'));
+    const dropdownOver = tradeOver.slice(tradeOver.indexOf('Show the calculation'), tradeOver.indexOf('</details>', tradeOver.indexOf('Show the calculation')));
+    expect(dropdownOver).toContain('spilled into a taxable account over the IRS limit');
+    expect(dropdownOver).toContain('Taxable side account withdrawal');
+    expect(dropdownOver).toContain('Over the IRS limit, 4% of its projected value');
+    // the two "After-tax" sub-totals (account, then side) plus the grand total: three total-rows
+    // after the header row, ending in the same figure the main table shows
+    expect((dropdownOver.match(/class="total-row"/g) ?? []).length).toBe(3);
+    const mainTable = tradeOver.slice(tradeOver.indexOf('<table'), tradeOver.indexOf('</table>'));
+    const mainAfterTax = mainTable.slice(mainTable.indexOf('After-tax income it generates'));
+    const grandTotal = dropdownOver.slice(dropdownOver.lastIndexOf('After-tax income it generates'));
+    // same two dollar figures appear in both the summary table and this dropdown's own total row
+    const dollars = (s) => s.match(/\$[\d,]+/g).slice(0, 2);
+    expect(grandTotal.match(/\$[\d,]+/g).slice(0, 2)).toEqual(dollars(mainAfterTax));
+  });
+
   it('has no dollar verdict sentence or table caption above the table', () => {
     const html = render();
     expect(html).not.toContain('class="verdict"');
@@ -401,7 +432,10 @@ describe('ResultsSummary', () => {
   it('shows Adjusted Gross Income (AGI) in the portfolio calculation dropdown', () => {
     const html = render();
     expect(html).toContain('Adjusted gross income, AGI');
-    const dropdown = html.slice(html.indexOf('Show the calculation'));
+    // scoped to Section 3 (sec3): "Show the calculation" also labels the After-tax comparison
+    // card's own dropdown now (AfterTaxIncomeMath), which comes earlier on the page.
+    const sec3 = html.slice(html.indexOf('id="sec3"'));
+    const dropdown = sec3.slice(sec3.indexOf('Show the calculation'));
     const agiIdx = dropdown.indexOf('Adjusted gross income, AGI');
     const taxableSSIdx = dropdown.indexOf('Taxable part of Social Security');
     const ordinaryIdx = dropdown.indexOf('Ordinary taxable income');
@@ -556,6 +590,61 @@ describe('ResultsSummary', () => {
     expect(section).toContain('There is no withdrawal from Future Contributions to measure, so there is no rate to compare.');
     expect(section).toContain('There is nothing saved to compare.');
     expect(section).toContain('there is nothing saved to measure a rate on');
+  });
+
+  it('shows a "Splitting your contribution" card between the after-tax comparison and total portfolio tax comparison', () => {
+    const html = render();
+    expect(html.indexOf('id="sec-tradeoff"')).toBeLessThan(html.indexOf('id="sec-blend"'));
+    expect(html.indexOf('id="sec-blend"')).toBeLessThan(html.indexOf('id="sec3"'));
+    const blend = html.slice(html.indexOf('id="sec-blend"'), html.indexOf('id="sec3"'));
+    expect(blend).toContain('Splitting your contribution</span>');
+    expect(blend).toContain('Roth share of the contribution');
+    expect(blend).toContain('type="range"');
+    expect(blend).toContain('To Roth');
+    expect(blend).toContain('To Pre-tax');
+    expect(blend).toContain('Jump to the best mix');
+    expect(blend).toContain('Show the numbers');
+    expect(blend).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('the blend slider defaults to the best mix, and says so when a pure strategy already wins', () => {
+    // Default inputs (estimated Social Security + a $100,000 existing Pre-tax balance, both
+    // Roth-favorable per the app's already-established findings): the best mix is 100% Roth,
+    // matching the main rate comparison's own "Tends to favor Roth" verdict at these defaults.
+    const html = render();
+    const blend = html.slice(html.indexOf('id="sec-blend"'), html.indexOf('id="sec3"'));
+    expect(blend).toContain('Here, a pure strategy already wins.');
+    expect(blend).toContain('value="100"');
+    expect(blend).toContain('Roth share of the contribution: <strong>100%</strong>');
+    expect(blend).toContain('(the best mix)');
+    expect(blend).toContain('Jump to the best mix (100% Roth,');
+  });
+
+  it('finds and explains a genuine interior optimum (HAND CALC)', () => {
+    // $60,000 income, $10,000 saved, $20,000 known Social Security, no Existing Accounts — the
+    // same scenario blend.test.js hand-derives r=0.5 for; the grid's actual best (56%, a whole
+    // percentage point away) is confirmed independently via the underlying lib, not re-derived
+    // by hand here — blend.test.js already hand-verifies the interior-optimum phenomenon itself.
+    const html = render({
+      grossIncome: '60000',
+      savings: '10000',
+      knowsSocialSecurity: 'yes',
+      socialSecurityBenefit: '20000',
+      otherPretaxBalance: '0',
+    });
+    const blend = html.slice(html.indexOf('id="sec-blend"'), html.indexOf('id="sec3"'));
+    expect(blend).toContain('Here, blending helps.');
+    expect(blend).toContain('56% Roth');
+    expect(blend).toContain('value="56"');
+    expect(blend).toContain('$1,671');
+  });
+
+  it('shows "nothing saved yet to split" when $0 is saved, without NaN', () => {
+    const html = render({ savings: '0' });
+    const blend = html.slice(html.indexOf('id="sec-blend"'), html.indexOf('id="sec3"'));
+    expect(blend).toContain('There is nothing saved yet to split.');
+    expect(blend).not.toContain('type="range"');
+    expect(blend).not.toMatch(/NaN|Infinity/);
   });
 
   it('lists validation errors instead of results for bad input', () => {
@@ -992,6 +1081,7 @@ describe('Collapsible sections', () => {
       'Tax rate comparison',
       'Tax rate comparison — old calculation',
       'After-tax comparison',
+      'Splitting your contribution',
       'Total portfolio tax comparison',
     ]);
     expect(html).toContain('class="collapsible-summary">$65,380 a year after tax<');

@@ -479,6 +479,32 @@ a {
   color: var(--dim);
 }
 
+/* ---------- "Splitting your contribution" (blend explorer) ---------- */
+
+.blend-slider {
+  margin: 12px 0 16px;
+}
+
+.blend-slider label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.92rem;
+}
+
+.blend-optimal-flag {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.blend-slider input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.blend-facts {
+  margin: 4px 0 16px;
+}
+
 .verdict {
   margin: 0 0 16px;
   font-weight: 600;

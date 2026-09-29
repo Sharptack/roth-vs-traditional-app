@@ -17,7 +17,21 @@ function padDomain(min, max, fraction) {
 // and a legend when there's more than one series (see the dataviz skill).
 // `zones` (optional): { above: { label, color }, below: { label, color } } shades the areas above and
 // below the zero line and labels them (used to show who comes out ahead).
-export default function LineChart({ series, xTicks, formatX, formatY, formatYTick = formatY, xLabel, yLabel, zones }) {
+// `includeZero` (default true): whether the y-axis always shows $0/0, even when every value is
+// far from it — right for rate-gap-style charts centered on zero, wrong for a chart whose
+// values are always positive and clustered in a narrow band (it would squash the interesting
+// variation into a sliver at one edge), so those pass `includeZero={false}`.
+export default function LineChart({
+  series,
+  xTicks,
+  formatX,
+  formatY,
+  formatYTick = formatY,
+  xLabel,
+  yLabel,
+  zones,
+  includeZero = true,
+}) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
   const plotLeft = MARGIN.left;
@@ -36,7 +50,9 @@ export default function LineChart({ series, xTicks, formatX, formatY, formatYTic
   }));
 
   const allY = series.flatMap((s) => s.points.map((p) => p.y));
-  const [yPadMin, yPadMax] = padDomain(Math.min(...allY, 0), Math.max(...allY, 0), 0.15);
+  const yRawMin = includeZero ? Math.min(...allY, 0) : Math.min(...allY);
+  const yRawMax = includeZero ? Math.max(...allY, 0) : Math.max(...allY);
+  const [yPadMin, yPadMax] = padDomain(yRawMin, yRawMax, 0.15);
   const yTicksList = niceTicks(yPadMin, yPadMax, 5);
   const yDomainMin = Math.min(yPadMin, yTicksList[0]);
   const yDomainMax = Math.max(yPadMax, yTicksList[yTicksList.length - 1]);

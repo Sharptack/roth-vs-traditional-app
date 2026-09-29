@@ -93,6 +93,18 @@ export function sectionChanged(section, values, baseValues) {
 const LEAN_SHORT = { pretax: 'tends to favor Pre-tax', roth: 'tends to favor Roth', even: 'about even' };
 const WINNER_NAME = { roth: 'Roth', pretax: 'Pre-tax' };
 
+// "Best mix: 56% Roth, $440/yr more than either pure strategy" (or, when a pure strategy
+// already wins, "Best mix: all Pre-tax") — the blend explorer's closed-card headline.
+function blendHeadline(blend) {
+  if (!blend.available) return 'Nothing saved to split';
+  const { best, points } = blend;
+  const betterPure = Math.max(points[0].totalAfterTaxIncome, points[points.length - 1].totalAfterTaxIncome);
+  const gain = best.totalAfterTaxIncome - betterPure;
+  const pct = Math.round(best.rothShare * 100);
+  if (gain <= 0.5) return `Best mix: all ${pct === 0 ? 'Pre-tax' : 'Roth'}`;
+  return `Best mix: ${pct}% Roth, ${formatCurrency(gain)}/yr more than either pure strategy`;
+}
+
 // The headline shown on each results card's header, keyed by card id.
 export function resultHeadlines(result) {
   const { retirementNeed, rates, comparison, portfolio } = result;
@@ -108,6 +120,7 @@ export function resultHeadlines(result) {
       comparison.winner === 'even'
         ? 'About even'
         : `${WINNER_NAME[comparison.winner]} ahead by ${formatCurrency(comparison.afterTaxIncomeDifference)} a year after tax`,
+    blend: blendHeadline(result.blend),
     portfolio: `Tax a year: All-Roth ${formatCurrency(portfolio.roth.totalTaxPaid)} vs. All-Pre-tax ${formatCurrency(portfolio.pretax.totalTaxPaid)}`,
   };
 }
