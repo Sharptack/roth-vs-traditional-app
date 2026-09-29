@@ -34,7 +34,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (426 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (428 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -170,14 +170,53 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   gets a "changed" pill. "Clear all" (main form only, card head): every dollar field to $0, ages blank, choices
   back to defaults (`CLEARED_FORM_VALUES` in formInputs.js); it becomes "Undo clear" until the next edit (`App.jsx`
   `beforeClear`). The inner dropdowns ("Will you earn more or less later?", cost basis) are unchanged.
-- Results: the four cards (Retirement income number, **Tax rate comparison**, **After-tax comparison**, Total portfolio
-  tax comparison; the middle two were "Roth vs. Traditional" and "The trade-off in dollars" until 2026-09-26 (n) —
-  the user asked for names that say what they are; the tax rate card carries a subtle accent bar, `key-card`, as the
-  number that matters most) are `Collapsible` cards; the header shows the headline (`resultHeadlines`) while closed; all start
-  open; "Collapse all results" above them. Heading ids `sec1`, `sec2`, `sec-tradeoff`, `sec3` are kept.
+- Results: five cards (Retirement income number, **Your portfolio at retirement** (added 2026-09-28, see its own
+  section below), **Tax rate comparison**, **After-tax comparison**, Total portfolio tax comparison; the middle two
+  of the original four were "Roth vs. Traditional" and "The trade-off in dollars" until 2026-09-26 (n) — the user
+  asked for names that say what they are; the tax rate card carries a subtle accent bar, `key-card`, as the number
+  that matters most) are `Collapsible` cards; the header shows the headline (`resultHeadlines`) while closed; all start
+  open; "Collapse all results" above them. Heading ids `sec1`, `sec-portfolio`, `sec2`, `sec-tradeoff`, `sec3` are kept.
 - `Collapsible` hides a closed body (`hidden`), never unmounts it, so typed values and open dropdowns survive. Section
   bodies in InputForm are built by a `section(id, content)` function call, NOT an inner component (an inner component
   would remount every render and lose input state).
+
+## "Your portfolio at retirement" card (added 2026-09-28; revives a 2026-09-25 REJECTED idea)
+Sits between "Retirement income number" (`sec1`) and "Tax rate comparison" (`sec2`) — `id="sec-portfolio"`,
+card id `buildup`, component `PortfolioBuildup` in ResultsSummary.jsx. The user asked for it explicitly, aware
+of the earlier rejection ("we had something like this before, but it fits better now, I think, with the new
+expandable blocks") — the difference from the 2026-09-25 version: that one was either a standalone card ABOVE
+the retirement number (competing with it for attention) or merged INTO the trade-off table (muddying a table
+that was about something else); this one is its own collapsible card, positioned to set up the very next card
+(the rate comparison) rather than compete with anything, and closes as easily as it opens. If it starts
+muddying things again, that's the difference to revisit first.
+- No new pure functions or hand-verified tests were needed — every number was already on `result` and already
+  tested elsewhere; this is a different VIEW of `contributionSplit`/`contribution`, `grown`, `annuity.{roth,pretax}.{futureValue,side.futureValue,totalFutureValue}`
+  and `portfolio.{roth,pretax}.{buckets,totalValue}`, reused as-is.
+- Content, top to bottom: an opening note ("Why this matters") that Pre-tax contributes more for the same
+  take-home pay and names the exact dollar gap (`contribution.pretax - contribution.roth`, always >= 0 since
+  P = R/(1-t)) — a "there's nothing saved yet" variant when that gap is ~$0 (`hasContribution` guard, mirrors
+  how the rates card handles `$0` saved, though this card's own numbers never crash or need an availability
+  check, unlike `sideAware`). Then a `compare-table tradeoff-table`-styled grouped table (reuses the trade-off
+  table's CSS classes as-is, so no new styles were needed): "Your contribution this year" (to the account, to a
+  taxable account when `contributionSplit.X.excessToTaxable > 0.5`, total); "Existing Accounts, grown to
+  retirement" (Pre-tax/Roth/Taxable from `grown`, identical in both columns since Existing Accounts don't
+  depend on the Roth/Traditional choice — shown in both columns anyway for visual consistency with the rest of
+  the page, not because they differ); "Future Contributions, grown to retirement" (Pre-tax/Roth/Taxable, this
+  time genuinely different per column: the Roth scenario's contribution is 100% in the Roth bucket plus its own
+  taxable side, the Pre-tax scenario's is 100% Pre-tax plus its own taxable side); then a bold "Total portfolio
+  at retirement" row using `BucketBreakdown` (the same small component Section 3's "Total future portfolio
+  value" row already uses) — deliberately NOT `win`-highlighted, since a bigger total isn't a verdict (it's the
+  Pre-tax side's un-taxed money, which is exactly the tension the rest of the app resolves). A "How is this
+  calculated?" dropdown closes it, ending with the explicit hand-off line the user asked for: the total above
+  is a starting point, and the tax rate comparison next measures the rate on withdrawing from Future
+  Contributions **stacked on top of** whatever Existing Accounts (and Social Security) already draw — never a
+  flat rate on the total. (Watch the literal substring "contribution limit" in this dropdown's copy: the
+  existing "shows the contribution-limit warning only at/near the limit" smoke test asserts that phrase is
+  ABSENT under the limit, so this card's prose says "over the IRS limit," not "over the IRS contribution
+  limit.")
+- `resultHeadlines` gained a `buildup` key (`"$X Roth vs. $Y Pre-tax at retirement"`, from `portfolio.X.totalValue`);
+  the unused `ratesNew` key (dead since the 2026-09-28 rates migration removed the card that read it) was
+  removed in the same pass.
 
 ## "Compare a change" (added 2026-09-25; reworked same day)
 - Reworked at the user's request: they disliked editing the existing inputs to make a comparison. Now
@@ -442,17 +481,20 @@ the whole account) is still open — see "Known limitations."
 - Section 3 has an extra **"Withdrawal rate needed"** row and a note: a higher tax bill is not a verdict
   (the Pre-tax scenario also got a deduction and starts larger). Section 2 has a one-line verdict.
 - **Page layout (2026-09-25g):** (1) "Retirement income number": hero value, SS + income-needed-from-portfolio
-  facts, note, "How is this calculated?" dropdown. (2) **"Tax rate comparison"** card (named "Roth vs. Traditional" before 2026-09-26) (`id="sec2"`) holding ONLY the
+  facts, note, "How is this calculated?" dropdown. (2) **"Your portfolio at retirement"** card — see its own
+  section below; added 2026-09-28, superseding the REJECTED note that used to be recorded here (2026-09-25: an
+  earlier version of this block, first as its own card, then merged into the trade-off table, was rejected as
+  muddying things; the user brought a version of it back 2026-09-28 now that results are collapsible, explicitly
+  citing that as the reason it fits better now — see that section for why this isn't the same rejected thing).
+  (3) **"Tax rate comparison"** card (named "Roth vs. Traditional" before 2026-09-26) (`id="sec2"`) holding ONLY the
   rates: the tax-saved-now vs. effective-rate pair (no subheading since 2026-09-26; the card title says it), the short lean phrase ("Tends to favor Roth" / "About even"; the
   user removed the explanatory sentence and rule-of-thumb hint) and the "How are these rates calculated?"
-  dropdown. (3) **"After-tax comparison"** card (was "The trade-off in dollars") (`id="sec-tradeoff"`, `TradeOff` component): limit alert, then
+  dropdown. (4) **"After-tax comparison"** card (was "The trade-off in dollars") (`id="sec-tradeoff"`, `TradeOff` component): limit alert, then
   ONE table (Roth / Pre-tax only, no Difference column, no "Tax on withdrawals" row) with three shaded groups:
   "What you put in" (current possible contribution); "A single year's contribution" (value at retirement, after-tax
   value); "Contributing every year until retirement" (Future Contributions at retirement, after-tax income it
   generates). Future Contributions only. Then "Why is the Pre-tax side bigger?" and "Retirement years without
-  Social Security" dropdowns. (4) "Total portfolio tax comparison" (`id="sec3"`). REJECTED (2026-09-25): a
-  "Your portfolio at retirement" block (Existing Accounts + Future Contributions = total), first as a card above
-  Section 1, then merged into the trade-off table. The user found it muddied things; don't reintroduce it.
+  Social Security" dropdowns. (5) "Total portfolio tax comparison" (`id="sec3"`).
   Cells show "incl. $X in a taxable account (over the IRS limit)" when a taxable side exists.
 - **Terminology (user, 2026-09-25c):** the savings being decided on = **"Future Contributions"** (capitalized);
   all other retirement/investment balances collectively = **"Existing Accounts"**. Never "this account",
@@ -531,6 +573,12 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-28 (d) — New "Your portfolio at retirement" card between the retirement number and the tax rate
+  comparison (see its own section above): contribution difference, Existing Accounts and Future Contributions
+  each grown and split by account type, and the total, ending with a hand-off line into the rate comparison's
+  "stacked on top of" framing. Pure presentation — no new lib functions or tests, every number already existed
+  on `result`. Removed the dead `ratesNew` headline key (left over from the deleted duplicate rates card).
+  428 tests.
 - 2026-09-28 (c) — Migrated everything to `sideAwareRates.js` as the sole rate calculation (see "The rates
   calculation" above for the full detail); the "new calculation" duplicate card is gone, so there is one
   "Tax rate comparison" card again. `lib/incomeNeed.js` and `tests/incomeNeed.test.js` deleted (no longer

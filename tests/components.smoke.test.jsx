@@ -161,13 +161,51 @@ describe('ResultsSummary', () => {
     expect(sec1).not.toContain('Effective rate');
   });
 
+  it('shows a portfolio build-up card between the retirement number and the rates: contribution difference, existing balances, and Future Contributions, each split by account type', () => {
+    const html = render();
+    const buildup = html.slice(html.indexOf('id="sec-portfolio"'), html.indexOf('id="sec2"'));
+    expect(buildup).toContain('Your portfolio at retirement</span>');
+    expect(buildup).toContain('Why this matters');
+    expect(buildup).toContain('Your contribution this year');
+    expect(buildup).toContain('To your account');
+    expect(buildup).toContain('Total contribution');
+    expect(buildup).toContain('Existing Accounts, grown to retirement');
+    expect(buildup).toContain('Future Contributions, grown to retirement');
+    expect(buildup).toContain('Total portfolio at retirement');
+    expect(buildup).toContain('class="breakdown"'); // reuses the same bucket breakdown as Section 3
+    expect(buildup).toContain('How is this calculated?');
+    expect(buildup).toContain('stacked <strong>on top of</strong>');
+    // no taxable side account in the default case: the row is omitted, not shown as $0
+    expect(buildup).not.toContain('To a taxable account');
+    expect(buildup).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('shows the taxable-account contribution row only when savings exceed the IRS limit', () => {
+    const under = render({ savings: '10000' });
+    const buildupUnder = under.slice(under.indexOf('id="sec-portfolio"'), under.indexOf('id="sec2"'));
+    expect(buildupUnder).not.toContain('To a taxable account');
+    const over = render({ grossIncome: '150000', savings: '30000', otherPretaxBalance: '0' });
+    const buildupOver = over.slice(over.indexOf('id="sec-portfolio"'), over.indexOf('id="sec2"'));
+    expect(buildupOver).toContain('To a taxable account');
+    expect(buildupOver).toContain('Over the IRS limit');
+  });
+
+  it('handles $0 saved without NaN, with a graceful "nothing saved yet" note', () => {
+    const html = render({ savings: '0' });
+    const buildup = html.slice(html.indexOf('id="sec-portfolio"'), html.indexOf('id="sec2"'));
+    expect(buildup).not.toMatch(/NaN|Infinity/);
+    expect(buildup).toContain('there’s nothing saved yet to compare');
+    expect(buildup).not.toContain('Why this matters:</strong> a Pre-tax dollar');
+  });
+
   it('gives the rates their own Tax rate comparison block, followed by the After-tax comparison', () => {
     const html = render();
     const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec-tradeoff"'));
     const trade = html.slice(html.indexOf('id="sec-tradeoff"'), html.indexOf('id="sec3"'));
     const sec3 = html.slice(html.indexOf('id="sec3"'));
-    // order: retirement number, rates, trade-off, total portfolio tax
-    expect(html.indexOf('id="sec1"')).toBeLessThan(html.indexOf('id="sec2"'));
+    // order: retirement number, portfolio build-up, rates, trade-off, total portfolio tax
+    expect(html.indexOf('id="sec1"')).toBeLessThan(html.indexOf('id="sec-portfolio"'));
+    expect(html.indexOf('id="sec-portfolio"')).toBeLessThan(html.indexOf('id="sec2"'));
     expect(html.indexOf('id="sec2"')).toBeLessThan(html.indexOf('id="sec-tradeoff"'));
     expect(html.indexOf('id="sec-tradeoff"')).toBeLessThan(html.indexOf('id="sec3"'));
     // the rates block holds only the rates: no table
@@ -196,9 +234,6 @@ describe('ResultsSummary', () => {
     }
     expect(table).not.toContain('Difference');
     expect(table).not.toContain('Tax on withdrawals');
-    // the merged "Your portfolio at retirement" rows are gone
-    expect(html).not.toContain('Your portfolio at retirement');
-    expect(html).not.toContain('Total portfolio at retirement');
     expect(trade).toContain('Why is the Pre-tax side bigger?');
     expect(trade).toContain('Retirement years without Social Security');
     expect(sec3).not.toContain('Marginal rate while working');
@@ -932,6 +967,7 @@ describe('Collapsible sections', () => {
     const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
     expect(titles).toEqual([
       'Retirement income number',
+      'Your portfolio at retirement',
       'Tax rate comparison',
       'After-tax comparison',
       'Total portfolio tax comparison',

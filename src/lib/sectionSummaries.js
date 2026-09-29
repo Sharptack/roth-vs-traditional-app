@@ -98,10 +98,8 @@ export function resultHeadlines(result) {
   const { retirementNeed, rates, comparison, portfolio } = result;
   return {
     need: `${formatCurrency(retirementNeed.target)} a year after tax`,
+    buildup: `${formatCurrency(portfolio.roth.totalValue)} Roth vs. ${formatCurrency(portfolio.pretax.totalValue)} Pre-tax at retirement`,
     rates: `${formatPercent(rates.marginalNow)} now vs. ${formatPercent(rates.effectiveRetirement)} in retirement · ${LEAN_SHORT[rates.lean]}`,
-    ratesNew: result.sideAware.available
-      ? `${formatPercent(result.sideAware.taxSavedNow)} saved now vs. ${formatPercent(result.sideAware.effectiveRate)} paid later · ${LEAN_SHORT[result.sideAware.lean]}`
-      : 'No withdrawal to measure',
     tradeoff:
       comparison.winner === 'even'
         ? 'About even'

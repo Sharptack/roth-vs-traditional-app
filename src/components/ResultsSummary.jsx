@@ -199,6 +199,161 @@ function RetirementNumberSection({ result }) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Section 1b — Your portfolio at retirement                            */
+/* ------------------------------------------------------------------ */
+
+// What each scenario contributes this year, what that (and the Existing Accounts you already
+// have) grow to by retirement, and the total. No new math: every number here already exists on
+// `result` (contributionSplit, grown, annuity, portfolio) — this is a different VIEW of numbers
+// used elsewhere, built to set up the "Tax rate comparison" card right after it: the contribution
+// difference is why the two scenarios differ at all, and that card's rate is measured on
+// withdrawing from Future Contributions stacked ON TOP of this section's Existing Accounts total.
+function PortfolioBuildup({ result }) {
+  const { contribution, contributionSplit, grown, annuity, portfolio, years } = result;
+  const hasSide = contributionSplit.roth.excessToTaxable > 0.5 || contributionSplit.pretax.excessToTaxable > 0.5;
+  const existingTotal = grown.pretax + grown.roth + grown.taxable;
+  const contributionGap = contribution.pretax - contribution.roth;
+  const hasContribution = contributionGap > 0.5;
+
+  return (
+    <>
+      <p className="note">
+        {hasContribution ? (
+          <>
+            <strong>Why this matters:</strong> a Pre-tax dollar comes out of income that would
+            otherwise be taxed, so Pre-tax puts more away for the same take-home pay. That extra{' '}
+            {$(contributionGap)} a year is the entire reason the two scenarios end up different
+            &mdash; everything below builds on it.
+          </>
+        ) : (
+          <>
+            <strong>Why this matters:</strong> there&rsquo;s nothing saved yet to compare. Once
+            you enter a contribution, the difference between Roth and Pre-tax shows up here first
+            &mdash; everything below builds on it.
+          </>
+        )}
+      </p>
+
+      <div className="table-wrap">
+        <table className="compare-table tradeoff-table">
+          <thead>
+            <tr>
+              <th scope="col" className="row-head"></th>
+              <th scope="col">Roth</th>
+              <th scope="col">Pre-tax (Traditional)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <GroupRow title="Your contribution this year" sub="For the same take-home pay" />
+            <tr>
+              <th scope="row">To your account</th>
+              <td>{$(contributionSplit.roth.toAccount)}</td>
+              <td>{$(contributionSplit.pretax.toAccount)}</td>
+            </tr>
+            {hasSide && (
+              <tr>
+                <th scope="row">
+                  To a taxable account
+                  <span className="th-sub">Over the IRS limit</span>
+                </th>
+                <td>{$(contributionSplit.roth.excessToTaxable)}</td>
+                <td>{$(contributionSplit.pretax.excessToTaxable)}</td>
+              </tr>
+            )}
+            <tr className="total-row">
+              <th scope="row">Total contribution</th>
+              <td>{$(contribution.roth)}</td>
+              <td>{$(contribution.pretax)}</td>
+            </tr>
+          </tbody>
+          <tbody>
+            <GroupRow title="Existing Accounts, grown to retirement" sub={`Same either way, over ${years} years`} />
+            <tr>
+              <th scope="row">Pre-tax</th>
+              <td>{$(grown.pretax)}</td>
+              <td>{$(grown.pretax)}</td>
+            </tr>
+            <tr>
+              <th scope="row">Roth</th>
+              <td>{$(grown.roth)}</td>
+              <td>{$(grown.roth)}</td>
+            </tr>
+            <tr>
+              <th scope="row">Taxable</th>
+              <td>{$(grown.taxable)}</td>
+              <td>{$(grown.taxable)}</td>
+            </tr>
+            <tr className="total-row">
+              <th scope="row">Existing Accounts total</th>
+              <td>{$(existingTotal)}</td>
+              <td>{$(existingTotal)}</td>
+            </tr>
+          </tbody>
+          <tbody>
+            <GroupRow title="Future Contributions, grown to retirement" />
+            <tr>
+              <th scope="row">Pre-tax</th>
+              <td>{$(0)}</td>
+              <td>{$(annuity.pretax.futureValue)}</td>
+            </tr>
+            <tr>
+              <th scope="row">Roth</th>
+              <td>{$(annuity.roth.futureValue)}</td>
+              <td>{$(0)}</td>
+            </tr>
+            <tr>
+              <th scope="row">Taxable</th>
+              <td>{$(annuity.roth.side.futureValue)}</td>
+              <td>{$(annuity.pretax.side.futureValue)}</td>
+            </tr>
+            <tr className="total-row">
+              <th scope="row">Future Contributions total</th>
+              <td>{$(annuity.roth.totalFutureValue)}</td>
+              <td>{$(annuity.pretax.totalFutureValue)}</td>
+            </tr>
+          </tbody>
+          <tbody>
+            <tr className="total-row">
+              <th scope="row">Total portfolio at retirement</th>
+              <td>
+                {$(portfolio.roth.totalValue)}
+                <BucketBreakdown buckets={portfolio.roth.buckets} />
+              </td>
+              <td>
+                {$(portfolio.pretax.totalValue)}
+                <BucketBreakdown buckets={portfolio.pretax.buckets} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <details className="details">
+        <summary>How is this calculated?</summary>
+        <div className="details-body">
+          <p>
+            Both scenarios cost you the same take-home pay today (see &ldquo;Why is the Pre-tax
+            side bigger?&rdquo; under the after-tax comparison for the exact arithmetic). Whatever
+            each scenario puts away is grown at your expected return for {years} years; anything
+            over the IRS limit builds a taxable account alongside the main one. Your Existing
+            Accounts grow the same way regardless of which you choose &mdash; the Roth-or-Traditional
+            decision only ever changes Future Contributions.
+          </p>
+          <p className="hint">
+            The total above is only a starting point, not the comparison itself: the bigger
+            Pre-tax total includes money that hasn&rsquo;t been taxed yet, so it isn&rsquo;t an
+            apples-to-apples number on its own. The <strong>tax rate comparison</strong> next is
+            where that gets settled: it measures the effective tax rate on withdrawing from Future
+            Contributions specifically, stacked <strong>on top of</strong> whatever Social Security
+            and your Existing Accounts already draw &mdash; never a flat rate on the total above.
+          </p>
+        </div>
+      </details>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Section 2 — Tax rate comparison                                      */
 /* ------------------------------------------------------------------ */
 
@@ -864,6 +1019,7 @@ function PortfolioComparison({ result }) {
 // comparison is the number the decision turns on, so it gets a subtle accent (`key-card`).
 const RESULT_CARDS = [
   { id: 'need', headingId: 'sec1', title: 'Retirement income number', Body: RetirementNumberSection },
+  { id: 'buildup', headingId: 'sec-portfolio', title: 'Your portfolio at retirement', Body: PortfolioBuildup },
   { id: 'rates', headingId: 'sec2', title: 'Tax rate comparison', Body: TaxRates, className: 'key-card' },
   { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'After-tax comparison', Body: TradeOff },
   { id: 'portfolio', headingId: 'sec3', title: 'Total portfolio tax comparison', Body: PortfolioComparison },
