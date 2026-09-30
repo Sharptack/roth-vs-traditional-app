@@ -147,7 +147,6 @@ describe('ResultsSummary', () => {
       'Total gross withdrawal needed',
       'Total tax paid',
       'After-tax income achieved',
-      'Total tax difference between scenarios',
       'Estimates only — not tax or financial advice',
     ]) {
       expect(html).toContain(text);
@@ -602,6 +601,8 @@ describe('ResultsSummary', () => {
     expect(blend).toContain('type="range"');
     expect(blend).toContain('To Roth');
     expect(blend).toContain('To Pre-tax');
+    expect(blend).toContain('Tax saved now');
+    expect(blend).toContain('Effective rate on the Pre-tax withdrawal');
     expect(blend).toContain('Jump to the best mix');
     expect(blend).toContain('Show the numbers');
     expect(blend).not.toMatch(/NaN|Infinity/);
@@ -674,7 +675,7 @@ describe('ResultsSummary', () => {
     for (const c of cases) {
       const html = render(c);
       expect(html, JSON.stringify(c)).not.toMatch(/NaN|Infinity/);
-      expect(html, JSON.stringify(c)).toContain('Total tax difference');
+      expect(html, JSON.stringify(c)).toContain('Withdrawal rate needed');
     }
   });
 });

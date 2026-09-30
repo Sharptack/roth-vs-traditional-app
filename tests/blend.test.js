@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateBlend, findOptimalBlend, splitBlended } from '../src/lib/blend.js';
-import { splitAtTakeHome } from '../src/lib/compare.js';
+import { compareRothVsTraditional, splitAtTakeHome } from '../src/lib/compare.js';
+import { DEFAULT_FORM_VALUES, toCompareInputs } from '../src/lib/formInputs.js';
 
 describe('splitBlended (HAND CALC)', () => {
   it('uncapped: C=7,800, t=22%, limit=23,500, r=0.5 splits the account 50/50', () => {
@@ -199,5 +200,71 @@ describe('findOptimalBlend', () => {
   it('defaults to 101 steps (1% resolution)', () => {
     const { points } = findOptimalBlend(params);
     expect(points).toHaveLength(101);
+  });
+});
+
+describe('blend rates — tax saved now and the effective rate at each mix (HAND CALC)', () => {
+  const base = {
+    takeHomeCost: 7800,
+    marginalRate: 0.22,
+    limit: 23500,
+    returnRate: 0.07,
+    years: 30,
+    other: { pretaxGross: 0, taxableGross: 0, taxableGains: 0 },
+    existingTax: 0,
+    ssBenefit: 0,
+    filingStatus: 'single',
+    year: 2025,
+  };
+  const at = (points, share) => points[Math.round(share * 100)];
+
+  it('no Social Security, 22%: the rate climbs with the Pre-tax slice, tax saved now stays 22%', () => {
+    // Figures from the evaluateBlend hand calc above. All-Roth withdrawal = 29,471.77.
+    // r=0.5: W = 16,557.17, its tax 80.72 (nothing else in the stack)
+    //   effective = 80.72 / 16,557.17 = 0.4875%
+    //   saved now = (16,557.17 + 16,557.17 - 29,471.77) / 16,557.17 = 3,642.57 / 16,557.17 = 22.00%
+    // r=0: W = 37,784.31, its tax 2,405.62
+    //   effective = 2,405.62 / 37,784.31 = 6.367%
+    //   saved now = (37,784.31 - 29,471.77) / 37,784.31 = 8,312.54 / 37,784.31 = 22.00%
+    const { points } = findOptimalBlend(base);
+    expect(at(points, 0.5).effectiveRate).toBeCloseTo(0.004875, 5);
+    expect(at(points, 0.5).taxSavedNow).toBeCloseTo(0.22, 6);
+    expect(at(points, 0).effectiveRate).toBeCloseTo(0.06367, 4);
+    expect(at(points, 0).taxSavedNow).toBeCloseTo(0.22, 6);
+    expect(at(points, 1).effectiveRate).toBeNull();
+    expect(at(points, 1).taxSavedNow).toBeNull();
+  });
+
+  it('$20,000 Social Security, 12%: at r=0.5 the effective rate is 1.854%', () => {
+    // From the interior-optimum hand calc above: W = 17,686.27; Social Security alone owes $0
+    // (combined income 10,000 < 25,000), so the slice's tax is all 327.94.
+    //   effective = 327.94 / 17,686.27 = 1.854%; saved now = 12% (under the limit)
+    const { points } = findOptimalBlend({ ...base, takeHomeCost: 8800, marginalRate: 0.12, ssBenefit: 20000 });
+    expect(at(points, 0.5).effectiveRate).toBeCloseTo(0.018542, 5);
+    expect(at(points, 0.5).taxSavedNow).toBeCloseTo(0.12, 6);
+  });
+
+  it('IDENTITY: (saved now - effective) x W = the mix after-tax income minus all-Roth, over the limit too', () => {
+    for (const params of [
+      base,
+      { ...base, takeHomeCost: 8800, marginalRate: 0.12, ssBenefit: 20000 },
+      { ...base, takeHomeCost: 40000, marginalRate: 0.35, ssBenefit: 40000,
+        other: { pretaxGross: 30000, taxableGross: 20000, taxableGains: 12000 } },
+    ]) {
+      const { points } = findOptimalBlend(params);
+      const allRoth = points[100];
+      for (const p of points.slice(0, 100)) {
+        const gap = (p.taxSavedNow - p.effectiveRate) * p.pretaxWithdrawal;
+        expect(gap).toBeCloseTo(p.totalAfterTaxIncome - allRoth.totalAfterTaxIncome, 6);
+      }
+    }
+  });
+
+  it('at all-Pre-tax, both rates equal the Tax rate comparison card, under and over the limit', () => {
+    for (const change of [{}, { grossIncome: '500000', savings: '50000' }, { savings: '30000', otherTaxableBalance: '200000' }]) {
+      const r = compareRothVsTraditional(toCompareInputs({ ...DEFAULT_FORM_VALUES, ...change }));
+      expect(r.blend.points[0].taxSavedNow).toBeCloseTo(r.rates.taxSavedNow, 9);
+      expect(r.blend.points[0].effectiveRate).toBeCloseTo(r.rates.effectiveRetirement, 9);
+    }
   });
 });

@@ -154,11 +154,6 @@ describe('compareRothVsTraditional — end-to-end HAND CALC (no SS, no other acc
     expect(r.portfolio.roth.achievedAfterTaxIncome).toBeCloseTo(71101, 2);
     expect(r.portfolio.pretax.achievedAfterTaxIncome).toBeCloseTo(71101, 2);
   });
-
-  it('Section 11: tax difference headline', () => {
-    expect(r.taxDifference.amount).toBeCloseTo(9091.31, 1);
-    expect(r.taxDifference.lowerTaxScenario).toBe('roth');
-  });
 });
 
 describe('compareRothVsTraditional — wiring', () => {

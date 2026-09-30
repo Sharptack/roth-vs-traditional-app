@@ -76,8 +76,8 @@ describe('resultHeadlines', () => {
     rates: { marginalNow: 0.22, effectiveRetirement: 0.1234, lean: 'pretax' },
     comparison: { winner: 'pretax', afterTaxIncomeDifference: 1234.4 },
     portfolio: {
-      roth: { totalTaxPaid: 8000, totalValue: 940608.15 },
-      pretax: { totalTaxPaid: 11250.6, totalValue: 1147211.98 },
+      roth: { impliedWithdrawalRate: 0.020904, totalValue: 940608.15 },
+      pretax: { impliedWithdrawalRate: 0.020776, totalValue: 1147211.98 },
     },
     // TEMPORARY (2026-09-29): result.old, for the duplicate "old calculation" card's headline.
     old: { rates: { marginalNow: 0.22, effectiveRetirement: 0.2938, lean: 'pretax' } },
@@ -96,7 +96,7 @@ describe('resultHeadlines', () => {
       ratesOld: '22.0% now vs. 29.4% in retirement · tends to favor Pre-tax',
       tradeoff: 'Pre-tax ahead by $1,234 a year after tax',
       blend: 'Best mix: 56% Roth, $1,671/yr more than either pure strategy',
-      portfolio: 'Tax a year: All-Roth $8,000 vs. All-Pre-tax $11,251',
+      portfolio: 'Withdrawal rate needed: All-Roth 2.09% vs. All-Pre-tax 2.08%',
     });
   });
 

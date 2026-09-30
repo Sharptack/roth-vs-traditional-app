@@ -84,6 +84,16 @@ export function evaluateBlend({
     filingStatus,
     year,
   });
+  // The same stack without the Pre-tax slice (Existing Accounts + Social Security + this mix's
+  // side account): what blendRates() needs to measure the Pre-tax slice's own rate.
+  const taxWithoutPretaxSlice = calculateRetirementTax({
+    pretaxWithdrawal: other.pretaxGross,
+    taxableWithdrawal: taxable,
+    taxableGainShare: taxable > 0 ? (other.taxableGains + sideGains) / taxable : 1,
+    ssBenefit,
+    filingStatus,
+    year,
+  }).totalTax;
   const extraTax = stack.totalTax - existingTax;
   const totalAfterTaxIncome = rothWithdrawal + pretaxWithdrawal + sideWithdrawal - extraTax;
 
@@ -97,9 +107,35 @@ export function evaluateBlend({
     pretaxWithdrawal,
     sideWithdrawal,
     sideGainShare,
+    taxWithoutPretaxSlice,
+    pretaxSliceTax: stack.totalTax - taxWithoutPretaxSlice,
     extraTax,
     totalAfterTaxIncome,
   };
+}
+
+// The two rates of the Tax rate comparison card, at any mix: this mix measured against the
+// all-Roth mix, exactly as sideAwareRates.js measures all-Pre-tax against all-Roth (W = this
+// mix's Pre-tax withdrawal; its side account is stacked BEFORE W, same order):
+//   effectiveRate = [tax(Existing + side + W) - tax(Existing + side)] / W
+//   taxSavedNow   = [(W + Roth withdrawal - all-Roth withdrawal) + (side - all-Roth side)
+//                    - (tax(Existing + side) - tax(Existing + all-Roth side))] / W
+// so (taxSavedNow - effectiveRate) x W = this mix's after-tax income minus all-Roth's, to the
+// cent, and at r = 0 both equal compare.js's rates.taxSavedNow / rates.effectiveRetirement.
+// Under the IRS limit there is no side account and taxSavedNow is exactly the marginal rate
+// (the extra account dollars a mix buys over all-Roth are its Pre-tax dollars x t). Both are
+// null at all-Roth, where there is no Pre-tax withdrawal to measure.
+export function blendRates(point, allRoth) {
+  const W = point.pretaxWithdrawal;
+  if (!(W > 0.005)) return { taxSavedNow: null, effectiveRate: null };
+  const effectiveRate = point.pretaxSliceTax / W;
+  const gained =
+    W +
+    point.rothWithdrawal -
+    allRoth.rothWithdrawal +
+    (point.sideWithdrawal - allRoth.sideWithdrawal) -
+    (point.taxWithoutPretaxSlice - allRoth.taxWithoutPretaxSlice);
+  return { taxSavedNow: gained / W, effectiveRate };
 }
 
 // The whole curve (for charting) plus its best point, by dense grid search. Deliberately not a
@@ -115,5 +151,7 @@ export function findOptimalBlend(params, steps = 101) {
     points.push(point);
     if (!best || point.totalAfterTaxIncome > best.totalAfterTaxIncome) best = point;
   }
+  const allRoth = points[points.length - 1];
+  for (const point of points) Object.assign(point, blendRates(point, allRoth));
   return { points, best };
 }

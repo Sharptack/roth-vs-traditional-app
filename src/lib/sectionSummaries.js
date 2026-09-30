@@ -121,6 +121,6 @@ export function resultHeadlines(result) {
         ? 'About even'
         : `${WINNER_NAME[comparison.winner]} ahead by ${formatCurrency(comparison.afterTaxIncomeDifference)} a year after tax`,
     blend: blendHeadline(result.blend),
-    portfolio: `Tax a year: All-Roth ${formatCurrency(portfolio.roth.totalTaxPaid)} vs. All-Pre-tax ${formatCurrency(portfolio.pretax.totalTaxPaid)}`,
+    portfolio: `Withdrawal rate needed: All-Roth ${formatPercent(portfolio.roth.impliedWithdrawalRate, 2)} vs. All-Pre-tax ${formatPercent(portfolio.pretax.impliedWithdrawalRate, 2)}`,
   };
 }

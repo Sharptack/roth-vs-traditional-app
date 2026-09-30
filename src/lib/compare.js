@@ -678,15 +678,6 @@ export function compareRothVsTraditional(inputs) {
   };
   // ==================== end TEMPORARY old-calculation block ====================
 
-  const rothTax = portfolio.roth.totalTaxPaid;
-  const pretaxTax = portfolio.pretax.totalTaxPaid;
-  const taxDifference = {
-    amount: Math.abs(rothTax - pretaxTax),
-    // Which scenario pays LESS tax to fund the same lifestyle (within 50 cents = even).
-    lowerTaxScenario:
-      Math.abs(rothTax - pretaxTax) < 0.5 ? 'even' : rothTax < pretaxTax ? 'roth' : 'pretax',
-  };
-
   return {
     valid: true,
     errors: [],
@@ -759,7 +750,6 @@ export function compareRothVsTraditional(inputs) {
       ),
     },
     portfolio,
-    taxDifference,
     withoutSocialSecurity,
     blend,
     // TEMPORARY (2026-09-29): see the block above and CLAUDE.md's "result.old" section.

@@ -53,7 +53,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (479 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (482 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -507,6 +507,15 @@ surface area the latter would touch).
   values are always positive and cluster in a narrow few-thousand-dollar band, so forcing $0 into view
   squashed the whole interesting hump into a thin sliver at the top of the chart. `BlendExplorer` passes
   `includeZero={false}`.
+- **Rates per mix** (added 2026-09-29 (h), at the user's request): every blend point carries `taxSavedNow` and
+  `effectiveRate` (`blendRates` in blend.js, applied by `findOptimalBlend`): the mix measured against the
+  all-Roth mix exactly as sideAwareRates.js measures all-Pre-tax vs. all-Roth (W = the mix's Pre-tax withdrawal, side
+  account stacked before W). So (taxSavedNow − effectiveRate) × W = the mix's after-tax income minus all-Roth's (tested
+  to the cent, over the limit too), at r = 0 both equal `rates.taxSavedNow`/`rates.effectiveRetirement` (tested),
+  under the limit taxSavedNow is exactly the marginal rate, and both are null at all-Roth. The card shows them in the
+  facts list, a second LineChart (points 0-99%) and the numbers table. The effective rate is an AVERAGE over the Pre-tax
+  part, so at the optimum it is usually well below tax saved now (the optimum is where the NEXT Pre-tax dollar's rate
+  reaches it); the card's hint says so. `evaluateBlend` also returns `taxWithoutPretaxSlice` and `pretaxSliceTax`.
 - Also added, same session: a "Show the calculation" dropdown (`AfterTaxIncomeMath`) under the After-tax
   comparison table's "After-tax income it generates" row — each side's account withdrawal and its tax,
   plus the taxable side account's own withdrawal and tax when there is one. Pure presentation, no new
@@ -743,6 +752,13 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-29 (h) — Splitting your contribution: tax saved now and the effective rate on the Pre-tax part at every mix
+  (facts, a rates chart, table columns; `blendRates`, hand-verified + identity tests). Total portfolio tax comparison:
+  removed the "Total tax difference between scenarios" callout (and `result.taxDifference`) at the user's request;
+  its closed headline is now the withdrawal rate needed. ARTICLE.md: the split section no longer calls the best mix a
+  "planned future feature". Open question raised with the user: that card's "after-tax income at a 4% withdrawal"
+  difference is identical to the After-tax comparison's (the sideAware identity), so only "withdrawal rate needed" is
+  unique to it, and at the defaults the two disagree (Roth +$903/yr at 4%, Pre-tax needs 2.08% vs 2.09%). 482 tests.
 - 2026-09-29 (g) — Visualization: removed the gap-vs-advantage scatter and its trend line (circular: the winner IS
   the sign of the gap since 2026-09-28), deleted `ScatterChart.jsx`, `regression.js`, `flattenForScatter` and their
   tests and CSS. Page retitled "Visualization: who comes out ahead, and why"; the callout states the gap rule as exact.

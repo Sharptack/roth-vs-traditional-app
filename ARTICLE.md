@@ -110,7 +110,7 @@ That's why the calculator's total portfolio tax comparison looks at your whole p
 - **All-Roth**: your Future Contributions go to Roth.
 - **All-Pre-tax**: they go to Traditional.
 
-Both versions include your Existing Accounts grown to retirement. For each, the calculator finds the withdrawals needed to deliver your retirement income number after tax, drawing from every account in proportion to its size, and reports the total tax.
+Both versions include your Existing Accounts grown to retirement. For each, the calculator finds the withdrawals needed to deliver your retirement income number after tax, drawing from every account in proportion to its size, and reports what share of each portfolio that takes each year.
 
 Two things to keep in mind when reading it:
 
@@ -133,7 +133,7 @@ These matter, and a good decision should weigh them.
 
 ## The likely answer is often "some of each"
 
-We compared the two as pure extremes: all Roth or all Traditional. For many people the best answer is a **split**, taking the deduction at high current rates while filling up low retirement brackets with Roth money, so no bracket is over-used in either period. Finding the best mix is a planned future feature. In the meantime, the calculator's rate comparison tells you which direction to lean, and a split is a sensible hedge when the result is close or you're unsure.
+We compared the two as pure extremes: all Roth or all Traditional. For many people the best answer is a **split**, taking the deduction at high current rates while filling up low retirement brackets with Roth money, so no bracket is over-used in either period. The calculator's **Splitting your contribution** card tries every mix from all Traditional to all Roth and finds the one that leaves the most after-tax income. At each mix it shows the same two rates as the main comparison: the tax saved now, and the effective rate on the Traditional part's withdrawal. The effective rate rises as the Traditional part grows, because a bigger withdrawal climbs further through the brackets. The best mix is where the rate on the next Traditional dollar would reach, or jump past, the tax it saves today. A split is also a sensible hedge when the result is close or you're unsure.
 
 ## Disclaimer
 

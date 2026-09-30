@@ -707,6 +707,8 @@ function BlendExplorer({ result }) {
   }
   const clampedIndex = Math.min(100, Math.max(0, index));
   const point = blend.points[clampedIndex];
+  // Every mix but all-Roth, which has no Pre-tax part to put a rate on.
+  const ratePoints = blend.points.slice(0, -1);
   const pure0 = blend.points[0];
   const pure1 = blend.points[100];
   const betterPure = Math.max(pure0.totalAfterTaxIncome, pure1.totalAfterTaxIncome);
@@ -761,6 +763,11 @@ function BlendExplorer({ result }) {
         {point.excessToTaxable > 0.5 && (
           <BlendFact label="To a taxable account (over the IRS limit)" value={$(point.excessToTaxable)} />
         )}
+        <BlendFact label="Tax saved now" value={formatPercent(point.taxSavedNow)} />
+        <BlendFact
+          label="Effective rate on the Pre-tax withdrawal"
+          value={point.effectiveRate === null ? '— (nothing in Pre-tax)' : formatPercent(point.effectiveRate)}
+        />
         <BlendFact label="After-tax income it generates" value={$(point.totalAfterTaxIncome)} />
       </dl>
 
@@ -784,6 +791,35 @@ function BlendExplorer({ result }) {
         includeZero={false}
       />
 
+      <LineChart
+        series={[
+          {
+            key: 'saved',
+            label: 'Tax saved now',
+            points: ratePoints.map((p, i) => ({ x: i, y: p.taxSavedNow })),
+          },
+          {
+            key: 'effective',
+            label: 'Effective rate on the Pre-tax withdrawal',
+            points: ratePoints.map((p, i) => ({ x: i, y: p.effectiveRate })),
+          },
+        ]}
+        xTicks={ratePoints.map((_, i) => i)}
+        formatX={(x) => `${x}%`}
+        formatY={(y) => formatPercent(y)}
+        formatYTick={(y) => formatPercent(y, 0)}
+        xLabel="Roth share of the contribution"
+        yLabel="Tax rate"
+      />
+      <p className="hint">
+        Both rates are measured the same way as in the tax rate comparison, for the Pre-tax part of
+        each mix (all-Roth has no Pre-tax part, so the chart stops at 99%). The effective rate is an
+        average over the whole Pre-tax part, so it rises as that part grows. Any mix where it sits
+        below tax saved now beats all-Roth; the best mix is where the rate on the next Pre-tax
+        dollar would reach (or jump past) tax saved now, which is why the effective rate is usually
+        still well below it there.
+      </p>
+
       <details className="details">
         <summary>Show the numbers</summary>
         <div className="details-body">
@@ -794,6 +830,8 @@ function BlendExplorer({ result }) {
                   <th scope="col">Roth share</th>
                   <th scope="col">To Roth</th>
                   <th scope="col">To Pre-tax</th>
+                  <th scope="col">Tax saved now</th>
+                  <th scope="col">Effective rate</th>
                   <th scope="col">After-tax income</th>
                 </tr>
               </thead>
@@ -811,6 +849,8 @@ function BlendExplorer({ result }) {
                       </th>
                       <td>{$(p.rothToAccount)}</td>
                       <td>{$(p.pretaxToAccount)}</td>
+                      <td>{formatPercent(p.taxSavedNow)}</td>
+                      <td>{formatPercent(p.effectiveRate)}</td>
                       <td>{$(p.totalAfterTaxIncome)}</td>
                     </tr>
                   ))}
@@ -1515,10 +1555,8 @@ function PortfolioMath({ result }) {
 }
 
 function PortfolioComparison({ result }) {
-  const { portfolio, taxDifference, retirementNeed, socialSecurity } = result;
+  const { portfolio, retirementNeed, socialSecurity } = result;
   const short = SCENARIOS.filter((c) => !portfolio[c.key].targetMet);
-  const lowerTaxName = taxDifference.lowerTaxScenario === 'roth' ? 'All-Roth' : 'All-Pre-tax';
-  const higherTaxName = taxDifference.lowerTaxScenario === 'roth' ? 'All-Pre-tax' : 'All-Roth';
   // Which scenario's portfolio delivers more after tax at a plain 4% withdrawal.
   const incomeGap = portfolio.pretax.atBaseline.afterTaxIncome - portfolio.roth.atBaseline.afterTaxIncome;
   const incomeLeader = Math.abs(incomeGap) < 0.5 ? null : incomeGap > 0 ? 'pretax' : 'roth';
@@ -1623,16 +1661,6 @@ function PortfolioComparison({ result }) {
       </div>
 
       <PortfolioMath result={result} />
-
-      <div className="callout">
-        <div className="callout-label">Total tax difference between scenarios</div>
-        <div className="callout-value">{$(taxDifference.amount)} per year</div>
-        <p>
-          {taxDifference.lowerTaxScenario === 'even'
-            ? 'Both approaches cost about the same in tax to deliver the same lifestyle.'
-            : `That is the tax cost of getting the identical after-tax lifestyle: the ${lowerTaxName} scenario pays ${$(taxDifference.amount)} less in tax each year than the ${higherTaxName} scenario.`}
-        </p>
-      </div>
 
       {short.length > 0 && (
         <p className="alert">
