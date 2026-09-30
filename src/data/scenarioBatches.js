@@ -1,9 +1,9 @@
 // Scenario batches for the "Visualization" page (#/scenarios). Each batch sweeps
 // one variable while holding the rest fixed, feeding compareRothVsTraditional
-// (via src/lib/scenarios.js) so the page can chart how the rate gap — marginal
-// rate now minus the effective rate on this account's withdrawals in retirement —
-// behaves as that variable moves. The idea being tested: a bigger (more positive)
-// gap should favor Pre-tax; a bigger negative gap should favor Roth.
+// (via src/lib/scenarios.js) so the page can chart who comes out ahead as that
+// variable moves. The winner follows the sign of the rate gap exactly (gap x W is the
+// dollar difference, see sideAwareRates.js), so the charts show where and why the
+// gap changes sign, not whether it predicts the winner.
 //
 // Shared, unstated assumptions across every batch: single filer, all W-2 income,
 // no self-employment income, 0 debt payments, 0 other expenses ending at

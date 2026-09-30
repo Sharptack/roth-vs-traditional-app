@@ -704,7 +704,7 @@ describe('App', () => {
   it('shows the calculator (not the article or the scenarios page) by default', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).not.toContain('Back to the calculator');
-    expect(html).not.toContain('Visualization: does the rate gap predict the winner?');
+    expect(html).not.toContain('Visualization: who comes out ahead, and why');
     expect(html).not.toMatch(/<div hidden/); // the calculator wrapper is visible
   });
 });
@@ -746,7 +746,7 @@ describe('ScenariosPage', () => {
   const html = renderToStaticMarkup(<ScenariosPage />);
 
   it('renders without throwing, with the intro and a back link at top and bottom', () => {
-    expect(html).toContain('Visualization: does the rate gap predict the winner?');
+    expect(html).toContain('Visualization: who comes out ahead, and why');
     const back = html.match(/href="#\/"/g) ?? [];
     expect(back.length).toBe(2);
     expect(html).toContain('Back to the calculator');
@@ -757,17 +757,15 @@ describe('ScenariosPage', () => {
     for (const batch of SCENARIO_BATCHES) {
       expect(html).toContain(batch.title);
     }
-    // one chart per batch + the two-rates chart + the combined scatter
-    expect((html.match(/class="chart-svg"/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 2);
+    // one chart per batch + the two-rates chart (the gap-vs-advantage scatter was removed: circular)
+    expect((html.match(/class="chart-svg"/g) ?? []).length).toBe(SCENARIO_BATCHES.length + 1);
   });
 
-  it('renders the combined scatter, coloured by winner, with a trend-line summary sentence', () => {
-    expect(html).toContain('Does the gap predict the winner?');
-    expect(html).toContain('Trend line:');
-    expect(html).toMatch(/r² = -?\d\.\d\d\)/);
-    expect(html).toContain('Roth comes out ahead');
-    expect(html).toContain('Pre-tax comes out ahead');
-    expect(html).toContain('About even');
+  it('has no gap-vs-advantage scatter or trend line (the winner is the sign of the gap, so it was circular)', () => {
+    expect(html).not.toContain('Does the gap predict the winner?');
+    expect(html).not.toContain('Trend line:');
+    expect(html).not.toContain('r²');
+    expect(html).not.toContain('predict');
   });
 
   it('has a "Show the numbers" table for each batch, plus one for the two-rates chart', () => {
@@ -781,11 +779,10 @@ describe('ScenariosPage', () => {
     expect(html).not.toContain('Rate gap (marginal rate now minus effective rate in retirement)');
   });
 
-  it('states the rule of thumb once, at the top, and does not repeat it per chart', () => {
-    const sentence = 'The rule of thumb: the higher that gap, the more Pre-tax should come out ahead';
-    expect(html).toContain(sentence);
+  it('states the rule once, at the top, as exact (not a rule of thumb), and does not repeat it per chart', () => {
+    expect(html).toContain('When the gap is positive, Pre-tax comes out ahead; when it is negative, Roth does.');
     expect((html.match(/class="rule-callout"/g) ?? []).length).toBe(1);
-    expect((html.match(/The rule of thumb/g) ?? []).length).toBe(1);
+    expect(html).not.toContain('rule of thumb');
     expect(html).not.toContain('Who actually comes out ahead?');
     expect(html).not.toContain('<h3 class="subhead">The rate gap</h3>');
   });
@@ -813,7 +810,7 @@ describe('ScenariosPage', () => {
     expect((savingsMap.match(/<tr>/g) ?? []).length).toBe(1 + 6); // header + 6 savings rates
     for (const rate of ['5%', '10%', '15%', '20%', '25%', '30%']) expect(savingsMap).toContain(`<th scope="row">${rate}</th>`);
     expect(html).toContain('savings above the IRS limit');
-    const balanceMap = html.slice(second, html.indexOf('Does the gap predict the winner?'));
+    const balanceMap = html.slice(second);
     for (const balance of ['$0', '$100k', '$250k', '$500k', '$1M', '$2M']) {
       expect(balanceMap).toContain(`<th scope="row">${balance}</th>`);
     }

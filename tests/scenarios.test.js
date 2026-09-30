@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
 import {
-  flattenForScatter,
   runAllBatches,
   runHeatmap,
   runScenarioBatch,
@@ -98,33 +97,6 @@ describe('runScenarioBatch / runAllBatches', () => {
   });
 });
 
-describe('flattenForScatter', () => {
-  it('produces one flat point per series point, tagged with its batch and series', () => {
-    const runs = runAllBatches(
-      [
-        {
-          key: 'b1',
-          title: 'Batch 1',
-          base,
-          series: [
-            {
-              key: 's1',
-              label: 'S1',
-              points: [{ x: 1, overrides: { grossIncome: 50000, savings: 5000 } }],
-            },
-          ],
-        },
-      ],
-      2025,
-    );
-    const flat = flattenForScatter(runs);
-    expect(flat).toHaveLength(1);
-    expect(flat[0].batchKey).toBe('b1');
-    expect(flat[0].seriesLabel).toBe('S1');
-    expect(typeof flat[0].gap).toBe('number');
-  });
-});
-
 describe('the real SCENARIO_BATCHES data', () => {
   it('runs every batch without throwing, at the expected shape', () => {
     const runs = runAllBatches(SCENARIO_BATCHES, 2025);
@@ -175,10 +147,13 @@ describe('the real SCENARIO_BATCHES data', () => {
       for (const p of series.points) expect(p.inputs.retirementAge).toBe(p.x);
     }
 
-    const flat = flattenForScatter(runs);
-    for (const point of flat) {
-      expect(Number.isFinite(point.gap)).toBe(true);
-      expect(Number.isFinite(point.advantagePct)).toBe(true);
+    for (const run of runs) {
+      for (const series of run.series) {
+        for (const point of series.points) {
+          expect(Number.isFinite(point.gap)).toBe(true);
+          expect(Number.isFinite(point.advantagePct)).toBe(true);
+        }
+      }
     }
   });
 

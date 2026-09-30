@@ -1,9 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import Heatmap from './charts/Heatmap.jsx';
 import LineChart from './charts/LineChart.jsx';
-import ScatterChart from './charts/ScatterChart.jsx';
-import { flattenForScatter, runAllBatches, runHeatmap } from '../lib/scenarios.js';
-import { linearRegression } from '../lib/regression.js';
+import { runAllBatches, runHeatmap } from '../lib/scenarios.js';
 import { HEATMAPS, SCENARIO_BATCHES } from '../data/scenarioBatches.js';
 import { CALCULATOR_HASH } from '../lib/route.js';
 
@@ -12,8 +10,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const sign = (v) => (v >= 0 ? '+' : '−');
 const formatGapPoints = (v) => `${sign(v)}${Math.abs(v * 100).toFixed(1)} pts`;
 const formatAdvantagePct = (v) => `${sign(v)}${Math.abs(v).toFixed(1)}%`;
-// Axis ticks drop the unit (the axis title carries it): +15.0 pts -> +15
-const formatGapTick = (v) => (v === 0 ? '0' : `${sign(v)}${Number(Math.abs(v * 100).toFixed(1))}`);
+// Axis ticks drop the unit (the axis title carries it): +15.0% -> +15%
 const formatAdvantageTick = (v) => (v === 0 ? '0%' : `${sign(v)}${Number(Math.abs(v).toFixed(1))}%`);
 // Rates that round to zero print as 0.0%, never "-0.0%".
 const formatRate = (v) => (Math.abs(v * 100) < 0.05 ? '0.0%' : `${(v * 100).toFixed(1)}%`);
@@ -30,18 +27,13 @@ const formatHeatCell = (cell) => {
 const formatHeatDetail = (cell) =>
   `Roth advantage ${formatAdvantagePct(cell.advantagePct)}, rate gap ${formatGapPoints(cell.gap)}`;
 
-// Roth = blue, Pre-tax = orange everywhere the winner is shown (line-chart zones, heatmaps, scatter).
+// Roth = blue, Pre-tax = orange everywhere the winner is shown (line-chart zones, heatmaps).
 const ROTH_COLOR = 'var(--series-1)';
 const PRETAX_COLOR = 'var(--series-2)';
 const WINNER_ZONES = {
   above: { label: '▲ Roth comes out ahead', color: ROTH_COLOR },
   below: { label: '▼ Pre-tax comes out ahead', color: PRETAX_COLOR },
 };
-const WINNER_GROUPS = [
-  { key: 'roth', label: 'Roth comes out ahead', color: ROTH_COLOR },
-  { key: 'pretax', label: 'Pre-tax comes out ahead', color: PRETAX_COLOR },
-  { key: 'even', label: 'About even', color: 'var(--dim)' },
-];
 
 function formatX(batch, x) {
   if (batch.xType === 'multiple') return formatMultiplierX(x);
@@ -197,34 +189,30 @@ export default function ScenariosPage() {
 
   const runBatches = useMemo(() => runAllBatches(SCENARIO_BATCHES, CURRENT_YEAR), []);
   const heatmaps = useMemo(() => HEATMAPS.map((def) => runHeatmap(def, CURRENT_YEAR)), []);
-  const scatterPoints = useMemo(
-    () => flattenForScatter(runBatches).map((p) => ({ ...p, x: p.gap, y: p.advantagePct, group: p.winner })),
-    [runBatches],
-  );
-  const regression = useMemo(() => linearRegression(scatterPoints.map((p) => ({ x: p.x, y: p.y }))), [scatterPoints]);
 
   return (
     <article className="scenarios-page">
       <BackLink />
 
       <div className="scenarios-intro">
-        <h1>Visualization: does the rate gap predict the winner?</h1>
+        <h1>Visualization: who comes out ahead, and why</h1>
         <p>
           The calculator&rsquo;s comparison boils down to one number: the <strong>rate gap</strong> &mdash; your
           marginal tax rate while working, minus the effective rate you&rsquo;d actually pay on withdrawals
           from your Future Contributions in retirement.
         </p>
         <p className="rule-callout">
-          <strong>The rule of thumb: the higher that gap, the more Pre-tax should come out ahead</strong>; the
-          lower (more negative) the gap, the more Roth should come out ahead.
+          <strong>When the gap is positive, Pre-tax comes out ahead; when it is negative, Roth does.</strong> This is
+          not a rough guide: the gap times the account&rsquo;s withdrawal is exactly the difference in after-tax
+          income between the two.
         </p>
         <p>
           Every chart below shows who actually comes out ahead: above the zero line Roth does, below it Pre-tax
           does. Each is a set of hand-picked scenarios run through the same comparison the calculator uses
           (single filer, W-2 income, estimated Social Security, 7% return, no state tax &mdash; see{' '}
-          <a href="#/how-it-works">How this works</a>). The rate gap itself is unpacked once, then two maps show
-          where each side wins, and the last chart tests the rule of thumb against every scenario. Hover or focus
-          any point for exact numbers; each chart has a table underneath.
+          <a href="#/how-it-works">How this works</a>). The rate gap itself is unpacked once, after the first chart,
+          and two maps at the end show where each side wins. Hover or focus any point for exact numbers; each chart
+          has a table underneath.
         </p>
       </div>
 
@@ -249,31 +237,6 @@ export default function ScenariosPage() {
             />
           </div>
         ))}
-
-        <div className="card">
-          <h2>Does the gap predict the winner?</h2>
-          <p className="hint">
-            Every scenario above, one point each: rate gap across, Roth&rsquo;s advantage up. If the rule of thumb
-            holds, the points run from upper left to lower right.
-          </p>
-          <ScatterChart
-            points={scatterPoints}
-            groups={WINNER_GROUPS}
-            regression={regression}
-            formatX={formatGapPoints}
-            formatY={formatAdvantagePct}
-            formatXTick={formatGapTick}
-            xLabel="Rate gap (percentage points)"
-            yLabel="Roth advantage (% of Pre-tax income)"
-          />
-          {regression && (
-            <p className="scenario-summary hint">
-              Trend line: each additional percentage point of rate gap is associated with a{' '}
-              <strong>{formatAdvantagePct(regression.slope * 0.01)}</strong> change in Roth&rsquo;s after-tax
-              advantage, across these {scatterPoints.length} scenarios (r&sup2; = {regression.r2.toFixed(2)}).
-            </p>
-          )}
-        </div>
       </div>
 
       <BackLink />

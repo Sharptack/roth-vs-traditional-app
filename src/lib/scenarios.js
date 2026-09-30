@@ -85,16 +85,3 @@ export function runAllBatches(batches, year) {
   return batches.map((batch) => runScenarioBatch(batch, year));
 }
 
-// Every point across every batch, flattened for the combined "does the gap
-// predict the winner" scatter.
-export function flattenForScatter(runBatches) {
-  const points = [];
-  for (const batch of runBatches) {
-    for (const series of batch.series) {
-      for (const point of series.points) {
-        points.push({ batchKey: batch.key, batchTitle: batch.title, seriesLabel: series.label, ...point });
-      }
-    }
-  }
-  return points;
-}

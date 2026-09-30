@@ -53,7 +53,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (484 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (479 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -96,7 +96,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `contributionLimits`, `compare` (orchestrator; single source of every UI number), `constants`
   (`WITHDRAWAL_RATE` 4%, `LTCG_RATE` 15%, 90% limit threshold), `format`, `formInputs`, `yearLookup`,
   `shareInputs` (form values <-> link query string, plain-text scenario summary — see "Sharing a scenario"), `scenarios` (runs `src/data/scenarioBatches.js` through `compare.js` for the scenarios page — see below),
-  `chartScale` (linear scale + nice-tick axis helper, framework-free), `regression` (OLS trend line),
+  `chartScale` (linear scale + nice-tick axis helper, framework-free),
   `blend` (`splitBlended`, `evaluateBlend`, `findOptimalBlend` — the Roth/Pre-tax split explorer, see its
   own section below), `risingIncome` (`compareWithRisingIncome`: Roth vs. Pre-tax for the contributions made while
   income is low, when it rises later — the Visualization page's "Earning more later" charts; see that section).
@@ -112,7 +112,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - `src/lib/sectionSummaries.js`: `INPUT_SECTIONS` (the input sections: id, title, the form keys each holds, a one-line
   `summary(values)`), `sectionChanged`, `resultHeadlines(result)` (the headline on each results card header). See "Calculator layout".
 - `src/components/`: `InputForm.jsx`, `ResultsSummary.jsx`, `Collapsible.jsx` (the open/close section used by both), `ArticlePage.jsx` (renders ARTICLE.md),
-  `ScenariosPage.jsx` (the scenario charts — see below), `charts/LineChart.jsx`, `charts/ScatterChart.jsx`,
+  `ScenariosPage.jsx` (the scenario charts — see below), `charts/LineChart.jsx`, `charts/Heatmap.jsx`,
   `charts/palette.js` (fixed categorical color + shape order, assigned by series identity). `src/lib/route.js`:
   hash routing helper. `src/App.jsx` holds state and the "Future enhancements" comment block. `tests/`
   mirrors `src/lib` plus `components.smoke.test.jsx`.
@@ -133,18 +133,20 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Route: `#/scenarios`, same hidden/mounted pattern as the article (`App.jsx`'s `useRoute`, generalized to
   "anything other than calculator" leaves/scroll-restores). Linked from the header and footer next to
   "How this works".
-- What it's for: charts the calculator's core theory — that the **rate gap** (`rates.taxSavedNow −
-  rates.effectiveRetirement`, i.e. "Tax saved now" minus "Effective rate on the account withdrawal")
-  predicts which side wins — across a set of hand-picked scenarios, so the relationship can be eyeballed
-  instead of taken on faith. Since the 2026-09-28 migration to `sideAwareRates.js` (see the model section
-  below), `gap * W` is an exact identity with the dollar difference between the two portfolios, not just an
-  empirical correlation, so the scatter's r² is a measure of chart-batch variety, not of model error.
+- What it's for: shows who comes out ahead, and why, across hand-picked scenarios. Page title "Visualization: who
+  comes out ahead, and why" (was "...: does the rate gap predict the winner?" until 2026-09-29). Originally built to
+  test whether the **rate gap** (`rates.taxSavedNow − rates.effectiveRetirement`) predicts the winner, a real
+  question under the old model, where the two could disagree. Since the 2026-09-28 migration, `gap * W` IS the
+  dollar difference (an identity), so the winner is just the sign of the gap: the intro callout now states that
+  as exact, and the gap-vs-advantage scatter and its OLS trend line were REMOVED 2026-09-29 as circular (under the
+  limit, advantagePct = −gap / (1 − e) × 100 exactly, checked on all 431 such points; the winner differed from the
+  gap's sign on only 5 of 545 points, the "even" bands). Don't bring back a "does X predict the winner" chart
+  whose X is computed from the same numbers as the winner.
 - Data flow: `src/data/scenarioBatches.js` (plain data: a `base` input object per batch + one or more
   `series`, each a list of `{x, overrides}` points) → `src/lib/scenarios.js`'s `runAllBatches` merges
   `base + overrides` and calls `compareRothVsTraditional` per point, extracting `gap` and `advantagePct`
   (Roth's after-tax annuity withdrawal vs. Pre-tax's, as a % — the Section-2, Future-Contributions-only lens) →
-  `ScenariosPage.jsx` renders one `LineChart` per batch (x = the swept variable, y = gap) plus one combined
-  `ScatterChart` (x = gap, y = advantagePct, color+shape by batch, an OLS trend line from `src/lib/regression.js`).
+  `ScenariosPage.jsx` renders one `LineChart` per batch (x = the swept variable, y = advantagePct).
   No new financial logic: `scenarios.js` only merges inputs and reads fields already on `compare.js`'s result.
 - The nine batches (single filer, W-2 only, no self-employment income, 0 debt/other-expenses, 7% return,
   estimated Social Security, 401(k); the IRS limit DOES bind at higher incomes/savings rates — 114 of 467 points in 2026 — and the excess goes to a taxable account under the current model, so advantagePct includes that taxable side): income sweep
@@ -154,12 +156,10 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   20/40/60/80/100% more in retirement") at incomes $25k/$50k/$75k/$150k/$500k; and a retirement-age sweep (55-70, age 35, 10% saved, incomes $25k/$50k/$100k/$150k/$500k; flat before 62 because Social Security is estimated as if claimed at 62 for earlier retirees; the 59½ early-withdrawal penalty is not modeled). Extending or adding a batch
   is a data-only change in `scenarioBatches.js` — no chart code changes needed.
 - Charts are hand-rolled inline SVG (`src/components/charts/`), not a charting library — the app has no chart
-  dependency, and these are simple line/scatter plots. `LineChart`/`ScatterChart` are generic (series/points
-  in, chart out); `chartScale.js` (linear scale + "nice" tick axis rounding) and `regression.js` (OLS) are the
-  only new pure-function additions, both hand-verified in tests. Category color + shape are assigned by fixed
-  order (`charts/palette.js`, CSS vars `--series-1..5` in `App.css`, light/dark), never by rank; the scatter
-  layers shape on top of color since a 5th categorical color isn't guaranteed distinguishable against every
-  other color once every point can be adjacent to every other point (see the dataviz skill's "all-pairs" note).
+  dependency, and these are simple line charts and heatmaps. `LineChart` is generic (series/points in, chart
+  out); `chartScale.js` (linear scale + "nice" tick axis rounding) is hand-verified in tests. Category colors
+  are assigned by fixed order (`charts/palette.js`, CSS vars `--series-1..5` in `App.css`, light/dark), never by rank.
+  (`ScatterChart.jsx`, `regression.js` and their tests were deleted with the scatter on 2026-09-29.)
   Every chart has a hover/focus tooltip and a "Show the numbers" `<details>` table underneath as the
   non-interactive fallback.
 
@@ -167,7 +167,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   $100k later"). Two batches, `risingIncomeSweep` (today $20k/$40k/$60k, x = income from 35) and
   `risingIncomeLaterType` ($20k today; later savings all Pre-tax / half / all Roth), placed after the lifestyle chart.
   They carry `engine: 'risingIncome'`, so `scenarios.js` runs them through `lib/risingIncome.js`
-  (`runRisingIncomePoint`) instead of compare.js; same point shape, so the page, tables and scatter need no changes.
+  (`runRisingIncomePoint`) instead of compare.js; same point shape, so the page and tables need no changes.
   Why a new function: the retirement lifestyle multiplier can't show this — since the 2026-09-28 migration it no
   longer moves the rate comparison at all, and the "Spending more in retirement" chart is now FLAT lines (checked
   2026-09-29). The user chose to KEEP it, retitled "Spending more in retirement, on its own, changes nothing",
@@ -188,15 +188,14 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   cases, reproduces compare.js exactly when the raise is at retirement, the identity), two wiring tests in
   scenarios.test.js. Not modeled: the later contributions' own Roth/Pre-tax decision is an input, not optimized.
 - Page layout (2026-09-25k, simplified at the user's request — no repeated explanations, "let the graphs speak"):
-  the rule of thumb appears ONCE, as a highlighted callout in the intro; every batch card is a title, one sentence of
+  the rule (gap > 0 -> Pre-tax, < 0 -> Roth; exact, not a rule of thumb) appears ONCE, as a highlighted callout in the intro; every batch card is a title, one sentence of
   setup, and ONE line chart of Roth's advantage (`advantagePct`), with the area above the zero line tinted blue and
   labelled "▲ Roth comes out ahead" and the area below tinted orange, "▼ Pre-tax comes out ahead" (`LineChart`
-  `zones` prop). Roth = blue / Pre-tax = orange everywhere the winner is shown (zones, heatmaps, scatter). The rate gap
+  `zones` prop). Roth = blue / Pre-tax = orange everywhere the winner is shown (zones, heatmaps). The rate gap
   for the same points is in each card's "Show the numbers" (ONE table: the advantage the chart plots; the rate gap is shown once, in "What the rate gap is made of"). The income-sweep card is
   followed by "What the rate gap is made of" (marginal-now and effective-in-retirement as two lines). After the batches:
   two break-even maps (`charts/Heatmap.jsx`; `HEATMAPS` in scenarioBatches.js, run by `runHeatmap`: income across, then
-  savings rate 5-30% or existing Pre-tax balance $0-$2M down; `*` = over the IRS limit, from `overLimit`), then the combined
-  scatter, whose points are coloured by winner (blue Roth / orange Pre-tax / grey even; batch is in the tooltip).
+  savings rate 5-30% or existing Pre-tax balance $0-$2M down; `*` = over the IRS limit, from `overLimit`). The page ends there.
 - Where Roth wins (found by scanning the engine 2026-09-25): a large existing Pre-tax balance (forced taxable withdrawals;
   +7% to +35% at $100k-$1M+ balances, still +3-7% at $300k income with $1M+), a large existing taxable balance at lower
   incomes (+14-26% at $500k-$1M and $40k-$60k income), married filing jointly with balances (found in the scan; no longer charted — the MFJ chart was removed 2026-09-26), big lifestyle increases at
@@ -744,6 +743,10 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-29 (g) — Visualization: removed the gap-vs-advantage scatter and its trend line (circular: the winner IS
+  the sign of the gap since 2026-09-28), deleted `ScatterChart.jsx`, `regression.js`, `flattenForScatter` and their
+  tests and CSS. Page retitled "Visualization: who comes out ahead, and why"; the callout states the gap rule as exact.
+  479 tests.
 - 2026-09-29 (e) — Visualization: two "Earning more later" charts (see the Scenario charts section), backed by the
   new pure `lib/risingIncome.js` (hand-verified tests). Found and recorded that the existing lifestyle chart is flat
   under the current model. `compare.js` now exports `winnerOf`. 484 tests.
