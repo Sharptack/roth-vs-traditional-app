@@ -592,7 +592,9 @@ ${anchor} delete `lib/incomeNeed.js`, `tests/incomeNeed.test.js`;
   extra imports, and `old,` from the return object; in `rateSteps.js`, delete everything from the
   `TEMPORARY (2026-09-29)` marker to the end of the file; in `ResultsSummary.jsx`, delete the whole marked
   section (`ExtraTaxSplitOld` through `TaxRatesOld`) and the `ratesOld` `RESULT_CARDS` entry; in
-  `sectionSummaries.js`, delete the `ratesOld` headline key; in `components.smoke.test.jsx`, delete
+  `sectionSummaries.js`, delete the `ratesOld` headline key; delete the `#/old-vs-new` test page (`lib/methodCheck.js`, `tests/methodCheck.test.js`,
+  `components/OldVsNewPage.jsx`, `OLD_VS_NEW_HASH` in route.js + its route test, its import/route/width in App.jsx, the `.ovn-*`
+  CSS block, and the `OldVsNewPage` smoke test); in `components.smoke.test.jsx`, delete
   `withoutOldRatesCard` and revert its three call sites to the plain `render()`/`html` they replaced (and drop
   the "shows each results card..." title and `sectionSummaries.test.js`'s `old`/`ratesOld` additions). Re-run
   the full suite after.
