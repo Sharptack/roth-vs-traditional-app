@@ -105,7 +105,7 @@ The calculator **warns you when your savings are at or near the limit** (90% or 
 
 Deciding where to put *new* contributions is only half the story. You may already have a large Pre-tax balance from earlier years or from an employer, and that balance is already shaping your retirement tax bracket, whatever you decide today.
 
-That's why the calculator's total portfolio tax comparison looks at your whole portfolio. It builds two versions of your future:
+That's why the calculator's total future portfolio comparison looks at your whole portfolio. It builds two versions of your future:
 
 - **All-Roth**: your Future Contributions go to Roth.
 - **All-Pre-tax**: they go to Traditional.
@@ -114,7 +114,7 @@ Both versions include your Existing Accounts grown to retirement. For each, the 
 
 Two things to keep in mind when reading it:
 
-1. **Bigger portfolio vs. higher tax is the whole question.** The Pre-tax scenario invests the tax it saves today, so it ends up with a bigger portfolio, and pays tax on the way out. The table answers it two ways. Holding your lifestyle fixed, it shows the tax and the withdrawal rate each portfolio needs (a lower rate means less strain on your money). Holding the withdrawal fixed at 4% of every account, it shows the after-tax income each portfolio actually delivers. Whichever portfolio buys more income after tax is the one that came out ahead.
+1. **Bigger portfolio vs. higher tax is the whole question.** The Pre-tax scenario invests the tax it saves today, so it ends up with a bigger portfolio, and pays tax on the way out. The table holds your lifestyle fixed and shows the withdrawal rate each portfolio needs to fund it. The lower rate wins: that portfolio does the same job with less strain on your money. This can differ from a comparison at a flat 4% withdrawal. If your lifestyle only needs you to draw about 2% a year, those smaller withdrawals land in lower tax brackets than a 4% draw would, which can favor the Pre-tax portfolio.
 2. **The withdrawal method is simplified.** Real retirees often choose *which* accounts to draw from first to keep taxes low. This calculator draws proportionally from all of them.
 
 ## What this calculator doesn't capture

@@ -53,7 +53,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (482 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (491 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -217,7 +217,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   back to defaults (`CLEARED_FORM_VALUES` in formInputs.js); it becomes "Undo clear" until the next edit (`App.jsx`
   `beforeClear`). The inner dropdowns ("Will you earn more or less later?", cost basis) are unchanged.
 - Results: five cards (Retirement income number, **Your portfolio at retirement** (added 2026-09-28, see its own
-  section below), **Tax rate comparison**, **After-tax comparison**, Total portfolio tax comparison; the middle two
+  section below), **Tax rate comparison**, **After-tax comparison**, Total future portfolio comparison ("Total portfolio tax comparison" until 2026-09-30); the middle two
   of the original four were "Roth vs. Traditional" and "The trade-off in dollars" until 2026-09-26 (n) — the user
   asked for names that say what they are; the tax rate card carries a subtle accent bar, `key-card`, as the number
   that matters most) are `Collapsible` cards; the header shows the headline (`resultHeadlines`) while closed; all start
@@ -488,7 +488,7 @@ surface area the latter would touch).
   `sideAware.available`, so it works even when there's nothing to blend (though blend is skipped
   entirely in that case anyway).
 - **`ResultsSummary.jsx`** (`BlendExplorer`, card id `blend`, `id="sec-blend"`, between "After-tax
-  comparison" and "Total portfolio tax comparison"): a `<strong>Here, blending helps</strong>` /
+  comparison" and "Total future portfolio comparison"): a `<strong>Here, blending helps</strong>` /
   `<strong>Here, a pure strategy already wins</strong>` note (the latter whenever the optimum sits at
   either end AND the gain over the better pure strategy is under $0.50 — i.e. genuinely nothing to find,
   not just a rounding artifact); a native `<input type="range">` (0-100, `accent-color: var(--accent)`,
@@ -689,7 +689,11 @@ the whole account) is still open — see "Known limitations."
   taxable side account's own withdrawal and tax when `annuity.X.side.futureValue > 0` — no new math, purely a
   breakdown of `annuity.X.{annualWithdrawal,afterTaxWithdrawal,side,totalAfterTaxIncome}`, which already summed
   to the "After-tax income it generates" row. Then "Why is the Pre-tax side bigger?" and "Retirement years without
-  Social Security" dropdowns. (5) "Total portfolio tax comparison" (`id="sec3"`) — also has its own "Show the
+  Social Security" dropdowns. (5) "Total future portfolio comparison" (`id="sec3"`; renamed from "Total portfolio tax comparison" 2026-09-30). Its
+  verdict is the bold last row, **"Withdrawal rate needed"** (same lifestyle, lower rate = less strain), with the lower
+  rate highlighted (`win`, "X pts lower"; no highlight if either side misses the target or they match to 0.005 pts).
+  "After-tax income at a 4% withdrawal" stays as a plain row above it — its gap equals the After-tax comparison's
+  (sideAware identity), so it isn't highlighted. It — also has its own "Show the
   calculation" dropdown (`PortfolioMath`, pre-existing); the AGI-ordering smoke test is scoped to `sec3`'s copy
   since the label is no longer unique on the page.
   Cells show "incl. $X in a taxable account (over the IRS limit)" when a taxable side exists.
@@ -770,6 +774,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-30 — "Total portfolio tax comparison" renamed "Total future portfolio comparison"; "Withdrawal rate needed"
+  moved to the bottom as the highlighted verdict row, the 4% row demoted to a plain row. ARTICLE.md's description of
+  the card rewritten to match. 491 tests.
 - 2026-09-29 (h) — TEMPORARY test page `#/old-vs-new`: old vs. new calculation charted across the Visualization
   scenarios and checked against the exact 4% benchmark (see the `result.old` section). No model change. 490 tests.
 - 2026-09-29 (h) — Splitting your contribution: tax saved now and the effective rate on the Pre-tax part at every mix

@@ -673,7 +673,7 @@ function TradeOff({ result }) {
           )}
           <p className="hint">
             These figures cover only your Future Contributions, not your Existing Accounts. The
-            total portfolio tax comparison below includes both.
+            total future portfolio comparison below includes both.
           </p>
         </div>
       </details>
@@ -1560,6 +1560,11 @@ function PortfolioComparison({ result }) {
   // Which scenario's portfolio delivers more after tax at a plain 4% withdrawal.
   const incomeGap = portfolio.pretax.atBaseline.afterTaxIncome - portfolio.roth.atBaseline.afterTaxIncome;
   const incomeLeader = Math.abs(incomeGap) < 0.5 ? null : incomeGap > 0 ? 'pretax' : 'roth';
+  // The card's verdict: which portfolio funds the same lifestyle with the lower withdrawal rate.
+  // No winner when either falls short of the target, or when they match to 0.005 points.
+  const rateGap = portfolio.pretax.impliedWithdrawalRate - portfolio.roth.impliedWithdrawalRate;
+  const rateLeader =
+    short.length > 0 || Math.abs(rateGap) < 0.00005 ? null : rateGap < 0 ? 'pretax' : 'roth';
 
   return (
     <>
@@ -1633,25 +1638,33 @@ function PortfolioComparison({ result }) {
             </tr>
             <tr>
               <th scope="row">
-                Withdrawal rate needed
-                <span className="th-sub">Share of the portfolio drawn per year</span>
+                After-tax income at a 4% withdrawal
+                <span className="th-sub">
+                  Per year: 4% of every account + Social Security − tax. Same difference as the
+                  after-tax comparison above
+                </span>
               </th>
               {SCENARIOS.map((c) => (
-                <td key={c.key}>{formatPercent(portfolio[c.key].impliedWithdrawalRate)}</td>
+                <td key={c.key}>
+                  {$(portfolio[c.key].atBaseline.afterTaxIncome)}
+                  {incomeLeader === c.key && (
+                    <span className="th-sub">+{$(Math.abs(incomeGap))} a year</span>
+                  )}
+                </td>
               ))}
             </tr>
             <tr className="total-row">
               <th scope="row">
-                After-tax income at a 4% withdrawal
+                Withdrawal rate needed
                 <span className="th-sub">
-                  Per year: 4% of every account + Social Security − tax. What each portfolio buys
+                  Share of the portfolio drawn per year for the same lifestyle. Lower means less strain
                 </span>
               </th>
               {SCENARIOS.map((c) => (
-                <td key={c.key} className={incomeLeader === c.key ? 'win' : ''}>
-                  {$(portfolio[c.key].atBaseline.afterTaxIncome)}
-                  {incomeLeader === c.key && (
-                    <span className="th-sub">+{$(Math.abs(incomeGap))} a year</span>
+                <td key={c.key} className={rateLeader === c.key ? 'win' : ''}>
+                  {formatPercent(portfolio[c.key].impliedWithdrawalRate, 2)}
+                  {rateLeader === c.key && (
+                    <span className="th-sub">{(Math.abs(rateGap) * 100).toFixed(2)} pts lower</span>
                   )}
                 </td>
               ))}
@@ -1685,7 +1698,7 @@ const RESULT_CARDS = [
   { id: 'ratesOld', headingId: 'sec2-old', title: 'Tax rate comparison — old calculation', Body: TaxRatesOld, className: 'key-card' },
   { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'After-tax comparison', Body: TradeOff },
   { id: 'blend', headingId: 'sec-blend', title: 'Splitting your contribution', Body: BlendExplorer },
-  { id: 'portfolio', headingId: 'sec3', title: 'Total portfolio tax comparison', Body: PortfolioComparison },
+  { id: 'portfolio', headingId: 'sec3', title: 'Total future portfolio comparison', Body: PortfolioComparison },
 ];
 
 export default function ResultsSummary({ result }) {

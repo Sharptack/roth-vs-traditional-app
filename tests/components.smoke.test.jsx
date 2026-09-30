@@ -591,7 +591,7 @@ describe('ResultsSummary', () => {
     expect(section).toContain('there is nothing saved to measure a rate on');
   });
 
-  it('shows a "Splitting your contribution" card between the after-tax comparison and total portfolio tax comparison', () => {
+  it('shows a "Splitting your contribution" card between the after-tax comparison and total future portfolio comparison', () => {
     const html = render();
     expect(html.indexOf('id="sec-tradeoff"')).toBeLessThan(html.indexOf('id="sec-blend"'));
     expect(html.indexOf('id="sec-blend"')).toBeLessThan(html.indexOf('id="sec3"'));
@@ -684,7 +684,7 @@ describe('App', () => {
   it('renders end to end with the defaults', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain('Roth vs. Pre-Tax Calculator');
-    expect(html).toContain('Total portfolio tax comparison');
+    expect(html).toContain('Total future portfolio comparison');
   });
 
   it('links to the "How this works" page from the header and the footer', () => {
@@ -926,6 +926,17 @@ describe('Round 2026-09-25b adjustments', () => {
     expect(html).not.toContain('not the whole story');
   });
 
+  it('the total future portfolio comparison ends on the withdrawal rate needed, lower one highlighted', () => {
+    const sec3 = render().slice(render().indexOf('id="sec3"'));
+    const table = sec3.slice(0, sec3.indexOf('</table>'));
+    const lastRow = table.slice(table.lastIndexOf('<tr'));
+    expect(lastRow).toContain('class="total-row"');
+    expect(lastRow).toContain('Withdrawal rate needed');
+    expect(lastRow).toMatch(/class="win">[\d.]+%<span class="th-sub">[\d.]+ pts lower/);
+    // the 4% row is no longer highlighted
+    expect(table.slice(0, table.lastIndexOf('<tr'))).not.toContain('class="win"');
+  });
+
   it('offers 30% and 40% lower retirement lifestyles', () => {
     const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
     expect(html).toContain('30% lower than today');
@@ -1080,7 +1091,7 @@ describe('Collapsible sections', () => {
       'Tax rate comparison — old calculation',
       'After-tax comparison',
       'Splitting your contribution',
-      'Total portfolio tax comparison',
+      'Total future portfolio comparison',
     ]);
     expect(html).toContain('class="collapsible-summary">$65,380 a year after tax<');
     expect(html).not.toContain('aria-expanded="false"');
