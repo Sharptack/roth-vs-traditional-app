@@ -1131,3 +1131,15 @@ describe('Collapsible sections', () => {
     expect((app.match(/>Clear all</g) ?? []).length).toBe(1);
   });
 });
+
+// TEMPORARY (2026-09-29): the old vs. new calculation test page; delete with result.old.
+describe('OldVsNewPage', () => {
+  it('renders every chart, map and the comparison table with no NaN or Infinity', async () => {
+    const { default: OldVsNewPage } = await import('../src/components/OldVsNewPage.jsx');
+    const html = renderToStaticMarkup(<OldVsNewPage />);
+    expect(html).toContain('Old vs. new calculation (test page)');
+    expect(html).toContain('Where they differ most');
+    expect(html).toContain('Where does each one win? Income against savings rate');
+    expect(html).not.toMatch(/NaN|Infinity/);
+  });
+});

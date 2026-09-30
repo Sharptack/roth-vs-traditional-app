@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ARTICLE_HASH, CALCULATOR_HASH, SCENARIOS_HASH, routeFromHash } from '../src/lib/route.js';
+import { ARTICLE_HASH, CALCULATOR_HASH, OLD_VS_NEW_HASH, SCENARIOS_HASH, routeFromHash } from '../src/lib/route.js';
 
 describe('routeFromHash', () => {
   it('shows the article only for the how-it-works hash', () => {
@@ -9,6 +9,11 @@ describe('routeFromHash', () => {
   it('shows the scenario charts only for the scenarios hash', () => {
     expect(routeFromHash(SCENARIOS_HASH)).toBe('scenarios');
     expect(routeFromHash('#/scenarios')).toBe('scenarios');
+  });
+  // TEMPORARY (2026-09-29): goes with result.old.
+  it('shows the old vs. new test page only for its hash', () => {
+    expect(routeFromHash(OLD_VS_NEW_HASH)).toBe('oldVsNew');
+    expect(routeFromHash('#/old-vs-new/extra')).toBe('calculator');
   });
   it('shows the calculator for the empty hash, the home hash, and anything unknown', () => {
     expect(routeFromHash('')).toBe('calculator');

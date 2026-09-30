@@ -571,7 +571,23 @@ things." Nothing above this section changed; this is a pure addition.
   tests that assert something is absent from "the page" now use a new `withoutOldRatesCard` helper in
   `components.smoke.test.jsx` (cuts the `sec2-old` `<section>` out of the rendered HTML) so they keep testing
   the CURRENT methodology specifically, unaffected by the old card legitimately reusing old phrasing nearby.
-- **Removal checklist**, when the comparison is done: delete `lib/incomeNeed.js`, `tests/incomeNeed.test.js`;
+- **Test page `#/old-vs-new`** (added 2026-09-29 (h), at the user's request: charts to see where the two calculations
+  differ most and check them). Not linked from the site. `lib/methodCheck.js` (wiring only: `runMethodPoint` reads both
+  calculations off one `compare.js` result, plus a benchmark, the exact after-tax income at a plain 4% withdrawal from
+  `portfolio.X.atBaseline`; `summarize`, `differenceCauses`, `flattenPoints` (dedupes repeated scenarios), `toFormValues` for
+  an "Open" link into the calculator) + `tests/methodCheck.test.js`; `components/OldVsNewPage.jsx` (summary tiles, a sortable
+  "Where they differ most" table, both break-even maps showing new/old winners with disagreements outlined, and a rates
+  chart + advantage chart per Visualization batch; the two risingIncome batches are skipped, they have no old calculation);
+  `route.js` `OLD_VS_NEW_HASH`; `App.jsx` route (wide `calc-page` width); `.ovn-*` CSS at the end of `App.css`; one smoke test.
+  Findings at the time (2026, 436 distinct scenarios): winners differ in 53; the new calculation matches the benchmark to
+  the cent everywhere (expected: it was built to), the old one names the wrong winner in 32 and misses by up to $15,213/yr.
+  The biggest gaps come from WHICH withdrawal the rate is measured on: (1) high savers (25-30% saved, $50k-$150k): the old
+  need-based withdrawal is small ($7k-$31k), so the old rate is ~0-12%, but the account really pays $57k-$93k; (2) $500k
+  income with a higher lifestyle: the old one measured $400k-$820k withdrawals (29-33%) for an account paying $92.6k; (3)
+  age 50, no balance: new 0-6% vs. old 16-22% (same winner). Open question raised with the user: the benchmark shares
+  the new method's assumption that the account pays 4% whatever the need, so case (3), where Future Contributions are
+  the only savings and fall short of the need, isn't independently checked.
+${anchor} delete `lib/incomeNeed.js`, `tests/incomeNeed.test.js`;
   in `compare.js`, delete the block marked `TEMPORARY (2026-09-29)` (down to `const rothTax = ...`), its two
   extra imports, and `old,` from the return object; in `rateSteps.js`, delete everything from the
   `TEMPORARY (2026-09-29)` marker to the end of the file; in `ResultsSummary.jsx`, delete the whole marked
@@ -752,6 +768,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-09-29 (h) — TEMPORARY test page `#/old-vs-new`: old vs. new calculation charted across the Visualization
+  scenarios and checked against the exact 4% benchmark (see the `result.old` section). No model change. 490 tests.
 - 2026-09-29 (h) — Splitting your contribution: tax saved now and the effective rate on the Pre-tax part at every mix
   (facts, a rates chart, table columns; `blendRates`, hand-verified + identity tests). Total portfolio tax comparison:
   removed the "Total tax difference between scenarios" callout (and `result.taxDifference`) at the user's request;

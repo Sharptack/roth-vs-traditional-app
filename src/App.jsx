@@ -4,6 +4,7 @@ import InputForm, { DEFAULT_OPEN_INPUTS } from './components/InputForm.jsx';
 import ResultsSummary from './components/ResultsSummary.jsx';
 import ScenarioCompare from './components/ScenarioCompare.jsx';
 import ScenariosPage from './components/ScenariosPage.jsx';
+import OldVsNewPage from './components/OldVsNewPage.jsx'; // TEMPORARY (2026-09-29), goes with result.old
 import ShareInputs from './components/ShareInputs.jsx';
 import { compareRothVsTraditional } from './lib/compare.js';
 import { CLEARED_FORM_VALUES, DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
@@ -119,7 +120,7 @@ export default function App() {
   return (
     // The calculator gets a wide desktop page; the article and the charts page keep the
     // narrow reading width.
-    <div className={route === 'calculator' ? 'page calc-page' : 'page'}>
+    <div className={route === 'calculator' || route === 'oldVsNew' ? 'page calc-page' : 'page'}>
       {/* The calculator stays mounted (just hidden) while the article is open, so your
           inputs, open dropdowns and scroll position are all still there when you return. */}
       <div hidden={route !== 'calculator'}>
@@ -205,6 +206,7 @@ export default function App() {
 
       {route === 'article' && <ArticlePage />}
       {route === 'scenarios' && <ScenariosPage />}
+      {route === 'oldVsNew' && <OldVsNewPage />}
     </div>
   );
 }

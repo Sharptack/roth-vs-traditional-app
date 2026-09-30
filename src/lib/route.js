@@ -5,9 +5,12 @@
 export const ARTICLE_HASH = '#/how-it-works';
 export const SCENARIOS_HASH = '#/scenarios';
 export const CALCULATOR_HASH = '#/';
+// TEMPORARY (2026-09-29): the old vs. new calculation test page; goes with result.old.
+export const OLD_VS_NEW_HASH = '#/old-vs-new';
 
 export function routeFromHash(hash) {
   if (hash === ARTICLE_HASH) return 'article';
   if (hash === SCENARIOS_HASH) return 'scenarios';
+  if (hash === OLD_VS_NEW_HASH) return 'oldVsNew';
   return 'calculator';
 }
