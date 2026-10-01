@@ -75,7 +75,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (491 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (510 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -123,6 +123,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   own section below), `risingIncome` (`compareWithRisingIncome`: Roth vs. Pre-tax for the contributions made while
   income is low, when it rises later — the Visualization page's "Earning more later" charts; see that section).
   `compare.js` exports `winnerOf` (the 0.5% "even" rule) so risingIncome.js reuses it.
+  `household.js` (the household model: `toHousehold`, `validateHousehold`, `householdToCompareInputs`; preview only so
+  far, see "Phase 1: household model"). `src/next/`: the `#/next` preview pages (`NextApp.jsx`, `SpouseInputs.jsx`).
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -138,6 +140,40 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `charts/palette.js` (fixed categorical color + shape order, assigned by series identity). `src/lib/route.js`:
   hash routing helper. `src/App.jsx` holds state and the "Future enhancements" comment block. `tests/`
   mirrors `src/lib` plus `components.smoke.test.jsx`.
+
+## Phase 1: household model, in the `#/next` preview (started 2026-10-01)
+Progress against the plan doc's phase 1 steps. Everything here is additive: the current calculator still reads its
+flat form values (`toCompareInputs`) and never goes through the household; every pre-existing test passed unchanged.
+- **Done:** `src/lib/household.js`: `toHousehold(values, year)` (form strings -> household, shape documented at the top of
+  the file; `version: 1`, `people` with `birthYear`, `accounts` list with owner/type/balance/`basisShare`),
+  `validateHousehold` (structure + the spouse's fields; person 1 is still validated by compare.js with today's messages),
+  `householdToCompareInputs` (the adapter; named so it doesn't clash with formInputs' `toCompareInputs`). One person
+  round-trips to exactly the flat inputs and the identical compare.js result (tested over 8 form variants, incl. invalid).
+  Snapshot timing: retirement = the FIRST person to retire; `currentAge` = Future Contributions' owner's age (sets the
+  catch-up limit). Spouse form fields (`SPOUSE_DEFAULT_VALUES`: includeSpouse, spouseAge, spouseRetirementAge,
+  spouseIncome, spouseIncomeType w2/1099, spouseKnowsSocialSecurity, spouseSocialSecurityBenefit) are deliberately NOT
+  in `DEFAULT_FORM_VALUES` (would change the current form/share links); `PREVIEW_DEFAULT_VALUES` merges them.
+- **Done:** per-person payroll tax, `calculateHouseholdEmploymentTaxes` (ficaTax.js): own wage base and SE tax per person,
+  Additional Medicare on combined wages + net SE earnings. Per-person Social Security,
+  `estimateHouseholdSocialSecurity` + `spousalAdjustmentFactor` (socialSecurity.js): own benefit plus the excess of 50% of
+  the other's PIA over own PIA, reduced 25/36% a month (36 months) then 5/12% (source: SSA POMS RS 00615.201, via search
+  excerpt; ssa.gov blocks the fetcher), no delayed credits on it, starting at the later of own claim and the other's
+  claim. Simplifications: an entered (known) benefit is used as is and gives the other spouse no spousal top-up (its PIA
+  is unknown); steady-state amount once both claim; no survivor benefit. Both functions equal the single-earner functions
+  for one person (tested). Hand-verified tests: `tests/household.test.js`.
+- **Done:** `compare.js` optional input `earners` (absent = today's path): per-person payroll tax and Social Security.
+  `householdToCompareInputs` sets it only for two people. Result shapes are unchanged (`current.fica` gains `people`;
+  `socialSecurity` has `annualBenefit`, `estimated`, `people`), so ResultsSummary needed no change.
+- **Done:** preview route `#/next` (`NEXT_HASH` in route.js; `#/next/...` also routes there), `src/next/NextApp.jsx`
+  ("Preview, not finished" banner, link back to `#/`, the existing InputForm + ResultsSummary, own state) and
+  `src/next/SpouseInputs.jsx` (shown only for married filing jointly; "Enter your spouse separately?"). InputForm now
+  also exports its field helpers (`AgeInput`, `CurrencyInput`, `RadioGroup`, `SelectInput`). `previewResult` in
+  NextApp.jsx is the testable calculation. Not linked from the current pages (smoke test checks).
+- **Not done yet (phase 1):** contribution limits per person beyond the owner's age (Future Contributions are still one
+  entry with one owner; the plan says each spouse can have their own); claiming age as its own input (`claimAge: null` =
+  retirement age); the form as the shared-inputs component with an accounts LIST (owner + type) instead of three
+  balances; the main form's labels still say "your" income when a spouse is entered (the spouse card's hint explains);
+  versioned share links + view-only flag; ARTICLE.md is unchanged because the public calculator's behavior is unchanged.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -805,6 +841,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (b) — Phase 1 started in the `#/next` preview (see "Phase 1: household model"): `household.js`, per-person
+  payroll tax and Social Security with the spousal benefit (hand-verified), optional `earners` input on compare.js, the
+  preview route with a Spouse block. Current calculator untouched; all 491 existing tests passed unchanged. 510 tests.
 - 2026-10-01 — Decided how to build the roadmap: alongside the current calculator, on `main`, behind a preview route
   `#/next` (see "Build alongside, then switch over" under Roadmap); `result.old` and `#/old-vs-new` stay for now. Plan
   doc updated to match. No code change. 491 tests.

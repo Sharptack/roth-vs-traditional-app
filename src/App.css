@@ -1637,3 +1637,12 @@ th.win .th-sub {
     grid-template-columns: 1fr;
   }
 }
+
+/* #/next preview (src/next/) */
+.preview-banner {
+  margin: 0 0 16px;
+}
+
+.inputs-column .spouse-inputs {
+  margin-top: 16px;
+}

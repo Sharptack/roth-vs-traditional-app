@@ -70,3 +70,44 @@ export function calculateFica(grossWages, filingStatus, year) {
     total: r.total,
   };
 }
+
+// Payroll tax for a household where each earner is entered separately (the household model,
+// phase 1). Each person has their own Social Security wage base and their own self-employment
+// tax; only Additional Medicare is figured on the couple's COMBINED wages + net self-employment
+// earnings against the filing-status threshold ($250,000 married filing jointly), as on Form 8959.
+// This removes the single-earner simplification in calculateEmploymentTaxes for two earners.
+//   earners: [{ wages, selfEmploymentIncome }]  (one or two people)
+// -> the same shape as calculateEmploymentTaxes (summed over people), plus `people`: each
+//    person's own result with additionalMedicare left out (it belongs to the household).
+// For one earner the result equals calculateEmploymentTaxes exactly.
+export function calculateHouseholdEmploymentTaxes({ earners, filingStatus, year }) {
+  const { data } = getYearData(FICA_RATES, year);
+  const threshold = data.additionalMedicare.threshold[filingStatus];
+  if (threshold === undefined) throw new Error(`Unknown filing status: ${filingStatus}`);
+
+  const people = earners.map(({ wages = 0, selfEmploymentIncome = 0 }) => {
+    const r = calculateEmploymentTaxes({ wages, selfEmploymentIncome, filingStatus, year });
+    return {
+      w2: r.w2,
+      selfEmployment: r.selfEmployment,
+      medicareWages: Math.max(0, wages) + r.selfEmployment.netEarnings,
+      total: r.total - r.additionalMedicare,
+    };
+  });
+  const sum = (pick) => people.reduce((acc, p) => acc + pick(p), 0);
+  const additionalMedicare =
+    data.additionalMedicare.rate * Math.max(0, sum((p) => p.medicareWages) - threshold);
+  return {
+    w2: { socialSecurity: sum((p) => p.w2.socialSecurity), medicare: sum((p) => p.w2.medicare) },
+    selfEmployment: {
+      netEarnings: sum((p) => p.selfEmployment.netEarnings),
+      socialSecurity: sum((p) => p.selfEmployment.socialSecurity),
+      medicare: sum((p) => p.selfEmployment.medicare),
+      tax: sum((p) => p.selfEmployment.tax),
+      deduction: sum((p) => p.selfEmployment.deduction),
+    },
+    additionalMedicare,
+    total: sum((p) => p.total) + additionalMedicare,
+    people,
+  };
+}

@@ -85,3 +85,69 @@ export function estimateSocialSecurityBenefit({
     dataYear,
   };
 }
+
+// Reduction for a SPOUSAL benefit started `monthsEarly` months before full retirement age:
+// 25/36 of 1% per month for the first 36 months, 5/12 of 1% per month beyond (steeper than the
+// worker's own 5/9 of 1%). There are no delayed credits on a spousal benefit, so the factor is 1
+// at or after full retirement age. Source: SSA POMS RS 00615.201 (Reduced Spouse's Benefits).
+export function spousalAdjustmentFactor(monthsFromFRA) {
+  if (monthsFromFRA >= 0) return 1;
+  const early = -monthsFromFRA;
+  return 1 - ((Math.min(early, 36) * 25) / 36 + (Math.max(0, early - 36) * 5) / 12) / 100;
+}
+
+// Household Social Security (the household model, phase 1): each person's benefit from their
+// OWN earnings, plus a spousal top-up when half the other spouse's PIA is larger than their own.
+//   earners: [{ earnings, currentAge, claimAge, knowsSocialSecurity, socialSecurityBenefit }]
+//     earnings = covered earnings (W-2 wages + net self-employment earnings) for the estimate;
+//     claimAge defaults to the person's retirement age as passed (clamped to 62-70), the same
+//     rule estimateSocialSecurityBenefit uses.
+// Rules (SSA): the spousal benefit is up to 50% of the other spouse's PIA. When a person is
+// entitled to their own benefit too, they receive their own (reduced/increased for their own
+// claiming age) plus the EXCESS of 50% of the other's PIA over their own PIA, reduced by
+// spousalAdjustmentFactor for their age when the spousal part starts. That is the later of their
+// own claim and the other spouse's claim (a spousal benefit can't start before the worker files).
+// Simplifications: a person whose benefit is entered (known) gets exactly that figure, and their
+// PIA is unknown, so it gives the other spouse no spousal top-up; the benefit is the steady
+// annual amount once both have claimed (no year-by-year timing; that's the projection's job);
+// no survivor benefits. Same estimator shortcuts as estimateSocialSecurityBenefit above.
+// For one earner the result equals estimateSocialSecurityBenefit (or the known benefit).
+export function estimateHouseholdSocialSecurity({ earners, year }) {
+  const own = earners.map((e) => {
+    if (e.knowsSocialSecurity) {
+      return { known: true, annualBenefit: e.socialSecurityBenefit, ownBenefit: e.socialSecurityBenefit, spousalTopUp: 0 };
+    }
+    const est = estimateSocialSecurityBenefit({
+      annualIncome: e.earnings,
+      currentAge: e.currentAge,
+      retirementAge: e.claimAge,
+      year,
+    });
+    return { known: false, ...est, ownBenefit: est.annualBenefit, spousalTopUp: 0 };
+  });
+
+  const people = own.map((p, i) => {
+    const other = own[1 - i];
+    if (earners.length !== 2 || p.known || !other || other.known) return p;
+    const excessMonthly = Math.max(0, 0.5 * other.pia - p.pia);
+    if (excessMonthly <= 0) return p;
+    // The other spouse claims at their claimingAge; this person's age then:
+    const ageWhenOtherClaims = other.claimingAge + (earners[i].currentAge - earners[1 - i].currentAge);
+    const spousalStartAge = Math.max(p.claimingAge, ageWhenOtherClaims);
+    const factor = spousalAdjustmentFactor(spousalStartAge * 12 - Math.round(p.fullRetirementAge * 12));
+    const spousalTopUp = excessMonthly * factor * 12;
+    return {
+      ...p,
+      spousalStartAge,
+      spousalAdjustmentFactor: factor,
+      spousalTopUp,
+      annualBenefit: p.ownBenefit + spousalTopUp,
+    };
+  });
+
+  return {
+    annualBenefit: people.reduce((acc, p) => acc + p.annualBenefit, 0),
+    estimated: people.some((p) => !p.known),
+    people,
+  };
+}

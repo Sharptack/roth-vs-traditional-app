@@ -419,3 +419,6 @@ export default function InputForm({
     </form>
   );
 }
+
+// Shared with the #/next preview's extra inputs (src/next/), so its fields look the same.
+export { AgeInput, CurrencyInput, RadioGroup, SelectInput };

@@ -1154,3 +1154,33 @@ describe('OldVsNewPage', () => {
     expect(html).not.toMatch(/NaN|Infinity/);
   });
 });
+
+// The #/next preview (build alongside, see CLAUDE.md).
+describe('NextApp (#/next preview)', () => {
+  it('renders the preview banner, a way back, and results; the current page does not link to it', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const html = renderToStaticMarkup(<NextApp />);
+    expect(html).toContain('Preview, not finished.');
+    expect(html).toContain('href="#/"');
+    expect(html).toContain('Retirement income number');
+    expect(html).not.toMatch(/NaN|Infinity/);
+    expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
+  });
+
+  it('shows the spouse block only when filing jointly, and renders a two-earner result', async () => {
+    const { default: SpouseInputs } = await import('../src/next/SpouseInputs.jsx');
+    const { previewResult } = await import('../src/next/NextApp.jsx');
+    const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
+    const noop = () => {};
+    expect(renderToStaticMarkup(<SpouseInputs values={PREVIEW_DEFAULT_VALUES} onChange={noop} />)).toBe('');
+    const values = { ...PREVIEW_DEFAULT_VALUES, filingStatus: 'mfj', includeSpouse: 'yes', spouseIncome: '60000' };
+    const form = renderToStaticMarkup(<SpouseInputs values={values} onChange={noop} />);
+    expect(form).toContain("Spouse&#x27;s gross income");
+    const { result } = previewResult(values, 2026);
+    expect(result.valid).toBe(true);
+    expect(result.current.fica.people).toHaveLength(2);
+    expect(renderToStaticMarkup(<ResultsSummary result={result} />)).not.toMatch(/NaN|Infinity/);
+    const bad = previewResult({ ...values, spouseAge: '70', spouseRetirementAge: '65' }, 2026).result;
+    expect(bad.errors).toContain("Your spouse's retirement age must be after their current age.");
+  });
+});

@@ -18,13 +18,21 @@
 //   otherTaxableBasis                      — share of today's taxable balance that is cost
 //                                            basis (0–1). Optional, default 0 = all gain.
 //   year                                   — tax year (defaults to current year)
+//   earners                                — OPTIONAL (household model, phase 1): one entry per
+//                                            earner, [{ wages, selfEmploymentIncome, currentAge,
+//                                            claimAge, knowsSocialSecurity, socialSecurityBenefit }].
+//                                            When given, payroll tax and Social Security are figured
+//                                            per person (own wage base, spousal top-up) and the flat
+//                                            knowsSocialSecurity/socialSecurityBenefit are ignored.
+//                                            grossIncome/selfEmploymentIncome must be their sums.
+//                                            Absent = today's single-earner behavior, unchanged.
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
 import { calculateTaxFromGross, getMarginalRate } from './taxCalculations.js';
-import { calculateEmploymentTaxes } from './ficaTax.js';
-import { estimateSocialSecurityBenefit } from './socialSecurity.js';
+import { calculateEmploymentTaxes, calculateHouseholdEmploymentTaxes } from './ficaTax.js';
+import { estimateHouseholdSocialSecurity, estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
 import { calculateSideAwareRates } from './sideAwareRates.js';
 import { findOptimalBlend } from './blend.js';
@@ -126,8 +134,20 @@ export function validateInputs(inputs) {
   if (!isNum(basis) || basis < 0 || basis > 1) {
     errors.push('Choose the cost basis of your existing taxable accounts (0–100%).');
   }
-  if (inputs.knowsSocialSecurity && (!isNum(inputs.socialSecurityBenefit) || inputs.socialSecurityBenefit < 0)) {
-    errors.push('Enter your annual Social Security benefit.');
+  if (inputs.earners === undefined) {
+    if (inputs.knowsSocialSecurity && (!isNum(inputs.socialSecurityBenefit) || inputs.socialSecurityBenefit < 0)) {
+      errors.push('Enter your annual Social Security benefit.');
+    }
+  } else {
+    for (const e of inputs.earners) {
+      if (!isNum(e.wages) || e.wages < 0 || !isNum(e.selfEmploymentIncome) || e.selfEmploymentIncome < 0) {
+        errors.push("Each person's income can't be negative.");
+      }
+      if (!isNum(e.currentAge) || !isNum(e.claimAge)) errors.push("Enter each person's age and retirement age.");
+      if (e.knowsSocialSecurity && (!isNum(e.socialSecurityBenefit) || e.socialSecurityBenefit < 0)) {
+        errors.push("Enter each person's annual Social Security benefit.");
+      }
+    }
   }
   if (!(inputs.currentType in CONTRIBUTION_TYPES)) errors.push('Choose Pre-tax or Roth.');
   if (!(inputs.accountType in ACCOUNT_TYPES)) errors.push('Choose an account type.');
@@ -177,12 +197,14 @@ export function compareRothVsTraditional(inputs) {
   // modeled as going to a taxable account (see step 7), so it is not deducted.
   const selfEmploymentIncome = inputs.selfEmploymentIncome ?? 0;
   const lifestyleFactor = inputs.retirementLifestyle ?? 1;
-  const fica = calculateEmploymentTaxes({
-    wages: grossIncome - selfEmploymentIncome,
-    selfEmploymentIncome,
-    filingStatus,
-    year,
-  });
+  const fica = inputs.earners
+    ? calculateHouseholdEmploymentTaxes({ earners: inputs.earners, filingStatus, year })
+    : calculateEmploymentTaxes({
+        wages: grossIncome - selfEmploymentIncome,
+        selfEmploymentIncome,
+        filingStatus,
+        year,
+      });
   const pretaxDeduction =
     currentType === 'pretax'
       ? splitAtContributionLimit(savings, accountType, year, currentAge).toAccount
@@ -209,7 +231,16 @@ export function compareRothVsTraditional(inputs) {
 
   // 2. Social Security benefit (known, or estimated)
   let socialSecurity;
-  if (inputs.knowsSocialSecurity) {
+  if (inputs.earners) {
+    // Per person: each earner's own covered earnings (wages + net self-employment earnings).
+    socialSecurity = estimateHouseholdSocialSecurity({
+      earners: inputs.earners.map((e, i) => ({
+        ...e,
+        earnings: e.wages + fica.people[i].selfEmployment.netEarnings,
+      })),
+      year,
+    });
+  } else if (inputs.knowsSocialSecurity) {
     socialSecurity = { annualBenefit: inputs.socialSecurityBenefit, estimated: false };
   } else {
     socialSecurity = {
