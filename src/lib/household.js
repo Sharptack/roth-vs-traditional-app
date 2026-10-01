@@ -20,6 +20,8 @@
 //     currentType, accountType,            // each person saves their own amount, under their own limit
 //     contributions: [{ owner: 'p1', amount }] },
 //   spending: { debtPaymentsEnding, otherExpensesEnding, retirementLifestyle },
+//   calculators: { tax: { ordinaryIncome, investmentOrdinaryIncome, preferentialIncome,
+//                         socialSecurity } },   // calculator-only inputs, under the calculator's name
 //   assumptions: { returnRate, inflationRate, ageDeductions },   // the last two: retirement-year
 //                                          // tax rules (phase 2); 0 / false = today's rules
 // }
@@ -32,6 +34,7 @@
 // CLAUDE.md); only the #/next preview goes through here. For one person, the round trip
 // form -> household -> compare inputs gives exactly the inputs toCompareInputs gives (tested).
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from './formInputs.js';
+import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
 
 export const HOUSEHOLD_VERSION = 1;
 
@@ -77,6 +80,7 @@ export const PREVIEW_DEFAULT_VALUES = {
   ...DEFAULT_FORM_VALUES,
   ...SPOUSE_DEFAULT_VALUES,
   ...NEW_RULES_DEFAULT_VALUES,
+  ...TAX_CALCULATOR_DEFAULT_VALUES,
   accounts: accountRowsFromFlat(DEFAULT_FORM_VALUES),
 };
 const blankAsNull = (text) => (String(text ?? '').trim() === '' ? null : parseNumber(text));
@@ -143,6 +147,14 @@ export function toHousehold(values, year) {
       debtPaymentsEnding: flat.debtPayments,
       otherExpensesEnding: flat.otherExpenses,
       retirementLifestyle: flat.retirementLifestyle,
+    },
+    calculators: {
+      tax: {
+        ordinaryIncome: blankAsZero(values.taxOrdinaryIncome),
+        investmentOrdinaryIncome: blankAsZero(values.taxInvestmentIncome),
+        preferentialIncome: blankAsZero(values.taxPreferentialIncome),
+        socialSecurity: blankAsZero(values.taxSocialSecurity),
+      },
     },
     assumptions: {
       returnRate: flat.returnRate,

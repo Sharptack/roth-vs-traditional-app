@@ -19,12 +19,13 @@ import {
   SPOUSE_DEFAULT_VALUES,
   accountRowsFromFlat,
 } from './household.js';
+import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
 import { valuesFromSearch } from './shareInputs.js';
 
 const PREFIX = 'h.';
 // The flat balances are carried by the accounts list instead.
 const FLAT_BALANCE_KEYS = ['otherPretaxBalance', 'otherRothBalance', 'otherTaxableBalance', 'otherTaxableBasis'];
-const KEYS = [...Object.keys(DEFAULT_FORM_VALUES), ...Object.keys(SPOUSE_DEFAULT_VALUES), ...Object.keys(NEW_RULES_DEFAULT_VALUES)].filter(
+const KEYS = [...Object.keys(DEFAULT_FORM_VALUES), ...Object.keys(SPOUSE_DEFAULT_VALUES), ...Object.keys(NEW_RULES_DEFAULT_VALUES), ...Object.keys(TAX_CALCULATOR_DEFAULT_VALUES)].filter(
   (k) => !FLAT_BALANCE_KEYS.includes(k),
 );
 const ACCOUNT_TYPES = ['pretax', 'roth', 'taxable'];
