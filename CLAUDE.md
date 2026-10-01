@@ -78,7 +78,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (587 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (591 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -130,7 +130,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
   Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
   Phase 3: `rmd.js`, `data/rmdTable.js`. Phase 4: `projection.js`. Phase 5: `projectionSummary.js`, `src/next/ProjectionResult.jsx`,
-  `components/charts/StackedBarChart.jsx`.
+  `components/charts/StackedBarChart.jsx`. Phase 6: `lifetimeComparison.js`, `src/next/LifetimeComparison.jsx`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -291,6 +291,24 @@ legend + table). The projection follows the inputs via useDeferredValue (sustain
 SPEED: getYearData is memoized (it sorted keys on every call) and the projection solves with `calculateYearTaxTotals`
 (no marginal-rate probes) and 50 bisection steps: one projection 86 ms -> 8 ms. Noticed and correct: Additional Medicare
 starts biting a $100,000 earner around 2055 — its $200,000 threshold shrinks in today's dollars at 2.5% inflation.
+
+## Phase 6: lifetime Roth vs. Pre-tax (done 2026-10-01, in the preview)
+`src/lib/lifetimeComparison.js`: `lifetimeContributions` (each saver's take-home cost and the contribution rate from the Roth
+calculator's result), `compareLifetime(household, compareResult, { heirTaxRate, endAge, retirementRateShift })` -> roth /
+pretax { rows, summary, sustainable }, winner (by SUSTAINABLE SPENDING, the plan's recommended headline, 0.5% even rule),
+difference (sustainable, lifetime tax, ending after-tax), wealthGap per year (Roth − Pre-tax after-tax wealth, Pre-tax at
+the heirs' rate), crossoverYear; `breakEvenRateShift` (bisection on a retirement-years ordinary rate shift, −10 to +30
+points, until the two sustainable-spending figures meet; slow, so the page runs it on a button). The projection gained
+contributions as a take-home cost (`{ owner, takeHomeCost, rate, type }`, split each year at that year's limit with
+`splitAtTakeHome`, so a Pre-tax saver over the limit invests the tax saved) and `retirementRateShift`. Tests
+(tests/lifetimeComparison.test.js): a hand case where wealth for heirs favors Roth (+$200) while sustainable spending
+favors Pre-tax (+$2,200: 22% saved, 0% paid) — why the plan picks ONE headline; the symmetry tie (22% now and later, heirs
+22%); the over-limit take-home split; break-even consistency. UI: `src/next/LifetimeComparison.jsx`, a card under the
+preview Roth page's results (verdict, side-by-side table, wealth-gap chart with Roth/Pre-tax zones, tax per year, break-even
+button, either scenario's year table); computed only on that page, via the deferred value (~150–200 ms). FINDINGS: at the
+defaults the first-year comparison says Pre-tax but the lifetime view is about even (Roth $136,523 vs. Pre-tax $135,870);
+with a $500k existing Pre-tax balance Roth leads by $9,158/yr (RMDs) and stays ahead even if retirement rates fall 10
+points (gap +$2,113 at −10). Whether the lifetime verdict should become the main headline is a separate decision (plan).
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -958,6 +976,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (i) — Phase 6 in the preview: lifetime Roth vs. Pre-tax (sustainable spending headline, wealth gap,
+  break-even rate change) on the Roth page; projection takes take-home-cost contributions and a retirement rate shift. 591 tests.
 - 2026-10-01 (h) — Phase 5 in the preview: the projection page (funded status, lifetime summary, stacked income chart,
   balances chart, year table), sustainable spending, StackedBarChart; projection 10x faster. 587 tests.
 - 2026-10-01 (g) — Phase 4: the year-by-year projection engine (starts today), proportional strategy, hand-verified and

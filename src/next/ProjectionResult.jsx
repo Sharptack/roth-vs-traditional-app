@@ -40,7 +40,7 @@ const COLUMNS = [
   { key: 'basis', label: 'Taxable basis', value: (r) => r.taxableBasis },
 ];
 
-function YearTable({ rows }) {
+export function YearTable({ rows }) {
   const [all, setAll] = useState(false);
   const cols = COLUMNS.filter((c) => all || c.key1);
   return (

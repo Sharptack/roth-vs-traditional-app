@@ -33,6 +33,7 @@ import { estimateHouseholdSocialSecurity } from './socialSecurity.js';
 import { checkContributionLimit } from './contributionLimits.js';
 import { requiredMinimumDistribution } from './rmd.js';
 import { solveMonotonicIncreasing } from './solver.js';
+import { splitAtTakeHome } from './compare.js';
 
 export const DEFAULT_END_AGE = 95;
 
@@ -82,10 +83,15 @@ function socialSecuritySchedule(household) {
 //   need             the after-tax spending need once anyone has retired (today's dollars); the
 //                    Roth calculator's retirement income number.
 //   strategy         defaults to proportionalStrategy.
-//   contributions    optional override [{ owner, amount, type: 'pretax' | 'roth' }] (phase 6 runs the
-//                    Roth and Pre-tax scenarios); default: the household's Future Contributions.
+//   contributions    optional override, one entry per saver: [{ owner, amount, type: 'pretax' | 'roth' }],
+//                    or [{ owner, takeHomeCost, rate, type }] (phase 6: the Roth and Pre-tax scenarios at
+//                    the SAME take-home cost, split each year at that year's limit by splitAtTakeHome, so
+//                    a Pre-tax saver over the limit invests the tax saved in a taxable account).
+//                    Default: the household's Future Contributions as entered.
 //   endAge           person 1's age in the last projected year (default household.assumptions.endAge or 95).
-export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, endAge } = {}) {
+//   retirementRateShift  added to every ordinary bracket rate in the years anyone is retired (a tax-law
+//                    what-if: "rates 3 points higher in retirement"); default 0.
+export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, endAge, retirementRateShift = 0 } = {}) {
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
   const returnRate = assumptions.returnRate;
   const inflation = assumptions.inflationRate ?? 0;
@@ -131,7 +137,13 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const made = [];
     for (const c of plan) {
       const i = people.findIndex((p) => p.id === c.owner);
-      if (i < 0 || !working[i] || !(c.amount > 0)) continue;
+      if (i < 0 || !working[i] || !((c.amount ?? c.takeHomeCost) > 0)) continue;
+      if (c.takeHomeCost !== undefined) {
+        const limit = checkContributionLimit(c.takeHomeCost, fc.accountType, year, ages[i]).limit;
+        const split = splitAtTakeHome(c.takeHomeCost, 'roth', c.rate, limit)[c.type];
+        made.push({ owner: c.owner, type: c.type, toAccount: split.toAccount, excess: split.excessToTaxable });
+        continue;
+      }
       const limit = checkContributionLimit(c.amount, fc.accountType, year, ages[i]).limit;
       const toAccount = Math.min(c.amount, limit);
       made.push({ owner: c.owner, type: c.type, toAccount, excess: c.amount - toAccount });
@@ -172,6 +184,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         pretaxDeferrals,
         income: { ordinaryIncome, preferentialIncome, socialSecurity },
         thresholdScale,
+        rateShift: anyRetired ? retirementRateShift : 0,
       };
     };
     // Totals only while solving; the row below runs the full engine once (marginal rates, room).

@@ -1173,6 +1173,9 @@ describe('NextApp (#/next preview)', () => {
     expect(roth).toContain('Roth vs. Pre-tax inputs');
     expect(roth).toContain('Retirement income number');
     expect(roth).toContain('RMDs start at 75.');
+    expect(roth).toContain('Over a lifetime, year by year');
+    expect(roth).toMatch(/Find the break-even tax change|there is no break-even to find/);
+    expect(roth).toMatch(/(Roth|Pre-tax) supports \$[\d,]+ a year more|About even/);
     expect(roth).toContain('href="#/next/projection"');
     expect(roth).toContain('href="#/next"');
     expect(roth.indexOf('Roth vs. Pre-tax inputs')).toBeLessThan(roth.indexOf('>Household<'));

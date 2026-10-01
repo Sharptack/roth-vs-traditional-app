@@ -22,6 +22,8 @@ import HouseholdForm from './HouseholdForm.jsx';
 import ShareHousehold from './ShareHousehold.jsx';
 import TaxResult from './TaxResult.jsx';
 import ProjectionResult from './ProjectionResult.jsx';
+import LifetimeComparison from './LifetimeComparison.jsx';
+import { compareLifetime } from '../lib/lifetimeComparison.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -96,6 +98,13 @@ export default function NextApp({ initialPage }) {
     () => (deferredRoth.result.valid ? projectionView(deferredRoth.household, deferredRoth.result.retirementNeed.target) : null),
     [deferredRoth],
   );
+  // The lifetime Roth vs. Pre-tax comparison (phase 6): only on the Roth page (two projections and
+  // two sustainable-spending searches), a beat behind the inputs like the projection.
+  const lifetime = useMemo(() => {
+    if (page !== 'roth' || !deferredRoth.result.valid) return null;
+    const own = deferredRoth.household.calculators?.projection ?? {};
+    return compareLifetime(deferredRoth.household, deferredRoth.result, { endAge: own.endAge, heirTaxRate: own.heirTaxRate });
+  }, [deferredRoth, page]);
   const tiles = { roth: rothTile(roth.result), tax: taxTile(tax), projection: projectionTile(projection) };
 
   const formProps = { values, onChange: handleChange, locked, onEditCopy: () => setLocked(false) };
@@ -171,7 +180,12 @@ export default function NextApp({ initialPage }) {
               />
             </div>
             <div className="results-column">
-              {calculator.id === 'roth' && <ResultsSummary result={roth.result} />}
+              {calculator.id === 'roth' && (
+                <>
+                  <ResultsSummary result={roth.result} />
+                  <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} />
+                </>
+              )}
               {calculator.id === 'tax' && <TaxResult tax={tax} />}
               {calculator.id === 'projection' && <ProjectionResult view={projection} />}
             </div>
