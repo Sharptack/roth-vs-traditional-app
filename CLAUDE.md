@@ -58,6 +58,16 @@ is **also the public "How this works" page** — see "Article page" below.
     homepage becomes the default, old calculator moves to `#/classic` briefly, then is deleted via a written
     checklist; old share links must still open (flat values -> one-person household). Netlify branch deploys
     were considered and rejected (long-lived branch drift over shared lib files; extra push step).
+  - **Further ideas placed in the plan doc** (2026-10-01; all apply to the NEW version only, per the rule above):
+    phase 1 — share links get a view-only flag ("Edit a copy"); phase 2 — "tax saved now" measured incrementally
+    across the whole contribution (see Known limitations), a tax-law override on the engine (off by default), a
+    "fill up the bracket" bar on the tax page, a feedback link on every page (Netlify Forms; confirm before
+    sending data outward; needed before any free version goes public); any time after phase 2 — a single-year
+    Roth conversion calculator and a pension IRR calculator; phase 4 open question (decide before it starts) —
+    start the projection today so the phase 5 page is the pre-retirement planner (funded status, over/underfunded);
+    phase 6 — recommended headline "sustainable spending" (one measure, not a blend of lifetime tax / longevity /
+    ending wealth) plus a break-even tax-change report. Future features: print stylesheet, designed PDF report,
+    named saved scenarios, a bottom-up budget calculator feeding household spending.
 - **Exposure check:** the GitHub repo is public and the Netlify site is open to anyone with the link, and
   ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
   proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
@@ -736,6 +746,11 @@ the whole account) is still open — see "Known limitations."
 - SS wage base lives only in `ficaRates.js`.
 
 ## Known limitations / open items
+- **"Tax saved now" uses one flat rate for the whole contribution** (`splitAtTakeHome` in compare.js,
+  `splitBlended` in blend.js: P = C / (1 − t), t = the top-of-bracket marginal rate). A Pre-tax contribution
+  that crosses a bracket edge (e.g. $10k into 22%, $20k deducted) really saves 22% on part and 12% on the rest,
+  so the app overstates the deduction's value there. The retirement side already uses an incremental measure.
+  Planned fix in the new version only (plan doc phase 2): tax without the deduction minus tax with it.
 - **RESOLVED 2026-09-28** (was the top item here): the effective rate used to be measured on a *need-based
   gap-filling* withdrawal but applied to the account's full 4% withdrawal, which could overstate or understate
   tax. `sideAwareRates.js` now measures the rate directly on the account's own actual 4% withdrawal — see "The
@@ -786,6 +801,10 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-01 (b) — Placed the user's further ideas in the plan doc and the Roadmap notes (see "Further ideas placed");
+  recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
+  engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
+  No code change.
 - 2026-10-01 — Decided how to build the roadmap: alongside the current calculator, on `main`, behind a preview route
   `#/next` (see "Build alongside, then switch over" under Roadmap); `result.old` and `#/old-vs-new` stay for now. Plan
   doc updated to match. No code change. 491 tests.
