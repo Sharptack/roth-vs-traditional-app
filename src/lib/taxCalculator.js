@@ -53,6 +53,16 @@ const SOURCE_LABELS = {
   socialSecurity: 'Social Security benefits',
 };
 
+// The same sources as they read inside a sentence ("the next $100 of …").
+const SOURCE_PHRASES = {
+  wages: 'wages',
+  selfEmploymentIncome: '1099 income',
+  ordinaryIncome: 'Pre-tax withdrawals or pension',
+  investmentOrdinaryIncome: 'interest or non-qualified dividends',
+  preferentialIncome: 'long-term gains',
+  socialSecurity: 'Social Security',
+};
+
 // Which source leads the page: wages while working, else 1099 income, else Pre-tax withdrawals.
 export function headlineSource(lines) {
   if (lines.wages > 0) return 'wages';
@@ -67,7 +77,7 @@ export function taxCalculatorResult(params) {
   const r = calculateYearTax(params);
   const rows = yearTaxRows(params, r);
   const lead = headlineSource(r.lines);
-  const asRate = (source) => ({ source, label: SOURCE_LABELS[source], ...r.marginalRates[source] });
+  const asRate = (source) => ({ source, label: SOURCE_LABELS[source], phrase: SOURCE_PHRASES[source], ...r.marginalRates[source] });
   return {
     result: r,
     rows,

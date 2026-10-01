@@ -75,7 +75,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (527 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (562 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -124,7 +124,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   income is low, when it rises later — the Visualization page's "Earning more later" charts; see that section).
   `compare.js` exports `winnerOf` (the 0.5% "even" rule) so risingIncome.js reuses it.
   `household.js` (the household model), `householdForm.js` (the preview form's sections), `householdLink.js` (preview share
-  links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`).
+  links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
+  Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -188,6 +189,47 @@ flat form values (`toCompareInputs`) and never goes through the household; every
   link, not the plain-text "Copy inputs" summary the current calculator copies (shareText reads flat inputs, so a
   two-person version needs its own describe-inputs); (3) the Roth/Pre-tax type and account type are shared by both
   spouses, not per person. ARTICLE.md is unchanged (the public calculator is unchanged).
+
+## Phase 2: single-year tax engine, tax calculator, suite shell (in progress, 2026-10-01)
+- **`lib/yearTax.js` `calculateYearTax`**: one federal tax year for a household from every source at once, grouped by tax
+  treatment (people[].wages/selfEmploymentIncome, income.ordinaryIncome / investmentOrdinaryIncome / preferentialIncome /
+  socialSecurity, pretaxDeferrals). Merges the existing functions (no rewrite). Returns lines (AGI, deductions, taxable
+  income…), ordinaryTax, capitalGainsTax, niit, incomeTax, payroll, totalTax, effectiveRate (income tax only) and
+  effectiveRateWithPayroll, ordinaryBracketRate, marginalRates per source (+$100, `incomeTax` and `total` with payroll),
+  bracketRoom (ordinary and capital gains). Options: `thresholdScale` (shrinks SS taxability, NIIT, Additional Medicare
+  and the senior deduction's dollar amounts), `rateShift` (ordinary rates only), `calendarYear` (when taxing a future
+  year under today's law: only the senior deduction's 2028 end uses it). AGREEMENT GRIDS (tests/yearTax.test.js): 384
+  retirement cases vs. calculateRetirementTax and 180 working cases vs. calculateTaxFromGross + calculateEmploymentTaxes,
+  to the cent. The existing functions gained optional params (calculateTax/getMarginalRate `rateShift`,
+  calculateTaxableSocialSecurity/calculateNiit/calculateEmploymentTaxes `thresholdScale`, `getBrackets`); defaults change nothing.
+- **Age 65+ deductions** (`data/ageDeductions.js`, applied only when `people[].age` is given): additional standard deduction
+  ($2,050 single / $1,650 per spouse in 2026; $2,000/$1,600 in 2025) and the senior deduction ($6,000 per person, 2025–2028,
+  less 6% of MAGI over $75k/$150k, per spouse). Sources in the file; the 6% rate, per-spouse reduction and 2026 add-on
+  amounts are from secondary sources (irs.gov page confirmed $6,000 / 65 / 2025–2028 / $75k / $150k).
+- **Retirement tax rules end to end**: `calculateRetirementTax` and `explainFullTax` take optional `taxRules` { thresholdScale,
+  rateShift, ages, calendarYear } and then run through calculateYearTax; sideAwareRates, portfolioTax and blend pass
+  `taxRules` through; compare.js takes optional `retirementTaxRules` (the temporary result.old block does NOT use it).
+  Tests (tests/retirementTaxRules.test.js): neutral rules reproduce today's results; the (X − e) × W identity holds under
+  real rules; the breakdown matches the tax. FINDING: inflation can LOWER the effective rate on the account withdrawal
+  (default case 24.4% -> 20.9%) while raising total tax — more Social Security is taxable before the withdrawal, so the
+  withdrawal no longer sits in the phase-in band. The preview turns the rules on: Assumptions has Inflation (default
+  2.5%) and "Age 65+ deductions" (default include); the adapter sets thresholdScale = 1/(1+i)^years to retirement, each
+  person's age then, and the calendar year (so the senior deduction is gone for retirements after 2028).
+- **`lib/yearTaxRows.js`**: the full-year calculation as data rows (income -> AGI -> deductions -> ordinary brackets ->
+  gains brackets -> NIIT -> payroll), tested to add up to the engine. **`lib/taxCalculator.js`**: household -> this year's
+  params (ages now, Pre-tax deferrals capped per person, the calculator's own inputs under `household.calculators.tax`,
+  form keys taxOrdinaryIncome / taxInvestmentIncome / taxPreferentialIncome / taxSocialSecurity), the headline source
+  (wages, else 1099, else Pre-tax withdrawals), and the fill-up-the-bracket bar data. **`lib/suiteTiles.js`**: tile headlines.
+- **Suite shell in the preview**: `#/next` = homepage (shared household form + a tile per calculator with its headline),
+  `#/next/roth` and `#/next/tax` (`NEXT_PAGES`, `nextPageFromHash` in route.js). Calculator pages: own inputs card first
+  (HouseholdForm `only` = the calculator's sections), then the shared "Household" card (sections closed), results right,
+  "← All calculators". One state for all pages (NextApp). `src/next/TaxResult.jsx`: marginal and effective rates, the
+  other sources' rates, the bracket bar (SVG), "Show the calculation" rows. `NextApp` takes `initialPage` for tests.
+- **Deviations / not done yet:** kept the hash helper instead of React Router (the preview lives under the current app's
+  hash routing; revisit at switchover). Not built: "tax saved now across the whole contribution" (plan step), the
+  feedback link (Netlify Forms sends data to Netlify — needs the user's OK), an ARTICLE.md section for the tax calculator
+  (ARTICLE.md is the PUBLIC page for the current calculator; add the section at switchover), tax-law override UI and the
+  phase 6 break-even report (the engine supports `rateShift`).
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -855,6 +897,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (d) — Phase 2 in the preview: calculateYearTax (agreement grids to the cent), age 65+ deductions, optional
+  retirement tax rules end to end (inflation on fixed thresholds, ages), full-year rows, the tax calculator page and
+  the suite homepage with tiles. Current calculator untouched. 562 tests.
 - 2026-10-01 (c) — Phase 1 finished in the `#/next` preview: per-person IRS limits and catch-up (`contributors`), claiming
   age per person, the household form with an Existing Accounts list, versioned share links with a view-only flag. 527 tests.
 - 2026-10-01 (b) — Phase 1 started in the `#/next` preview (see "Phase 1: household model"): `household.js`, per-person

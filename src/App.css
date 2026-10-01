@@ -1671,3 +1671,120 @@ th.win .th-sub {
   border: 1px solid var(--line);
   border-radius: 8px;
 }
+
+.household-sections {
+  display: flex;
+  flex-direction: column;
+}
+
+/* #/next suite homepage tiles */
+.suite-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.suite-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  transition: border-color 0.15s;
+}
+
+.suite-tile:hover,
+.suite-tile:focus-visible {
+  border-color: var(--accent);
+}
+
+.suite-tile-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.suite-tile-headline {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.suite-tile-detail,
+.suite-tile-blurb {
+  color: var(--dim);
+  font-size: 0.92rem;
+}
+
+.suite-tile-open {
+  margin-top: auto;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.inputs-column > .card + .card {
+  margin-top: 16px;
+}
+
+/* the tax calculator's "fill up the bracket" bar */
+.bracket-bar {
+  margin: 8px 0 16px;
+}
+
+.bracket-bar svg {
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  display: block;
+}
+
+.bb-empty {
+  fill: var(--accent-soft);
+}
+
+.bb-filled {
+  fill: var(--accent);
+}
+
+.bb-sheltered {
+  fill: var(--dim);
+  opacity: 0.35;
+}
+
+.bb-edge {
+  stroke: var(--card, #fff);
+  stroke-width: 2;
+}
+
+.bb-marker {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.bb-label,
+.bb-amount {
+  font-size: 12px;
+  fill: var(--text);
+}
+
+.bb-amount {
+  fill: var(--dim);
+}
+
+.bracket-bar figcaption {
+  font-size: 0.92rem;
+  color: var(--dim);
+}
+
+.tax-rate-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 600px) {
+  .tax-rate-pair {
+    grid-template-columns: 1fr;
+  }
+}

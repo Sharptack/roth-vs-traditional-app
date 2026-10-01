@@ -11,6 +11,14 @@ export const OLD_VS_NEW_HASH = '#/old-vs-new';
 // (CLAUDE.md, "Build alongside, then switch over"). Its own pages live under it: "#/next/...".
 // Rename it here only.
 export const NEXT_HASH = '#/next';
+// The preview's pages: its homepage (the shared inputs and a tile per calculator) and one page per
+// calculator. Unknown sub-pages show the homepage.
+export const NEXT_PAGES = { roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax` };
+
+export function nextPageFromHash(hash) {
+  const found = Object.entries(NEXT_PAGES).find(([, h]) => h === hash);
+  return found ? found[0] : 'home';
+}
 
 export function routeFromHash(hash) {
   if (hash === ARTICLE_HASH) return 'article';

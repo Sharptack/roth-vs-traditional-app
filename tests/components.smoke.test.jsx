@@ -1162,8 +1162,25 @@ describe('NextApp (#/next preview)', () => {
     const html = renderToStaticMarkup(<NextApp />);
     expect(html).toContain('Preview, not finished.');
     expect(html).toContain('href="#/"');
-    expect(html).toContain('Retirement income number');
+    // the homepage: the household and a tile per calculator, each with its headline
+    expect(html).toContain('Client household (preview)');
+    expect(html).toContain('href="#/next/roth"');
+    expect(html).toContain('href="#/next/tax"');
+    expect(html).toContain('22.0% marginal · 11.0% effective');
     expect(html).not.toMatch(/NaN|Infinity/);
+    // the calculator pages: own inputs first, the shared household, results, a way home
+    const roth = renderToStaticMarkup(<NextApp initialPage="roth" />);
+    expect(roth).toContain('Roth vs. Pre-tax inputs');
+    expect(roth).toContain('Retirement income number');
+    expect(roth).toContain('href="#/next"');
+    expect(roth.indexOf('Roth vs. Pre-tax inputs')).toBeLessThan(roth.indexOf('>Household<'));
+    expect(roth).not.toMatch(/NaN|Infinity/);
+    const tax = renderToStaticMarkup(<NextApp initialPage="tax" />);
+    expect(tax).toContain('Tax rates this year');
+    expect(tax).toContain('Filling up the brackets');
+    expect(tax).toContain('Show the calculation');
+    expect(tax).toContain("This year&#x27;s other income");
+    expect(tax).not.toMatch(/NaN|Infinity/);
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
   });
 

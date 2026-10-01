@@ -18,7 +18,7 @@ import {
 } from '../components/InputForm.jsx';
 import { ACCOUNT_TYPES, CONTRIBUTION_TYPES, FILING_STATUSES } from '../lib/constants.js';
 import { hasSpouse } from '../lib/household.js';
-import { ACCOUNT_TYPE_LABELS, newAccountRow, visibleSections } from '../lib/householdForm.js';
+import { ACCOUNT_TYPE_LABELS, DEFAULT_SECTION_IDS, newAccountRow, visibleSections } from '../lib/householdForm.js';
 
 const YES_NO = [
   { value: 'no', label: 'No, estimate it' },
@@ -44,11 +44,27 @@ export const DEFAULT_OPEN_HOUSEHOLD = ['household', 'you'];
 
 // locked: view only (a view-only share link); the fields are disabled and onEditCopy unlocks them.
 // footer: content at the bottom of the card (the share link).
-export default function HouseholdForm({ values, onChange, locked = false, onEditCopy, footer }) {
-  const [open, setOpen] = useState(() => new Set(DEFAULT_OPEN_HOUSEHOLD));
+// only: the section ids to show, in order (a calculator page shows its own sections in one card and
+//   the shared ones in another); title: the card's heading; defaultOpen: sections open at first.
+export default function HouseholdForm({
+  values,
+  onChange,
+  locked = false,
+  onEditCopy,
+  footer,
+  only = DEFAULT_SECTION_IDS,
+  title = 'Inputs',
+  defaultOpen = DEFAULT_OPEN_HOUSEHOLD,
+}) {
+  const [open, setOpen] = useState(() => new Set(defaultOpen));
   const set = (name) => (value) => onChange(name, value);
   const spouse = hasSpouse(values);
-  const sections = visibleSections(values);
+  const sections = visibleSections(values, only);
+  // Sections render in the order `only` lists them.
+  const order = (id) => {
+    const i = sections.findIndex((s) => s.id === id);
+    return i < 0 ? undefined : i;
+  };
   const allOpen = sections.every((s) => open.has(s.id));
 
   // Called as a function, not rendered as a component, so the inputs inside keep their state.
@@ -56,6 +72,7 @@ export default function HouseholdForm({ values, onChange, locked = false, onEdit
     const sec = sections.find((s) => s.id === id);
     if (!sec) return null;
     return (
+      <div key={id} style={{ order: order(id) }}>
       <Collapsible
         variant="row"
         title={sec.title}
@@ -71,6 +88,7 @@ export default function HouseholdForm({ values, onChange, locked = false, onEdit
           content
         )}
       </Collapsible>
+      </div>
     );
   };
 
@@ -113,7 +131,7 @@ export default function HouseholdForm({ values, onChange, locked = false, onEdit
   return (
     <form className="card input-form household-form" onSubmit={(e) => e.preventDefault()} noValidate>
       <div className="form-head">
-        <h2 className="form-title">Inputs</h2>
+        <h2 className="form-title">{title}</h2>
         <div className="form-head-actions">
           <button
             type="button"
@@ -133,6 +151,7 @@ export default function HouseholdForm({ values, onChange, locked = false, onEdit
         </p>
       )}
 
+      <div className="household-sections">
       {section('household', (
         <>
           <SelectInput
@@ -356,6 +375,40 @@ export default function HouseholdForm({ values, onChange, locked = false, onEdit
           />
         </>
       ))}
+
+      {section('thisYear', (
+        <>
+          <p className="hint">
+            Income this year besides wages and 1099 earnings (those are under You and Spouse). Pre-tax
+            savings from Future Contributions are deducted.
+          </p>
+          <CurrencyInput
+            label="Pre-tax withdrawals, pensions, Roth conversions"
+            hint="Taxed at ordinary rates; no payroll tax; not investment income for NIIT."
+            value={values.taxOrdinaryIncome}
+            onChange={set('taxOrdinaryIncome')}
+          />
+          <CurrencyInput
+            label="Interest, non-qualified dividends, short-term gains"
+            hint="Taxed at ordinary rates; counts toward NIIT."
+            value={values.taxInvestmentIncome}
+            onChange={set('taxInvestmentIncome')}
+          />
+          <CurrencyInput
+            label="Long-term gains and qualified dividends"
+            hint="Taxed at the 0% / 15% / 20% capital-gains rates, stacked on top of ordinary income; counts toward NIIT. For a sale from a taxable account, enter the gain only."
+            value={values.taxPreferentialIncome}
+            onChange={set('taxPreferentialIncome')}
+          />
+          <CurrencyInput
+            label="Social Security received this year"
+            hint="The total benefit; up to 85% of it is taxable, depending on other income."
+            value={values.taxSocialSecurity}
+            onChange={set('taxSocialSecurity')}
+          />
+        </>
+      ))}
+      </div>
       {footer}
     </form>
   );

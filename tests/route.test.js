@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ARTICLE_HASH, CALCULATOR_HASH, NEXT_HASH, OLD_VS_NEW_HASH, SCENARIOS_HASH, routeFromHash } from '../src/lib/route.js';
+import { ARTICLE_HASH, CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, OLD_VS_NEW_HASH, SCENARIOS_HASH, nextPageFromHash, routeFromHash } from '../src/lib/route.js';
 
 describe('routeFromHash', () => {
   it('shows the article only for the how-it-works hash', () => {
@@ -21,6 +21,14 @@ describe('routeFromHash', () => {
     expect(routeFromHash('#/next/tax')).toBe('next');
     expect(routeFromHash('#next')).toBe('next');
     expect(routeFromHash('#/nextish')).toBe('calculator');
+  });
+  it('picks the preview page: home, or a calculator', () => {
+    expect(nextPageFromHash(NEXT_HASH)).toBe('home');
+    expect(nextPageFromHash('#next')).toBe('home');
+    expect(nextPageFromHash(NEXT_PAGES.roth)).toBe('roth');
+    expect(nextPageFromHash('#/next/tax')).toBe('tax');
+    expect(nextPageFromHash('#/next/nope')).toBe('home');
+    expect(routeFromHash(NEXT_PAGES.tax)).toBe('next');
   });
   it('shows the calculator for the empty hash, the home hash, and anything unknown', () => {
     expect(routeFromHash('')).toBe('calculator');

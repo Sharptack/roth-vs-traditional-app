@@ -73,6 +73,7 @@ export const HOUSEHOLD_SECTIONS = [
   {
     id: 'contributions',
     title: 'Future Contributions',
+    calculator: 'roth', // the Roth calculator's own inputs (other calculators read them too)
     summary: (v) => {
       const total = blankIsZero(v.savings) + (hasSpouse(v) ? blankIsZero(v.spouseSavings) : 0);
       const type = v.currentType === 'roth' ? 'Roth' : 'Pre-tax';
@@ -82,6 +83,17 @@ export const HOUSEHOLD_SECTIONS = [
   },
   { id: 'existing', title: 'Existing Accounts', summary: (v) => accountsSummary(v.accounts) },
   {
+    id: 'thisYear',
+    title: "This year's other income",
+    calculator: 'tax', // the tax calculator's own inputs
+    summary: (v) => {
+      const total = ['taxOrdinaryIncome', 'taxInvestmentIncome', 'taxPreferentialIncome', 'taxSocialSecurity']
+        .map((k) => blankIsZero(v[k]))
+        .reduce((a, b) => a + b, 0);
+      return Number.isFinite(total) && total > 0 ? `${formatCurrency(total)} besides earnings` : 'None besides earnings';
+    },
+  },
+  {
     id: 'assumptions',
     title: 'Assumptions',
     summary: (v) =>
@@ -90,6 +102,14 @@ export const HOUSEHOLD_SECTIONS = [
 ];
 
 // The sections to show for these values (the Spouse section only when a spouse is entered).
-export function visibleSections(values) {
-  return HOUSEHOLD_SECTIONS.filter((s) => !s.onlyWithSpouse || hasSpouse(values));
+//  only: section ids to show, in that order (default: every section that belongs to no calculator,
+//        plus Future Contributions, which every calculator reads).
+export function visibleSections(values, only = DEFAULT_SECTION_IDS) {
+  return only
+    .map((id) => HOUSEHOLD_SECTIONS.find((s) => s.id === id))
+    .filter((s) => s && (!s.onlyWithSpouse || hasSpouse(values)));
 }
+
+// The shared household inputs (the homepage; under each calculator's own inputs).
+export const SHARED_SECTION_IDS = ['household', 'you', 'spouse', 'costs', 'existing', 'assumptions'];
+export const DEFAULT_SECTION_IDS = ['household', 'you', 'spouse', 'costs', 'contributions', 'existing', 'assumptions'];
