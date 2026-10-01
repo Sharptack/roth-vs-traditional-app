@@ -1,0 +1,94 @@
+// The preview's household input form (roadmap phase 1, step 7), as data: its sections, each
+// with a one-line summary for the closed header, and the Existing Accounts list helpers.
+// Pure; the component is src/next/HouseholdForm.jsx. Form values are strings, as in
+// formInputs.js; the accounts list is an array of string rows:
+//   values.accounts = [{ id, owner: 'p1' | 'p2', type: 'pretax' | 'roth' | 'taxable', balance, basisShare }]
+import { formatCurrency } from './format.js';
+import { parseNumber } from './formInputs.js';
+import { hasSpouse } from './household.js';
+
+export { accountRowsFromFlat } from './household.js';
+
+export const ACCOUNT_TYPE_LABELS = { pretax: 'Pre-tax', roth: 'Roth', taxable: 'Taxable' };
+
+const money = (text) => {
+  const n = parseNumber(text);
+  return Number.isFinite(n) ? formatCurrency(n) : '—';
+};
+const blankIsZero = (text) => (String(text ?? '').trim() === '' ? 0 : parseNumber(text));
+
+// A new, empty row with an id no other row has.
+export function newAccountRow(accounts) {
+  const used = new Set(accounts.map((a) => a.id));
+  let n = accounts.length + 1;
+  while (used.has(`a${n}`)) n += 1;
+  return { id: `a${n}`, owner: 'p1', type: 'pretax', balance: '', basisShare: '0.5' };
+}
+
+function personSummary(income, incomeType, age, retirementAge) {
+  const type = incomeType === '1099' ? ' (1099)' : incomeType === 'both' ? ' (W-2 + 1099)' : '';
+  return `${money(income)}${type} · age ${age || '—'}, retires at ${retirementAge || '—'}`;
+}
+
+// Totals by type, for the Existing Accounts summary: "Pre-tax $100,000 · Roth $20,000".
+export function accountsSummary(accounts) {
+  const totals = {};
+  for (const a of accounts ?? []) totals[a.type] = (totals[a.type] ?? 0) + (blankIsZero(a.balance) || 0);
+  const parts = Object.keys(ACCOUNT_TYPE_LABELS)
+    .filter((t) => totals[t] > 0)
+    .map((t) => `${ACCOUNT_TYPE_LABELS[t]} ${formatCurrency(totals[t])}`);
+  return parts.length > 0 ? parts.join(' · ') : 'None';
+}
+
+export const HOUSEHOLD_SECTIONS = [
+  {
+    id: 'household',
+    title: 'Household',
+    summary: (v) =>
+      v.filingStatus === 'mfj' ? (hasSpouse(v) ? 'Married filing jointly · two people' : 'Married filing jointly · one combined income') : 'Single',
+  },
+  {
+    id: 'you',
+    title: 'You',
+    summary: (v) => personSummary(v.grossIncome, v.incomeType, v.currentAge, v.retirementAge),
+  },
+  {
+    id: 'spouse',
+    title: 'Spouse',
+    onlyWithSpouse: true,
+    summary: (v) => personSummary(v.spouseIncome, v.spouseIncomeType, v.spouseAge, v.spouseRetirementAge),
+  },
+  {
+    id: 'costs',
+    title: 'Costs that end before retirement',
+    summary: (v) => {
+      const debt = blankIsZero(v.debtPayments);
+      const other = blankIsZero(v.otherExpenses);
+      if (!(debt > 0) && !(other > 0)) return 'None';
+      return [debt > 0 && `${formatCurrency(debt)} debt`, other > 0 && `${formatCurrency(other)} other`]
+        .filter(Boolean)
+        .join(' · ') + ' a year';
+    },
+  },
+  {
+    id: 'contributions',
+    title: 'Future Contributions',
+    summary: (v) => {
+      const total = blankIsZero(v.savings) + (hasSpouse(v) ? blankIsZero(v.spouseSavings) : 0);
+      const type = v.currentType === 'roth' ? 'Roth' : 'Pre-tax';
+      const account = v.accountType === 'ira' ? 'IRA' : '401(k)';
+      return `${Number.isFinite(total) ? formatCurrency(total) : '—'} a year · ${type} · ${account}`;
+    },
+  },
+  { id: 'existing', title: 'Existing Accounts', summary: (v) => accountsSummary(v.accounts) },
+  {
+    id: 'assumptions',
+    title: 'Assumptions',
+    summary: (v) => `${Math.round(Number(v.returnRate) * 100)}% return after inflation`,
+  },
+];
+
+// The sections to show for these values (the Spouse section only when a spouse is entered).
+export function visibleSections(values) {
+  return HOUSEHOLD_SECTIONS.filter((s) => !s.onlyWithSpouse || hasSpouse(values));
+}

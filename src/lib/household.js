@@ -23,6 +23,10 @@
 //   assumptions: { returnRate },
 // }
 //
+// Form values may carry the Existing Accounts as a list (`values.accounts`, string rows
+// { id, owner, type, balance, basisShare }, the preview's form); without one (the current form,
+// old share links) the three flat balances become person 1's accounts.
+//
 // The current calculator still reads its flat form values directly (build alongside, see
 // CLAUDE.md); only the #/next preview goes through here. For one person, the round trip
 // form -> household -> compare inputs gives exactly the inputs toCompareInputs gives (tested).
@@ -45,9 +49,26 @@ export const SPOUSE_DEFAULT_VALUES = {
   spouseClaimAge: '',
 };
 
-export const PREVIEW_DEFAULT_VALUES = { ...DEFAULT_FORM_VALUES, ...SPOUSE_DEFAULT_VALUES };
-
 const blankAsZero = (text) => (String(text ?? '').trim() === '' ? 0 : parseNumber(text));
+
+// The flat form's three balances as account rows (one per non-zero balance; one empty Pre-tax
+// row when everything is $0, so the list never starts empty).
+export function accountRowsFromFlat(values) {
+  const rows = [
+    { type: 'pretax', balance: values.otherPretaxBalance },
+    { type: 'roth', balance: values.otherRothBalance },
+    { type: 'taxable', balance: values.otherTaxableBalance },
+  ]
+    .filter((r) => blankAsZero(r.balance) > 0)
+    .map((r, i) => ({ id: `a${i + 1}`, owner: 'p1', basisShare: values.otherTaxableBasis ?? '0.5', ...r }));
+  return rows.length > 0 ? rows : [{ id: 'a1', owner: 'p1', type: 'pretax', balance: '0', basisShare: '0.5' }];
+}
+
+export const PREVIEW_DEFAULT_VALUES = {
+  ...DEFAULT_FORM_VALUES,
+  ...SPOUSE_DEFAULT_VALUES,
+  accounts: accountRowsFromFlat(DEFAULT_FORM_VALUES),
+};
 const blankAsNull = (text) => (String(text ?? '').trim() === '' ? null : parseNumber(text));
 
 export function hasSpouse(values) {
@@ -88,11 +109,21 @@ export function toHousehold(values, year) {
     year,
     filingStatus: flat.filingStatus,
     people,
-    accounts: [
-      { id: 'a1', owner: 'p1', type: 'pretax', balance: flat.otherPretaxBalance },
-      { id: 'a2', owner: 'p1', type: 'roth', balance: flat.otherRothBalance },
-      { id: 'a3', owner: 'p1', type: 'taxable', balance: flat.otherTaxableBalance, basisShare: flat.otherTaxableBasis },
-    ],
+    accounts: Array.isArray(values.accounts)
+      ? values.accounts.map((a) => ({
+          id: a.id,
+          // A spouse's account stays in the household when the spouse is taken out; it is then
+          // counted as person 1's (owner only matters per person, e.g. for RMDs later).
+          owner: people.some((p) => p.id === a.owner) ? a.owner : 'p1',
+          type: a.type,
+          balance: blankAsZero(a.balance),
+          ...(a.type === 'taxable' && { basisShare: Number(a.basisShare ?? DEFAULT_FORM_VALUES.otherTaxableBasis) }),
+        }))
+      : [
+          { id: 'a1', owner: 'p1', type: 'pretax', balance: flat.otherPretaxBalance },
+          { id: 'a2', owner: 'p1', type: 'roth', balance: flat.otherRothBalance },
+          { id: 'a3', owner: 'p1', type: 'taxable', balance: flat.otherTaxableBalance, basisShare: flat.otherTaxableBasis },
+        ],
     futureContributions: {
       currentType: flat.currentType,
       accountType: flat.accountType,
@@ -142,6 +173,10 @@ export function validateHousehold(household) {
     }
   });
   for (const a of accounts ?? []) {
+    if (!isNum(a.balance) || a.balance < 0) errors.push("Existing Accounts' balances can't be negative.");
+    if (a.type === 'taxable' && (!isNum(a.basisShare) || a.basisShare < 0 || a.basisShare > 1)) {
+      errors.push('Choose the cost basis of each taxable account (0–100%).');
+    }
     if (!ids.has(a.owner)) errors.push(`Account ${a.id} belongs to someone not in the household.`);
     if (!['pretax', 'roth', 'taxable'].includes(a.type)) errors.push(`Account ${a.id} has an unknown type.`);
   }
@@ -159,7 +194,8 @@ export function validateHousehold(household) {
 
 // The Roth calculator's flat inputs from a household.
 //  - Existing Accounts: summed by type, whoever owns them; the taxable cost basis is the
-//    balance-weighted share (the first taxable account's share when every balance is $0).
+//    balance-weighted share (the first taxable account's share when every balance is $0, the
+//    form default when there is no taxable account).
 //  - Snapshot timing (phase 1 decision): retirement = when the FIRST person retires. Future
 //    Contributions grow until then; currentAge is person 1's age and retirementAge = that age +
 //    years until the first retirement.
@@ -180,7 +216,7 @@ export function householdToCompareInputs(household) {
       ? (taxable[0].basisShare ?? 0)
       : taxableTotal > 0
         ? taxable.reduce((acc, a) => acc + a.balance * (a.basisShare ?? 0), 0) / taxableTotal
-        : (taxable[0]?.basisShare ?? 0);
+        : (taxable[0]?.basisShare ?? Number(DEFAULT_FORM_VALUES.otherTaxableBasis)); // no taxable account: the form default (no effect on $0)
   const amountOf = (p) => fc.contributions.find((c) => c.owner === p.id)?.amount ?? 0;
 
   const inputs = {

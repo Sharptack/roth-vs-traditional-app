@@ -1168,16 +1168,20 @@ describe('NextApp (#/next preview)', () => {
   });
 
   it('shows the spouse fields only when filing jointly, and renders a two-earner result', async () => {
-    const { default: SpouseInputs } = await import('../src/next/SpouseInputs.jsx');
+    const { default: HouseholdForm } = await import('../src/next/HouseholdForm.jsx');
     const { previewResult } = await import('../src/next/NextApp.jsx');
     const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
     const noop = () => {};
-    const singleForm = renderToStaticMarkup(<SpouseInputs values={PREVIEW_DEFAULT_VALUES} onChange={noop} />);
-    expect(singleForm).toContain('Switch to married filing jointly to add a spouse');
+    const singleForm = renderToStaticMarkup(<HouseholdForm values={PREVIEW_DEFAULT_VALUES} onChange={noop} />);
+    expect(singleForm).not.toContain('Enter your spouse separately?');
     expect(singleForm).not.toContain("Spouse&#x27;s gross income");
+    expect(singleForm).toContain('+ Add an account');
     const values = { ...PREVIEW_DEFAULT_VALUES, filingStatus: 'mfj', includeSpouse: 'yes', spouseIncome: '60000' };
-    const form = renderToStaticMarkup(<SpouseInputs values={values} onChange={noop} />);
+    const form = renderToStaticMarkup(<HouseholdForm values={values} onChange={noop} />);
+    expect(form).toContain('Enter your spouse separately?');
     expect(form).toContain("Spouse&#x27;s gross income");
+    expect(form).toContain("Your spouse&#x27;s savings for retirement");
+    expect(form).toContain('>Owner<');
     const { result } = previewResult(values, 2026);
     expect(result.valid).toBe(true);
     expect(result.current.fica.people).toHaveLength(2);

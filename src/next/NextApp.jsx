@@ -1,15 +1,14 @@
 // The #/next preview: the new version, built alongside the current calculator (see CLAUDE.md,
 // "Build alongside, then switch over"). Not linked from the current pages.
 // Phase 1 (household model): the Roth calculator, run through the household object
-// (toHousehold -> householdToCompareInputs), with an optional spouse entered separately.
+// (toHousehold -> householdToCompareInputs), with its own household form (HouseholdForm.jsx).
 // Its state is its own; the current calculator's inputs are not shared or touched.
 import { useMemo, useState } from 'react';
-import InputForm from '../components/InputForm.jsx';
 import ResultsSummary from '../components/ResultsSummary.jsx';
 import { compareRothVsTraditional } from '../lib/compare.js';
 import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs, toHousehold, validateHousehold } from '../lib/household.js';
 import { CALCULATOR_HASH } from '../lib/route.js';
-import SpouseInputs from './SpouseInputs.jsx';
+import HouseholdForm from './HouseholdForm.jsx';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -37,12 +36,14 @@ export default function NextApp() {
       </p>
       <header className="page-header">
         <h1>Roth vs. Pre-Tax Calculator (preview)</h1>
-        <p>Household model: when filing jointly, a spouse can be entered separately.</p>
+        <p>
+          Household model: when filing jointly, a spouse can be entered separately, each with their own
+          income, Social Security and savings, and Existing Accounts are a list.
+        </p>
       </header>
       <main className="calc-layout">
         <div className="inputs-column">
-          <InputForm values={values} onChange={handleChange} title="Inputs" />
-          <SpouseInputs values={values} onChange={handleChange} />
+          <HouseholdForm values={values} onChange={handleChange} />
         </div>
         <div className="results-column">
           <ResultsSummary result={result} />

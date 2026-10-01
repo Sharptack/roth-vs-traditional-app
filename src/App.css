@@ -1643,6 +1643,15 @@ th.win .th-sub {
   margin: 0 0 16px;
 }
 
-.inputs-column .spouse-inputs {
-  margin-top: 16px;
+.account-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.account-row {
+  padding: 10px 12px 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }

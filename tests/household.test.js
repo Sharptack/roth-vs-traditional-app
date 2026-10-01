@@ -7,6 +7,8 @@ import {
 } from '../src/lib/socialSecurity.js';
 import {
   PREVIEW_DEFAULT_VALUES,
+  SPOUSE_DEFAULT_VALUES,
+  accountRowsFromFlat,
   householdToCompareInputs,
   toHousehold,
   validateHousehold,
@@ -227,13 +229,42 @@ describe('toHousehold / householdToCompareInputs', () => {
 
   it('a one-person household reproduces the flat inputs exactly, and the same result', () => {
     for (const v of variants) {
-      const values = { ...PREVIEW_DEFAULT_VALUES, ...v };
-      const flat = toCompareInputs({ ...DEFAULT_FORM_VALUES, ...v }, Y);
-      const household = toHousehold(values, Y);
-      expect(household.people).toHaveLength(1);
-      expect(householdToCompareInputs(household)).toEqual(flat);
-      expect(compareRothVsTraditional(householdToCompareInputs(household))).toEqual(compareRothVsTraditional(flat));
+      const flatValues = { ...DEFAULT_FORM_VALUES, ...v };
+      const flat = toCompareInputs(flatValues, Y);
+      const expected = compareRothVsTraditional(flat);
+      // without an accounts list (the current form, old share links), and with the same
+      // balances as an accounts list (the preview's form)
+      for (const values of [
+        { ...flatValues, ...SPOUSE_DEFAULT_VALUES },
+        { ...flatValues, ...SPOUSE_DEFAULT_VALUES, ...v, accounts: accountRowsFromFlat(flatValues) },
+      ]) {
+        const household = toHousehold(values, Y);
+        expect(household.people).toHaveLength(1);
+        expect(householdToCompareInputs(household)).toEqual(flat);
+        expect(compareRothVsTraditional(householdToCompareInputs(household))).toEqual(expected);
+      }
     }
+  });
+
+  it('an accounts list: several accounts of a type add up; a removed spouse\'s account counts as yours', () => {
+    const values = {
+      ...PREVIEW_DEFAULT_VALUES,
+      accounts: [
+        { id: 'a1', owner: 'p1', type: 'pretax', balance: '100,000', basisShare: '0.5' },
+        { id: 'a2', owner: 'p2', type: 'pretax', balance: '$50000', basisShare: '0.5' },
+        { id: 'a3', owner: 'p1', type: 'taxable', balance: '', basisShare: '0.25' },
+      ],
+    };
+    const h = toHousehold(values, Y); // no spouse entered
+    expect(h.accounts.map((a) => [a.owner, a.type, a.balance])).toEqual([
+      ['p1', 'pretax', 100000],
+      ['p1', 'pretax', 50000],
+      ['p1', 'taxable', 0],
+    ]);
+    expect(validateHousehold(h)).toEqual([]);
+    const inputs = householdToCompareInputs(h);
+    expect(inputs.otherPretaxBalance).toBe(150000);
+    expect(inputs.otherTaxableBasis).toBe(0.25);
   });
 
   it('builds the documented shape', () => {
@@ -247,11 +278,8 @@ describe('toHousehold / householdToCompareInputs', () => {
       spending: { debtPaymentsEnding: 6000, otherExpensesEnding: 0, retirementLifestyle: 1 },
       assumptions: { returnRate: 0.07 },
     });
-    expect(h.accounts.map((a) => [a.owner, a.type, a.balance])).toEqual([
-      ['p1', 'pretax', 100000],
-      ['p1', 'roth', 0],
-      ['p1', 'taxable', 0],
-    ]);
+    // the default $100,000 Pre-tax balance is the one row (zero balances get no row)
+    expect(h.accounts).toEqual([{ id: 'a1', owner: 'p1', type: 'pretax', balance: 100000 }]);
     expect(validateHousehold(h)).toEqual([]);
   });
 

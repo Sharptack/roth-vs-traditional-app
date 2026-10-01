@@ -422,3 +422,4 @@ export default function InputForm({
 
 // Shared with the #/next preview's extra inputs (src/next/), so its fields look the same.
 export { AgeInput, CurrencyInput, RadioGroup, SelectInput };
+export { BASIS_OPTIONS, INCOME_TYPE_OPTIONS, LIFESTYLE_OPTIONS, RETURN_OPTIONS, toOptions };
