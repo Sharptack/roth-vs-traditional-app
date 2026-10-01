@@ -1189,4 +1189,16 @@ describe('NextApp (#/next preview)', () => {
     const bad = previewResult({ ...values, spouseAge: '70', spouseRetirementAge: '65' }, 2026).result;
     expect(bad.errors).toContain("Your spouse's retirement age must be after their current age.");
   });
+
+  it("a view-only household opens locked, with Edit a copy and no share button", async () => {
+    const { default: HouseholdForm } = await import("../src/next/HouseholdForm.jsx");
+    const { PREVIEW_DEFAULT_VALUES } = await import("../src/lib/household.js");
+    const noop = () => {};
+    const locked = renderToStaticMarkup(<HouseholdForm values={PREVIEW_DEFAULT_VALUES} onChange={noop} locked onEditCopy={noop} />);
+    expect(locked).toContain("View only.");
+    expect(locked).toContain("Edit a copy");
+    expect(locked).toMatch(/<fieldset class="locked-fieldset" disabled/);
+    const { default: NextApp } = await import("../src/next/NextApp.jsx");
+    expect(renderToStaticMarkup(<NextApp />)).toContain("Copy link to this household");
+  });
 });

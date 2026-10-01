@@ -34,7 +34,9 @@ const SPOUSE_INCOME_TYPES = INCOME_TYPE_OPTIONS.filter((o) => o.value !== 'both'
 
 export const DEFAULT_OPEN_HOUSEHOLD = ['household', 'you'];
 
-export default function HouseholdForm({ values, onChange }) {
+// locked: view only (a view-only share link); the fields are disabled and onEditCopy unlocks them.
+// footer: content at the bottom of the card (the share link).
+export default function HouseholdForm({ values, onChange, locked = false, onEditCopy, footer }) {
   const [open, setOpen] = useState(() => new Set(DEFAULT_OPEN_HOUSEHOLD));
   const set = (name) => (value) => onChange(name, value);
   const spouse = hasSpouse(values);
@@ -53,7 +55,13 @@ export default function HouseholdForm({ values, onChange }) {
         open={open.has(id)}
         onToggle={() => setOpen(toggleId(open, id))}
       >
-        {content}
+        {locked ? (
+          <fieldset className="locked-fieldset" disabled>
+            {content}
+          </fieldset>
+        ) : (
+          content
+        )}
       </Collapsible>
     );
   };
@@ -108,6 +116,14 @@ export default function HouseholdForm({ values, onChange }) {
           </button>
         </div>
       </div>
+      {locked && (
+        <p className="alert locked-note">
+          <strong>View only.</strong> These inputs came from a view-only link.{' '}
+          <button type="button" className="link-button" onClick={onEditCopy}>
+            Edit a copy
+          </button>
+        </p>
+      )}
 
       {section('household', (
         <>
@@ -314,6 +330,7 @@ export default function HouseholdForm({ values, onChange }) {
           />
         </>
       ))}
+      {footer}
     </form>
   );
 }

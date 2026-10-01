@@ -7,10 +7,15 @@ import { useMemo, useState } from 'react';
 import ResultsSummary from '../components/ResultsSummary.jsx';
 import { compareRothVsTraditional } from '../lib/compare.js';
 import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs, toHousehold, validateHousehold } from '../lib/household.js';
+import { householdValuesFromSearch } from '../lib/householdLink.js';
 import { CALCULATOR_HASH } from '../lib/route.js';
 import HouseholdForm from './HouseholdForm.jsx';
+import ShareHousehold from './ShareHousehold.jsx';
 
 const CURRENT_YEAR = new Date().getFullYear();
+
+// A shared link (household or old-style) is read once, on load.
+const FROM_LINK = typeof window === 'undefined' ? null : householdValuesFromSearch(window.location.search);
 
 // The preview's whole calculation, outside React so it can be tested.
 export function previewResult(values, year) {
@@ -23,7 +28,8 @@ export function previewResult(values, year) {
 }
 
 export default function NextApp() {
-  const [values, setValues] = useState(PREVIEW_DEFAULT_VALUES);
+  const [values, setValues] = useState(FROM_LINK?.values ?? PREVIEW_DEFAULT_VALUES);
+  const [locked, setLocked] = useState(Boolean(FROM_LINK?.viewOnly));
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
   const { result } = useMemo(() => previewResult(values, CURRENT_YEAR), [values]);
 
@@ -43,7 +49,13 @@ export default function NextApp() {
       </header>
       <main className="calc-layout">
         <div className="inputs-column">
-          <HouseholdForm values={values} onChange={handleChange} />
+          <HouseholdForm
+            values={values}
+            onChange={handleChange}
+            locked={locked}
+            onEditCopy={() => setLocked(false)}
+            footer={!locked && <ShareHousehold values={values} />}
+          />
         </div>
         <div className="results-column">
           <ResultsSummary result={result} />

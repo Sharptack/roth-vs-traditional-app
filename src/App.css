@@ -1643,6 +1643,22 @@ th.win .th-sub {
   margin: 0 0 16px;
 }
 
+.locked-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.locked-note {
+  margin: 0 0 12px;
+}
+
+.share-inputs .checkbox {
+  margin-left: 12px;
+  font-size: 0.92rem;
+}
+
 .account-list {
   list-style: none;
   margin: 0 0 8px;
