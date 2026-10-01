@@ -69,6 +69,12 @@ const NO_PAYROLL = {
   people: [],
 };
 
+// The year's tax WITHOUT the per-source marginal rates and bracket room (calculateYearTax adds
+// those with six more runs). For solvers that only need the totals, e.g. the projection.
+export function calculateYearTaxTotals(params) {
+  return core(params);
+}
+
 function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year }) {
   const ordinaryIncome = income.ordinaryIncome ?? 0;
   const investmentOrdinaryIncome = income.investmentOrdinaryIncome ?? 0;

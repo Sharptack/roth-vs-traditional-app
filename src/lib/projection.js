@@ -27,7 +27,7 @@
 //
 // Simplifications (v1): spending is flat in today's dollars; earnings are flat (no raises); no
 // survivor years (filing status and both benefits continue to the end age); returns are constant.
-import { calculateYearTax } from './yearTax.js';
+import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
 import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateHouseholdSocialSecurity } from './socialSecurity.js';
 import { checkContributionLimit } from './contributionLimits.js';
@@ -43,7 +43,8 @@ export const DEFAULT_END_AGE = 95;
 export function proportionalStrategy({ accounts, rmdByAccount, need, evaluate }) {
   const at = (k) =>
     Object.fromEntries(accounts.map((a) => [a.id, Math.min(a.balance, Math.max(k * a.balance, rmdByAccount[a.id] ?? 0))]));
-  const { x } = solveMonotonicIncreasing((k) => evaluate(at(k)).cash, need, { lo: 0, hiStart: 1, maxHi: 1 });
+  // 50 halvings of k in [0, 1]: within 1e-15 of a balance, under a cent on any portfolio.
+  const { x } = solveMonotonicIncreasing((k) => evaluate(at(k)).cash, need, { lo: 0, hiStart: 1, maxHi: 1, iterations: 50 });
   return { withdrawals: at(Math.min(1, x)), conversions: [] };
 }
 
@@ -173,8 +174,10 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         thresholdScale,
       };
     };
-    const evaluate = (withdrawals, conversions = []) => {
-      const tax = calculateYearTax(taxParams(withdrawals, conversions));
+    // Totals only while solving; the row below runs the full engine once (marginal rates, room).
+    const evaluate = (withdrawals, conversions = [], full = false) => {
+      const params = taxParams(withdrawals, conversions);
+      const tax = full ? calculateYearTax(params) : calculateYearTaxTotals(params);
       const withdrawn = Object.values(withdrawals).reduce((s, w) => s + w, 0);
       const earned = peopleThisYear.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0);
       return { tax, cash: earned + socialSecurity + withdrawn - tax.totalTax - contributionCash };
@@ -193,7 +196,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       withdrawals[a.id] = Math.min(a.balance, Math.max(0, w));
     }
     const conversions = proposed.conversions ?? [];
-    const { tax, cash } = evaluate(withdrawals, conversions);
+    const { tax, cash } = evaluate(withdrawals, conversions, true);
     // Surplus to reinvest: once retired, cash above the need; while everyone works, the after-tax
     // money from any RMD (cash with it minus cash without it), since the paycheck covers spending.
     const surplus = anyRetired ? Math.max(0, cash - needThisYear) : rmdTotal > 0 ? Math.max(0, cash - evaluate({}).cash) : 0;

@@ -7,7 +7,20 @@
 //
 // Returns { year, data } where `year` is the year the data actually belongs to,
 // so callers can show the user which year's rules were applied.
+// Memoized per table and year: the tables never change at run time, and the lookup is called
+// thousands of times per projection (it sorts the keys each time otherwise).
+const cache = new WeakMap();
+
 export function getYearData(table, requestedYear) {
+  let byYear = cache.get(table);
+  if (!byYear) cache.set(table, (byYear = new Map()));
+  if (byYear.has(requestedYear)) return byYear.get(requestedYear);
+  const found = lookUp(table, requestedYear);
+  byYear.set(requestedYear, found);
+  return found;
+}
+
+function lookUp(table, requestedYear) {
   const years = Object.keys(table).map(Number).sort((a, b) => a - b);
   if (years.length === 0) throw new Error('Data table is empty');
   if (!Number.isFinite(requestedYear)) {
