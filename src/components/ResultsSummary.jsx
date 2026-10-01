@@ -902,7 +902,13 @@ function FullTaxCalculation({ title, d }) {
         <Row label="Taxable part of Social Security" value={$(d.taxableSS)} kind="sub" />
         <Row label="Pre-tax withdrawals" value={$(d.pretaxWithdrawal)} kind="sub" />
         <Row label="Adjusted gross income (AGI)" value={$(d.grossOrdinaryIncome + d.capitalGains)} kind="sub" />
-        <Row label="Standard deduction" value={minus(d.standardDeduction)} kind="sub" />
+        <Row label="Standard deduction" value={minus(d.baseStandardDeduction ?? d.standardDeduction)} kind="sub" />
+        {d.additional65Deduction > 0 && (
+          <Row label="Additional standard deduction, age 65 or older" value={minus(d.additional65Deduction)} kind="sub" />
+        )}
+        {d.seniorDeduction > 0 && (
+          <Row label="Senior deduction (2025–2028, age 65 or older)" value={minus(d.seniorDeduction)} kind="sub" />
+        )}
         <Row label="Ordinary taxable income" value={$(d.ordinaryTaxableIncome)} kind="total" />
         {d.ordinaryRows.length > 0 ? (
           <BracketRows rows={d.ordinaryRows} unit="ord" />

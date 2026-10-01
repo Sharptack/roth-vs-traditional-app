@@ -166,6 +166,22 @@ describe('estimateHouseholdSocialSecurity (2026, HAND CALC)', () => {
   });
 });
 
+describe('the new retirement-year tax rules in the adapter', () => {
+  it('thresholds shrink over the years to retirement; ages at retirement for the 65+ deductions', () => {
+    // default: 35, retires at 65 -> 30 years; 1 / 1.025^30 = 1 / 2.0975676 = 0.4767427
+    const r = householdToCompareInputs(toHousehold(PREVIEW_DEFAULT_VALUES, Y)).retirementTaxRules;
+    expect(r.thresholdScale).toBeCloseTo(0.4767427, 7);
+    expect(r.ages).toEqual([65]);
+    expect(r.calendarYear).toBe(2056);
+    // a couple retiring when the first does (17 years): ages then 62 and 62 + 3 = 65
+    const couple = { ...PREVIEW_DEFAULT_VALUES, filingStatus: 'mfj', includeSpouse: 'yes', currentAge: '45', retirementAge: '62', spouseAge: '48', spouseRetirementAge: '67' };
+    expect(householdToCompareInputs(toHousehold(couple, Y)).retirementTaxRules.ages).toEqual([62, 65]);
+    // switched off: today's rules
+    const off = { ...PREVIEW_DEFAULT_VALUES, inflationRate: '0', ageDeductions: 'no' };
+    expect(householdToCompareInputs(toHousehold(off, Y)).retirementTaxRules).toBeUndefined();
+  });
+});
+
 describe('splitAtTakeHomeByPerson (HAND CALC)', () => {
   it('each spouse is capped at their own limit, not one shared limit', () => {
     // t = 22%, currently Roth. p1 saves 30,000 (limit 24,500), p2 saves 10,000 (limit 24,500).

@@ -22,7 +22,7 @@ describe('household form sections', () => {
     expect(summary('contributions', couple)).toBe('$15,000 a year · Pre-tax · 401(k)');
     expect(summary('contributions', { ...couple, includeSpouse: 'no' })).toBe('$10,000 a year · Pre-tax · 401(k)');
     expect(summary('existing', PREVIEW_DEFAULT_VALUES)).toBe('Pre-tax $100,000');
-    expect(summary('assumptions', PREVIEW_DEFAULT_VALUES)).toBe('7% return after inflation');
+    expect(summary('assumptions', PREVIEW_DEFAULT_VALUES)).toBe('7% return after inflation · 2.5% inflation');
   });
 
   it('adds up accounts by type', () => {

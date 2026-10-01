@@ -7,17 +7,24 @@
 // - `acc`: the Existing Accounts list, one `type~owner~balance~basisShare` row per account.
 // - `view=1`: open locked (view only), with an "Edit a copy" button.
 // - A link with no `hh` but the current calculator's keys (an old link) opens as a one-person
-//   household: its three balances become the accounts list.
+//   household: its three balances become the accounts list, and it gets the new version's
+//   retirement-year tax rules (it opens in the new version).
 // Unknown keys are ignored; missing keys fall back to the defaults; malformed account rows are
 // dropped.
 import { DEFAULT_FORM_VALUES, parseNumber } from './formInputs.js';
-import { HOUSEHOLD_VERSION, PREVIEW_DEFAULT_VALUES, SPOUSE_DEFAULT_VALUES, accountRowsFromFlat } from './household.js';
+import {
+  HOUSEHOLD_VERSION,
+  NEW_RULES_DEFAULT_VALUES,
+  PREVIEW_DEFAULT_VALUES,
+  SPOUSE_DEFAULT_VALUES,
+  accountRowsFromFlat,
+} from './household.js';
 import { valuesFromSearch } from './shareInputs.js';
 
 const PREFIX = 'h.';
 // The flat balances are carried by the accounts list instead.
 const FLAT_BALANCE_KEYS = ['otherPretaxBalance', 'otherRothBalance', 'otherTaxableBalance', 'otherTaxableBasis'];
-const KEYS = [...Object.keys(DEFAULT_FORM_VALUES), ...Object.keys(SPOUSE_DEFAULT_VALUES)].filter(
+const KEYS = [...Object.keys(DEFAULT_FORM_VALUES), ...Object.keys(SPOUSE_DEFAULT_VALUES), ...Object.keys(NEW_RULES_DEFAULT_VALUES)].filter(
   (k) => !FLAT_BALANCE_KEYS.includes(k),
 );
 const ACCOUNT_TYPES = ['pretax', 'roth', 'taxable'];

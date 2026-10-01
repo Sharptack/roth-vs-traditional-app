@@ -22,6 +22,8 @@
 //                   the projection passes 1 / (1 + inflation)^years.
 //   rateShift       added to every ordinary bracket rate (a tax-law what-if, e.g. 0.03 = 3 points
 //                   higher). Capital-gains rates are not shifted.
+//   calendarYear    the calendar year being taxed, when `year` is the law's data year instead (a
+//                   future year taxed under today's law); only the senior deduction's end date uses it.
 //
 // Age deductions: for each person whose `age` is given and is 65 or older, the additional standard
 // deduction and (2025-2028) the senior deduction (data/ageDeductions.js). Callers that pass no
@@ -38,15 +40,20 @@ import { AGE_DEDUCTIONS } from '../data/ageDeductions.js';
 import { getYearData } from './yearLookup.js';
 
 // The 65+ additional standard deduction and the senior deduction for these people, at this MAGI.
-export function ageDeductions(people, filingStatus, year, magi) {
+// calendarYear: the year being taxed, when it differs from `year` (the law's data year). The
+//   Roth comparison taxes a FUTURE retirement year under today's law in today's dollars, so the
+//   senior deduction (law for 2025-2028 only) is checked against the real calendar year.
+// thresholdScale: the senior deduction's $6,000 and its phase-out start are fixed dollar amounts,
+//   so they shrink in today's dollars like the other fixed thresholds; the 65+ add-on is indexed.
+export function ageDeductions(people, filingStatus, year, magi, { calendarYear = year, thresholdScale = 1 } = {}) {
   const seniors = people.filter((p) => p.age >= 65).length;
   if (seniors === 0) return { additional65: 0, senior: 0, seniors };
   const { data } = getYearData(AGE_DEDUCTIONS, year);
   const additional65 = seniors * data.additional65[filingStatus];
   const s = data.senior;
   const perPerson =
-    year <= s.lastYear
-      ? Math.max(0, s.amount - s.phaseOutRate * Math.max(0, magi - s.phaseOutStart[filingStatus]))
+    calendarYear <= s.lastYear
+      ? Math.max(0, s.amount * thresholdScale - s.phaseOutRate * Math.max(0, magi - s.phaseOutStart[filingStatus] * thresholdScale))
       : 0;
   return { additional65, senior: seniors * perPerson, seniors };
 }
@@ -62,7 +69,7 @@ const NO_PAYROLL = {
   people: [],
 };
 
-function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0 }) {
+function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year }) {
   const ordinaryIncome = income.ordinaryIncome ?? 0;
   const investmentOrdinaryIncome = income.investmentOrdinaryIncome ?? 0;
   const preferentialIncome = Math.max(0, income.preferentialIncome ?? 0);
@@ -95,7 +102,7 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
   const ordinaryGross = earned - adjustments + ordinaryIncome + investmentOrdinaryIncome + taxableSocialSecurity;
   const agi = ordinaryGross + preferentialIncome;
   const baseStandardDeduction = getStandardDeduction(filingStatus, year);
-  const age = ageDeductions(people, filingStatus, year, agi);
+  const age = ageDeductions(people, filingStatus, year, agi, { calendarYear, thresholdScale });
   // Everything subtracted from AGI; "standardDeduction" below is this total.
   const standardDeduction = baseStandardDeduction + age.additional65 + age.senior;
   const ordinaryTaxableIncome = Math.max(0, ordinaryGross - standardDeduction);

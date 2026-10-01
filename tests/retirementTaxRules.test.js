@@ -11,6 +11,7 @@ const RULES = [
   { thresholdScale: 1, rateShift: 0.03, ages: [] },
   { thresholdScale: 0.6, rateShift: 0, ages: [67] },
   { thresholdScale: 0.6, rateShift: 0, ages: [66, 70] },
+  { thresholdScale: 0.95, rateShift: 0, ages: [66, 70], calendarYear: 2028 }, // senior deduction on
 ];
 
 describe('calculateRetirementTax with taxRules (the single-year engine)', () => {

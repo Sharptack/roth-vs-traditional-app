@@ -20,7 +20,8 @@
 //     currentType, accountType,            // each person saves their own amount, under their own limit
 //     contributions: [{ owner: 'p1', amount }] },
 //   spending: { debtPaymentsEnding, otherExpensesEnding, retirementLifestyle },
-//   assumptions: { returnRate },
+//   assumptions: { returnRate, inflationRate, ageDeductions },   // the last two: retirement-year
+//                                          // tax rules (phase 2); 0 / false = today's rules
 // }
 //
 // Form values may carry the Existing Accounts as a list (`values.accounts`, string rows
@@ -64,9 +65,18 @@ export function accountRowsFromFlat(values) {
   return rows.length > 0 ? rows : [{ id: 'a1', owner: 'p1', type: 'pretax', balance: '0', basisShare: '0.5' }];
 }
 
+// The new version's retirement-year tax rules (phase 2): fixed-dollar thresholds shrink at the
+// inflation rate until retirement, and the age 65+ deductions apply. Form values without these
+// keys (the current form, old links) get today's rules.
+export const NEW_RULES_DEFAULT_VALUES = {
+  inflationRate: '0.025',
+  ageDeductions: 'yes', // 'yes' | 'no'
+};
+
 export const PREVIEW_DEFAULT_VALUES = {
   ...DEFAULT_FORM_VALUES,
   ...SPOUSE_DEFAULT_VALUES,
+  ...NEW_RULES_DEFAULT_VALUES,
   accounts: accountRowsFromFlat(DEFAULT_FORM_VALUES),
 };
 const blankAsNull = (text) => (String(text ?? '').trim() === '' ? null : parseNumber(text));
@@ -134,7 +144,11 @@ export function toHousehold(values, year) {
       otherExpensesEnding: flat.otherExpenses,
       retirementLifestyle: flat.retirementLifestyle,
     },
-    assumptions: { returnRate: flat.returnRate },
+    assumptions: {
+      returnRate: flat.returnRate,
+      inflationRate: values.inflationRate === undefined ? 0 : Number(values.inflationRate),
+      ageDeductions: values.ageDeductions === 'yes',
+    },
   };
 }
 
@@ -180,6 +194,8 @@ export function validateHousehold(household) {
     if (!ids.has(a.owner)) errors.push(`Account ${a.id} belongs to someone not in the household.`);
     if (!['pretax', 'roth', 'taxable'].includes(a.type)) errors.push(`Account ${a.id} has an unknown type.`);
   }
+  const inflation = household.assumptions?.inflationRate ?? 0;
+  if (!isNum(inflation) || inflation < -0.05 || inflation > 0.1) errors.push('Choose an inflation rate (−5% to 10%).');
   const contributions = futureContributions?.contributions ?? [];
   if (contributions.length < 1) errors.push('Future Contributions need at least one person.');
   for (const c of contributions) {
@@ -251,6 +267,16 @@ export function householdToCompareInputs(household) {
       knowsSocialSecurity: p.socialSecurity.known,
       socialSecurityBenefit: p.socialSecurity.benefit,
     }));
+  }
+  // Retirement-year tax rules (phase 2), at the snapshot retirement year: thresholds shrunk by
+  // inflation over the years until then, and each person's age then (for the 65+ deductions).
+  const inflationRate = assumptions.inflationRate ?? 0;
+  if (inflationRate !== 0 || assumptions.ageDeductions) {
+    inputs.retirementTaxRules = {
+      thresholdScale: 1 / (1 + inflationRate) ** yearsToRetirement,
+      calendarYear: year + yearsToRetirement, // the senior deduction ends after 2028
+      ages: assumptions.ageDeductions ? people.map((p) => ageOf(p) + yearsToRetirement) : [],
+    };
   }
   if (people.length > 1) {
     inputs.contributors = people.map((p, i) => ({

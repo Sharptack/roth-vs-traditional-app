@@ -84,7 +84,8 @@ export const HOUSEHOLD_SECTIONS = [
   {
     id: 'assumptions',
     title: 'Assumptions',
-    summary: (v) => `${Math.round(Number(v.returnRate) * 100)}% return after inflation`,
+    summary: (v) =>
+      `${Math.round(Number(v.returnRate) * 100)}% return after inflation · ${Math.round(Number(v.inflationRate ?? 0) * 1000) / 10}% inflation`,
   },
 ];
 

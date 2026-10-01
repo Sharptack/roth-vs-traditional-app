@@ -47,7 +47,10 @@ describe('household share links', () => {
     expect(back.fromOldLink).toBe(true);
     const h = toHousehold(back.values, 2026);
     expect(h.people).toHaveLength(1);
-    expect(householdToCompareInputs(h)).toEqual(toCompareInputs(old, 2026));
+    // the same inputs, plus the new version's retirement-year tax rules
+    const { retirementTaxRules, ...rest } = householdToCompareInputs(h);
+    expect(rest).toEqual(toCompareInputs(old, 2026));
+    expect(retirementTaxRules.ages).toEqual([65]);
   });
 
   it('no inputs in the link -> null; malformed account rows are dropped', () => {

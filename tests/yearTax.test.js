@@ -174,6 +174,23 @@ describe('age deductions (2026, HAND CALC)', () => {
   });
 });
 
+describe('the senior deduction in a future retirement year (HAND CALC)', () => {
+  it("is gone when the retirement year is after 2028, even under today's (2026) law", () => {
+    // single, 67, $60,000 pension, taxed with 2026 data but for calendar 2040:
+    // 16,100 + 2,050 (no senior deduction) = 18,150 -> taxable 41,850 -> 4,774 (as the 2029 case)
+    const r = calculateYearTax({ filingStatus: 'single', year: Y, calendarYear: 2040, people: [{ age: 67 }], income: { ordinaryIncome: 60000 } });
+    expect(r.lines.seniorDeduction).toBe(0);
+    expect(r.incomeTax).toBeCloseTo(4774, 6);
+  });
+
+  it('shrinks with the other fixed-dollar thresholds while it lasts', () => {
+    // scale 0.9, single, 70, $100,000: amount 5,400; phase-out from 67,500
+    // 5,400 - 6% x 32,500 (1,950) = 3,450
+    const r = calculateYearTax({ filingStatus: 'single', year: Y, calendarYear: 2028, thresholdScale: 0.9, people: [{ age: 70 }], income: { ordinaryIncome: 100000 } });
+    expect(r.lines.seniorDeduction).toBeCloseTo(3450, 6);
+  });
+});
+
 describe('calculateYearTax agrees with the existing engines to the cent', () => {
   it('retirement years: calculateRetirementTax', () => {
     let checked = 0;

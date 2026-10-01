@@ -35,6 +35,7 @@ export function explainFullTax({
     filingStatus,
     year,
     grossOrdinaryIncome + capitalGains,
+    { calendarYear: taxRules?.calendarYear ?? year, thresholdScale },
   );
   const standardDeduction = baseStandardDeduction + age.additional65 + age.senior;
   const ordinaryTaxableIncome = Math.max(0, grossOrdinaryIncome - standardDeduction);

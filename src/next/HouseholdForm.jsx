@@ -32,6 +32,14 @@ const CLAIM_AGE_OPTIONS = [
 
 const SPOUSE_INCOME_TYPES = INCOME_TYPE_OPTIONS.filter((o) => o.value !== 'both');
 
+const INFLATION_OPTIONS = [
+  { value: '0', label: '0% (today’s thresholds, as the current calculator)' },
+  { value: '0.02', label: '2%' },
+  { value: '0.025', label: '2.5% (default)' },
+  { value: '0.03', label: '3%' },
+  { value: '0.04', label: '4%' },
+];
+
 export const DEFAULT_OPEN_HOUSEHOLD = ['household', 'you'];
 
 // locked: view only (a view-only share link); the fields are disabled and onEditCopy unlocks them.
@@ -327,6 +335,24 @@ export default function HouseholdForm({ values, onChange, locked = false, onEdit
             value={values.retirementLifestyle}
             onChange={set('retirementLifestyle')}
             options={LIFESTYLE_OPTIONS}
+          />
+          <SelectInput
+            label="Inflation"
+            hint="Everything is in today's dollars, so brackets and limits (which the law raises with inflation) stay put. The thresholds written as fixed dollar amounts don't rise: Social Security taxability, NIIT and Additional Medicare. At this rate they shrink, in today's dollars, until retirement."
+            value={values.inflationRate}
+            onChange={set('inflationRate')}
+            options={INFLATION_OPTIONS}
+          />
+          <RadioGroup
+            legend="Age 65+ deductions in retirement"
+            name="hh-ageDeductions"
+            value={values.ageDeductions}
+            onChange={set('ageDeductions')}
+            options={[
+              { value: 'yes', label: 'Include' },
+              { value: 'no', label: 'Leave out (as the current calculator)' },
+            ]}
+            hint="The additional standard deduction at 65, and the senior deduction ($6,000 each, phased out above $75,000 / $150,000 of income). The senior deduction is law for 2025–2028 only and is applied when the retirement year falls in that window."
           />
         </>
       ))}

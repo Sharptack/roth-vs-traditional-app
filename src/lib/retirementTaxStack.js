@@ -25,7 +25,7 @@ import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
 import { calculateCapitalGainsTax, calculateNiit } from './capitalGainsTax.js';
 import { calculateYearTax } from './yearTax.js';
 
-// taxRules (optional; the #/next preview): { thresholdScale, rateShift, ages } — when given, the
+// taxRules (optional; the #/next preview): { thresholdScale, rateShift, ages, calendarYear } — when given, the
 // year is taxed by the single-year engine (yearTax.js) with those rules: fixed-dollar thresholds
 // scaled for inflation, a rate what-if, and the age 65+ deductions for the given ages. Without it,
 // the code below runs exactly as before (the current calculator). Both agree to the cent when the
@@ -48,6 +48,7 @@ export function calculateRetirementTax({
       income: { ordinaryIncome: pretaxWithdrawal, preferentialIncome: capitalGains, socialSecurity: ssBenefit },
       thresholdScale: taxRules.thresholdScale ?? 1,
       rateShift: taxRules.rateShift ?? 0,
+      calendarYear: taxRules.calendarYear ?? year,
     });
     return {
       taxableSS: r.lines.taxableSocialSecurity,
