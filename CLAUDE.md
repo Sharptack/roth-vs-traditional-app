@@ -75,7 +75,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (567 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (572 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -126,6 +126,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `household.js` (the household model), `householdForm.js` (the preview form's sections), `householdLink.js` (preview share
   links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
   Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
+  Phase 3: `rmd.js`, `data/rmdTable.js`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -239,6 +240,13 @@ flat form values (`toCompareInputs`) and never goes through the household; every
   feedback link (Netlify Forms sends data to Netlify — needs the user's OK), an ARTICLE.md section for the tax calculator
   (ARTICLE.md is the PUBLIC page for the current calculator; add the section at switchover), tax-law override UI and the
   phase 6 break-even report (the engine supports `rateShift`).
+
+## Phase 3: RMDs (done 2026-10-01)
+`src/data/rmdTable.js` (the Uniform Lifetime Table, 26 CFR § 1.401(a)(9)-9(c), read from law.cornell.edu — every age 72–120
+checked; eCFR and the IRS Pub. 590-B PDF weren't machine-readable; start ages 75 born 1960+, 73 born 1951–1959, 72 earlier)
+and `src/lib/rmd.js` (`rmdStartAge`, `uniformLifetimeDivisor`, `requiredMinimumDistribution({ priorYearEndBalance, age,
+birthYear })`). Hand-verified in tests/rmd.test.js. Not modeled: Joint Life table, April 1 delay, still-working exception,
+inherited accounts, the pre-July-1949 70½ rule. Not wired into anything yet: the projection (phase 4) uses it.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -906,6 +914,7 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (f) — Phase 3: RMD table (from the regulation) and `rmd.js`, hand-verified. 572 tests.
 - 2026-10-01 (e) — Preview: tax saved now measured across the whole contribution (average rate, fixed point), also per
   blend mix; on by default in the preview. Hand-verified. 567 tests.
 - 2026-10-01 (d) — Phase 2 in the preview: calculateYearTax (agreement grids to the cent), age 65+ deductions, optional
