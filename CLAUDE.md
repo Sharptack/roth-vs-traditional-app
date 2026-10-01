@@ -68,6 +68,9 @@ is **also the public "How this works" page** — see "Article page" below.
     phase 6 — recommended headline "sustainable spending" (one measure, not a blend of lifetime tax / longevity /
     ending wealth) plus a break-even tax-change report. Future features: print stylesheet, designed PDF report,
     named saved scenarios, a bottom-up budget calculator feeding household spending.
+- **Decisions 2026-10-01 (user):** the year-by-year projection (phase 4) STARTS TODAY (projects the working years too,
+  so the projection page is the pre-retirement planner); NO feedback link yet (Netlify Forms not approved; revisit
+  before any free version goes public).
 - **Exposure check:** the GitHub repo is public and the Netlify site is open to anyone with the link, and
   ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
   proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
@@ -75,7 +78,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (572 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (582 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -126,7 +129,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `household.js` (the household model), `householdForm.js` (the preview form's sections), `householdLink.js` (preview share
   links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
   Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
-  Phase 3: `rmd.js`, `data/rmdTable.js`.
+  Phase 3: `rmd.js`, `data/rmdTable.js`. Phase 4: `projection.js`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -247,6 +250,29 @@ checked; eCFR and the IRS Pub. 590-B PDF weren't machine-readable; start ages 75
 and `src/lib/rmd.js` (`rmdStartAge`, `uniformLifetimeDivisor`, `requiredMinimumDistribution({ priorYearEndBalance, age,
 birthYear })`). Hand-verified in tests/rmd.test.js. Not modeled: Joint Life table, April 1 delay, still-working exception,
 inherited accounts, the pre-July-1949 70½ rule. Not wired into anything yet: the projection (phase 4) uses it.
+
+## Phase 4: projection engine (done 2026-10-01)
+`src/lib/projection.js` `runProjection(household, { need, strategy, contributions, endAge })` -> { rows, runOutYear, endAge }.
+Starts TODAY (user decision): one loop from this year to person 1's end age (default 95, `assumptions.endAge`). Each year:
+ages; who still works (age < retirement age); Social Security per person from their claiming age (own) and the spousal
+top-up from its start age; contributions from each worker capped at THAT YEAR's limit (catch-up at 50, the 60–63 tier),
+excess to a taxable account as basis; RMD floor per owner (rmd.js, spread over the owner's Pre-tax accounts); once anyone
+has retired, the strategy meets the need (while everyone works only RMDs are taken, their after-tax money reinvested);
+tax via calculateYearTax (thresholdScale 1/(1+i)^t, calendarYear, ages only if assumptions.ageDeductions); surplus
+reinvested as basis; shortfall and runOutYear; basis pro-rata; growth; contributions at year end. Strategy seam:
+`strategy({ year, ages, accounts, rmdByAccount, need, socialSecurity, filingStatus, evaluate })` -> { withdrawals: {id: $},
+conversions: [] } — `evaluate(withdrawals)` is the engine's after-tax cash, so strategies never touch tax rules; the engine
+enforces >= RMD and <= balance. v1 `proportionalStrategy` (same fraction of every balance, RMD floor, solved with
+solver.js). After-tax cash = wages + SS + withdrawals − all tax − the year's contributions. Row fields: year, ages, working,
+socialSecurity, rmd, startBalances, withdrawals, conversions, contributions (by type), wages, grossIncome,
+taxableSocialSecurity, ordinary/capital-gains tax, niit, incomeTax, payrollTax, totalTax, effectiveRate,
+ordinaryBracketRate, marginalPretaxRate, bracketRoom, need, afterTaxIncome, surplus, shortfall, endBalances, taxableBasis.
+Tests (tests/projection.test.js): hand-worked 3-year toy, RMD surplus, depletion, engine guardrails, a working year,
+catch-up at 50, and a RECONCILIATION with compare.js's all-Pre-tax portfolio in the first retirement year (to the cent,
+4 cases). Two differences from the snapshot are deliberate improvements, so the reconciliation cases avoid them: the
+snapshot counts Social Security from the first retirement year even before 62 (the projection starts it at the claiming
+age), and it holds today's IRS limit for every saving year (the projection ages into catch-up). Not built yet: the
+projection page (phase 5), summarizeProjection, an end-age input, the Roth vs. Pre-tax lifetime run (phase 6).
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -914,6 +940,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (g) — Phase 4: the year-by-year projection engine (starts today), proportional strategy, hand-verified and
+  reconciled with the total portfolio section to the cent. 582 tests.
 - 2026-10-01 (f) — Phase 3: RMD table (from the regulation) and `rmd.js`, hand-verified. 572 tests.
 - 2026-10-01 (e) — Preview: tax saved now measured across the whole contribution (average rate, fixed point), also per
   blend mix; on by default in the preview. Hand-verified. 567 tests.
