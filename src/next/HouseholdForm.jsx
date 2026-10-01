@@ -19,6 +19,7 @@ import {
 import { ACCOUNT_TYPES, CONTRIBUTION_TYPES, FILING_STATUSES } from '../lib/constants.js';
 import { hasSpouse } from '../lib/household.js';
 import { ACCOUNT_TYPE_LABELS, DEFAULT_SECTION_IDS, newAccountRow, visibleSections } from '../lib/householdForm.js';
+import { STRATEGIES } from '../lib/strategies.js';
 
 const YES_NO = [
   { value: 'no', label: 'No, estimate it' },
@@ -390,6 +391,13 @@ export default function HouseholdForm({
       {section('projection', (
         <>
           <AgeInput label="Project to age" value={values.projEndAge} onChange={set('projEndAge')} />
+          <SelectInput
+            label="Withdrawal strategy in retirement"
+            hint="Which accounts pay for spending each year. RMDs are always taken first. Conversions move Pre-tax money to Roth before RMDs start, taxed that year."
+            value={values.projStrategy}
+            onChange={set('projStrategy')}
+            options={STRATEGIES.map((s) => ({ value: s.id, label: s.label }))}
+          />
           <SelectInput
             label="Tax rate for heirs on inherited Pre-tax money"
             hint="Used only for the after-tax ending balance."

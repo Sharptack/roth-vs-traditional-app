@@ -6,6 +6,7 @@
 import { formatCurrency } from './format.js';
 import { parseNumber } from './formInputs.js';
 import { hasSpouse } from './household.js';
+import { STRATEGIES } from './strategies.js';
 
 export { accountRowsFromFlat } from './household.js';
 
@@ -86,7 +87,7 @@ export const HOUSEHOLD_SECTIONS = [
     id: 'projection',
     title: 'Projection',
     calculator: 'projection', // the projection page's own inputs
-    summary: (v) => `To age ${v.projEndAge || '—'} · heirs taxed at ${Math.round(Number(v.projHeirTaxRate ?? 0) * 100)}%`,
+    summary: (v) => `To age ${v.projEndAge || '—'} · heirs taxed at ${Math.round(Number(v.projHeirTaxRate ?? 0) * 100)}% · ${(STRATEGIES.find((s) => s.id === v.projStrategy) ?? STRATEGIES[0]).label.toLowerCase()}`,
   },
   {
     id: 'thisYear',

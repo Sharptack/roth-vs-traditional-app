@@ -1193,6 +1193,10 @@ describe('NextApp (#/next preview)', () => {
     expect(proj).toContain('Balances over time');
     expect(proj).toContain('Year by year');
     expect(proj).toContain('Project to age');
+    expect(proj).toContain('Compare withdrawal strategies');
+    expect(proj).toContain('Withdrawal strategy in retirement');
+    expect((proj.match(/<tr class="chosen-row"/g) ?? []).length).toBe(1);
+    expect(proj).toContain(' most left');
     expect(proj).not.toMatch(/NaN|Infinity/);
     expect(html).toContain('href="#/next/projection"');
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');

@@ -200,7 +200,20 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const live = accounts.filter((a) => a.balance > 0);
     const needThisYear = anyRetired ? need : 0;
     const proposed = anyRetired
-      ? strategy({ year: calendarYear, ages, accounts: live.map((a) => ({ ...a })), rmdByAccount, need: needThisYear, socialSecurity, filingStatus, evaluate })
+      ? strategy({
+          year: calendarYear,
+          ages,
+          working,
+          household,
+          taxYear: year,
+          rateShift: retirementRateShift,
+          accounts: live.map((a) => ({ ...a })),
+          rmdByAccount,
+          need: needThisYear,
+          socialSecurity,
+          filingStatus,
+          evaluate,
+        })
       : { withdrawals: { ...rmdByAccount }, conversions: [] };
     // The engine's rules, whatever the strategy returned: at least the RMD, at most the balance.
     const withdrawals = {};
@@ -208,7 +221,14 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       const w = Math.max(proposed.withdrawals?.[a.id] ?? 0, rmdByAccount[a.id] ?? 0);
       withdrawals[a.id] = Math.min(a.balance, Math.max(0, w));
     }
-    const conversions = proposed.conversions ?? [];
+    // Conversions (Roth conversions, phase 7): only from Pre-tax accounts, never more than what is
+    // left after this year's withdrawals; taxed as ordinary income this year (taxParams).
+    const conversions = (proposed.conversions ?? [])
+      .map((c) => {
+        const a = accounts.find((x) => x.id === c.from && x.type === 'pretax');
+        return a ? { from: a.id, owner: a.owner, amount: Math.max(0, Math.min(c.amount, a.balance - (withdrawals[a.id] ?? 0))) } : null;
+      })
+      .filter((c) => c && c.amount > 0);
     const { tax, cash } = evaluate(withdrawals, conversions, true);
     // Surplus to reinvest: once retired, cash above the need; while everyone works, the after-tax
     // money from any RMD (cash with it minus cash without it), since the paycheck covers spending.
@@ -224,6 +244,11 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     });
     const withdrawn = byType(withdrawals);
     const startBalances = byType(Object.fromEntries(accounts.map((a) => [a.id, a.balance])));
+    // Conversions move from the Pre-tax account to the owner's Roth before growth.
+    for (const c of conversions) {
+      accounts.find((x) => x.id === c.from).balance -= c.amount;
+      accountFor(c.owner, 'roth').balance += c.amount;
+    }
     for (const a of accounts) {
       const w = withdrawals[a.id] ?? 0;
       if (a.type === 'taxable' && a.balance > 0) a.basis *= 1 - w / a.balance;

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import LineChart from '../components/charts/LineChart.jsx';
 import { formatCurrency as $ } from '../lib/format.js';
 import { breakEvenRateShift } from '../lib/lifetimeComparison.js';
+import { STRATEGIES, strategyById } from '../lib/strategies.js';
 import { YearTable } from './ProjectionResult.jsx';
 
 // Roth = blue, Pre-tax = orange, as everywhere the app shows a winner.
@@ -19,7 +20,8 @@ function BreakEven({ household, result, endAge, winner }) {
   const run = () => {
     setState({ status: 'working' });
     // Let the "Working" note paint before the long search runs.
-    setTimeout(() => setState({ status: 'done', shift: breakEvenRateShift(household, result, { endAge }) }), 30);
+    const strategy = strategyById(household.calculators?.projection?.strategy);
+    setTimeout(() => setState({ status: 'done', shift: breakEvenRateShift(household, result, { endAge, strategy }) }), 30);
   };
   if (state.status === 'idle') {
     return (
@@ -67,7 +69,9 @@ export default function LifetimeComparison({ lifetime, household, result }) {
       <p className="hint">
         Both scenarios cost the same take-home pay every working year and spend the same in retirement (the retirement
         income number, {$(lifetime.need)}). Each runs the year-by-year projection: Future Contributions all Roth, or all
-        Pre-tax, with RMDs, Social Security timing and the inflation-shrunk thresholds.
+        Pre-tax, with RMDs, Social Security timing and the inflation-shrunk thresholds. Withdrawals:{' '}
+        {(STRATEGIES.find((s) => s.id === household.calculators?.projection?.strategy) ?? STRATEGIES[0]).label.toLowerCase()} (set on
+        the projection page).
         {firstYearWinner !== 'even' && winner !== 'even' && firstYearWinner !== winner && (
           <>
             {' '}

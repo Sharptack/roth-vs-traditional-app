@@ -2,6 +2,7 @@
 // rows runProjection returns, so the page, the lifetime comparison (phase 6) and a future
 // aggregate page all use the same figures.
 import { runProjection } from './projection.js';
+import { STRATEGIES, strategyById } from './strategies.js';
 
 export const DEFAULT_HEIR_TAX_RATE = 0.24;
 
@@ -65,11 +66,29 @@ export function sustainableSpending(household, options = {}) {
 // (the Roth calculator's retirement income number). The calculator's own inputs live under
 // household.calculators.projection: { endAge, heirTaxRate }.
 //   funded: sustainable spending ÷ the need (1 = exactly funded; above 1 = overfunded).
+//   strategy: the chosen withdrawal strategy's id; strategies: every strategy at the actual need
+//   (lifetime income tax, after-tax ending wealth, money lasts to), to compare them side by side.
 export function projectionView(household, need) {
   const own = household.calculators?.projection ?? {};
-  const options = { endAge: own.endAge };
+  const options = { endAge: own.endAge, strategy: strategyById(own.strategy) };
   const { rows, runOutYear, endAge } = runProjection(household, { ...options, need });
   const summary = summarizeProjection(rows, { heirTaxRate: own.heirTaxRate });
   const sustainable = sustainableSpending(household, options);
-  return { rows, runOutYear, endAge, summary, need, sustainable, funded: need > 0 ? sustainable / need : null };
+  const strategies = STRATEGIES.map((s) => {
+    const sum = summarizeProjection(runProjection(household, { endAge: own.endAge, strategy: s.strategy, need }).rows, {
+      heirTaxRate: own.heirTaxRate,
+    });
+    return { id: s.id, label: s.label, totalIncomeTax: sum.totalIncomeTax, endingAfterTax: sum.endingAfterTax, moneyLastsTo: sum.moneyLastsTo, runsOut: sum.runsOut };
+  });
+  return {
+    rows,
+    runOutYear,
+    endAge,
+    summary,
+    need,
+    sustainable,
+    funded: need > 0 ? sustainable / need : null,
+    strategy: STRATEGIES.find((s) => s.id === own.strategy)?.id ?? STRATEGIES[0].id,
+    strategies,
+  };
 }

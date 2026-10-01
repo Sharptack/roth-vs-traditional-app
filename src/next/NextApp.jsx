@@ -24,6 +24,7 @@ import TaxResult from './TaxResult.jsx';
 import ProjectionResult from './ProjectionResult.jsx';
 import LifetimeComparison from './LifetimeComparison.jsx';
 import { compareLifetime } from '../lib/lifetimeComparison.js';
+import { strategyById } from '../lib/strategies.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -103,7 +104,11 @@ export default function NextApp({ initialPage }) {
   const lifetime = useMemo(() => {
     if (page !== 'roth' || !deferredRoth.result.valid) return null;
     const own = deferredRoth.household.calculators?.projection ?? {};
-    return compareLifetime(deferredRoth.household, deferredRoth.result, { endAge: own.endAge, heirTaxRate: own.heirTaxRate });
+    return compareLifetime(deferredRoth.household, deferredRoth.result, {
+      endAge: own.endAge,
+      heirTaxRate: own.heirTaxRate,
+      strategy: strategyById(own.strategy),
+    });
   }, [deferredRoth, page]);
   const tiles = { roth: rothTile(roth.result), tax: taxTile(tax), projection: projectionTile(projection) };
 

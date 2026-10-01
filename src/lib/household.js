@@ -21,7 +21,7 @@
 //     contributions: [{ owner: 'p1', amount }] },
 //   spending: { debtPaymentsEnding, otherExpensesEnding, retirementLifestyle },
 //   calculators: { tax: { ordinaryIncome, investmentOrdinaryIncome, preferentialIncome,
-//                         socialSecurity }, projection: { endAge, heirTaxRate } },   // calculator-only inputs, under the calculator's name
+//                         socialSecurity }, projection: { endAge, heirTaxRate, strategy } },   // calculator-only inputs, under the calculator's name
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedAcrossContribution },   // the last two: retirement-year
 //                                          // tax rules (phase 2); 0 / false = today's rules
 // }
@@ -40,6 +40,7 @@ import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
 export const PROJECTION_DEFAULT_VALUES = {
   projEndAge: '95', // person 1's age in the last projected year
   projHeirTaxRate: '0.24', // the tax rate heirs pay on inherited Pre-tax money
+  projStrategy: 'proportional', // the withdrawal strategy (lib/strategies.js STRATEGIES ids)
 };
 
 export const HOUSEHOLD_VERSION = 1;
@@ -166,6 +167,7 @@ export function toHousehold(values, year) {
       projection: {
         endAge: values.projEndAge === undefined ? undefined : parseNumber(values.projEndAge),
         heirTaxRate: values.projHeirTaxRate === undefined ? undefined : Number(values.projHeirTaxRate),
+        strategy: values.projStrategy,
       },
     },
     assumptions: {

@@ -23,6 +23,7 @@ const COLUMNS = [
   { key: 'wTaxable', label: 'From taxable', value: (r) => r.withdrawals.taxable },
   { key: 'wRoth', label: 'From Roth', value: (r) => r.withdrawals.roth },
   { key: 'contributed', label: 'Contributed', value: (r) => r.contributions.total },
+  { key: 'converted', label: 'Converted to Roth', value: (r) => r.conversions },
   { key: 'taxableSS', label: 'Taxable SS', value: (r) => r.taxableSocialSecurity },
   { key: 'incomeTax', label: 'Income tax', value: (r) => r.incomeTax, key1: true },
   { key: 'payroll', label: 'Payroll tax', value: (r) => r.payrollTax },
@@ -102,6 +103,46 @@ export default function ProjectionResult({ view }) {
             ? `At ${$(need)} a year the money runs out after age ${s.moneyLastsTo}.`
             : `At ${$(need)} a year the money lasts to ${endAge}, with ${$(s.endingBalance.total)} left.`}{' '}
           Sustainable spending is the highest steady after-tax income, in today&rsquo;s dollars, that lasts to the end age.
+        </p>
+      </section>
+
+      <section className="card" aria-labelledby="proj-strategies">
+        <h2 id="proj-strategies">Compare withdrawal strategies</h2>
+        <p className="hint">
+          Each strategy run at the retirement income number ({$(need)} a year), all else the same. The chosen one is marked.
+        </p>
+        <table className="compare-table strategy-table">
+          <thead>
+            <tr>
+              <th scope="col">Strategy</th>
+              <th scope="col">Lifetime income tax</th>
+              <th scope="col">After tax for heirs at {endAge}</th>
+              <th scope="col">Money lasts to</th>
+            </tr>
+          </thead>
+          <tbody>
+            {view.strategies.map((st) => {
+              const best = st.endingAfterTax === Math.max(...view.strategies.map((x) => x.endingAfterTax));
+              return (
+                <tr key={st.id} className={st.id === view.strategy ? 'chosen-row' : undefined}>
+                  <th scope="row">
+                    {st.label}
+                    {st.id === view.strategy && <span className="dim"> (chosen)</span>}
+                  </th>
+                  <td>{$(st.totalIncomeTax)}</td>
+                  <td>
+                    {$(st.endingAfterTax)}
+                    {best && <span className="pill"> most left</span>}
+                  </td>
+                  <td>{st.runsOut ? `age ${st.moneyLastsTo}` : endAge}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="hint">
+          Not modeled yet: IRMAA (Medicare premium surcharges set by income two years earlier), which matters for large
+          conversions, and the 10-year rule for heirs of Pre-tax accounts.
         </p>
       </section>
 

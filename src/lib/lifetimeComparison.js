@@ -32,11 +32,13 @@ const afterTaxWealth = (row, heirTaxRate) => row.endBalances.pretax * (1 - heirT
 //   difference: Roth minus Pre-tax for sustainable spending, lifetime tax, ending after-tax wealth.
 //   wealthGap: per year, Roth's after-tax wealth minus Pre-tax's (positive = Roth ahead).
 //   crossoverYear: the first year the leader changes (null if it never does).
-export function compareLifetime(household, compareResult, { heirTaxRate = 0.24, endAge, retirementRateShift = 0 } = {}) {
+//   strategy (optional): the withdrawal strategy both runs use (default: proportional) — the
+//   comparison generalized to scenario x strategy (phase 7).
+export function compareLifetime(household, compareResult, { heirTaxRate = 0.24, endAge, retirementRateShift = 0, strategy } = {}) {
   const need = compareResult.retirementNeed.target;
   const plans = lifetimeContributions(household, compareResult);
   const run = (contributions) => {
-    const options = { endAge, contributions, retirementRateShift };
+    const options = { endAge, contributions, retirementRateShift, ...(strategy && { strategy }) };
     const p = runProjection(household, { ...options, need });
     return { ...p, summary: summarizeProjection(p.rows, { heirTaxRate }), sustainable: sustainableSpending(household, options) };
   };
@@ -76,11 +78,12 @@ export function compareLifetime(household, compareResult, { heirTaxRate = 0.24, 
 // Roth to catch up (Pre-tax is ahead today); negative = FALL for Pre-tax to catch up. Searched
 // between -10 and +30 points; null if the leader doesn't change in that range. Slow (two
 // sustainable-spending searches per step), so the page runs it on request.
-export function breakEvenRateShift(household, compareResult, { endAge, lo = -0.1, hi = 0.3, steps = 16 } = {}) {
+export function breakEvenRateShift(household, compareResult, { endAge, lo = -0.1, hi = 0.3, steps = 16, strategy } = {}) {
   const plans = lifetimeContributions(household, compareResult);
+  const s = strategy ? { strategy } : {};
   const gap = (shift) =>
-    sustainableSpending(household, { endAge, contributions: plans.roth, retirementRateShift: shift }) -
-    sustainableSpending(household, { endAge, contributions: plans.pretax, retirementRateShift: shift });
+    sustainableSpending(household, { endAge, contributions: plans.roth, retirementRateShift: shift, ...s }) -
+    sustainableSpending(household, { endAge, contributions: plans.pretax, retirementRateShift: shift, ...s });
   let a = lo;
   let b = hi;
   let ga = gap(a);

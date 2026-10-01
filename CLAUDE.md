@@ -78,7 +78,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (591 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (596 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -130,7 +130,7 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
   Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
   Phase 3: `rmd.js`, `data/rmdTable.js`. Phase 4: `projection.js`. Phase 5: `projectionSummary.js`, `src/next/ProjectionResult.jsx`,
-  `components/charts/StackedBarChart.jsx`. Phase 6: `lifetimeComparison.js`, `src/next/LifetimeComparison.jsx`.
+  `components/charts/StackedBarChart.jsx`. Phase 6: `lifetimeComparison.js`, `src/next/LifetimeComparison.jsx`. Phase 7: `strategies.js`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -309,6 +309,25 @@ button, either scenario's year table); computed only on that page, via the defer
 defaults the first-year comparison says Pre-tax but the lifetime view is about even (Roth $136,523 vs. Pre-tax $135,870);
 with a $500k existing Pre-tax balance Roth leads by $9,158/yr (RMDs) and stays ahead even if retirement rates fall 10
 points (gap +$2,113 at −10). Whether the lifetime verdict should become the main headline is a separate decision (plan).
+
+## Phase 7: withdrawal strategies (done 2026-10-01, in the preview)
+`src/lib/strategies.js` (each a function with the projection's strategy signature; the loop is unchanged): `conventional
+OrderStrategy` (RMDs, then taxable, then Pre-tax, then Roth), `fillBracketStrategy(rate)` (Pre-tax up to the top of the
+bracket each year, even beyond the need — the engine reinvests the rest — then taxable, Roth, more Pre-tax), and
+`rothConversionStrategy(rate)` (retired owners below their RMD start age convert Pre-tax to Roth up to the bracket top;
+spending in conventional order; the conversion's tax comes out of that year's withdrawals, re-solved twice). `STRATEGIES`
+(proportional, conventional, fill 12/22, convert 12/22/24) and `strategyById`. Strategies get `evaluate()` (after-tax cash
+and tax lines), ages, working, the household, `taxYear` and the rate shift. ENGINE: conversions `[{ from, amount }]` now move
+money (capped at what's left after withdrawals, from Pre-tax only, into the owner's Roth before growth) and are taxed as
+ordinary income; rows record `conversions`. Preview: the projection's own input "Withdrawal strategy in retirement"
+(`projStrategy`, `calculators.projection.strategy`), a "Compare withdrawal strategies" table (every strategy at the actual
+need: lifetime income tax, after tax for heirs, money lasts to), a "Converted to Roth" table column; the lifetime Roth vs.
+Pre-tax comparison and its break-even use the chosen strategy (scenario × strategy). Each strategy run takes 4–9 ms. Tests
+(tests/strategies.test.js): hand cases for conventional order, the 12% fill (66,500 withdrawn, 5,800 tax, 30,700
+reinvested) and a 12% conversion (66,500 converted, tax 5,800 paid from taxable), none after RMDs start, and every
+strategy meeting the need within the engine's rules. FINDING ($300k Pre-tax + $100k taxable, defaults otherwise): the
+conventional order pays the MOST tax and leaves the least (Pre-tax grows into big RMDs); filling 22% leaves the most.
+Not modeled: IRMAA, the 10-year rule for heirs (noted on the page).
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -976,6 +995,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (j) — Phase 7 in the preview: conventional order, bracket fill and Roth conversion strategies; conversions
+  move money in the engine; strategy choice and comparison table on the projection page. 596 tests.
 - 2026-10-01 (i) — Phase 6 in the preview: lifetime Roth vs. Pre-tax (sustainable spending headline, wealth gap,
   break-even rate change) on the Roth page; projection takes take-home-cost contributions and a retirement rate shift. 591 tests.
 - 2026-10-01 (h) — Phase 5 in the preview: the projection page (funded status, lifetime summary, stacked income chart,

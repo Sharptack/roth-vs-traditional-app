@@ -1848,3 +1848,23 @@ th.win .th-sub {
 .lead-verdict {
   font-size: 1.1rem;
 }
+
+.strategy-table td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-table .chosen-row th,
+.strategy-table .chosen-row td {
+  font-weight: 700;
+}
+
+.strategy-table .pill {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.strategy-table thead th:first-child {
+  text-align: left;
+}
