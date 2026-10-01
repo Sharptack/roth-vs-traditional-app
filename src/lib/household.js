@@ -22,7 +22,7 @@
 //   spending: { debtPaymentsEnding, otherExpensesEnding, retirementLifestyle },
 //   calculators: { tax: { ordinaryIncome, investmentOrdinaryIncome, preferentialIncome,
 //                         socialSecurity } },   // calculator-only inputs, under the calculator's name
-//   assumptions: { returnRate, inflationRate, ageDeductions },   // the last two: retirement-year
+//   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedAcrossContribution },   // the last two: retirement-year
 //                                          // tax rules (phase 2); 0 / false = today's rules
 // }
 //
@@ -74,6 +74,7 @@ export function accountRowsFromFlat(values) {
 export const NEW_RULES_DEFAULT_VALUES = {
   inflationRate: '0.025',
   ageDeductions: 'yes', // 'yes' | 'no'
+  taxSavedBasis: 'average', // 'average' (across the whole contribution) | 'marginal' (today's rule)
 };
 
 export const PREVIEW_DEFAULT_VALUES = {
@@ -160,6 +161,7 @@ export function toHousehold(values, year) {
       returnRate: flat.returnRate,
       inflationRate: values.inflationRate === undefined ? 0 : Number(values.inflationRate),
       ageDeductions: values.ageDeductions === 'yes',
+      taxSavedAcrossContribution: values.taxSavedBasis === 'average',
     },
   };
 }
@@ -290,6 +292,7 @@ export function householdToCompareInputs(household) {
       ages: assumptions.ageDeductions ? people.map((p) => ageOf(p) + yearsToRetirement) : [],
     };
   }
+  if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
   if (people.length > 1) {
     inputs.contributors = people.map((p, i) => ({
       amount: amountOf(p),

@@ -32,6 +32,12 @@
 //                                            catch-up age); the household figures are the sums.
 //                                            `savings` must equal the sum of the amounts.
 //                                            Absent = one saver at currentAge, unchanged.
+//   taxSavedAcrossContribution             — OPTIONAL (the #/next preview), boolean: measure the tax a
+//                                            Pre-tax contribution saves across the WHOLE contribution
+//                                            (tax without it − tax with it) instead of applying the
+//                                            top-of-bracket marginal rate to every dollar. A deduction
+//                                            that crosses a bracket edge saves less than the marginal
+//                                            rate. Absent/false = today's marginal-rate rule, unchanged.
 //   retirementTaxRules                     — OPTIONAL (the #/next preview): { thresholdScale,
 //                                            rateShift, ages } for the retirement-year tax, run
 //                                            through the single-year engine (calculateRetirementTax's
@@ -116,6 +122,26 @@ export function splitAtTakeHomeByPerson(contributors, currentType, marginalRate)
     pretax: { toAccount: sum((p) => p.pretax.toAccount), excessToTaxable: sum((p) => p.pretax.excessToTaxable) },
     people,
   };
+}
+
+// The rate a Pre-tax contribution saves, averaged across the whole contribution (preview option).
+// The Pre-tax amount depends on the rate (the same take-home cost buys more Pre-tax dollars at a
+// higher rate), and the rate on the amount, so this finds the fixed point: the rate t at which
+// splitAt(t) puts A in the Pre-tax account and savedByDeduction(A) / A = t. Every split function
+// already takes a rate, so they are reused unchanged. Converges in a few steps (the saved rate
+// moves far less than the amount does).
+//   splitAt(t) -> a split with pretax.toAccount; savedByDeduction(x) -> tax saved by deducting x.
+export function averageRateFixedPoint(splitAt, savedByDeduction, startRate, pretaxOf = (s) => s.pretax.toAccount) {
+  let t = startRate;
+  let split = splitAt(t);
+  for (let i = 0; i < 100; i++) {
+    const A = pretaxOf(split);
+    const next = A > 0 ? savedByDeduction(A) / A : t;
+    if (Math.abs(next - t) < 1e-13) break;
+    t = next;
+    split = splitAt(t);
+  }
+  return { rate: t, split };
 }
 
 export function validateInputs(inputs) {
@@ -309,13 +335,23 @@ export function compareRothVsTraditional(inputs) {
   // to a taxable account, independently per scenario (see splitAtTakeHome).
   // contribution.roth/.pretax = everything that scenario puts away per year
   // (account + taxable side); the split says where it goes.
-  const contributionSplit = contributors
-    ? splitAtTakeHomeByPerson(
-        contributors.map((c) => ({ amount: c.amount, limit: c.limitCheck.limit })),
-        currentType,
-        marginalRateNow,
-      )
-    : splitAtTakeHome(savings, currentType, marginalRateNow, limitCheck.limit);
+  const splitAt = (t) =>
+    contributors
+      ? splitAtTakeHomeByPerson(
+          contributors.map((c) => ({ amount: c.amount, limit: c.limitCheck.limit })),
+          currentType,
+          t,
+        )
+      : splitAtTakeHome(savings, currentType, t, limitCheck.limit);
+  // Tax a Pre-tax deduction of x saves this year (the whole deduction, across bracket edges).
+  const savedByDeduction = (x) =>
+    withoutContribution.tax -
+    calculateTaxFromGross(grossIncome, filingStatus, year, fica.selfEmployment.deduction + x).tax;
+  // The rate the contribution saves: the marginal rate (today's rule), or averaged across the
+  // whole contribution (preview option taxSavedAcrossContribution).
+  const { rate: contributionRate, split: contributionSplit } = inputs.taxSavedAcrossContribution
+    ? averageRateFixedPoint(splitAt, savedByDeduction, marginalRateNow)
+    : { rate: marginalRateNow, split: splitAt(marginalRateNow) };
   const { roth: rothSplit, pretax: pretaxSplit } = contributionSplit;
   const contribution = {
     roth: rothSplit.toAccount + rothSplit.excessToTaxable,
@@ -388,8 +424,10 @@ export function compareRothVsTraditional(inputs) {
     }).totalTax;
     const { points, best } = findOptimalBlend({
       takeHomeCost: contributionSplit.takeHomeCost,
-      marginalRate: marginalRateNow,
+      marginalRate: contributionRate,
       limit: limitCheck.limit,
+      // Preview option: each mix's Pre-tax part saves its own average rate.
+      ...(inputs.taxSavedAcrossContribution && { savedByDeduction }),
       // Per person, each at their own limit (household model); absent = one limit, as today.
       ...(contributionSplit.people && {
         contributors: contributionSplit.people.map((p, i) => ({
@@ -800,8 +838,12 @@ export function compareRothVsTraditional(inputs) {
     // / total gross income in retirement (Pre-tax scenario).
     rates: {
       marginalNow: marginalRateNow,
+      // The rate a Pre-tax contribution saves: marginalNow, or (preview option) the average over
+      // the whole contribution. taxSavedNow equals it when nothing exceeds the IRS limit.
+      contributionRate,
+      contributionRateBasis: inputs.taxSavedAcrossContribution ? 'average' : 'marginal',
       effectiveRetirement: main.sideAware.available ? main.sideAware.effectiveRate : 0,
-      taxSavedNow: main.sideAware.available ? main.sideAware.taxSavedNow : marginalRateNow,
+      taxSavedNow: main.sideAware.available ? main.sideAware.taxSavedNow : contributionRate,
       overallEffectiveRetirement: overallEffectiveRateRetirement,
       // 'pretax' | 'roth' | 'even' — the rule-of-thumb lean from the two rates above.
       lean: main.sideAware.available ? main.sideAware.lean : 'even',

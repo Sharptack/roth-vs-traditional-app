@@ -75,7 +75,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (562 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (567 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -225,8 +225,17 @@ flat form values (`toCompareInputs`) and never goes through the household; every
   (HouseholdForm `only` = the calculator's sections), then the shared "Household" card (sections closed), results right,
   "← All calculators". One state for all pages (NextApp). `src/next/TaxResult.jsx`: marginal and effective rates, the
   other sources' rates, the bracket bar (SVG), "Show the calculation" rows. `NextApp` takes `initialPage` for tests.
+- **Tax saved now across the whole contribution** (compare.js optional `taxSavedAcrossContribution`; preview Assumptions
+  "Tax a Pre-tax contribution saves today", default "Across the whole contribution"): the rate is (tax without the deduction −
+  tax with it) ÷ the deduction, found as a fixed point (`averageRateFixedPoint`: the Pre-tax amount depends on the rate at
+  the same take-home cost), then the existing split functions run at that rate, unchanged. `rates.contributionRate` and
+  `rates.contributionRateBasis` ('marginal' | 'average'); the rates card caption names it. The blend explorer does the same
+  per mix (`savedByDeduction` param, `rateNow` per point). Hand-verified in tests/taxSavedAcrossContribution.test.js
+  ($76,500 single, $20,000 deduction: 17% not 22%). FINDING: the classic answer emerges on its own — at $76,500 / $20,000 /
+  no existing balance the best mix is 46% Roth with a $10,163 Pre-tax part (the $10,000 in the 22% bracket), $3,165/yr
+  ahead of either pure strategy; under the marginal rule the explorer finds nothing.
 - **Deviations / not done yet:** kept the hash helper instead of React Router (the preview lives under the current app's
-  hash routing; revisit at switchover). Not built: "tax saved now across the whole contribution" (plan step), the
+  hash routing; revisit at switchover). Not built: the
   feedback link (Netlify Forms sends data to Netlify — needs the user's OK), an ARTICLE.md section for the tax calculator
   (ARTICLE.md is the PUBLIC page for the current calculator; add the section at switchover), tax-law override UI and the
   phase 6 break-even report (the engine supports `rateShift`).
@@ -897,6 +906,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (e) — Preview: tax saved now measured across the whole contribution (average rate, fixed point), also per
+  blend mix; on by default in the preview. Hand-verified. 567 tests.
 - 2026-10-01 (d) — Phase 2 in the preview: calculateYearTax (agreement grids to the cent), age 65+ deductions, optional
   retirement tax rules end to end (inflation on fixed thresholds, ages), full-year rows, the tax calculator page and
   the suite homepage with tiles. Current calculator untouched. 562 tests.

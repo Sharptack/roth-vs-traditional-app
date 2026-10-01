@@ -373,6 +373,17 @@ export default function HouseholdForm({
             ]}
             hint="The additional standard deduction at 65, and the senior deduction ($6,000 each, phased out above $75,000 / $150,000 of income). The senior deduction is law for 2025–2028 only and is applied when the retirement year falls in that window."
           />
+          <RadioGroup
+            legend="Tax a Pre-tax contribution saves today"
+            name="hh-taxSavedBasis"
+            value={values.taxSavedBasis}
+            onChange={set('taxSavedBasis')}
+            options={[
+              { value: 'average', label: 'Across the whole contribution' },
+              { value: 'marginal', label: 'At the marginal rate (as the current calculator)' },
+            ]}
+            hint="A deduction that crosses a bracket edge saves the higher rate only on the part above the edge: $10,000 into the 22% bracket, a $20,000 deduction saves 22% on $10,000 and 12% on the rest, about 17%."
+          />
         </>
       ))}
 

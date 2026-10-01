@@ -1005,6 +1005,10 @@ function TaxRates({ result }) {
   }
   const hasSide = s.extraSide.withdrawal > 0.5;
   const ahead = s.dollarDifference >= 0 ? 'Pre-tax' : 'Roth';
+  // The #/next preview can measure the saving across the whole contribution (an average rate)
+  // instead of the marginal rate; the current calculator always uses the marginal rate.
+  const average = result.rates.contributionRateBasis === 'average';
+  const rateNow = average ? result.rates.contributionRate : s.marginalNow;
   return (
     <div className="tax-rates">
       <div className="rate-pair">
@@ -1013,8 +1017,10 @@ function TaxRates({ result }) {
           <div className="stat-value">{formatPercent(s.taxSavedNow)}</div>
           <div className="stat-sub">
             {hasSide
-              ? `Your ${formatPercent(s.marginalNow)} marginal rate, less ${formatPercent(s.extraSideRate)} later tax on the taxable account the savings go into`
-              : 'Your marginal rate: the tax on your next dollar today'}
+              ? `Your ${formatPercent(rateNow)} ${average ? 'average rate on the contribution' : 'marginal rate'}, less ${formatPercent(s.extraSideRate)} later tax on the taxable account the savings go into`
+              : average
+                ? `The tax the whole contribution saves today, averaged across it (your marginal rate is ${formatPercent(s.marginalNow)})`
+                : 'Your marginal rate: the tax on your next dollar today'}
           </div>
         </div>
         <div className="rate-pair-vs">vs</div>

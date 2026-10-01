@@ -64,6 +64,8 @@ export function evaluateBlend({
   limit,
   contributors, // optional (household model): [{ takeHomeCost, limit }], each split at its own limit
   taxRules, // optional: retirement-year tax rules (see calculateRetirementTax); absent = today's
+  savedByDeduction, // optional (preview): x -> tax saved by deducting x; then this mix's Pre-tax part
+  //                   saves its own AVERAGE rate (fixed point), not marginalRate on every dollar
   returnRate,
   years,
   other, // { pretaxGross, taxableGross, taxableGains } — Existing Accounts' 4% withdrawals
@@ -72,8 +74,19 @@ export function evaluateBlend({
   filingStatus,
   year,
 }) {
-  const split = contributors ? splitBlendedByPerson(contributors, marginalRate, rothShare)
-    : splitBlended(takeHomeCost, marginalRate, limit, rothShare);
+  const splitAt = (t) =>
+    contributors ? splitBlendedByPerson(contributors, t, rothShare) : splitBlended(takeHomeCost, t, limit, rothShare);
+  let rateNow = marginalRate;
+  let split = splitAt(rateNow);
+  if (savedByDeduction) {
+    for (let i = 0; i < 100; i++) {
+      const P = split.pretaxToAccount;
+      const next = P > 0 ? savedByDeduction(P) / P : rateNow;
+      if (Math.abs(next - rateNow) < 1e-13) break;
+      rateNow = next;
+      split = splitAt(rateNow);
+    }
+  }
   const rothFV = futureValueAnnuity(split.rothToAccount, returnRate, years);
   const pretaxFV = futureValueAnnuity(split.pretaxToAccount, returnRate, years);
   const sideFV = futureValueAnnuity(split.excessToTaxable, returnRate, years);
@@ -113,6 +126,7 @@ export function evaluateBlend({
   return {
     rothShare,
     ...split,
+    rateNow, // the rate this mix's Pre-tax part saves (marginalRate unless savedByDeduction)
     rothFV,
     pretaxFV,
     sideFV,
