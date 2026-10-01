@@ -45,7 +45,19 @@ is **also the public "How this works" page** — see "Article page" below.
     `ordinaryIncome` (Pre-tax withdrawals, Roth conversions, pensions: ordinary rates, no FICA, not NIIT);
     `investmentOrdinaryIncome` (interest, non-qualified dividends, short-term gains: ordinary rates + NIIT);
     `preferentialIncome` (long-term gains, qualified dividends); `socialSecurity`.
-  - Open questions answered 2026-09-29 are ticked in the plan doc (remove `result.old` first, in phase 1).
+  - Open questions answered 2026-09-29 are ticked in the plan doc. (Superseded 2026-10-01: `result.old` and
+    `#/old-vs-new` STAY for now; the user will say when to remove them.)
+  - **Build alongside, then switch over** (user, 2026-10-01): the current calculator stays the default page and
+    stays intact while the new implementation is built and tested. The new version lives on `main` behind a
+    preview route **`#/next`** (one constant in `route.js`; sub-pages `#/next/...`), not linked from the current
+    header/footer, with a "Preview, not finished" banner. New UI goes in `src/next/`; new math in `src/lib` (shared).
+    Changes to existing shared lib functions must be ADDITIVE: new optional inputs whose defaults reproduce today's
+    behavior exactly, so every existing test keeps passing unchanged (that is the guarantee the current calculator
+    is untouched). The current calculator is NOT moved onto the household model / new tax engine until switchover;
+    preview pages reuse existing result components rather than copying them. Switchover (when the user says): new
+    homepage becomes the default, old calculator moves to `#/classic` briefly, then is deleted via a written
+    checklist; old share links must still open (flat values -> one-person household). Netlify branch deploys
+    were considered and rejected (long-lived branch drift over shared lib files; extra push step).
 - **Exposure check:** the GitHub repo is public and the Netlify site is open to anyone with the link, and
   ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
   proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
@@ -774,6 +786,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-01 — Decided how to build the roadmap: alongside the current calculator, on `main`, behind a preview route
+  `#/next` (see "Build alongside, then switch over" under Roadmap); `result.old` and `#/old-vs-new` stay for now. Plan
+  doc updated to match. No code change. 491 tests.
 - 2026-09-30 — "Total portfolio tax comparison" renamed "Total future portfolio comparison"; "Withdrawal rate needed"
   moved to the bottom as the highlighted verdict row, the 4% row demoted to a plain row. ARTICLE.md's description of
   the card rewritten to match. 491 tests.
