@@ -34,7 +34,8 @@ export function solvePortfolioWithdrawal(
   filingStatus,
   year,
   // taxableGainShare: share of the taxable bucket that is gain (the rest is cost basis).
-  { withdrawalRate = WITHDRAWAL_RATE, taxableGainShare = 1 } = {},
+  // taxRules: optional retirement-year tax rules (see calculateRetirementTax); absent = today's.
+  { withdrawalRate = WITHDRAWAL_RATE, taxableGainShare = 1, taxRules } = {},
 ) {
   const balances = {
     pretax: Math.max(0, buckets.pretax || 0),
@@ -62,6 +63,7 @@ export function solvePortfolioWithdrawal(
       ssBenefit,
       filingStatus,
       year,
+      taxRules,
     });
     return {
       withdrawals: w,

@@ -32,6 +32,10 @@
 //                                            catch-up age); the household figures are the sums.
 //                                            `savings` must equal the sum of the amounts.
 //                                            Absent = one saver at currentAge, unchanged.
+//   retirementTaxRules                     — OPTIONAL (the #/next preview): { thresholdScale,
+//                                            rateShift, ages } for the retirement-year tax, run
+//                                            through the single-year engine (calculateRetirementTax's
+//                                            taxRules). Absent = today's retirement tax, unchanged.
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
@@ -380,6 +384,7 @@ export function compareRothVsTraditional(inputs) {
       ssBenefit,
       filingStatus,
       year,
+      taxRules: inputs.retirementTaxRules,
     }).totalTax;
     const { points, best } = findOptimalBlend({
       takeHomeCost: contributionSplit.takeHomeCost,
@@ -399,6 +404,7 @@ export function compareRothVsTraditional(inputs) {
       ssBenefit,
       filingStatus,
       year,
+      taxRules: inputs.retirementTaxRules,
     });
     blend = { available: true, points, best };
   }
@@ -418,6 +424,7 @@ export function compareRothVsTraditional(inputs) {
       rothAccountWithdrawal: accountRothAnnualWithdrawal,
       pretaxSide: { withdrawal: pretaxSideRaw.annualWithdrawal, gains: pretaxSideRaw.gains },
       rothSide: { withdrawal: rothSideRaw.annualWithdrawal, gains: rothSideRaw.gains },
+      taxRules: inputs.retirementTaxRules,
     });
     if (!sideAware.available) {
       // $0 saved (or an equivalent edge case): there is nothing to measure, so every
@@ -553,6 +560,7 @@ export function compareRothVsTraditional(inputs) {
       taxableGainShare,
       ...solvePortfolioWithdrawal(targetAfterTaxIncome, buckets, ssBenefit, filingStatus, year, {
         taxableGainShare,
+        taxRules: inputs.retirementTaxRules,
       }),
     };
   }

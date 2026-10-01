@@ -39,10 +39,11 @@ describe('calculateYearTax (2026, HAND CALC)', () => {
     expect(r.marginalRates.ordinaryIncome.incomeTax).toBeCloseTo(0.185, 9);
   });
 
-  it('a working retiree: wages plus Social Security', () => {
+  it('a working retiree: wages plus Social Security (aged 66, so the age deductions apply)', () => {
     // wages 40,000 -> payroll 3,060. SS 24,000: combined 40,000 + 12,000 = 52,000
     // 50% tier 4,500; 85% tier 0.85 x 18,000 = 15,300 -> 19,800 (cap 0.85 x 24,000 = 20,400)
-    // ordinary 59,800; taxable 43,700 -> 1,240 + 12% x 31,300 (3,756) = 4,996; total 8,056
+    // AGI 59,800 (< 75,000, so the full senior deduction): 16,100 + 2,050 + 6,000 = 24,150
+    // taxable 59,800 - 24,150 = 35,650 -> 1,240 + 12% x 23,250 (2,790) = 4,030; total 7,090
     const r = calculateYearTax({
       filingStatus: 'single',
       year: Y,
@@ -50,8 +51,9 @@ describe('calculateYearTax (2026, HAND CALC)', () => {
       income: { socialSecurity: 24000 },
     });
     expect(r.lines.taxableSocialSecurity).toBeCloseTo(19800, 6);
-    expect(r.incomeTax).toBeCloseTo(4996, 6);
-    expect(r.totalTax).toBeCloseTo(8056, 6);
+    expect(r.lines.standardDeduction).toBe(24150);
+    expect(r.incomeTax).toBeCloseTo(4030, 6);
+    expect(r.totalTax).toBeCloseTo(7090, 6);
   });
 
   it('qualified dividends in the 0% bracket', () => {
@@ -129,6 +131,46 @@ describe('calculateYearTax (2026, HAND CALC)', () => {
     expect(r.incomeTax).toBe(0);
     expect(r.ordinaryBracketRate).toBe(0);
     expect(r.bracketRoom.ordinary).toEqual({ rate: 0, room: 6100, nextRate: 0.1 });
+  });
+});
+
+describe('age deductions (2026, HAND CALC)', () => {
+  const tax = (people, ordinaryIncome, filingStatus = 'single', year = Y) =>
+    calculateYearTax({ filingStatus, year, people, income: { ordinaryIncome } });
+
+  it('single, 67, $60,000 pension: + $2,050 and the full $6,000', () => {
+    // deduction 16,100 + 2,050 + 6,000 = 24,150; taxable 35,850 -> 1,240 + 12% x 23,450 (2,814) = 4,054
+    const r = tax([{ age: 67 }], 60000);
+    expect(r.lines.additional65Deduction).toBe(2050);
+    expect(r.lines.seniorDeduction).toBe(6000);
+    expect(r.incomeTax).toBeCloseTo(4054, 6);
+  });
+
+  it('single, 70, $100,000: the senior deduction is phased down by 6% of the excess over $75,000', () => {
+    // 6,000 - 6% x 25,000 = 4,500; deduction 16,100 + 2,050 + 4,500 = 22,650
+    // taxable 77,350 -> 1,240 + 4,560 + 22% x 26,950 (5,929) = 11,729
+    const r = tax([{ age: 70 }], 100000);
+    expect(r.lines.seniorDeduction).toBeCloseTo(4500, 6);
+    expect(r.incomeTax).toBeCloseTo(11729, 6);
+  });
+
+  it('married, both 66, $190,000: each $6,000 loses 6% of the excess over $150,000', () => {
+    // each 6,000 - 6% x 40,000 = 3,600 -> 7,200; additional 2 x 1,650 = 3,300
+    // deduction 32,200 + 3,300 + 7,200 = 42,700; taxable 147,300
+    // MFJ: 10% x 24,800 (2,480) + 12% x 76,000 (9,120) + 22% x 46,500 (10,230) = 21,830
+    const r = tax([{ age: 66 }, { age: 66 }], 190000, 'mfj');
+    expect(r.lines.seniorDeduction).toBeCloseTo(7200, 6);
+    expect(r.lines.additional65Deduction).toBe(3300);
+    expect(r.incomeTax).toBeCloseTo(21830, 6);
+  });
+
+  it('only those 65 or older count, and the senior deduction ends after 2028', () => {
+    expect(tax([{ age: 64 }], 60000).lines.standardDeduction).toBe(16100);
+    expect(tax([{ age: 66 }, { age: 60 }], 60000, 'mfj').lines.additional65Deduction).toBe(1650);
+    // 2029 (2026 data): 16,100 + 2,050 = 18,150; taxable 41,850 -> 1,240 + 12% x 29,450 (3,534) = 4,774
+    const later = tax([{ age: 67 }], 60000, 'single', 2029);
+    expect(later.lines.seniorDeduction).toBe(0);
+    expect(later.incomeTax).toBeCloseTo(4774, 6);
   });
 });
 

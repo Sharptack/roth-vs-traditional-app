@@ -63,6 +63,7 @@ export function evaluateBlend({
   marginalRate,
   limit,
   contributors, // optional (household model): [{ takeHomeCost, limit }], each split at its own limit
+  taxRules, // optional: retirement-year tax rules (see calculateRetirementTax); absent = today's
   returnRate,
   years,
   other, // { pretaxGross, taxableGross, taxableGains } — Existing Accounts' 4% withdrawals
@@ -93,6 +94,7 @@ export function evaluateBlend({
     ssBenefit,
     filingStatus,
     year,
+    taxRules,
   });
   // The same stack without the Pre-tax slice (Existing Accounts + Social Security + this mix's
   // side account): what blendRates() needs to measure the Pre-tax slice's own rate.
@@ -103,6 +105,7 @@ export function evaluateBlend({
     ssBenefit,
     filingStatus,
     year,
+    taxRules,
   }).totalTax;
   const extraTax = stack.totalTax - existingTax;
   const totalAfterTaxIncome = rothWithdrawal + pretaxWithdrawal + sideWithdrawal - extraTax;

@@ -23,7 +23,13 @@
 import { calculateTax, getStandardDeduction } from './taxCalculations.js';
 import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
 import { calculateCapitalGainsTax, calculateNiit } from './capitalGainsTax.js';
+import { calculateYearTax } from './yearTax.js';
 
+// taxRules (optional; the #/next preview): { thresholdScale, rateShift, ages } — when given, the
+// year is taxed by the single-year engine (yearTax.js) with those rules: fixed-dollar thresholds
+// scaled for inflation, a rate what-if, and the age 65+ deductions for the given ages. Without it,
+// the code below runs exactly as before (the current calculator). Both agree to the cent when the
+// rules are neutral (tested).
 export function calculateRetirementTax({
   pretaxWithdrawal = 0,
   taxableWithdrawal = 0,
@@ -31,8 +37,31 @@ export function calculateRetirementTax({
   ssBenefit = 0,
   filingStatus,
   year,
+  taxRules,
 }) {
   const capitalGains = taxableWithdrawal * taxableGainShare;
+  if (taxRules) {
+    const r = calculateYearTax({
+      filingStatus,
+      year,
+      people: (taxRules.ages ?? []).map((age) => ({ age })),
+      income: { ordinaryIncome: pretaxWithdrawal, preferentialIncome: capitalGains, socialSecurity: ssBenefit },
+      thresholdScale: taxRules.thresholdScale ?? 1,
+      rateShift: taxRules.rateShift ?? 0,
+    });
+    return {
+      taxableSS: r.lines.taxableSocialSecurity,
+      grossOrdinaryIncome: r.lines.ordinaryGross,
+      capitalGains,
+      ordinaryTaxableIncome: r.lines.ordinaryTaxableIncome,
+      ordinaryTax: r.ordinaryTax,
+      capitalGainsTax: r.capitalGainsTax,
+      magi: r.lines.magi,
+      niit: r.niit,
+      totalTax: r.incomeTax,
+      standardDeduction: r.lines.standardDeduction,
+    };
+  }
   const taxableSS = calculateTaxableSocialSecurity(
     pretaxWithdrawal + capitalGains,
     ssBenefit,

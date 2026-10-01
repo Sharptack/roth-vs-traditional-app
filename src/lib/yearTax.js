@@ -23,14 +23,33 @@
 //   rateShift       added to every ordinary bracket rate (a tax-law what-if, e.g. 0.03 = 3 points
 //                   higher). Capital-gains rates are not shifted.
 //
-// Simplifications: standard deduction only (no itemizing; the 65+ extra deduction and the
-// senior deduction are not yet included), no AMT, credits, QBI deduction or state tax.
+// Age deductions: for each person whose `age` is given and is 65 or older, the additional standard
+// deduction and (2025-2028) the senior deduction (data/ageDeductions.js). Callers that pass no
+// ages get today's standard deduction only, so every existing calculation is unchanged.
+//
+// Simplifications: standard deduction only (no itemizing), no AMT, credits, QBI deduction or
+// state tax. People with an age and no earnings (retirees) are fine: they owe no payroll tax.
 import { calculateHouseholdEmploymentTaxes } from './ficaTax.js';
 import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
 import { calculateTax, getBrackets, getMarginalRate, getStandardDeduction } from './taxCalculations.js';
 import { calculateCapitalGainsTax, calculateNiit } from './capitalGainsTax.js';
 import { CAPITAL_GAINS_BRACKETS } from '../data/capitalGainsBrackets.js';
+import { AGE_DEDUCTIONS } from '../data/ageDeductions.js';
 import { getYearData } from './yearLookup.js';
+
+// The 65+ additional standard deduction and the senior deduction for these people, at this MAGI.
+export function ageDeductions(people, filingStatus, year, magi) {
+  const seniors = people.filter((p) => p.age >= 65).length;
+  if (seniors === 0) return { additional65: 0, senior: 0, seniors };
+  const { data } = getYearData(AGE_DEDUCTIONS, year);
+  const additional65 = seniors * data.additional65[filingStatus];
+  const s = data.senior;
+  const perPerson =
+    year <= s.lastYear
+      ? Math.max(0, s.amount - s.phaseOutRate * Math.max(0, magi - s.phaseOutStart[filingStatus]))
+      : 0;
+  return { additional65, senior: seniors * perPerson, seniors };
+}
 
 // The probe for marginal rates: the extra tax from $100 more of one source, ÷ 100.
 export const MARGINAL_PROBE = 100;
@@ -75,7 +94,10 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
   );
   const ordinaryGross = earned - adjustments + ordinaryIncome + investmentOrdinaryIncome + taxableSocialSecurity;
   const agi = ordinaryGross + preferentialIncome;
-  const standardDeduction = getStandardDeduction(filingStatus, year);
+  const baseStandardDeduction = getStandardDeduction(filingStatus, year);
+  const age = ageDeductions(people, filingStatus, year, agi);
+  // Everything subtracted from AGI; "standardDeduction" below is this total.
+  const standardDeduction = baseStandardDeduction + age.additional65 + age.senior;
   const ordinaryTaxableIncome = Math.max(0, ordinaryGross - standardDeduction);
   const taxableIncome = Math.max(0, agi - standardDeduction);
 
@@ -102,8 +124,11 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
       selfEmploymentTaxDeduction: payroll.selfEmployment.deduction,
       pretaxDeferrals,
       agi,
-      magi: agi, // for NIIT, MAGI = AGI here (no foreign-income exclusion modeled)
-      standardDeduction,
+      magi: agi, // for NIIT and the senior deduction, MAGI = AGI here (no foreign-income exclusion modeled)
+      baseStandardDeduction,
+      additional65Deduction: age.additional65,
+      seniorDeduction: age.senior,
+      standardDeduction, // the total of the three above
       ordinaryGross, // ordinary income before the standard deduction
       ordinaryTaxableIncome,
       taxableIncome,

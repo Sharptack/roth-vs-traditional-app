@@ -10,7 +10,10 @@ import { NIIT_RATES } from '../data/niitRates.js';
 import { getStandardDeduction } from './taxCalculations.js';
 import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
 import { getYearData } from './yearLookup.js';
+import { ageDeductions } from './yearTax.js';
 
+// taxRules (optional): the same rules calculateRetirementTax takes (thresholdScale, rateShift,
+// ages), so the breakdown matches it whichever way the stack was taxed.
 export function explainFullTax({
   pretaxWithdrawal = 0,
   taxableWithdrawal = 0,
@@ -18,12 +21,22 @@ export function explainFullTax({
   ssBenefit = 0,
   filingStatus,
   year,
+  taxRules,
 }) {
+  const thresholdScale = taxRules?.thresholdScale ?? 1;
+  const rateShift = taxRules?.rateShift ?? 0;
   const capitalGains = taxableWithdrawal * taxableGainShare;
   const taxableBasis = taxableWithdrawal - capitalGains;
-  const taxableSS = calculateTaxableSocialSecurity(pretaxWithdrawal + capitalGains, ssBenefit, filingStatus, year);
-  const standardDeduction = getStandardDeduction(filingStatus, year);
+  const taxableSS = calculateTaxableSocialSecurity(pretaxWithdrawal + capitalGains, ssBenefit, filingStatus, year, thresholdScale);
+  const baseStandardDeduction = getStandardDeduction(filingStatus, year);
   const grossOrdinaryIncome = pretaxWithdrawal + taxableSS;
+  const age = ageDeductions(
+    (taxRules?.ages ?? []).map((a) => ({ age: a })),
+    filingStatus,
+    year,
+    grossOrdinaryIncome + capitalGains,
+  );
+  const standardDeduction = baseStandardDeduction + age.additional65 + age.senior;
   const ordinaryTaxableIncome = Math.max(0, grossOrdinaryIncome - standardDeduction);
 
   // Ordinary brackets: each row is the slice of ordinaryTaxableIncome inside that bracket.
@@ -35,8 +48,8 @@ export function explainFullTax({
   for (const { rate, upTo } of ordinaryBrackets) {
     if (ordinaryTaxableIncome <= bottom) break;
     const amount = Math.min(ordinaryTaxableIncome, upTo) - bottom;
-    const tax = amount * rate;
-    ordinaryRows.push({ rate, from: bottom, to: Math.min(ordinaryTaxableIncome, upTo), amount, tax });
+    const tax = amount * (rate + rateShift);
+    ordinaryRows.push({ rate: rate + rateShift, from: bottom, to: Math.min(ordinaryTaxableIncome, upTo), amount, tax });
     ordinaryTax += tax;
     bottom = upTo;
   }
@@ -65,7 +78,7 @@ export function explainFullTax({
 
   const magi = grossOrdinaryIncome + capitalGains;
   const { data: niitYear } = getYearData(NIIT_RATES, year);
-  const niitThreshold = niitYear.threshold[filingStatus];
+  const niitThreshold = niitYear.threshold[filingStatus] * thresholdScale;
   const niitBase = Math.min(Math.max(0, capitalGains), Math.max(0, magi - niitThreshold));
   const niit = niitYear.rate * niitBase;
 
@@ -74,7 +87,10 @@ export function explainFullTax({
     taxableSS,
     pretaxWithdrawal,
     grossOrdinaryIncome,
-    standardDeduction,
+    baseStandardDeduction,
+    additional65Deduction: age.additional65,
+    seniorDeduction: age.senior,
+    standardDeduction, // the total of the three above
     ordinaryTaxableIncome,
     ordinaryRows,
     ordinaryTax,

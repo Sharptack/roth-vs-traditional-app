@@ -41,6 +41,7 @@ export function calculateSideAwareRates({
   rothAccountWithdrawal, // RW: the Roth scenario's account, 4% of its value (tax-free)
   pretaxSide = NO_SIDE, // { withdrawal, gains }: the Pre-tax scenario's taxable account, 4%
   rothSide = NO_SIDE,
+  taxRules, // optional: retirement-year tax rules (see calculateRetirementTax); absent = today's
 }) {
   const W = pretaxAccountWithdrawal;
   if (!(W > 0)) return { available: false };
@@ -57,6 +58,7 @@ export function calculateSideAwareRates({
       ssBenefit,
       filingStatus,
       year,
+      ...(taxRules && { taxRules }),
     };
   };
   const stack = (accountPretax, side) => calculateRetirementTax(stackInputs(accountPretax, side));
