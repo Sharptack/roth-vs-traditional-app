@@ -17,7 +17,9 @@ export function getStandardDeduction(filingStatus, year) {
 }
 
 // Tax owed on TAXABLE income (i.e. income already net of deductions).
-export function calculateTax(taxableIncome, filingStatus, year) {
+// rateShift (optional, default 0): added to every bracket's rate, e.g. 0.03 = "rates 3 points
+// higher" — the tax-law what-if used by the single-year engine (yearTax.js).
+export function calculateTax(taxableIncome, filingStatus, year, rateShift = 0) {
   if (!(taxableIncome > 0)) return 0;
   const { brackets } = getFilingData(filingStatus, year);
   let tax = 0;
@@ -25,7 +27,7 @@ export function calculateTax(taxableIncome, filingStatus, year) {
   for (const { rate, upTo } of brackets) {
     if (taxableIncome <= bottom) break;
     const taxedInThisBracket = Math.min(taxableIncome, upTo) - bottom;
-    tax += taxedInThisBracket * rate;
+    tax += taxedInThisBracket * (rate + rateShift);
     bottom = upTo;
   }
   return tax;
@@ -35,13 +37,18 @@ export function calculateTax(taxableIncome, filingStatus, year) {
 // A bracket owns [bottom, upTo), so exactly at a boundary the next dollar is in
 // the higher bracket. If taxable income is negative (income below the standard
 // deduction) the next dollar is still sheltered, so the marginal rate is 0.
-export function getMarginalRate(taxableIncome, filingStatus, year) {
+export function getMarginalRate(taxableIncome, filingStatus, year, rateShift = 0) {
   if (taxableIncome < 0) return 0;
   const { brackets } = getFilingData(filingStatus, year);
   for (const { rate, upTo } of brackets) {
-    if (taxableIncome < upTo) return rate;
+    if (taxableIncome < upTo) return rate + rateShift;
   }
-  return brackets[brackets.length - 1].rate;
+  return brackets[brackets.length - 1].rate + rateShift;
+}
+
+// The ordinary brackets for a year (shared with yearTax.js for bracket room).
+export function getBrackets(filingStatus, year) {
+  return getFilingData(filingStatus, year).brackets;
 }
 
 // Convenience for Section 1: gross income -> deduction, taxable income, tax,

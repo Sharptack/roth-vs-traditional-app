@@ -24,10 +24,12 @@
 import { FICA_RATES } from '../data/ficaRates.js';
 import { getYearData } from './yearLookup.js';
 
-export function calculateEmploymentTaxes({ wages = 0, selfEmploymentIncome = 0, filingStatus, year }) {
+// thresholdScale (optional, default 1): multiplies the Additional Medicare threshold, a fixed dollar
+// amount the law never indexes (yearTax.js).
+export function calculateEmploymentTaxes({ wages = 0, selfEmploymentIncome = 0, filingStatus, year, thresholdScale = 1 }) {
   const { data } = getYearData(FICA_RATES, year);
-  const threshold = data.additionalMedicare.threshold[filingStatus];
-  if (threshold === undefined) throw new Error(`Unknown filing status: ${filingStatus}`);
+  if (data.additionalMedicare.threshold[filingStatus] === undefined) throw new Error(`Unknown filing status: ${filingStatus}`);
+  const threshold = data.additionalMedicare.threshold[filingStatus] * thresholdScale;
 
   const w2 = Math.max(0, wages);
   const w2SocialSecurity = data.socialSecurityRate * Math.min(w2, data.wageBase);
@@ -80,10 +82,10 @@ export function calculateFica(grossWages, filingStatus, year) {
 // -> the same shape as calculateEmploymentTaxes (summed over people), plus `people`: each
 //    person's own result with additionalMedicare left out (it belongs to the household).
 // For one earner the result equals calculateEmploymentTaxes exactly.
-export function calculateHouseholdEmploymentTaxes({ earners, filingStatus, year }) {
+export function calculateHouseholdEmploymentTaxes({ earners, filingStatus, year, thresholdScale = 1 }) {
   const { data } = getYearData(FICA_RATES, year);
-  const threshold = data.additionalMedicare.threshold[filingStatus];
-  if (threshold === undefined) throw new Error(`Unknown filing status: ${filingStatus}`);
+  if (data.additionalMedicare.threshold[filingStatus] === undefined) throw new Error(`Unknown filing status: ${filingStatus}`);
+  const threshold = data.additionalMedicare.threshold[filingStatus] * thresholdScale;
 
   const people = earners.map(({ wages = 0, selfEmploymentIncome = 0 }) => {
     const r = calculateEmploymentTaxes({ wages, selfEmploymentIncome, filingStatus, year });

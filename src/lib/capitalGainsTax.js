@@ -62,10 +62,12 @@ export function calculateCapitalGainsTax(
 // Net Investment Income Tax: rate x the smaller of net investment income and
 // MAGI above the filing-status threshold (see data/niitRates.js).
 // magi: modified AGI, including the investment income itself.
-export function calculateNiit(magi, netInvestmentIncome, filingStatus, year) {
+// thresholdScale (optional, default 1): the threshold is a fixed dollar amount (never indexed),
+// so in today's dollars it shrinks each year (yearTax.js).
+export function calculateNiit(magi, netInvestmentIncome, filingStatus, year, thresholdScale = 1) {
   const { data } = getYearData(NIIT_RATES, year);
-  const threshold = data.threshold[filingStatus];
-  if (threshold === undefined) throw new Error(`Unknown filing status: ${filingStatus}`);
+  const threshold = data.threshold[filingStatus] * thresholdScale;
+  if (Number.isNaN(threshold)) throw new Error(`Unknown filing status: ${filingStatus}`);
   const base = Math.min(Math.max(0, netInvestmentIncome), Math.max(0, magi - threshold));
   return data.rate * base;
 }

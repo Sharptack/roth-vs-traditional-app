@@ -22,13 +22,16 @@
 import { SS_TAX_THRESHOLDS } from '../data/ssTaxThresholds.js';
 import { getYearData } from './yearLookup.js';
 
-export function calculateTaxableSocialSecurity(otherIncome, ssBenefit, filingStatus, year) {
+// thresholdScale (optional, default 1): multiplies the fixed-dollar thresholds, which the law never
+// raises for inflation, so in today's dollars they shrink each year (yearTax.js).
+export function calculateTaxableSocialSecurity(otherIncome, ssBenefit, filingStatus, year, thresholdScale = 1) {
   if (!(ssBenefit > 0)) return 0;
 
   const { data } = getYearData(SS_TAX_THRESHOLDS, year);
   const thresholds = data[filingStatus];
   if (!thresholds) throw new Error(`Unknown filing status: ${filingStatus}`);
-  const { lower, upper } = thresholds;
+  const lower = thresholds.lower * thresholdScale;
+  const upper = thresholds.upper * thresholdScale;
 
   const combinedIncome = Math.max(0, otherIncome) + 0.5 * ssBenefit;
   if (combinedIncome <= lower) return 0;

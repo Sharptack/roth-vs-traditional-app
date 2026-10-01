@@ -183,8 +183,11 @@ flat form values (`toCompareInputs`) and never goes through the household; every
   selectors in a headless script read ITS numbers; scope to `.household-form`'s `main`. Driving Chrome: launch with
   `--remote-debugging-port` and use Node's built-in WebSocket on the DevTools protocol (no puppeteer installed); set React
   inputs with the native value setter + an input/change event.
-- **Left open:** result-card copy still says "your account" with two savers; the plain-text "Copy inputs" summary isn't
-  built for the preview (the link only); ARTICLE.md is unchanged (the public calculator is unchanged).
+- **Still rough (user, 2026-10-01: "we may need to come back to some of that"; also noted in the plan doc):**
+  (1) result-card copy still says "your account"/"To your account" when two people save; (2) the preview copies only a
+  link, not the plain-text "Copy inputs" summary the current calculator copies (shareText reads flat inputs, so a
+  two-person version needs its own describe-inputs); (3) the Roth/Pre-tax type and account type are shared by both
+  spouses, not per person. ARTICLE.md is unchanged (the public calculator is unchanged).
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
