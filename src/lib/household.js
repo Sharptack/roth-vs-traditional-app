@@ -21,7 +21,7 @@
 //     contributions: [{ owner: 'p1', amount }] },
 //   spending: { debtPaymentsEnding, otherExpensesEnding, retirementLifestyle },
 //   calculators: { tax: { ordinaryIncome, investmentOrdinaryIncome, preferentialIncome,
-//                         socialSecurity } },   // calculator-only inputs, under the calculator's name
+//                         socialSecurity }, projection: { endAge, heirTaxRate } },   // calculator-only inputs, under the calculator's name
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedAcrossContribution },   // the last two: retirement-year
 //                                          // tax rules (phase 2); 0 / false = today's rules
 // }
@@ -35,6 +35,12 @@
 // form -> household -> compare inputs gives exactly the inputs toCompareInputs gives (tested).
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from './formInputs.js';
 import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
+
+// The projection page's own inputs (stored under calculators.projection).
+export const PROJECTION_DEFAULT_VALUES = {
+  projEndAge: '95', // person 1's age in the last projected year
+  projHeirTaxRate: '0.24', // the tax rate heirs pay on inherited Pre-tax money
+};
 
 export const HOUSEHOLD_VERSION = 1;
 
@@ -82,6 +88,7 @@ export const PREVIEW_DEFAULT_VALUES = {
   ...SPOUSE_DEFAULT_VALUES,
   ...NEW_RULES_DEFAULT_VALUES,
   ...TAX_CALCULATOR_DEFAULT_VALUES,
+  ...PROJECTION_DEFAULT_VALUES,
   accounts: accountRowsFromFlat(DEFAULT_FORM_VALUES),
 };
 const blankAsNull = (text) => (String(text ?? '').trim() === '' ? null : parseNumber(text));
@@ -156,6 +163,10 @@ export function toHousehold(values, year) {
         preferentialIncome: blankAsZero(values.taxPreferentialIncome),
         socialSecurity: blankAsZero(values.taxSocialSecurity),
       },
+      projection: {
+        endAge: values.projEndAge === undefined ? undefined : parseNumber(values.projEndAge),
+        heirTaxRate: values.projHeirTaxRate === undefined ? undefined : Number(values.projHeirTaxRate),
+      },
     },
     assumptions: {
       returnRate: flat.returnRate,
@@ -207,6 +218,10 @@ export function validateHousehold(household) {
     }
     if (!ids.has(a.owner)) errors.push(`Account ${a.id} belongs to someone not in the household.`);
     if (!['pretax', 'roth', 'taxable'].includes(a.type)) errors.push(`Account ${a.id} has an unknown type.`);
+  }
+  const endAge = household.calculators?.projection?.endAge;
+  if (endAge !== undefined && (!isNum(endAge) || endAge > 120 || endAge < year - people[0].birthYear)) {
+    errors.push('Choose an end age for the projection, at or above your current age (up to 120).');
   }
   const inflation = household.assumptions?.inflationRate ?? 0;
   if (!isNum(inflation) || inflation < -0.05 || inflation > 0.1) errors.push('Choose an inflation rate (−5% to 10%).');

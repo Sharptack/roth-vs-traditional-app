@@ -1172,6 +1172,8 @@ describe('NextApp (#/next preview)', () => {
     const roth = renderToStaticMarkup(<NextApp initialPage="roth" />);
     expect(roth).toContain('Roth vs. Pre-tax inputs');
     expect(roth).toContain('Retirement income number');
+    expect(roth).toContain('RMDs start at 75.');
+    expect(roth).toContain('href="#/next/projection"');
     expect(roth).toContain('href="#/next"');
     expect(roth.indexOf('Roth vs. Pre-tax inputs')).toBeLessThan(roth.indexOf('>Household<'));
     expect(roth).not.toMatch(/NaN|Infinity/);
@@ -1181,6 +1183,15 @@ describe('NextApp (#/next preview)', () => {
     expect(tax).toContain('Show the calculation');
     expect(tax).toContain("This year&#x27;s other income");
     expect(tax).not.toMatch(/NaN|Infinity/);
+    const proj = renderToStaticMarkup(<NextApp initialPage="projection" />);
+    expect(proj).toContain('Funded status');
+    expect(proj).toContain('Lifetime summary');
+    expect(proj).toContain('Income by source in retirement');
+    expect(proj).toContain('Balances over time');
+    expect(proj).toContain('Year by year');
+    expect(proj).toContain('Project to age');
+    expect(proj).not.toMatch(/NaN|Infinity/);
+    expect(html).toContain('href="#/next/projection"');
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
   });
 

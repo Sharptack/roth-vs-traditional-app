@@ -1788,3 +1788,49 @@ th.win .th-sub {
     grid-template-columns: 1fr;
   }
 }
+
+/* StackedBarChart (projection page) */
+.chart-hover-band {
+  fill: var(--text);
+  opacity: 0.05;
+}
+
+.chart-overlay-line {
+  stroke: var(--text);
+}
+
+.chart-tooltip-key-line,
+.chart-legend-line {
+  background: var(--text);
+  height: 2px !important;
+  align-self: center;
+}
+
+/* the projection's year-by-year table */
+.table-scroll {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.projection-table {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.projection-table th,
+.projection-table td {
+  text-align: right;
+  padding: 4px 8px;
+}
+
+.projection-table th:first-child,
+.projection-table td:first-child,
+.projection-table th:nth-child(2),
+.projection-table td:nth-child(2) {
+  text-align: left;
+}
+
+.projection-table .short-row td {
+  color: var(--critical, #b42318);
+}

@@ -83,6 +83,12 @@ export const HOUSEHOLD_SECTIONS = [
   },
   { id: 'existing', title: 'Existing Accounts', summary: (v) => accountsSummary(v.accounts) },
   {
+    id: 'projection',
+    title: 'Projection',
+    calculator: 'projection', // the projection page's own inputs
+    summary: (v) => `To age ${v.projEndAge || '—'} · heirs taxed at ${Math.round(Number(v.projHeirTaxRate ?? 0) * 100)}%`,
+  },
+  {
     id: 'thisYear',
     title: "This year's other income",
     calculator: 'tax', // the tax calculator's own inputs

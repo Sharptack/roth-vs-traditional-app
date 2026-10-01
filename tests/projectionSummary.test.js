@@ -57,3 +57,25 @@ describe('sustainableSpending (HAND CALC)', () => {
     expect(s).toBeLessThanOrEqual(137932.67 + 0.01);
   });
 });
+
+describe('projectionView and its tile', () => {
+  it('funded status agrees with whether the money lasts at the actual need', async () => {
+    const { PREVIEW_DEFAULT_VALUES, toHousehold } = await import('../src/lib/household.js');
+    const { projectionView } = await import('../src/lib/projectionSummary.js');
+    const { projectionTile } = await import('../src/lib/suiteTiles.js');
+    for (const [values, need] of [
+      [{}, 60000],
+      [{}, 200000],
+      [{ projEndAge: '100', projHeirTaxRate: '0.32' }, 80000],
+    ]) {
+      const h = toHousehold({ ...PREVIEW_DEFAULT_VALUES, ...values }, Y);
+      const v = projectionView(h, need);
+      expect(v.funded).toBeCloseTo(v.sustainable / need, 12);
+      expect(v.summary.runsOut).toBe(v.sustainable < need);
+      expect(v.rows[v.rows.length - 1].ages[0]).toBe(Number(values.projEndAge ?? 95));
+      expect(v.summary.heirTaxRate).toBe(Number(values.projHeirTaxRate ?? 0.24));
+      const tile = projectionTile(v);
+      expect(tile.headline).toMatch(v.summary.runsOut ? /^Runs out at \d+$/ : /^\d+% funded$/);
+    }
+  });
+});

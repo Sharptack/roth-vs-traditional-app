@@ -387,6 +387,19 @@ export default function HouseholdForm({
         </>
       ))}
 
+      {section('projection', (
+        <>
+          <AgeInput label="Project to age" value={values.projEndAge} onChange={set('projEndAge')} />
+          <SelectInput
+            label="Tax rate for heirs on inherited Pre-tax money"
+            hint="Used only for the after-tax ending balance."
+            value={values.projHeirTaxRate}
+            onChange={set('projHeirTaxRate')}
+            options={['0', '0.12', '0.22', '0.24', '0.32', '0.35'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%` }))}
+          />
+        </>
+      ))}
+
       {section('thisYear', (
         <>
           <p className="hint">

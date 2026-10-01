@@ -23,3 +23,13 @@ export function taxTile(t) {
     detail: `${formatCurrency(t.result.incomeTax)} federal income tax this year`,
   };
 }
+
+// Projection: funded status, and how long the money lasts.
+export function projectionTile(view) {
+  if (!view) return { headline: 'Needs inputs', detail: 'Fill in the household to project it.' };
+  const pct = Math.round(view.funded * 100);
+  return {
+    headline: view.summary.runsOut ? `Runs out at ${view.summary.moneyLastsTo + 1}` : `${pct}% funded`,
+    detail: `Supports ${formatCurrency(view.sustainable)}/yr after tax to age ${view.endAge}; the retirement income number is ${formatCurrency(view.need)}`,
+  };
+}

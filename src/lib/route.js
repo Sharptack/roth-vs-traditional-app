@@ -13,7 +13,7 @@ export const OLD_VS_NEW_HASH = '#/old-vs-new';
 export const NEXT_HASH = '#/next';
 // The preview's pages: its homepage (the shared inputs and a tile per calculator) and one page per
 // calculator. Unknown sub-pages show the homepage.
-export const NEXT_PAGES = { roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax` };
+export const NEXT_PAGES = { roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax`, projection: `${NEXT_HASH}/projection` };
 
 export function nextPageFromHash(hash) {
   const found = Object.entries(NEXT_PAGES).find(([, h]) => h === hash);

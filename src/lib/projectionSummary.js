@@ -60,3 +60,16 @@ export function sustainableSpending(household, options = {}) {
   }
   return lo;
 }
+
+// Everything the projection page and its tile show, from the household and the spending need
+// (the Roth calculator's retirement income number). The calculator's own inputs live under
+// household.calculators.projection: { endAge, heirTaxRate }.
+//   funded: sustainable spending ÷ the need (1 = exactly funded; above 1 = overfunded).
+export function projectionView(household, need) {
+  const own = household.calculators?.projection ?? {};
+  const options = { endAge: own.endAge };
+  const { rows, runOutYear, endAge } = runProjection(household, { ...options, need });
+  const summary = summarizeProjection(rows, { heirTaxRate: own.heirTaxRate });
+  const sustainable = sustainableSpending(household, options);
+  return { rows, runOutYear, endAge, summary, need, sustainable, funded: need > 0 ? sustainable / need : null };
+}

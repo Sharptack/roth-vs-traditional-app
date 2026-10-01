@@ -4,20 +4,24 @@
 //   #/next       the homepage: the shared household inputs and a tile per calculator
 //   #/next/roth  the Roth vs. Pre-tax calculator (household model, phase 1)
 //   #/next/tax   the tax calculator (single-year engine, phase 2)
+//   #/next/projection  the year-by-year projection (phases 4-5)
 // Each calculator page shows its own inputs first, then the shared ones, and links back home.
 // State is its own; the current calculator's inputs are not shared or touched.
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import ResultsSummary from '../components/ResultsSummary.jsx';
 import { compareRothVsTraditional } from '../lib/compare.js';
 import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs, toHousehold, validateHousehold } from '../lib/household.js';
 import { householdValuesFromSearch } from '../lib/householdLink.js';
-import { SHARED_SECTION_IDS } from '../lib/householdForm.js';
+import { DEFAULT_SECTION_IDS, SHARED_SECTION_IDS } from '../lib/householdForm.js';
+import { projectionView } from '../lib/projectionSummary.js';
+import { rmdStartAge } from '../lib/rmd.js';
 import { CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, nextPageFromHash } from '../lib/route.js';
-import { rothTile, taxTile } from '../lib/suiteTiles.js';
+import { projectionTile, rothTile, taxTile } from '../lib/suiteTiles.js';
 import { householdToYearTaxParams, taxCalculatorResult } from '../lib/taxCalculator.js';
 import HouseholdForm from './HouseholdForm.jsx';
 import ShareHousehold from './ShareHousehold.jsx';
 import TaxResult from './TaxResult.jsx';
+import ProjectionResult from './ProjectionResult.jsx';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -52,6 +56,14 @@ export const CALCULATORS = [
     // This year's Pre-tax savings are deducted, so Future Contributions are listed here too.
     sharedSections: [...SHARED_SECTION_IDS.slice(0, 4), 'contributions', ...SHARED_SECTION_IDS.slice(4)],
   },
+  {
+    id: 'projection',
+    title: 'Year-by-year projection',
+    blurb: 'From today to the end age: income, taxes, RMDs and balances every year, and whether the money lasts.',
+    ownSections: ['projection'],
+    ownTitle: 'Projection inputs',
+    sharedSections: DEFAULT_SECTION_IDS,
+  },
 ];
 
 function usePreviewPage() {
@@ -77,7 +89,14 @@ export default function NextApp({ initialPage }) {
 
   const roth = useMemo(() => previewResult(values, CURRENT_YEAR), [values]);
   const tax = useMemo(() => taxCalculatorResult(householdToYearTaxParams(roth.household)), [roth]);
-  const tiles = { roth: rothTile(roth.result), tax: taxTile(tax) };
+  // The projection runs many whole projections (sustainable spending), so it follows the inputs a
+  // beat behind while typing (useDeferredValue) instead of blocking each keystroke.
+  const deferredRoth = useDeferredValue(roth);
+  const projection = useMemo(
+    () => (deferredRoth.result.valid ? projectionView(deferredRoth.household, deferredRoth.result.retirementNeed.target) : null),
+    [deferredRoth],
+  );
+  const tiles = { roth: rothTile(roth.result), tax: taxTile(tax), projection: projectionTile(projection) };
 
   const formProps = { values, onChange: handleChange, locked, onEditCopy: () => setLocked(false) };
   const share = !locked && <ShareHousehold values={values} />;
@@ -126,6 +145,12 @@ export default function NextApp({ initialPage }) {
             </p>
             <h1>{calculator.title} (preview)</h1>
             <p>{calculator.blurb}</p>
+            {calculator.id === 'roth' && Number.isFinite(roth.household.people[0].birthYear) && (
+              <p className="header-links">
+                RMDs start at {rmdStartAge(roth.household.people[0].birthYear)}.{' '}
+                <a href={NEXT_PAGES.projection}>See year-by-year taxes &rarr;</a>
+              </p>
+            )}
           </header>
           <main className="calc-layout">
             <div className="inputs-column">
@@ -146,7 +171,9 @@ export default function NextApp({ initialPage }) {
               />
             </div>
             <div className="results-column">
-              {calculator.id === 'roth' ? <ResultsSummary result={roth.result} /> : <TaxResult tax={tax} />}
+              {calculator.id === 'roth' && <ResultsSummary result={roth.result} />}
+              {calculator.id === 'tax' && <TaxResult tax={tax} />}
+              {calculator.id === 'projection' && <ProjectionResult view={projection} />}
             </div>
           </main>
         </>

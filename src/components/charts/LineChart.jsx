@@ -31,6 +31,8 @@ export default function LineChart({
   yLabel,
   zones,
   includeZero = true,
+  markers = true, // a dot on every point; off for long series (e.g. 60 projected years)
+  yFloor, // optional: the axis never goes below this (e.g. 0 for balances, which can't be negative)
 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
@@ -52,8 +54,9 @@ export default function LineChart({
   const allY = series.flatMap((s) => s.points.map((p) => p.y));
   const yRawMin = includeZero ? Math.min(...allY, 0) : Math.min(...allY);
   const yRawMax = includeZero ? Math.max(...allY, 0) : Math.max(...allY);
-  const [yPadMin, yPadMax] = padDomain(yRawMin, yRawMax, 0.15);
-  const yTicksList = niceTicks(yPadMin, yPadMax, 5);
+  const [yPadMinRaw, yPadMax] = padDomain(yRawMin, yRawMax, 0.15);
+  const yPadMin = yFloor === undefined ? yPadMinRaw : Math.max(yFloor, yPadMinRaw);
+  const yTicksList = niceTicks(yPadMin, yPadMax, 5).filter((t) => yFloor === undefined || t >= yFloor);
   const yDomainMin = Math.min(yPadMin, yTicksList[0]);
   const yDomainMax = Math.max(yPadMax, yTicksList[yTicksList.length - 1]);
   const yScale = linearScale([yDomainMin, yDomainMax], [plotBottom, plotTop]);
@@ -152,7 +155,7 @@ export default function LineChart({
             return (
               <g key={s.key}>
                 <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                {s.points.map((p) => (
+                {markers && s.points.map((p) => (
                   <circle
                     key={`${s.key}-${p.x}`}
                     cx={xScale(p.x)}

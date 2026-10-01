@@ -78,7 +78,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (582 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (587 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -129,7 +129,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   `household.js` (the household model), `householdForm.js` (the preview form's sections), `householdLink.js` (preview share
   links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
   Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
-  Phase 3: `rmd.js`, `data/rmdTable.js`. Phase 4: `projection.js`.
+  Phase 3: `rmd.js`, `data/rmdTable.js`. Phase 4: `projection.js`. Phase 5: `projectionSummary.js`, `src/next/ProjectionResult.jsx`,
+  `components/charts/StackedBarChart.jsx`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -273,6 +274,23 @@ catch-up at 50, and a RECONCILIATION with compare.js's all-Pre-tax portfolio in 
 snapshot counts Social Security from the first retirement year even before 62 (the projection starts it at the claiming
 age), and it holds today's IRS limit for every saving year (the projection ages into catch-up). Not built yet: the
 projection page (phase 5), summarizeProjection, an end-age input, the Roth vs. Pre-tax lifetime run (phase 6).
+
+## Phase 5: projection page (done 2026-10-01, in the preview)
+`#/next/projection` (`NEXT_PAGES.projection`), a third tile on the homepage (funded % or "Runs out at N"), and a link from
+the preview Roth page ("RMDs start at 75. See year-by-year taxes →"). Own inputs (`calculators.projection`; form keys
+`projEndAge` default 95, `projHeirTaxRate` default 24%). `lib/projectionSummary.js`: `summarizeProjection` (total tax,
+retirement after-tax income, ending balance, after-tax for heirs, average effective rate, highest-tax year, money lasts to)
+— DEVIATION from the plan doc: taxable accounts count in FULL for heirs (step-up in basis, IRC §1014), not "taxable on its
+gains"; `sustainableSpending` (bisection on the need, $1) and `projectionView` (funded = sustainable ÷ the retirement income
+number). Page (`src/next/ProjectionResult.jsx`): funded status hero, lifetime summary, income by source in retirement
+(new `components/charts/StackedBarChart.jsx`: stacked SS / Pre-tax / taxable / Roth withdrawals + total tax as a line on
+the same axis; 2px gaps, rounded stack tops, hover column, legend), balances over time (LineChart; new optional props
+`markers` and `yFloor`, defaults unchanged), year-by-year table with "Show all columns". Colors are fixed per source in
+both charts (SS series-1, Pre-tax 2, taxable 3, Roth 4; validated with the dataviz script, light contrast WARN relieved by
+legend + table). The projection follows the inputs via useDeferredValue (sustainable spending runs ~25 projections).
+SPEED: getYearData is memoized (it sorted keys on every call) and the projection solves with `calculateYearTaxTotals`
+(no marginal-rate probes) and 50 bisection steps: one projection 86 ms -> 8 ms. Noticed and correct: Additional Medicare
+starts biting a $100,000 earner around 2055 — its $200,000 threshold shrinks in today's dollars at 2.5% inflation.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -940,6 +958,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).
   No code change.
+- 2026-10-01 (h) — Phase 5 in the preview: the projection page (funded status, lifetime summary, stacked income chart,
+  balances chart, year table), sustainable spending, StackedBarChart; projection 10x faster. 587 tests.
 - 2026-10-01 (g) — Phase 4: the year-by-year projection engine (starts today), proportional strategy, hand-verified and
   reconciled with the total portfolio section to the cent. 582 tests.
 - 2026-10-01 (f) — Phase 3: RMD table (from the regulation) and `rmd.js`, hand-verified. 572 tests.
