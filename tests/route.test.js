@@ -19,6 +19,7 @@ describe('routeFromHash', () => {
     expect(routeFromHash(NEXT_HASH)).toBe('next');
     expect(routeFromHash('#/next')).toBe('next');
     expect(routeFromHash('#/next/tax')).toBe('next');
+    expect(routeFromHash('#next')).toBe('next');
     expect(routeFromHash('#/nextish')).toBe('calculator');
   });
   it('shows the calculator for the empty hash, the home hash, and anything unknown', () => {

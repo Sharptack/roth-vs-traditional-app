@@ -1167,12 +1167,14 @@ describe('NextApp (#/next preview)', () => {
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
   });
 
-  it('shows the spouse block only when filing jointly, and renders a two-earner result', async () => {
+  it('shows the spouse fields only when filing jointly, and renders a two-earner result', async () => {
     const { default: SpouseInputs } = await import('../src/next/SpouseInputs.jsx');
     const { previewResult } = await import('../src/next/NextApp.jsx');
     const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
     const noop = () => {};
-    expect(renderToStaticMarkup(<SpouseInputs values={PREVIEW_DEFAULT_VALUES} onChange={noop} />)).toBe('');
+    const singleForm = renderToStaticMarkup(<SpouseInputs values={PREVIEW_DEFAULT_VALUES} onChange={noop} />);
+    expect(singleForm).toContain('Switch to married filing jointly to add a spouse');
+    expect(singleForm).not.toContain("Spouse&#x27;s gross income");
     const values = { ...PREVIEW_DEFAULT_VALUES, filingStatus: 'mfj', includeSpouse: 'yes', spouseIncome: '60000' };
     const form = renderToStaticMarkup(<SpouseInputs values={values} onChange={noop} />);
     expect(form).toContain("Spouse&#x27;s gross income");

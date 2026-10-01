@@ -164,9 +164,9 @@ flat form values (`toCompareInputs`) and never goes through the household; every
 - **Done:** `compare.js` optional input `earners` (absent = today's path): per-person payroll tax and Social Security.
   `householdToCompareInputs` sets it only for two people. Result shapes are unchanged (`current.fica` gains `people`;
   `socialSecurity` has `annualBenefit`, `estimated`, `people`), so ResultsSummary needed no change.
-- **Done:** preview route `#/next` (`NEXT_HASH` in route.js; `#/next/...` also routes there), `src/next/NextApp.jsx`
+- **Done:** preview route `#/next` (`NEXT_HASH` in route.js; `#/next/...` and `#next` also route there), `src/next/NextApp.jsx`
   ("Preview, not finished" banner, link back to `#/`, the existing InputForm + ResultsSummary, own state) and
-  `src/next/SpouseInputs.jsx` (shown only for married filing jointly; "Enter your spouse separately?"). InputForm now
+  `src/next/SpouseInputs.jsx` (always shown; when not filing jointly it offers a "Switch to married filing jointly" button; then "Enter your spouse separately?"). InputForm now
   also exports its field helpers (`AgeInput`, `CurrencyInput`, `RadioGroup`, `SelectInput`). `previewResult` in
   NextApp.jsx is the testable calculation. Not linked from the current pages (smoke test checks).
 - **Not done yet (phase 1):** contribution limits per person beyond the owner's age (Future Contributions are still one

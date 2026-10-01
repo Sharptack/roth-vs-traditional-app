@@ -1,4 +1,5 @@
-// The preview's "Spouse" block (household model, phase 1). Shown only when filing jointly.
+// The preview's "Spouse" block (household model, phase 1). Always shown; the spouse's fields
+// appear only when filing jointly and "Enter your spouse separately?" is Yes.
 // A first version: the full shared-inputs component (people + an accounts list) replaces the
 // current form in a later step.
 import { AgeInput, CurrencyInput, RadioGroup, SelectInput } from '../components/InputForm.jsx';
@@ -9,9 +10,9 @@ const SPOUSE_INCOME_TYPES = [
 ];
 
 export default function SpouseInputs({ values, onChange }) {
-  if (values.filingStatus !== 'mfj') return null;
   const set = (name) => (value) => onChange(name, value);
-  const included = values.includeSpouse === 'yes';
+  const joint = values.filingStatus === 'mfj';
+  const included = joint && values.includeSpouse === 'yes';
   return (
     <section className="card input-form spouse-inputs" aria-labelledby="spouse-title">
       <div className="form-head">
@@ -19,7 +20,17 @@ export default function SpouseInputs({ values, onChange }) {
           Spouse
         </h2>
       </div>
-      <RadioGroup
+      {!joint && (
+        <>
+          <p className="hint">
+            New in the preview: a spouse can be entered with their own income, age and Social Security.
+          </p>
+          <button type="button" className="link-button" onClick={() => onChange('filingStatus', 'mfj')}>
+            Switch to married filing jointly to add a spouse
+          </button>
+        </>
+      )}
+      {joint && <RadioGroup
         legend="Enter your spouse separately?"
         name="includeSpouse"
         value={values.includeSpouse}
@@ -33,7 +44,7 @@ export default function SpouseInputs({ values, onChange }) {
             ? 'The income, age and Social Security above are now yours alone. Payroll tax and Social Security are figured per person, with a spousal benefit when it is larger. The comparison retires when the first of you does.'
             : 'With one combined income, payroll tax and Social Security treat the household as one earner (as the current calculator does).'
         }
-      />
+      />}
       {included && (
         <>
           <CurrencyInput label="Spouse's gross income (annual)" value={values.spouseIncome} onChange={set('spouseIncome')} />

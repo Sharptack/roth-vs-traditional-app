@@ -16,6 +16,7 @@ export function routeFromHash(hash) {
   if (hash === ARTICLE_HASH) return 'article';
   if (hash === SCENARIOS_HASH) return 'scenarios';
   if (hash === OLD_VS_NEW_HASH) return 'oldVsNew';
-  if (hash === NEXT_HASH || hash.startsWith(`${NEXT_HASH}/`)) return 'next';
+  // "#next" (no slash) is accepted too, since it is easy to type that way.
+  if (hash === NEXT_HASH || hash === '#next' || hash.startsWith(`${NEXT_HASH}/`)) return 'next';
   return 'calculator';
 }
