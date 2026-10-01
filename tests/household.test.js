@@ -12,7 +12,8 @@ import {
   validateHousehold,
 } from '../src/lib/household.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from '../src/lib/formInputs.js';
-import { compareRothVsTraditional } from '../src/lib/compare.js';
+import { compareRothVsTraditional, splitAtTakeHome, splitAtTakeHomeByPerson } from '../src/lib/compare.js';
+import { checkContributionLimit, combineLimitChecks } from '../src/lib/contributionLimits.js';
 
 const Y = 2026; // wage base $184,500; bend points $1,286 / $7,749
 
@@ -82,6 +83,24 @@ describe('spousalAdjustmentFactor (HAND CALC)', () => {
   });
 });
 
+describe('claiming age as its own input (2026, HAND CALC)', () => {
+  it('one person claiming at 70 instead of at retirement (65)', () => {
+    // $100,000, age 35 (born 1991, FRA 67). AIME 8,333.33.
+    // PIA = 1,157.40 + 0.32 x 6,463 (2,068.16) + 0.15 x 584.333 (87.65) = 3,313.21
+    // 70 is 36 months after FRA: +36 x 2/3% = +24% -> 4,108.3804 / month -> 49,300.565 / year
+    const values = { ...PREVIEW_DEFAULT_VALUES, claimAge: '70' };
+    const r = compareRothVsTraditional(householdToCompareInputs(toHousehold(values, Y)));
+    expect(r.socialSecurity.annualBenefit).toBeCloseTo(49300.565, 2);
+    expect(r.years).toBe(30); // still retires at 65
+  });
+
+  it('a claiming age outside 62-70 is an error', () => {
+    expect(validateHousehold(toHousehold({ ...PREVIEW_DEFAULT_VALUES, claimAge: '60' }, Y))).toContain(
+      'Choose your Social Security claiming age (62–70), or leave it blank.',
+    );
+  });
+});
+
 describe('estimateHouseholdSocialSecurity (2026, HAND CALC)', () => {
   // Shared PIAs (2026 bend points 1,286 / 7,749; born 1960+ -> FRA 67):
   //   p1 $120,000: AIME 10,000. PIA = 0.9 x 1,286 (1,157.40) + 0.32 x 6,463 (2,068.16)
@@ -145,6 +164,55 @@ describe('estimateHouseholdSocialSecurity (2026, HAND CALC)', () => {
   });
 });
 
+describe('splitAtTakeHomeByPerson (HAND CALC)', () => {
+  it('each spouse is capped at their own limit, not one shared limit', () => {
+    // t = 22%, currently Roth. p1 saves 30,000 (limit 24,500), p2 saves 10,000 (limit 24,500).
+    // p1: Roth 24,500 to the account, 5,500 to taxable.
+    //     Pre-tax: 30,000 / 0.78 = 38,461.54 -> capped 24,500, costing 24,500 x 0.78 = 19,110;
+    //     the other 30,000 - 19,110 = 10,890 to taxable.
+    // p2: Roth 10,000, nothing over.  Pre-tax 10,000 / 0.78 = 12,820.5128, fits.
+    // household: Roth 34,500 + 5,500;  Pre-tax 37,320.5128 + 10,890
+    // (one shared 24,500 limit would put 15,500 / 20,890 in taxable instead)
+    const r = splitAtTakeHomeByPerson(
+      [{ amount: 30000, limit: 24500 }, { amount: 10000, limit: 24500 }],
+      'roth',
+      0.22,
+    );
+    expect(r.takeHomeCost).toBeCloseTo(40000, 6);
+    expect(r.roth.toAccount).toBeCloseTo(34500, 6);
+    expect(r.roth.excessToTaxable).toBeCloseTo(5500, 6);
+    expect(r.pretax.toAccount).toBeCloseTo(37320.5128, 3);
+    expect(r.pretax.excessToTaxable).toBeCloseTo(10890, 6);
+    expect(r.people).toHaveLength(2);
+  });
+
+  it('one person gives exactly splitAtTakeHome', () => {
+    for (const amount of [0, 10000, 24500, 40000]) {
+      for (const type of ['roth', 'pretax']) {
+        const { people, ...sum } = splitAtTakeHomeByPerson([{ amount, limit: 24500 }], type, 0.24);
+        expect(sum).toEqual(splitAtTakeHome(amount, type, 0.24, 24500));
+        expect(people).toHaveLength(1);
+      }
+    }
+  });
+});
+
+describe('combineLimitChecks', () => {
+  it('adds the limits and labels each message', () => {
+    const r = combineLimitChecks([
+      { label: 'For you', check: checkContributionLimit(30000, '401k', Y, 45) },
+      { label: 'For your spouse', check: checkContributionLimit(10000, '401k', Y, 55) },
+    ]);
+    // 24,500 + (24,500 + 8,000 catch-up at 55) = 57,000
+    expect(r.limit).toBe(57000);
+    expect(r.catchUp).toBe(8000);
+    expect(r.atLimit).toBe(true);
+    expect(r.overLimit).toBe(true);
+    expect(r.message).toMatch(/^For you: Your savings amount is above the 2026 401\(k\) contribution limit/);
+    expect(r.message).not.toContain('For your spouse');
+  });
+});
+
 describe('toHousehold / householdToCompareInputs', () => {
   const variants = [
     {},
@@ -175,7 +243,7 @@ describe('toHousehold / householdToCompareInputs', () => {
       year: Y,
       filingStatus: 'single',
       people: [{ id: 'p1', birthYear: 1991, retirementAge: 65, wages: 100000, selfEmploymentIncome: 0 }],
-      futureContributions: { owner: 'p1', amount: 10000, currentType: 'pretax', accountType: '401k' },
+      futureContributions: { currentType: 'pretax', accountType: '401k', contributions: [{ owner: 'p1', amount: 10000 }] },
       spending: { debtPaymentsEnding: 6000, otherExpensesEnding: 0, retirementLifestyle: 1 },
       assumptions: { returnRate: 0.07 },
     });
@@ -218,6 +286,10 @@ describe('toHousehold / householdToCompareInputs', () => {
       expect(inputs.grossIncome).toBe(140000);
       expect(inputs.currentAge).toBe(45);
       expect(inputs.retirementAge).toBe(62);
+      expect(inputs.contributors).toEqual([
+        { amount: 10000, age: 45, label: 'For you' },
+        { amount: 0, age: 45, label: 'For your spouse' },
+      ]);
       expect(inputs.earners).toEqual([
         { wages: 120000, selfEmploymentIncome: 0, currentAge: 45, claimAge: 67, knowsSocialSecurity: false, socialSecurityBenefit: NaN },
         { wages: 20000, selfEmploymentIncome: 0, currentAge: 45, claimAge: 62, knowsSocialSecurity: false, socialSecurityBenefit: NaN },
@@ -240,6 +312,27 @@ describe('toHousehold / householdToCompareInputs', () => {
       const v = { ...values, grossIncome: '200000', spouseIncome: '100000' };
       const r = compareRothVsTraditional(householdToCompareInputs(toHousehold(v, Y)));
       expect(r.current.fica.total).toBeCloseTo(22439, 6);
+    });
+
+    it('each spouse saves under their own limit, with their own catch-up', () => {
+      // Pre-tax today: p1 30,000 (45, limit 24,500) + p2 30,000 (55, limit 24,500 + 8,000 = 32,500)
+      // deducted now: 24,500 + 30,000 = 54,500 (one shared limit would deduct only 24,500)
+      // Roth scenario per person: p1 24,500 to the account; p2's 30,000 fits under 32,500
+      const v = { ...values, savings: '30000', spouseSavings: '30000', spouseAge: '55', spouseRetirementAge: '67' };
+      const r = compareRothVsTraditional(householdToCompareInputs(toHousehold(v, Y)));
+      expect(r.valid).toBe(true);
+      expect(r.current.pretaxDeduction).toBe(54500);
+      expect(r.limitCheck.limit).toBe(57000);
+      expect(r.limitCheck.message).toMatch(/^For you: /);
+      expect(r.contributionSplit.people[0].roth.toAccount).toBe(24500);
+      expect(r.contributionSplit.people[1].pretax.toAccount).toBe(30000);
+      expect(r.contributionSplit.people[1].pretax.excessToTaxable).toBe(0);
+      // the blend explorer's all-Roth / all-Pre-tax ends use the same per-person split
+      const pts = r.blend.points;
+      expect(pts[0].pretaxToAccount).toBeCloseTo(r.contributionSplit.pretax.toAccount, 6);
+      expect(pts[0].excessToTaxable).toBeCloseTo(r.contributionSplit.pretax.excessToTaxable, 6);
+      expect(pts[pts.length - 1].rothToAccount).toBeCloseTo(r.contributionSplit.roth.toAccount, 6);
+      expect(pts[pts.length - 1].excessToTaxable).toBeCloseTo(r.contributionSplit.roth.excessToTaxable, 6);
     });
 
     it("validates the spouse's ages and the household's structure", () => {

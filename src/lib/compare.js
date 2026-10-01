@@ -26,6 +26,12 @@
 //                                            knowsSocialSecurity/socialSecurityBenefit are ignored.
 //                                            grossIncome/selfEmploymentIncome must be their sums.
 //                                            Absent = today's single-earner behavior, unchanged.
+//   contributors                           — OPTIONAL (household model, phase 1): who makes the
+//                                            Future Contributions, [{ amount, age, label }]. Each
+//                                            person's amount is split at THEIR OWN IRS limit (own
+//                                            catch-up age); the household figures are the sums.
+//                                            `savings` must equal the sum of the amounts.
+//                                            Absent = one saver at currentAge, unchanged.
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
@@ -42,7 +48,7 @@ import { findOptimalBlend } from './blend.js';
 // CLAUDE.md for the removal checklist when the comparison is done.
 import { explainWithdrawalRate, solveGrossWithdrawal } from './incomeNeed.js';
 import { calculateRetirementTax } from './retirementTaxStack.js';
-import { checkContributionLimit, splitAtContributionLimit } from './contributionLimits.js';
+import { checkContributionLimit, combineLimitChecks, splitAtContributionLimit } from './contributionLimits.js';
 import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
 import {
   ACCOUNT_TYPES,
@@ -91,6 +97,20 @@ export function splitAtTakeHome(savings, currentType, marginalRate, limit) {
       toAccount: pretaxToAccount,
       excessToTaxable: pretaxUncapped <= limit ? 0 : takeHomeCost - pretaxToAccount * keep,
     },
+  };
+}
+
+// splitAtTakeHome per person, each at their own IRS limit, summed for the household (they file
+// one joint return, so the marginal rate is shared). people[i] is that person's own split.
+//   contributors: [{ amount, limit }]
+export function splitAtTakeHomeByPerson(contributors, currentType, marginalRate) {
+  const people = contributors.map((c) => splitAtTakeHome(c.amount, currentType, marginalRate, c.limit));
+  const sum = (pick) => people.reduce((acc, p) => acc + pick(p), 0);
+  return {
+    takeHomeCost: sum((p) => p.takeHomeCost),
+    roth: { toAccount: sum((p) => p.roth.toAccount), excessToTaxable: sum((p) => p.roth.excessToTaxable) },
+    pretax: { toAccount: sum((p) => p.pretax.toAccount), excessToTaxable: sum((p) => p.pretax.excessToTaxable) },
+    people,
   };
 }
 
@@ -205,10 +225,17 @@ export function compareRothVsTraditional(inputs) {
         filingStatus,
         year,
       });
+  // Who saves (household model): each person's amount at their own limit. Absent = one saver.
+  const contributors = inputs.contributors?.map((c) => ({
+    ...c,
+    limitCheck: checkContributionLimit(c.amount, accountType, year, c.age),
+  }));
   const pretaxDeduction =
-    currentType === 'pretax'
-      ? splitAtContributionLimit(savings, accountType, year, currentAge).toAccount
-      : 0;
+    currentType !== 'pretax'
+      ? 0
+      : contributors
+        ? contributors.reduce((acc, c) => acc + Math.min(Math.max(0, c.amount), c.limitCheck.limit), 0)
+        : splitAtContributionLimit(savings, accountType, year, currentAge).toAccount;
   const withContribution = calculateTaxFromGross(
     grossIncome,
     filingStatus,
@@ -269,14 +296,22 @@ export function compareRothVsTraditional(inputs) {
   // base limit and tax brackets elsewhere, this is a snapshot at today's age,
   // held constant across the whole projection (it does not model aging into,
   // or out of, a catch-up tier over a multi-decade horizon).
-  const limitCheck = checkContributionLimit(savings, accountType, year, currentAge);
+  const limitCheck = contributors
+    ? combineLimitChecks(contributors.map((c) => ({ label: c.label, check: c.limitCheck })))
+    : checkContributionLimit(savings, accountType, year, currentAge);
 
   // 8. Both forms at the same take-home cost. Neither can legally exceed the IRS
   // limit (the same dollar figure for Roth or Traditional); what doesn't fit goes
   // to a taxable account, independently per scenario (see splitAtTakeHome).
   // contribution.roth/.pretax = everything that scenario puts away per year
   // (account + taxable side); the split says where it goes.
-  const contributionSplit = splitAtTakeHome(savings, currentType, marginalRateNow, limitCheck.limit);
+  const contributionSplit = contributors
+    ? splitAtTakeHomeByPerson(
+        contributors.map((c) => ({ amount: c.amount, limit: c.limitCheck.limit })),
+        currentType,
+        marginalRateNow,
+      )
+    : splitAtTakeHome(savings, currentType, marginalRateNow, limitCheck.limit);
   const { roth: rothSplit, pretax: pretaxSplit } = contributionSplit;
   const contribution = {
     roth: rothSplit.toAccount + rothSplit.excessToTaxable,
@@ -350,6 +385,13 @@ export function compareRothVsTraditional(inputs) {
       takeHomeCost: contributionSplit.takeHomeCost,
       marginalRate: marginalRateNow,
       limit: limitCheck.limit,
+      // Per person, each at their own limit (household model); absent = one limit, as today.
+      ...(contributionSplit.people && {
+        contributors: contributionSplit.people.map((p, i) => ({
+          takeHomeCost: p.takeHomeCost,
+          limit: contributors[i].limitCheck.limit,
+        })),
+      }),
       returnRate,
       years,
       other: otherWithdrawals,

@@ -88,3 +88,25 @@ export function splitAtContributionLimit(amount, accountType, year, age) {
     year: dataYear,
   };
 }
+
+// Household model (phase 1): each spouse has their own limit and catch-up age. Combines
+// per-person checks ([{ label, check }], each from checkContributionLimit) into one object of
+// the same shape, so the UI can read it unchanged: at/over the limit when ANYONE is, `limit`
+// (and base/catchUp) = the household total, `message` = each affected person's message,
+// labelled ("Your spouse: ..."). `people` keeps the individual checks.
+export function combineLimitChecks(entries) {
+  const sum = (key) => entries.reduce((acc, e) => acc + e.check[key], 0);
+  return {
+    atLimit: entries.some((e) => e.check.atLimit),
+    overLimit: entries.some((e) => e.check.overLimit),
+    limit: sum('limit'),
+    base: sum('base'),
+    catchUp: sum('catchUp'),
+    year: entries[0].check.year,
+    message: entries
+      .filter((e) => e.check.message)
+      .map((e) => `${e.label}: ${e.check.message}`)
+      .join(' '),
+    people: entries.map((e) => ({ label: e.label, ...e.check })),
+  };
+}

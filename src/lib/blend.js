@@ -41,6 +41,14 @@ export function splitBlended(takeHomeCost, marginalRate, limit, rothShare) {
   return { rothToAccount, pretaxToAccount, excessToTaxable: Math.max(0, C - costOfAccount) };
 }
 
+// splitBlended per person at the same Roth share (one household election), each at their own
+// IRS limit, summed. contributors: [{ takeHomeCost, limit }].
+export function splitBlendedByPerson(contributors, marginalRate, rothShare) {
+  const parts = contributors.map((c) => splitBlended(c.takeHomeCost, marginalRate, c.limit, rothShare));
+  const sum = (key) => parts.reduce((acc, p) => acc + p[key], 0);
+  return { rothToAccount: sum('rothToAccount'), pretaxToAccount: sum('pretaxToAccount'), excessToTaxable: sum('excessToTaxable') };
+}
+
 // One point on the blend curve: split the budget at this Roth share, grow each piece to
 // retirement, and work out the total after-tax income it delivers in the first retirement
 // year. `other` (Existing Accounts' 4% withdrawals) and `existingTax` (the tax on Social
@@ -54,6 +62,7 @@ export function evaluateBlend({
   takeHomeCost,
   marginalRate,
   limit,
+  contributors, // optional (household model): [{ takeHomeCost, limit }], each split at its own limit
   returnRate,
   years,
   other, // { pretaxGross, taxableGross, taxableGains } — Existing Accounts' 4% withdrawals
@@ -62,7 +71,8 @@ export function evaluateBlend({
   filingStatus,
   year,
 }) {
-  const split = splitBlended(takeHomeCost, marginalRate, limit, rothShare);
+  const split = contributors ? splitBlendedByPerson(contributors, marginalRate, rothShare)
+    : splitBlended(takeHomeCost, marginalRate, limit, rothShare);
   const rothFV = futureValueAnnuity(split.rothToAccount, returnRate, years);
   const pretaxFV = futureValueAnnuity(split.pretaxToAccount, returnRate, years);
   const sideFV = futureValueAnnuity(split.excessToTaxable, returnRate, years);
