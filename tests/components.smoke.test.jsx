@@ -1080,6 +1080,19 @@ describe('NextApp (#/next preview)', () => {
     expect(proj).toContain(' most left');
     expect(proj).not.toMatch(/NaN|Infinity/);
     expect(html).toContain('href="#/next/projection"');
+    const conv = renderToStaticMarkup(<NextApp initialPage="conversion" />);
+    expect(conv).toContain('Tax cost of the conversion');
+    expect(conv).toContain('Converting to fill a bracket');
+    expect(conv).toContain('Convert to Roth this year');
+    expect(conv).toContain('class="bb-added"');
+    expect(conv).not.toMatch(/NaN|Infinity/);
+    const pen = renderToStaticMarkup(<NextApp initialPage="pension" />);
+    expect(pen).toContain('rate of return');
+    expect(pen).toContain('How long you live decides it');
+    expect(pen).toContain('Lump sum offered');
+    expect(pen).not.toMatch(/NaN|Infinity/);
+    expect(html).toContain('href="#/next/conversion"');
+    expect(html).toContain('href="#/next/pension"');
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
   });
 

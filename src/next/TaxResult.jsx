@@ -25,7 +25,9 @@ function Row({ row }) {
 
 // The ordinary brackets as a vertical bar, bottom to top: the part of income sheltered by
 // deductions, then each bracket, filled as far as ordinary taxable income reaches.
-function BracketBar({ bar }) {
+// A segment's optional `added` (the conversion calculator) is drawn as its own slice at the top of
+// the fill; `caption` replaces the default caption.
+export function BracketBar({ bar, caption }) {
   const W = 360;
   const H = 340;
   const barX = 150;
@@ -41,6 +43,7 @@ function BracketBar({ bar }) {
       from: bar.deduction + s.from,
       to: bar.deduction + s.to,
       filled: s.filled,
+      added: s.added ?? 0,
       top: s.to, // taxable income at the top of this bracket
     })),
   ];
@@ -57,6 +60,7 @@ function BracketBar({ bar }) {
             <g key={b.key}>
               <rect x={barX} y={top} width={barW} height={bottom - top} className="bb-empty" />
               {b.filled > 0 && <rect x={barX} y={fillTop} width={barW} height={bottom - fillTop} className={b.key === 'deduction' ? 'bb-sheltered' : 'bb-filled'} />}
+              {b.added > 0 && <rect x={barX} y={fillTop} width={barW} height={y(b.from + b.filled - b.added) - fillTop} className="bb-added" />}
               <line x1={barX} x2={barX + barW} y1={top} y2={top} className="bb-edge" />
               <text x={barX - 8} y={(top + bottom) / 2} className="bb-label" textAnchor="end" dominantBaseline="middle">
                 {b.label}
@@ -70,10 +74,14 @@ function BracketBar({ bar }) {
         <line x1={barX - 4} x2={barX + barW + 4} y1={markerY} y2={markerY} className="bb-marker" />
       </svg>
       <figcaption>
+        {caption ?? (
+          <>
         Ordinary taxable income reaches the <strong>{pct(bar.currentRate)}</strong> bracket, with{' '}
         <strong>{$(bar.room)}</strong> of room before the next one. The bottom block is income covered by
         deductions; the figures on the right are taxable income at each bracket&rsquo;s top. Long-term gains and
         qualified dividends are taxed separately, at their own rates, on top.
+          </>
+        )}
       </figcaption>
     </figure>
   );

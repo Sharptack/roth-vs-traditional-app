@@ -21,7 +21,9 @@
 //     contributions: [{ owner: 'p1', amount }] },
 //   spending: { debtPaymentsEnding, otherExpensesEnding, retirementLifestyle },
 //   calculators: { tax: { ordinaryIncome, investmentOrdinaryIncome, preferentialIncome,
-//                         socialSecurity }, projection: { endAge, heirTaxRate, strategy } },   // calculator-only inputs, under the calculator's name
+//                         socialSecurity }, projection: { endAge, heirTaxRate, strategy },
+//                  conversion: { amount }, pension: { lumpSum, monthly, startAge, cola,
+//                  survivorShare, endAge, spouseEndAge } },   // calculator-only inputs, under the calculator's name
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedAcrossContribution },   // the last two: retirement-year
 //                                          // tax rules (phase 2); 0 / false = today's rules
 // }
@@ -35,6 +37,8 @@
 // form -> household -> compare inputs gives exactly the inputs toCompareInputs gives (tested).
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from './formInputs.js';
 import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
+import { CONVERSION_DEFAULT_VALUES } from './conversionCalculator.js';
+import { PENSION_DEFAULT_VALUES, pensionFromValues } from './pensionCalculator.js';
 
 // The projection page's own inputs (stored under calculators.projection).
 export const PROJECTION_DEFAULT_VALUES = {
@@ -90,6 +94,8 @@ export const PREVIEW_DEFAULT_VALUES = {
   ...NEW_RULES_DEFAULT_VALUES,
   ...TAX_CALCULATOR_DEFAULT_VALUES,
   ...PROJECTION_DEFAULT_VALUES,
+  ...CONVERSION_DEFAULT_VALUES,
+  ...PENSION_DEFAULT_VALUES,
   accounts: accountRowsFromFlat(DEFAULT_FORM_VALUES),
 };
 const blankAsNull = (text) => (String(text ?? '').trim() === '' ? null : parseNumber(text));
@@ -164,6 +170,8 @@ export function toHousehold(values, year) {
         preferentialIncome: blankAsZero(values.taxPreferentialIncome),
         socialSecurity: blankAsZero(values.taxSocialSecurity),
       },
+      conversion: { amount: blankAsZero(values.convAmount) },
+      pension: pensionFromValues(values),
       projection: {
         endAge: values.projEndAge === undefined ? undefined : parseNumber(values.projEndAge),
         heirTaxRate: values.projHeirTaxRate === undefined ? undefined : Number(values.projHeirTaxRate),

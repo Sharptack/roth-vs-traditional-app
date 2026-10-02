@@ -90,6 +90,18 @@ export const HOUSEHOLD_SECTIONS = [
     summary: (v) => `To age ${v.projEndAge || '—'} · heirs taxed at ${Math.round(Number(v.projHeirTaxRate ?? 0) * 100)}% · ${(STRATEGIES.find((s) => s.id === v.projStrategy) ?? STRATEGIES[0]).label.toLowerCase()}`,
   },
   {
+    id: 'conversion',
+    title: 'Conversion',
+    calculator: 'conversion', // the Roth conversion calculator's own input
+    summary: (v) => `Convert ${money(v.convAmount)} this year`,
+  },
+  {
+    id: 'pension',
+    title: 'Pension offer',
+    calculator: 'pension', // the pension calculator's own inputs
+    summary: (v) => `${money(v.penLumpSum)} or ${money(v.penMonthly)} a month from ${v.penStartAge || '—'}`,
+  },
+  {
     id: 'thisYear',
     title: "This year's other income",
     calculator: 'tax', // the tax calculator's own inputs

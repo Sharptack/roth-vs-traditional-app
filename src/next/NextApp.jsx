@@ -5,6 +5,8 @@
 //   #/next/roth  the Roth vs. Pre-tax calculator (household model, phase 1)
 //   #/next/tax   the tax calculator (single-year engine, phase 2)
 //   #/next/projection  the year-by-year projection (phases 4-5)
+//   #/next/conversion  the single-year Roth conversion calculator
+//   #/next/pension     the pension calculator (lump sum vs. monthly benefit)
 // Each calculator page shows its own inputs first, then the shared ones, and links back home.
 // State is its own; the current calculator's inputs are not shared or touched.
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
@@ -16,13 +18,17 @@ import { DEFAULT_SECTION_IDS, SHARED_SECTION_IDS } from '../lib/householdForm.js
 import { projectionView } from '../lib/projectionSummary.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, nextPageFromHash } from '../lib/route.js';
-import { projectionTile, rothTile, taxTile } from '../lib/suiteTiles.js';
+import { conversionTile, pensionTile, projectionTile, rothTile, taxTile } from '../lib/suiteTiles.js';
+import { conversionResult } from '../lib/conversionCalculator.js';
+import { householdToPensionInputs, pensionResult } from '../lib/pensionCalculator.js';
 import { householdToYearTaxParams, taxCalculatorResult } from '../lib/taxCalculator.js';
 import HouseholdForm from './HouseholdForm.jsx';
 import ShareHousehold from './ShareHousehold.jsx';
 import TaxResult from './TaxResult.jsx';
 import ProjectionResult from './ProjectionResult.jsx';
 import LifetimeComparison from './LifetimeComparison.jsx';
+import ConversionResult from './ConversionResult.jsx';
+import PensionResult from './PensionResult.jsx';
 import { compareLifetime } from '../lib/lifetimeComparison.js';
 import { strategyById } from '../lib/strategies.js';
 
@@ -67,6 +73,23 @@ export const CALCULATORS = [
     ownTitle: 'Projection inputs',
     sharedSections: DEFAULT_SECTION_IDS,
   },
+  {
+    id: 'conversion',
+    title: 'Roth conversion',
+    blurb: 'This year’s tax cost of converting Pre-tax money to Roth, and the conversion that fills each bracket.',
+    // The year's other income sits under the conversion, so it is listed with it.
+    ownSections: ['conversion', 'thisYear'],
+    ownTitle: 'Roth conversion inputs',
+    sharedSections: [...SHARED_SECTION_IDS.slice(0, 4), 'contributions', ...SHARED_SECTION_IDS.slice(4)],
+  },
+  {
+    id: 'pension',
+    title: 'Pension: lump sum or monthly',
+    blurb: 'The return the lump sum would have to earn to match the monthly benefit.',
+    ownSections: ['pension'],
+    ownTitle: 'Pension inputs',
+    sharedSections: ['household', 'you', 'spouse', 'assumptions'],
+  },
 ];
 
 function usePreviewPage() {
@@ -92,6 +115,15 @@ export default function NextApp({ initialPage }) {
 
   const roth = useMemo(() => previewResult(values, CURRENT_YEAR), [values]);
   const tax = useMemo(() => taxCalculatorResult(householdToYearTaxParams(roth.household)), [roth]);
+  const conversion = useMemo(
+    () => conversionResult(householdToYearTaxParams(roth.household), roth.household.calculators.conversion.amount),
+    [roth],
+  );
+  const pensionInputs = useMemo(() => householdToPensionInputs(roth.household), [roth]);
+  const pension = useMemo(() => pensionResult(pensionInputs), [pensionInputs]);
+  const pretaxBalance = roth.household.accounts.filter((a) => a.type === 'pretax').reduce((s, a) => s + (a.balance || 0), 0);
+  const realReturn = roth.household.assumptions.returnRate;
+  const inflation = roth.household.assumptions.inflationRate ?? 0;
   // The projection runs many whole projections (sustainable spending), so it follows the inputs a
   // beat behind while typing (useDeferredValue) instead of blocking each keystroke.
   const deferredRoth = useDeferredValue(roth);
@@ -110,7 +142,13 @@ export default function NextApp({ initialPage }) {
       strategy: strategyById(own.strategy),
     });
   }, [deferredRoth, page]);
-  const tiles = { roth: rothTile(roth.result), tax: taxTile(tax), projection: projectionTile(projection) };
+  const tiles = {
+    roth: rothTile(roth.result),
+    tax: taxTile(tax),
+    projection: projectionTile(projection),
+    conversion: conversionTile(conversion),
+    pension: pensionTile(pension, pensionInputs),
+  };
 
   const formProps = { values, onChange: handleChange, locked, onEditCopy: () => setLocked(false) };
   const share = !locked && <ShareHousehold values={values} />;
@@ -193,6 +231,16 @@ export default function NextApp({ initialPage }) {
               )}
               {calculator.id === 'tax' && <TaxResult tax={tax} />}
               {calculator.id === 'projection' && <ProjectionResult view={projection} />}
+              {calculator.id === 'conversion' && <ConversionResult conversion={conversion} pretaxBalance={pretaxBalance} />}
+              {calculator.id === 'pension' && (
+                <PensionResult
+                  pension={pension}
+                  inputs={pensionInputs}
+                  realReturn={realReturn}
+                  inflation={inflation}
+                  nominalReturn={(1 + realReturn) * (1 + inflation) - 1}
+                />
+              )}
             </div>
           </main>
         </>

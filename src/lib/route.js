@@ -11,7 +11,10 @@ export const CALCULATOR_HASH = '#/';
 export const NEXT_HASH = '#/next';
 // The preview's pages: its homepage (the shared inputs and a tile per calculator) and one page per
 // calculator. Unknown sub-pages show the homepage.
-export const NEXT_PAGES = { roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax`, projection: `${NEXT_HASH}/projection` };
+export const NEXT_PAGES = { roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax`, projection: `${NEXT_HASH}/projection`,
+  conversion: `${NEXT_HASH}/conversion`,
+  pension: `${NEXT_HASH}/pension`,
+};
 
 // The article sections the calculator links to, by their heading in ARTICLE.md (a test checks
 // each one is still a heading there). A link to one is "#/how-it-works/<slug of the heading>".

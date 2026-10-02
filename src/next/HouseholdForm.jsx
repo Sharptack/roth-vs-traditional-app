@@ -408,6 +408,51 @@ export default function HouseholdForm({
         </>
       ))}
 
+      {section('conversion', (
+        <CurrencyInput
+          label="Convert to Roth this year"
+          hint="Pre-tax dollars moved to Roth. Taxed this year as ordinary income, on top of the income below."
+          value={values.convAmount}
+          onChange={set('convAmount')}
+        />
+      ))}
+
+      {section('pension', (
+        <>
+          <CurrencyInput label="Lump sum offered" value={values.penLumpSum} onChange={set('penLumpSum')} />
+          <CurrencyInput label="Monthly benefit" value={values.penMonthly} onChange={set('penMonthly')} />
+          <div className="field-row">
+            <AgeInput label="Payments start at age" value={values.penStartAge} onChange={set('penStartAge')} />
+            <AgeInput label="Payments to age" value={values.penEndAge} onChange={set('penEndAge')} />
+          </div>
+          <SelectInput
+            label="Cost-of-living increase each year"
+            value={values.penCola}
+            onChange={set('penCola')}
+            options={['0', '0.01', '0.02', '0.025', '0.03'].map((v) => ({ value: v, label: v === '0' ? 'None' : `${Number(v) * 100}%` }))}
+          />
+          {spouse && (
+            <>
+              <SelectInput
+                label="Survivor benefit for your spouse"
+                hint="The share of the benefit your spouse keeps after you."
+                value={values.penSurvivor}
+                onChange={set('penSurvivor')}
+                options={[
+                  { value: '0', label: 'None' },
+                  { value: '0.5', label: '50%' },
+                  { value: '0.75', label: '75%' },
+                  { value: '1', label: '100%' },
+                ]}
+              />
+              {values.penSurvivor !== '0' && (
+                <AgeInput label="Survivor payments to your spouse's age" value={values.penSpouseEndAge} onChange={set('penSpouseEndAge')} />
+              )}
+            </>
+          )}
+        </>
+      ))}
+
       {section('thisYear', (
         <>
           <p className="hint">

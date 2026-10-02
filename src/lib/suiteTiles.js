@@ -24,6 +24,22 @@ export function taxTile(t) {
   };
 }
 
+// Roth conversion: this year's tax cost of the conversion, and its rate.
+export function conversionTile(c) {
+  return {
+    headline: `${formatCurrency(c.cost)} tax (${formatPercent(c.rate)})`,
+    detail: `on converting ${formatCurrency(c.amount)} to Roth this year`,
+  };
+}
+
+// Pension: the return the lump sum would have to earn to match the monthly benefit.
+export function pensionTile(p, inputs) {
+  return {
+    headline: p.irr === null ? 'No return' : `${formatPercent(p.irr)} a year`,
+    detail: `what ${formatCurrency(inputs.lumpSum)} must earn to match ${formatCurrency(inputs.monthly)} a month to age ${inputs.endAge}`,
+  };
+}
+
 // Projection: funded status, and how long the money lasts.
 export function projectionTile(view) {
   if (!view) return { headline: 'Needs inputs', detail: 'Fill in the household to project it.' };

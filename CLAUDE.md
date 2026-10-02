@@ -67,6 +67,16 @@ is **also the public "How this works" page** — see "Article page" below.
     phase 6 — recommended headline "sustainable spending" (one measure, not a blend of lifetime tax / longevity /
     ending wealth) plus a break-even tax-change report. Future features: print stylesheet, designed PDF report,
     named saved scenarios, a bottom-up budget calculator feeding household spending.
+- **The public calculator stays (user, 2026-10-02):** "I plan to keep that 'public' version for quite a while. I am still
+  using it and testing things while trying to build the fuller version. May even end up migrating the current 'public
+  version' as a simpler version that stays public." So: the current calculator at `#/` is a LIVING product the user edits
+  directly (they changed its results copy and removed cards on 2026-10-02), not a frozen thing awaiting deletion. This
+  SUPERSEDES the switchover line above ("moves to `#/classic` briefly, then is deleted"): do not plan its removal; it may
+  become the free/simple tier. Consequences: the additive rule holds indefinitely (shared `src/lib` changes must leave its
+  numbers and tests untouched); the two may differ on purpose (e.g. the blend card is preview-only via `showBlend`); when a
+  preview page reuses a public component (`ResultsSummary`, `InputForm` helpers, charts), check the public page still
+  renders the same after any change to it; expect the user's own commits to the public side between sessions, so re-read
+  git log and this file before building.
 - **Decisions 2026-10-01 (user):** the year-by-year projection (phase 4) STARTS TODAY (projects the working years too,
   so the projection page is the pre-retirement planner); NO feedback link yet (Netlify Forms not approved; revisit
   before any free version goes public).
@@ -77,7 +87,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (557 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (574 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -129,7 +139,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
   Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
   Phase 3: `rmd.js`, `data/rmdTable.js`. Phase 4: `projection.js`. Phase 5: `projectionSummary.js`, `src/next/ProjectionResult.jsx`,
-  `components/charts/StackedBarChart.jsx`. Phase 6: `lifetimeComparison.js`, `src/next/LifetimeComparison.jsx`. Phase 7: `strategies.js`.
+  `components/charts/StackedBarChart.jsx`. Phase 6: `lifetimeComparison.js`, `src/next/LifetimeComparison.jsx`. Phase 7: `strategies.js`. Small calculators: `conversionCalculator.js`, `pensionCalculator.js`,
+  `src/next/ConversionResult.jsx`, `src/next/PensionResult.jsx`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
   withdrawal — see the model section below), rendered by the dropdown (`StepRow` in ResultsSummary) AND by the
@@ -327,6 +338,26 @@ reinvested) and a 12% conversion (66,500 converted, tax 5,800 paid from taxable)
 strategy meeting the need within the engine's rules. FINDING ($300k Pre-tax + $100k taxable, defaults otherwise): the
 conventional order pays the MOST tax and leaves the least (Pre-tax grows into big RMDs); filling 22% leaves the most.
 Not modeled: IRMAA, the 10-year rule for heirs (noted on the page).
+
+## Small calculators after phase 2 (built 2026-10-02, in the preview)
+The plan's two "fit any time after phase 2" calculators; each a tile on `#/next` and its own page.
+- **Roth conversion, single year** (`#/next/conversion`; `lib/conversionCalculator.js` `conversionResult(params, amount)`):
+  cost = this year's tax WITH the conversion − WITHOUT (calculateYearTax twice, the conversion as ordinary income), so it
+  counts what the conversion drags along: Social Security made taxable, gains pushed out of the 0% bracket, NIIT, the
+  senior deduction phase-out. Returns cost, rate, `parts` (ordinary / capital-gains / NIIT), `extraTaxableSocialSecurity`,
+  `deductionLost`, `fills` (the conversion that brings ordinary taxable income to the top of the next three brackets, by
+  bisection, with its cost) and the bracket bar with each segment's `added` slice. Own input `convAmount`
+  (`calculators.conversion.amount`); the page also lists "This year's other income". `TaxResult.jsx` now exports
+  `BracketBar` (optional `added` slices, `caption`). Hand-verified (tests/conversionCalculator.test.js): 12% case, SS
+  phase-in 21.57%, gains pushed to 15%, the default household $50,000 -> $11,364. Not modeled: IRMAA, the five-year rule.
+- **Pension: lump sum or monthly** (`#/next/pension`; `lib/pensionCalculator.js`): `irr(flows)` (bisection), `pensionPayments`
+  (monthly, a yearly cost-of-living step, a survivor share from the owner's end age to the spouse's), `pensionResult` (IRR a
+  year, total payments, the age the payments add up to the lump sum, `presentValueAt(rate)`, IRR by end age 75–100),
+  `householdToPensionInputs` (ages from the shared inputs: the spouse's age when payments start), `pensionFromValues`. Own
+  inputs penLumpSum, penMonthly, penStartAge, penCola, penSurvivor, penEndAge, penSpouseEndAge (`calculators.pension`). The
+  page compares the IRR with the household's assumed return WITH inflation added back ((1 + real)(1 + inflation) − 1),
+  since pension payments are in the dollars of the day. Tax is left out (both options are taxed alike). Hand-verified
+  (tests/pensionCalculator.test.js): IRR 10% and 13.0662%, $120,000 vs. $1,000 × 120 = 0%, survivor and COLA payment counts.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -957,6 +988,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-02 (b) — Recorded that the public calculator stays for a long while and may become the simple public tier
+  (see "The public calculator stays"). Preview: the single-year Roth conversion calculator and the pension (lump sum vs.
+  monthly) calculator, each with a tile and a page. Public calculator untouched. 574 tests.
 - 2026-10-02 — Public calculator, four user requests: (1) "Your portfolio at retirement" simplified to two groups and
   a total, no "Why this matters"; (2) blocks of explanation removed from the results, replaced by links to article
   headings (`#/how-it-works/<slug>`, see "Results copy"); (3) "Splitting your contribution" removed from the public
