@@ -4,13 +4,12 @@ import InputForm, { DEFAULT_OPEN_INPUTS } from './components/InputForm.jsx';
 import ResultsSummary from './components/ResultsSummary.jsx';
 import ScenarioCompare from './components/ScenarioCompare.jsx';
 import ScenariosPage from './components/ScenariosPage.jsx';
-import OldVsNewPage from './components/OldVsNewPage.jsx'; // TEMPORARY (2026-09-29), goes with result.old
 import ShareInputs from './components/ShareInputs.jsx';
 import NextApp from './next/NextApp.jsx';
 import { compareRothVsTraditional } from './lib/compare.js';
 import { CLEARED_FORM_VALUES, DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
 import { valuesFromSearch } from './lib/shareInputs.js';
-import { ARTICLE_HASH, SCENARIOS_HASH, routeFromHash } from './lib/route.js';
+import { ARTICLE_HASH, SCENARIOS_HASH, articleSectionFromHash, routeFromHash } from './lib/route.js';
 import './App.css';
 
 /*
@@ -50,32 +49,37 @@ const CURRENT_YEAR = new Date().getFullYear();
 const FROM_LINK =
   typeof window === 'undefined' ? { values: null, compareValues: null } : valuesFromSearch(window.location.search);
 
-// Which page to show, from the URL hash ("#/how-it-works" = the article). Remembers the
-// calculator's scroll position so coming back from the article puts you where you were.
+// Which page to show, from the URL hash ("#/how-it-works" = the article, "#/how-it-works/<heading>"
+// = the article at that heading). Remembers the calculator's scroll position so coming back
+// from the article puts you where you were.
 function useRoute() {
-  const [route, setRoute] = useState(() =>
-    typeof window === 'undefined' ? 'calculator' : routeFromHash(window.location.hash),
-  );
+  const [hash, setHash] = useState(() => (typeof window === 'undefined' ? '' : window.location.hash));
+  const route = routeFromHash(hash);
+  const section = route === 'article' ? articleSectionFromHash(hash) : null;
+  const shown = useRef(route);
   const calculatorScroll = useRef(0);
   const firstRender = useRef(true);
 
   useEffect(() => {
     const onHashChange = () => {
       const next = routeFromHash(window.location.hash);
-      if (next !== 'calculator') calculatorScroll.current = window.scrollY;
-      setRoute(next);
+      if (shown.current === 'calculator' && next !== 'calculator') calculatorScroll.current = window.scrollY;
+      shown.current = next;
+      setHash(window.location.hash);
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
+    const heading = section ? document.getElementById(section) : null;
+    if (heading) {
+      heading.scrollIntoView();
+    } else if (!firstRender.current) {
+      window.scrollTo(0, route === 'calculator' ? calculatorScroll.current : 0);
     }
-    window.scrollTo(0, route === 'calculator' ? calculatorScroll.current : 0);
-  }, [route]);
+    firstRender.current = false;
+  }, [route, section]);
 
   return route;
 }
@@ -121,7 +125,7 @@ export default function App() {
   return (
     // The calculator gets a wide desktop page; the article and the charts page keep the
     // narrow reading width.
-    <div className={route === 'calculator' || route === 'oldVsNew' || route === 'next' ? 'page calc-page' : 'page'}>
+    <div className={route === 'calculator' || route === 'next' ? 'page calc-page' : 'page'}>
       {/* The calculator stays mounted (just hidden) while the article is open, so your
           inputs, open dropdowns and scroll position are all still there when you return. */}
       <div hidden={route !== 'calculator'}>
@@ -207,7 +211,6 @@ export default function App() {
 
       {route === 'article' && <ArticlePage />}
       {route === 'scenarios' && <ScenariosPage />}
-      {route === 'oldVsNew' && <OldVsNewPage />}
       {route === 'next' && <NextApp />}
     </div>
   );

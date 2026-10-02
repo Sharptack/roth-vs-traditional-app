@@ -45,8 +45,7 @@ is **also the public "How this works" page** — see "Article page" below.
     `ordinaryIncome` (Pre-tax withdrawals, Roth conversions, pensions: ordinary rates, no FICA, not NIIT);
     `investmentOrdinaryIncome` (interest, non-qualified dividends, short-term gains: ordinary rates + NIIT);
     `preferentialIncome` (long-term gains, qualified dividends); `socialSecurity`.
-  - Open questions answered 2026-09-29 are ticked in the plan doc. (Superseded 2026-10-01: `result.old` and
-    `#/old-vs-new` STAY for now; the user will say when to remove them.)
+  - Open questions answered 2026-09-29 are ticked in the plan doc. (`result.old` and `#/old-vs-new` were removed 2026-10-02 at the user's request.)
   - **Build alongside, then switch over** (user, 2026-10-01): the current calculator stays the default page and
     stays intact while the new implementation is built and tested. The new version lives on `main` behind a
     preview route **`#/next`** (one constant in `route.js`; sub-pages `#/next/...`), not linked from the current
@@ -78,7 +77,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (596 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (557 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -213,7 +212,7 @@ flat form values (`toCompareInputs`) and never goes through the household; every
   amounts are from secondary sources (irs.gov page confirmed $6,000 / 65 / 2025–2028 / $75k / $150k).
 - **Retirement tax rules end to end**: `calculateRetirementTax` and `explainFullTax` take optional `taxRules` { thresholdScale,
   rateShift, ages, calendarYear } and then run through calculateYearTax; sideAwareRates, portfolioTax and blend pass
-  `taxRules` through; compare.js takes optional `retirementTaxRules` (the temporary result.old block does NOT use it).
+  `taxRules` through; compare.js takes optional `retirementTaxRules`.
   Tests (tests/retirementTaxRules.test.js): neutral rules reproduce today's results; the (X − e) × W identity holds under
   real rules; the breakdown matches the tax. FINDING: inflation can LOWER the effective rate on the account withdrawal
   (default case 24.4% -> 20.9%) while raising total tax — more Social Security is taxable before the withdrawal, so the
@@ -438,7 +437,32 @@ Not modeled: IRMAA, the 10-year rule for heirs (noted on the page).
   bodies in InputForm are built by a `section(id, content)` function call, NOT an inner component (an inner component
   would remount every render and lose input state).
 
-## "Your portfolio at retirement" card (added 2026-09-28; revives a 2026-09-25 REJECTED idea)
+## Results copy: numbers first, explanations in the article (user, 2026-10-02)
+The public calculator's results carry almost no blocks of explanation. The user asked to remove them and "instead
+link to the article explanation. Letting the numbers and the calculation dropdowns explain themselves. Leaving a
+handful of small explanations." Don't add paragraphs of prose back to result cards or dropdowns; put the explanation
+in ARTICLE.md and link to it.
+- `Explained` (ResultsSummary.jsx): one `hint` line, "Explained in How this works: <heading> · <heading>", linking to
+  article headings. Used in: the retirement-number dropdown (estimate), the rates dropdown (estimate, Social Security
+  phase-in), the after-tax comparison (rates; plus maxing out when a taxable side exists), the no-Social-Security
+  dropdown, the total portfolio card (Existing Accounts).
+- `route.js`: `ARTICLE_SECTIONS` (key -> the heading text in ARTICLE.md), `headingSlug`, `articleHash(key)` =
+  `#/how-it-works/<slug>`, `articleSectionFromHash`. `ArticlePage` gives every heading its slug as an id (a `Marked`
+  instance with a heading renderer); `App.jsx` `useRoute` scrolls to that heading (also on a direct load) and restores
+  the calculator's scroll on the way back. Renaming an article heading breaks its link: a smoke test checks every
+  link on the results has a matching heading id, so rename in `ARTICLE_SECTIONS` too.
+- Removed: "Why this matters" and "How is this calculated?" (portfolio card), "How the rates fit together", the
+  full-tax-breakdown intro, the intro paragraphs of both "Show the calculation" dropdowns and of the retirement-number
+  dropdown, the "Why is the Pre-tax side bigger?" dropdown, the no-Social-Security intro and "Reading this" note.
+  Kept (short): "What this number is", the one-line hints under the portfolio card, the rates ("In dollars: …"), the
+  after-tax table and the total portfolio card, the no-Social-Security verdict sentence, the limit alert, the disclaimer.
+
+## "Your portfolio at retirement" card (added 2026-09-28; simplified 2026-10-02)
+**Current shape (2026-10-02, user request):** no "Why this matters" note and no dropdown. One table, two groups and a
+total: "Future Contributions" (one line "Your contribution this year" = `contribution.X` with the "incl. $X in a taxable
+account" sub-note when over the limit, then "Grown to retirement" = `annuity.X.totalFutureValue`), "Existing Accounts"
+(one line "Grown to retirement", the three `grown` balances summed), then "Total portfolio at retirement" with the
+bucket breakdown. One hint line under it. The bullets below describe the 2026-09-28 version and why the card exists.
 Sits between "Retirement income number" (`sec1`) and "Tax rate comparison" (`sec2`) — `id="sec-portfolio"`,
 card id `buildup`, component `PortfolioBuildup` in ResultsSummary.jsx. The user asked for it explicitly, aware
 of the earlier rejection ("we had something like this before, but it fits better now, I think, with the new
@@ -666,7 +690,12 @@ everything to the new calculation." This section describes the result, now the O
   and re-do the tax. A final, unnumbered "Putting the two rates together" section assembles X vs e into the
   dollar difference.
 
-## "Splitting your contribution" — the Roth/Pre-tax blend explorer (added 2026-09-29)
+## "Splitting your contribution" — the Roth/Pre-tax blend explorer (added 2026-09-29; preview only since 2026-10-02)
+**2026-10-02:** the user asked to remove this section from the public calculator. The card is no longer in
+`RESULT_CARDS`; `ResultsSummary` takes `showBlend` (default false) and only the `#/next` Roth page passes it, so the
+preview still shows it (Claude's call, to keep the preview unchanged; remove the prop and `BlendExplorer` if the user
+wants it gone there too). `lib/blend.js`, `result.blend` and their tests are unchanged (the preview's math uses them).
+ARTICLE.md no longer mentions the card. The rest of this section describes the card as built.
 The user asked what it would take to model mixing Roth and Pre-tax within the same year's Future
 Contributions (not just picking one pure strategy), and whether an optimal split is even computable.
 Answer: yes, and it's a genuine, non-trivial question in THIS model specifically — "tax saved now" is
@@ -741,75 +770,12 @@ surface area the latter would touch).
   blended scenario; letting a blend become one of Section 3's whole-portfolio scenarios (today Section 3
   is still exactly All-Roth vs. All-Pre-tax, unaffected by this).
 
-## `result.old` — TEMPORARY duplicate of the pre-migration calculation (added 2026-09-29)
-The user asked to bring the old (pre-2026-09-28) need-based calculation back, restored from git history
-(commit `92b16f0`, the commit right before the migration — see "The rates calculation" above), so the two
-methodologies can be compared side by side again while they test some scenarios. **This is temporary and
-will be removed** — the user's own words: "We'll remove it again, but I am interested in testing some
-things." Nothing above this section changed; this is a pure addition.
-- `compare.js`: a clearly-marked block near the end of `compareRothVsTraditional` (search
-  `TEMPORARY (2026-09-29)`) recomputes the old `grossUp` (via restored `lib/incomeNeed.js`), `rateDrivers`,
-  old-style `rates` (`effectiveRetirement`/`overallEffectiveRetirement`/`lean` from the grossUp, not
-  sideAware), old `annuity`/`lumpSum`/`comparison` (old side-account tax: stacked AFTER the account's own
-  withdrawal, via a restored `oldSideTaxRate`/`oldSideFor` using `calculateRetirementTax` directly — the
-  opposite stacking order from `sideAwareRates.js`, which is the #1 source of numeric disagreement between
-  the two), and old `withoutSocialSecurity` (old `grossUp`/`rateDrivers`/`marginalRateRetirement` +
-  `afterTaxWithdrawalAtMarginal`, reference-only, from the restored `getMarginalRate`). All of it is nested
-  under one new field, `result.old`, so it can never collide with the current top-level fields (which are
-  untouched and still power everything already built, including "Your portfolio at retirement").
-  `rothSideRaw`/`pretaxSideRaw`/`lumpSum.X.side.futureValue` (already computed for the current methodology)
-  are reused as-is where the underlying dollar amounts don't depend on which methodology taxes them.
-- `lib/incomeNeed.js` and `tests/incomeNeed.test.js`: restored verbatim (`git show 92b16f0:<path>`).
-- `lib/rateSteps.js`: `effectiveRateSteps` and `rateDriverRows` restored (search `TEMPORARY (2026-09-29)` at
-  the bottom of the file), adapted to read `result.old.{grossUp,rateDrivers,retirementOverall,rates}` instead
-  of the top level (shared fields — `otherWithdrawals`, `socialSecurity`, `retirementNeed`,
-  `current.standardDeduction` — are unchanged and still read from the top level, since they don't depend on
-  which rate methodology is used).
-- `ResultsSummary.jsx`: a whole new, clearly-marked section (search `TEMPORARY (2026-09-29)`) with
-  `ExtraTaxSplitOld`, `RateDriversOld`, `EffectiveRateMathOld`, `YearsWithoutSocialSecurityOld` (+its verdict
-  helper), and `TaxRatesOld` — all restored old copy, reading `result.old.*`. One new `RESULT_CARDS` entry,
-  `{ id: 'ratesOld', headingId: 'sec2-old', title: 'Tax rate comparison — old calculation' }`, sits directly
-  after the current "Tax rate comparison" card (`sec2`) and before "After-tax comparison" — including its OWN
-  "Retirement years without Social Security (old calculation)" dropdown (nested inside it, not added to the
-  current `TradeOff` card, so all old-methodology UI is contained in one card for easy removal). Its own
-  `<p className="hint">` labels it "Temporary, for comparison." `sectionSummaries.js` gained a matching
-  `ratesOld` headline key.
-- Sanity-checked: at the defaults, `result.old.grossUp.grossWithdrawal` and `.rates.effectiveRetirement` match
-  the exact pre-migration values to the decimal (verified against numbers hand-derived before 2026-09-28), and
-  the full test suite (455 tests) plus the existing "no NaN/Infinity anywhere" smoke test (unscoped — covers
-  the whole page, old card included) pass with no changes to any already-passing assertion about the CURRENT
-  methodology's numbers.
-- Test changes were adjustments only, not new coverage of the old card's own content — a few existing smoke
-  tests that assert something is absent from "the page" now use a new `withoutOldRatesCard` helper in
-  `components.smoke.test.jsx` (cuts the `sec2-old` `<section>` out of the rendered HTML) so they keep testing
-  the CURRENT methodology specifically, unaffected by the old card legitimately reusing old phrasing nearby.
-- **Test page `#/old-vs-new`** (added 2026-09-29 (h), at the user's request: charts to see where the two calculations
-  differ most and check them). Not linked from the site. `lib/methodCheck.js` (wiring only: `runMethodPoint` reads both
-  calculations off one `compare.js` result, plus a benchmark, the exact after-tax income at a plain 4% withdrawal from
-  `portfolio.X.atBaseline`; `summarize`, `differenceCauses`, `flattenPoints` (dedupes repeated scenarios), `toFormValues` for
-  an "Open" link into the calculator) + `tests/methodCheck.test.js`; `components/OldVsNewPage.jsx` (summary tiles, a sortable
-  "Where they differ most" table, both break-even maps showing new/old winners with disagreements outlined, and a rates
-  chart + advantage chart per Visualization batch; the two risingIncome batches are skipped, they have no old calculation);
-  `route.js` `OLD_VS_NEW_HASH`; `App.jsx` route (wide `calc-page` width); `.ovn-*` CSS at the end of `App.css`; one smoke test.
-  Findings at the time (2026, 436 distinct scenarios): winners differ in 53; the new calculation matches the benchmark to
-  the cent everywhere (expected: it was built to), the old one names the wrong winner in 32 and misses by up to $15,213/yr.
-  The biggest gaps come from WHICH withdrawal the rate is measured on: (1) high savers (25-30% saved, $50k-$150k): the old
-  need-based withdrawal is small ($7k-$31k), so the old rate is ~0-12%, but the account really pays $57k-$93k; (2) $500k
-  income with a higher lifestyle: the old one measured $400k-$820k withdrawals (29-33%) for an account paying $92.6k; (3)
-  age 50, no balance: new 0-6% vs. old 16-22% (same winner). Open question raised with the user: the benchmark shares
-  the new method's assumption that the account pays 4% whatever the need, so case (3), where Future Contributions are
-  the only savings and fall short of the need, isn't independently checked.
-${anchor} delete `lib/incomeNeed.js`, `tests/incomeNeed.test.js`;
-  in `compare.js`, delete the block marked `TEMPORARY (2026-09-29)` (down to `const rothTax = ...`), its two
-  extra imports, and `old,` from the return object; in `rateSteps.js`, delete everything from the
-  `TEMPORARY (2026-09-29)` marker to the end of the file; in `ResultsSummary.jsx`, delete the whole marked
-  section (`ExtraTaxSplitOld` through `TaxRatesOld`) and the `ratesOld` `RESULT_CARDS` entry; in
-  `sectionSummaries.js`, delete the `ratesOld` headline key; delete the `#/old-vs-new` test page (`lib/methodCheck.js`, `tests/methodCheck.test.js`,
-  `components/OldVsNewPage.jsx`, `OLD_VS_NEW_HASH` in route.js + its route test, its import/route/width in App.jsx, the `.ovn-*`
-  CSS block, and the `OldVsNewPage` smoke test); in `components.smoke.test.jsx`, delete
-  `withoutOldRatesCard` and revert its three call sites to the plain `render()`/`html` they replaced (and drop
-  the "shows each results card..." title and `sectionSummaries.test.js`'s `old`/`ratesOld` additions). Re-run
-  the full suite after.
+## The old (need-based) calculation: REMOVED 2026-10-02
+The temporary side-by-side copy of the pre-2026-09-28 calculation (`result.old`, the "Tax rate comparison — old
+calculation" card, `lib/incomeNeed.js`, `effectiveRateSteps`/`rateDriverRows`, the `#/old-vs-new` test page with
+`lib/methodCheck.js` and `OldVsNewPage.jsx`, their tests and CSS) was deleted at the user's request. It is in git
+history (last present in commit `0a350d5`) if it is ever wanted again. What it found is still recorded in "The rates
+calculation" above: across 436 scenarios the old method named the wrong winner in 32 and missed by up to $15,213/yr.
 
 ## Full tax calculation dropdown (2026-09-28)
 Nested inside "How are these rates calculated?": "Show the full tax calculation," a bracket-by-bracket
@@ -991,6 +957,12 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-02 — Public calculator, four user requests: (1) "Your portfolio at retirement" simplified to two groups and
+  a total, no "Why this matters"; (2) blocks of explanation removed from the results, replaced by links to article
+  headings (`#/how-it-works/<slug>`, see "Results copy"); (3) "Splitting your contribution" removed from the public
+  calculator (kept in the preview via `showBlend`); (4) the old calculation and the `#/old-vs-new` test page deleted.
+  ARTICLE.md: the split section no longer describes a card. No model change. 557 tests (596 before: the deleted
+  incomeNeed and methodCheck tests account for the drop).
 - 2026-10-01 (b) — Placed the user's further ideas in the plan doc and the Roadmap notes (see "Further ideas placed");
   recorded the flat-rate "tax saved now" limitation. Plan doc's Phase 2 "swap the Roth calculator onto the new
   engine" wording reconciled with build-alongside (the current calculator keeps its own path until switchover).

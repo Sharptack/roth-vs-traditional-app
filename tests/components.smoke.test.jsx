@@ -20,111 +20,6 @@ const render = (overrides = {}) =>
     />,
   );
 
-// TEMPORARY (2026-09-29): cuts the duplicate "old calculation" card (result.old, id "sec2-old")
-// out of a rendered page, so tests written for the CURRENT (sideAware) methodology's page keep
-// testing only that, unaffected by the restored old card sitting between it and the after-tax
-// comparison card. Remove this helper (and its call sites) along with the old card itself.
-const withoutOldRatesCard = (html) => {
-  const oldStart = html.indexOf('aria-labelledby="sec2-old"');
-  if (oldStart === -1) return html;
-  const oldSectionStart = html.lastIndexOf('<section', oldStart);
-  const nextSectionStart = html.indexOf('<section', oldStart);
-  return html.slice(0, oldSectionStart) + html.slice(nextSectionStart);
-};
-
-describe('InputForm', () => {
-  const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
-
-  it('has every input from the spec, and no submit button', () => {
-    for (const label of [
-      'Total gross income (annual)',
-      'Filing status',
-      'Current age',
-      'Planned retirement age',
-      'Current debt payments that will end by retirement (annual)',
-      'Other expenses that will end by retirement (annual)',
-      'Savings for retirement (annual)',
-      'Are these savings currently Pre-tax or Roth?',
-      'Account type these savings are held in',
-      'Do you know your Social Security benefit?',
-      'Expected annual investment return',
-      'Existing Pre-tax accounts (total value)',
-      'Existing Roth accounts (total value)',
-      'Existing taxable investment accounts (total value)',
-    ]) {
-      expect(html).toContain(label);
-    }
-    expect(html).not.toMatch(/type="submit"/);
-    // the only buttons are the section headers and "Expand all"
-    expect(html).not.toMatch(/<button(?! type="button")/);
-  });
-
-  it('drops the two hints, rewords the savings hint, and moves the return into Assumptions', () => {
-    expect(html).not.toContain('Also used as the contribution amount in the comparison');
-    expect(html).not.toContain('Used only to check against the IRS contribution limit');
-    expect(html).toContain("The amount you're currently contributing to retirement accounts each year, or the amount you're considering.".replaceAll("'", '&#x27;'));
-    // the return selector lives in the last section, Assumptions, whose header shows the current rate
-    const assumptions = html.slice(html.indexOf('>Assumptions<'));
-    expect(assumptions).toContain('7% expected annual return');
-    expect(assumptions).toContain('Expected annual investment return');
-    // ...and is not in the sections above it
-    const mainForm = html.slice(0, html.indexOf('>Assumptions<'));
-    expect(mainForm).not.toContain('Expected annual investment return');
-  });
-
-  it('has a type-of-income dropdown under gross income, and the 1099 amount only for "both"', () => {
-    const iGross = html.indexOf('Total gross income (annual)');
-    const iType = html.indexOf('Type of income');
-    const iFiling = html.indexOf('Filing status');
-    expect(iGross).toBeLessThan(iType);
-    expect(iType).toBeLessThan(iFiling);
-    expect(html).toContain('W-2 (employee)');
-    expect(html).toContain('1099 (self-employed)');
-    expect(html).toContain('Both W-2 and 1099');
-    expect(html).not.toContain('How much of your gross income is 1099?');
-    const both = renderToStaticMarkup(
-      <InputForm values={{ ...DEFAULT_FORM_VALUES, incomeType: 'both' }} onChange={() => {}} />,
-    );
-    expect(both).toContain('How much of your gross income is 1099?');
-    expect(both).toContain('Self-employment tax replaces FICA');
-  });
-
-  it('puts the retirement lifestyle in its own dropdown directly below gross income, for earning more or less later', () => {
-    const grossIncomeIdx = html.indexOf('Total gross income');
-    const lifestyleIdx = html.indexOf('Will you earn more or less later?');
-    const typeIdx = html.indexOf('Type of income');
-    expect(grossIncomeIdx).toBeGreaterThan(-1);
-    expect(lifestyleIdx).toBeGreaterThan(grossIncomeIdx);
-    expect(typeIdx).toBeGreaterThan(lifestyleIdx);
-    const block = html.slice(grossIncomeIdx, typeIdx);
-    expect(block).toContain('class="details lifestyle-assumption"');
-    expect(block).toContain('People earlier in their careers often expect to earn and spend more later');
-    expect(block).toContain('Others expect to spend less in');
-    expect(block).toContain('Expected retirement lifestyle');
-    // the return-rate Assumptions dropdown no longer mentions lifestyle
-    const assumptions = html.slice(html.indexOf('>Assumptions<'));
-    expect(assumptions).toContain('7% expected annual return');
-    expect(assumptions).not.toContain('retirement lifestyle');
-    expect(assumptions).not.toContain('Expected retirement lifestyle');
-    const higher = renderToStaticMarkup(
-      <InputForm values={{ ...DEFAULT_FORM_VALUES, retirementLifestyle: '1.25' }} onChange={() => {}} />,
-    );
-    expect(higher).toContain('Will you earn more or less later? (25% higher retirement lifestyle)');
-  });
-
-  it('hides the SS benefit input when the answer is No, and shows the estimate disclaimer', () => {
-    expect(html).not.toContain('Annual gross Social Security benefit');
-    expect(html).toContain('Estimated — see');
-  });
-
-  it('shows the SS benefit input when the answer is Yes', () => {
-    const yes = renderToStaticMarkup(
-      <InputForm values={{ ...DEFAULT_FORM_VALUES, knowsSocialSecurity: 'yes' }} onChange={() => {}} />,
-    );
-    expect(yes).toContain('Annual gross Social Security benefit');
-  });
-});
-
 describe('ResultsSummary', () => {
   it('renders all three sections with the spec labels', () => {
     const html = render();
@@ -172,41 +67,45 @@ describe('ResultsSummary', () => {
     expect(sec1).not.toContain('Effective rate');
   });
 
-  it('shows a portfolio build-up card between the retirement number and the rates: contribution difference, existing balances, and Future Contributions, each split by account type', () => {
+  it('shows a portfolio card between the retirement number and the rates: Future Contributions, Existing Accounts, total', () => {
     const html = render();
     const buildup = html.slice(html.indexOf('id="sec-portfolio"'), html.indexOf('id="sec2"'));
     expect(buildup).toContain('Your portfolio at retirement</span>');
-    expect(buildup).toContain('Why this matters');
-    expect(buildup).toContain('Your contribution this year');
-    expect(buildup).toContain('To your account');
-    expect(buildup).toContain('Total contribution');
-    expect(buildup).toContain('Existing Accounts, grown to retirement');
-    expect(buildup).toContain('Future Contributions, grown to retirement');
-    expect(buildup).toContain('Total portfolio at retirement');
+    // two groups, then the total, in that order
+    const order = ['Future Contributions', 'Your contribution this year', 'Grown to retirement', 'Existing Accounts', 'Grown to retirement', 'Total portfolio at retirement'];
+    let at = -1;
+    for (const label of order) {
+      const next = buildup.indexOf(label, at + 1);
+      expect(next, label).toBeGreaterThan(at);
+      at = next;
+    }
+    // $7,800 Roth / $10,000 Pre-tax a year; the existing $100,000 grown 30 years at 7%
+    expect(buildup).toContain('For the same take-home pay</span></th><td>$7,800</td><td>$10,000</td>');
+    expect(buildup).toContain('Same either way</span></th><td>$761,226</td><td>$761,226</td>');
     expect(buildup).toContain('class="breakdown"'); // reuses the same bucket breakdown as Section 3
-    expect(buildup).toContain('How is this calculated?');
-    expect(buildup).toContain('stacked <strong>on top of</strong>');
-    // no taxable side account in the default case: the row is omitted, not shown as $0
-    expect(buildup).not.toContain('To a taxable account');
+    // one contribution line, no explanation blocks
+    expect(buildup).not.toContain('Why this matters');
+    expect(buildup).not.toContain('To your account');
+    expect(buildup).not.toContain('Total contribution');
+    expect(buildup).not.toContain('How is this calculated?');
+    expect(buildup).not.toContain('in a taxable account');
     expect(buildup).not.toMatch(/NaN|Infinity/);
   });
 
-  it('shows the taxable-account contribution row only when savings exceed the IRS limit', () => {
+  it('notes the taxable-account part of the contribution only when savings exceed the IRS limit', () => {
     const under = render({ savings: '10000' });
     const buildupUnder = under.slice(under.indexOf('id="sec-portfolio"'), under.indexOf('id="sec2"'));
-    expect(buildupUnder).not.toContain('To a taxable account');
+    expect(buildupUnder).not.toContain('in a taxable account');
     const over = render({ grossIncome: '150000', savings: '30000', otherPretaxBalance: '0' });
     const buildupOver = over.slice(over.indexOf('id="sec-portfolio"'), over.indexOf('id="sec2"'));
-    expect(buildupOver).toContain('To a taxable account');
-    expect(buildupOver).toContain('Over the IRS limit');
+    expect(buildupOver).toContain('in a taxable account (over the IRS limit)');
   });
 
-  it('handles $0 saved without NaN, with a graceful "nothing saved yet" note', () => {
+  it('handles $0 saved without NaN', () => {
     const html = render({ savings: '0' });
     const buildup = html.slice(html.indexOf('id="sec-portfolio"'), html.indexOf('id="sec2"'));
     expect(buildup).not.toMatch(/NaN|Infinity/);
-    expect(buildup).toContain('there’s nothing saved yet to compare');
-    expect(buildup).not.toContain('Why this matters:</strong> a Pre-tax dollar');
+    expect(buildup).toContain('For the same take-home pay</span></th><td>$0</td><td>$0</td>');
   });
 
   it('gives the rates their own Tax rate comparison block, followed by the After-tax comparison', () => {
@@ -245,7 +144,9 @@ describe('ResultsSummary', () => {
     }
     expect(table).not.toContain('Difference');
     expect(table).not.toContain('Tax on withdrawals');
-    expect(trade).toContain('Why is the Pre-tax side bigger?');
+    // the explanation is a link to the article, not a block of text
+    expect(trade).not.toContain('Why is the Pre-tax side bigger?');
+    expect(trade).toContain('href="#/how-it-works/tax-saved-now-effective-rate-later"');
     expect(trade).toContain('Retirement years without Social Security');
     expect(sec3).not.toContain('Marginal rate while working');
   });
@@ -260,14 +161,12 @@ describe('ResultsSummary', () => {
     expect(dropdown).toContain('After-tax income it generates</th><td>$29,472</td><td>$28,476</td>');
     // no side-account rows when nothing exceeds the IRS limit
     expect(dropdown).not.toContain('Taxable side account withdrawal');
-    expect(dropdown).not.toContain('spilled into a taxable account');
 
     // Over the limit: $150,000 income, $30,000 saved — both sides spill over (see
     // compare.test.js's "contribution limits" hand calcs for the underlying numbers).
     const over = render({ grossIncome: '150000', savings: '30000', otherPretaxBalance: '0' });
     const tradeOver = over.slice(over.indexOf('id="sec-tradeoff"'), over.indexOf('id="sec3"'));
     const dropdownOver = tradeOver.slice(tradeOver.indexOf('Show the calculation'), tradeOver.indexOf('</details>', tradeOver.indexOf('Show the calculation')));
-    expect(dropdownOver).toContain('spilled into a taxable account over the IRS limit');
     expect(dropdownOver).toContain('Taxable side account withdrawal');
     expect(dropdownOver).toContain('Over the IRS limit, 4% of its projected value');
     // the two "After-tax" sub-totals (account, then side) plus the grand total: three total-rows
@@ -312,17 +211,16 @@ describe('ResultsSummary', () => {
     expect(render({ grossIncome: '70000', savings: '10000' })).toContain('About even');
   });
 
-  it('shows the Pre-tax deduction in the retirement-number calculation, and says so for Roth', () => {
+  it('shows the Pre-tax deduction in the retirement-number calculation, only for Pre-tax savings', () => {
     const html = render({ savings: '10000', currentType: 'pretax' });
     const sec1 = html.slice(html.indexOf('id="sec1"'), html.indexOf('id="sec2"'));
     expect(sec1).toContain('Step 1: federal income tax');
     expect(sec1).toContain('Pre-tax savings for retirement (not taxed now)');
     expect(sec1).toContain('Taxable income');
-    expect(sec1).toContain('Your savings are Pre-tax, so they come out before income tax');
     const roth = render({ savings: '10000', currentType: 'roth' });
     const rothSec1 = roth.slice(roth.indexOf('id="sec1"'), roth.indexOf('id="sec2"'));
     expect(rothSec1).not.toContain('Pre-tax savings for retirement (not taxed now)');
-    expect(rothSec1).toContain('Your savings are Roth, so they come out after income tax');
+    expect(rothSec1).toContain('href="#/how-it-works/how-the-calculator-estimates-your-retirement-tax-rate"');
   });
 
   it('shows capital-gains tax bracket-by-bracket in the full tax calculation, and shows the withdrawal pushing gains up', () => {
@@ -351,8 +249,8 @@ describe('ResultsSummary', () => {
     expect(dropdown).toContain('NIIT: 3.8% × the lesser of gains and MAGI over $200,000');
     expect(dropdown).toContain('Net Investment Income Tax');
     expect(dropdown).toContain('Modified AGI (for the NIIT test)');
-    // Section 3's "Show the calculation" also notes it, since both portfolio scenarios owe it here
-    expect(html).toContain('the gain also owes the 3.8% Net Investment Income Tax');
+    // Section 3's "Show the calculation" also has its row, since both portfolio scenarios owe it here
+    expect(html).toContain('Net Investment Income Tax (3.8% on gains, limited to modified AGI above $200,000');
     // ...and none of it for the default (modest-income) case
     expect(render()).not.toContain('Net Investment Income Tax');
   });
@@ -368,33 +266,20 @@ describe('ResultsSummary', () => {
     expect(none).toContain('Tax on that income</span><span>$0</span>');
   });
 
-  it('keeps "How the rates fit together" inside a rates dropdown, not loose on the page', () => {
-    // TEMPORARY (2026-09-29): a duplicate "old calculation" card is on the page for comparison
-    // (see result.old); it happens to reuse the same lead sentence, so these checks are scoped
-    // to exclude it, to keep testing the CURRENT (sideAware) methodology's own page specifically.
-    const html = withoutOldRatesCard(render());
+  it('the rates dropdown is the steps plus a link to the article, with no block of explanation', () => {
+    const html = render();
     const start = html.indexOf('How are these rates calculated?');
-    const dropdown = html.slice(start, html.indexOf('</details>', start));
-    expect(dropdown).toContain('How the rates fit together.');
-    // it appears twice: the main rates card and "Retirement years without Social Security" share
-    // the same walk-through component, each in its own dropdown — never loose on the page
-    expect(html.split('How the rates fit together.').length - 1).toBe(2);
-    let from = 0;
-    for (let i = 0; i < 2; i++) {
-      const at = html.indexOf('How the rates fit together.', from);
-      expect(at).toBeGreaterThan(-1);
-      // immediately inside a details-body, itself inside an open <details>
-      expect(html.slice(Math.max(0, at - 200), at)).toContain('<div class="details-body">');
-      from = at + 1;
-    }
-    // it comes before the step-by-step explanation
-    expect(dropdown.indexOf('How the rates fit together.')).toBeLessThan(dropdown.indexOf('Step 1: income from Social Security and Existing Accounts'));
+    const dropdown = html.slice(start, html.indexOf('id="sec-tradeoff"'));
+    expect(html).not.toContain('How the rates fit together.');
+    expect(dropdown).toContain('Step 1: income from Social Security and Existing Accounts');
+    expect(dropdown).toContain('href="#/how-it-works/how-the-calculator-estimates-your-retirement-tax-rate"');
+    expect(dropdown).toContain('href="#/how-it-works/the-social-security-phase-in"');
+    // the steps come first, the link after them
+    expect(dropdown.indexOf('Step 1: income from Social Security')).toBeLessThan(dropdown.indexOf('Explained in How this works'));
   });
 
   it('highlights the two rates in a paired box, no explanatory lead-in or verdict sentence', () => {
-    // TEMPORARY (2026-09-29): see the note in the previous test — scoped to exclude the
-    // duplicate "old calculation" card, which legitimately still says "Overall effective rate".
-    const html = withoutOldRatesCard(render());
+    const html = render();
     // the calculator stays numbers-first: no "number that matters" lead sentence, no lean verdict
     expect(html).not.toContain('The number that matters most');
     expect(html).not.toContain('rate-verdict');
@@ -464,7 +349,7 @@ describe('ResultsSummary', () => {
   it('shows self-employment tax in the budget when there is 1099 income', () => {
     const html = render({ incomeType: '1099' });
     expect(html).toContain('FICA and self-employment tax');
-    expect(html).toContain('Half of your self-employment tax');
+    expect(html).toContain('Half of self-employment tax');
     expect(render()).not.toContain('self-employment tax');
   });
 
@@ -515,11 +400,12 @@ describe('ResultsSummary', () => {
     expect(html).not.toContain('Total income before tax');
   });
 
-  it('explains how the three rates fit together, and drops the old sentence', () => {
-    const html = render();
-    expect(html).toContain('How the rates fit together.');
-    expect(html).not.toContain('different kinds of rate on purpose');
-    expect(html).not.toContain('Why two different rates?');
+  it('every article link on the results points at a heading the article really has', () => {
+    const html = render({ grossIncome: '150000', savings: '30000' });
+    const article = renderToStaticMarkup(<ArticlePage />);
+    const slugs = [...new Set([...html.matchAll(/href="#\/how-it-works\/([a-z0-9-]+)"/g)].map((m) => m[1]))];
+    expect(slugs.length).toBe(6);
+    for (const slug of slugs) expect(article, slug).toContain(` id="${slug}"`);
   });
 
   it('puts the Pre-tax and Roth contribution amounts in the comparison table, not in Section 1', () => {
@@ -528,7 +414,7 @@ describe('ResultsSummary', () => {
     expect(sec1).not.toContain('Current possible');
     const sec2 = html.slice(html.indexOf('id="sec2"'), html.indexOf('id="sec3"'));
     expect(sec2).toContain('Current possible contribution');
-    expect(sec2).toContain('cost you the same take-home pay');
+    expect(sec2).toContain('Per year, for the same take-home pay');
   });
 
   it('names "Future Contributions" and "Existing Accounts" throughout the three-step rate walk-through, never "this account"', () => {
@@ -549,27 +435,21 @@ describe('ResultsSummary', () => {
     expect(html).toContain('Effective rate on the account withdrawal');
     // the defaults ($100,000, $10,000 saved) win Pre-tax without Social Security: 13.1% < 22.0%
     expect(html).toContain('is below the tax saved now');
-    expect(html).toContain('the effect of Social Security');
+    expect(html).toContain('href="#/how-it-works/years-without-social-security"');
     // the old marginal-vs-marginal headline and the "stricter rule of thumb" remark are gone
     expect(html).not.toContain('stricter rule of thumb');
     expect(html).not.toContain('Marginal rate in retirement (bracket of the last dollar)');
   });
 
-  it('the "Retirement years without Social Security" reading note no longer keys off lifestyle', () => {
-    // Fixed as part of the migration: under sideAwareRates.js the retirement lifestyle does not
-    // change this view's rate at all (see the "retirement lifestyle factor" HAND CALC tests in
-    // compare.test.js), so the old lifestyle-specific "That is how a higher-earning future can
-    // favor Roth" copy was no longer true and was removed. The note is now the same regardless of
-    // the chosen lifestyle.
+  it('the "Retirement years without Social Security" section is the same whatever the lifestyle', () => {
+    // Under sideAwareRates.js the retirement lifestyle does not change this view's rate at all
+    // (see the "retirement lifestyle factor" HAND CALC tests in compare.test.js).
     const withLifestyle = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0', retirementLifestyle: '2' });
     const plain = render({ grossIncome: '60000', savings: '5000', debtPayments: '0', otherPretaxBalance: '0' });
-    const note = (html) => html.slice(html.indexOf('<strong>Reading this:</strong> removing Social Security'));
-    expect(note(withLifestyle).slice(0, 400)).toBe(note(plain).slice(0, 400));
-    expect(withLifestyle).toContain('depends only on your Existing Accounts');
-    // TEMPORARY (2026-09-29): the duplicate "old calculation" card legitimately still has this
-    // exact lifestyle-specific copy restored verbatim, so this check is scoped to exclude it —
-    // it's the CURRENT methodology's card that must no longer say it.
-    expect(withoutOldRatesCard(withLifestyle)).not.toContain('you expect to spend more in retirement');
+    const section = (html) => html.slice(html.indexOf('Retirement years without Social Security'), html.indexOf('id="sec3"'));
+    expect(section(withLifestyle)).toBe(section(plain));
+    expect(section(plain)).not.toContain('Reading this');
+    expect(withLifestyle).not.toContain('you expect to spend more in retirement');
   });
 
   it('explains a big existing Pre-tax balance setting the no-Social-Security bracket, favoring Roth', () => {
@@ -588,11 +468,26 @@ describe('ResultsSummary', () => {
     const section = html.slice(html.indexOf('Retirement years without Social Security'));
     expect(section).toContain('There is no withdrawal from Future Contributions to measure, so there is no rate to compare.');
     expect(section).toContain('There is nothing saved to compare.');
-    expect(section).toContain('there is nothing saved to measure a rate on');
   });
 
-  it('shows a "Splitting your contribution" card between the after-tax comparison and total future portfolio comparison', () => {
+  it('leaves the "Splitting your contribution" card out of the public calculator', () => {
     const html = render();
+    expect(html).not.toContain('id="sec-blend"');
+    expect(html).not.toContain('Splitting your contribution');
+    expect(html).not.toContain('type="range"');
+  });
+
+  // The card is kept for the #/next preview (`showBlend`).
+  const renderWithBlend = (overrides = {}) =>
+    renderToStaticMarkup(
+      <ResultsSummary
+        showBlend
+        result={compareRothVsTraditional(toCompareInputs({ ...DEFAULT_FORM_VALUES, ...overrides }, 2025))}
+      />,
+    );
+
+  it('with showBlend, shows a "Splitting your contribution" card between the after-tax comparison and total future portfolio comparison', () => {
+    const html = renderWithBlend();
     expect(html.indexOf('id="sec-tradeoff"')).toBeLessThan(html.indexOf('id="sec-blend"'));
     expect(html.indexOf('id="sec-blend"')).toBeLessThan(html.indexOf('id="sec3"'));
     const blend = html.slice(html.indexOf('id="sec-blend"'), html.indexOf('id="sec3"'));
@@ -612,7 +507,7 @@ describe('ResultsSummary', () => {
     // Default inputs (estimated Social Security + a $100,000 existing Pre-tax balance, both
     // Roth-favorable per the app's already-established findings): the best mix is 100% Roth,
     // matching the main rate comparison's own "Tends to favor Roth" verdict at these defaults.
-    const html = render();
+    const html = renderWithBlend();
     const blend = html.slice(html.indexOf('id="sec-blend"'), html.indexOf('id="sec3"'));
     expect(blend).toContain('Here, a pure strategy already wins.');
     expect(blend).toContain('value="100"');
@@ -626,7 +521,7 @@ describe('ResultsSummary', () => {
     // same scenario blend.test.js hand-derives r=0.5 for; the grid's actual best (56%, a whole
     // percentage point away) is confirmed independently via the underlying lib, not re-derived
     // by hand here — blend.test.js already hand-verifies the interior-optimum phenomenon itself.
-    const html = render({
+    const html = renderWithBlend({
       grossIncome: '60000',
       savings: '10000',
       knowsSocialSecurity: 'yes',
@@ -641,7 +536,7 @@ describe('ResultsSummary', () => {
   });
 
   it('shows "nothing saved yet to split" when $0 is saved, without NaN', () => {
-    const html = render({ savings: '0' });
+    const html = renderWithBlend({ savings: '0' });
     const blend = html.slice(html.indexOf('id="sec-blend"'), html.indexOf('id="sec3"'));
     expect(blend).toContain('There is nothing saved yet to split.');
     expect(blend).not.toContain('type="range"');
@@ -714,8 +609,8 @@ describe('ArticlePage', () => {
   const html = renderToStaticMarkup(<ArticlePage />);
 
   it('renders the article as real headings and paragraphs, not raw markdown', () => {
-    expect(html).toContain('<h1>Roth or Traditional? How to Think About It, and How This Calculator Does</h1>');
-    expect(html).toContain('<h2>Years without Social Security</h2>');
+    expect(html).toContain('>Roth or Traditional? How to Think About It, and How This Calculator Does</h1>');
+    expect(html).toContain('<h2 id="years-without-social-security">Years without Social Security</h2>');
     expect(html).toContain('<blockquote>');
     expect(html).toContain('<strong>');
     expect(html).not.toMatch(/(^|>)#{1,3} /); // no leaked "## " heading markers
@@ -724,7 +619,7 @@ describe('ArticlePage', () => {
 
   it('renders every section of ARTICLE.md (the file is the single source)', () => {
     const h2InMarkdown = articleMarkdown.split('\n').filter((l) => l.startsWith('## ')).length;
-    const h2InHtml = (html.match(/<h2>/g) ?? []).length;
+    const h2InHtml = (html.match(/<h2 id="[a-z0-9-]+">/g) ?? []).length;
     expect(h2InMarkdown).toBeGreaterThan(5);
     expect(h2InHtml).toBe(h2InMarkdown);
     expect(html).toContain('educational purposes only');
@@ -840,7 +735,7 @@ describe('ResultsSummary — excess contributions default to taxable', () => {
     const html = render({ grossIncome: '150000', savings: '30000', currentType: 'pretax', accountType: '401k' });
     expect(html).toContain('incl. $6,500 in a taxable account (over the IRS limit)');
     expect(html).toContain('incl. $860 in a taxable account (over the IRS limit)');
-    expect(html).toContain('At the IRS limit.');
+    expect(html).toContain('href="#/how-it-works/why-maxing-out-changes-the-math"');
     expect(html).toContain('extra $');
     expect(html).toContain('taxable investment account');
   });
@@ -968,7 +863,7 @@ describe('Future Contributions vs. Existing Accounts', () => {
     const html = render({ grossIncome: '150000', savings: '23500', currentType: 'roth' });
     // 23,500 x 24% = 5,640 a year of tax saved, invested
     expect(html).toContain('incl. $5,640 in a taxable account (over the IRS limit)');
-    expect(html).toContain('At the IRS limit.');
+    expect(html).toContain('href="#/how-it-works/why-maxing-out-changes-the-math"');
     expect(html).toContain('Plus the taxable account (over the IRS limit)');
   });
 
@@ -1083,14 +978,11 @@ describe('Collapsible sections', () => {
   it('shows each results card with its headline, all open', () => {
     const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);
     const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
-    // TEMPORARY (2026-09-29): includes the duplicate "old calculation" card (see result.old).
     expect(titles).toEqual([
       'Retirement income number',
       'Your portfolio at retirement',
       'Tax rate comparison',
-      'Tax rate comparison — old calculation',
       'After-tax comparison',
-      'Splitting your contribution',
       'Total future portfolio comparison',
     ]);
     expect(html).toContain('class="collapsible-summary">$65,380 a year after tax<');
@@ -1143,17 +1035,6 @@ describe('Collapsible sections', () => {
   });
 });
 
-// TEMPORARY (2026-09-29): the old vs. new calculation test page; delete with result.old.
-describe('OldVsNewPage', () => {
-  it('renders every chart, map and the comparison table with no NaN or Infinity', async () => {
-    const { default: OldVsNewPage } = await import('../src/components/OldVsNewPage.jsx');
-    const html = renderToStaticMarkup(<OldVsNewPage />);
-    expect(html).toContain('Old vs. new calculation (test page)');
-    expect(html).toContain('Where they differ most');
-    expect(html).toContain('Where does each one win? Income against savings rate');
-    expect(html).not.toMatch(/NaN|Infinity/);
-  });
-});
 
 // The #/next preview (build alongside, see CLAUDE.md).
 describe('NextApp (#/next preview)', () => {

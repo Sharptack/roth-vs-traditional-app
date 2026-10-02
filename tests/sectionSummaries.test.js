@@ -79,8 +79,6 @@ describe('resultHeadlines', () => {
       roth: { impliedWithdrawalRate: 0.020904, totalValue: 940608.15 },
       pretax: { impliedWithdrawalRate: 0.020776, totalValue: 1147211.98 },
     },
-    // TEMPORARY (2026-09-29): result.old, for the duplicate "old calculation" card's headline.
-    old: { rates: { marginalNow: 0.22, effectiveRetirement: 0.2938, lean: 'pretax' } },
     blend: {
       available: true,
       best: { rothShare: 0.56, totalAfterTaxIncome: 35103.67 },
@@ -93,7 +91,6 @@ describe('resultHeadlines', () => {
       need: '$65,380 a year after tax',
       buildup: '$940,608 Roth vs. $1,147,212 Pre-tax at retirement',
       rates: '22.0% now vs. 12.3% in retirement · tends to favor Pre-tax',
-      ratesOld: '22.0% now vs. 29.4% in retirement · tends to favor Pre-tax',
       tradeoff: 'Pre-tax ahead by $1,234 a year after tax',
       blend: 'Best mix: 56% Roth, $1,671/yr more than either pure strategy',
       portfolio: 'Withdrawal rate needed: All-Roth 2.09% vs. All-Pre-tax 2.08%',

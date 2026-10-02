@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { resultHeadlines } from '../lib/sectionSummaries.js';
 import Collapsible, { toggleId } from './Collapsible.jsx';
 import { formatCurrency, formatPercent, formatValue } from '../lib/format.js';
-import { effectiveRateSteps, sideAwareRateSteps } from '../lib/rateSteps.js';
+import { sideAwareRateSteps } from '../lib/rateSteps.js';
+import { ARTICLE_SECTIONS, articleHash } from '../lib/route.js';
 import { explainFullTax } from '../lib/taxBreakdown.js';
 import LineChart from './charts/LineChart.jsx';
 
@@ -41,6 +42,22 @@ export function StepRow({ row }) {
   return <Row label={label} value={row.kind === 'heading' ? undefined : formatValue(row.value, row.format)} kind={row.kind} />;
 }
 
+// The explanation lives in the article ("How this works"), not on this page: one line linking
+// to the section(s) that cover what the numbers above it mean.
+function Explained({ sections }) {
+  return (
+    <p className="hint explained">
+      Explained in How this works:{' '}
+      {sections.map((section, i) => (
+        <span key={section}>
+          {i > 0 && ' · '}
+          <a href={articleHash(section)}>{ARTICLE_SECTIONS[section]}</a>
+        </span>
+      ))}
+    </p>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Section 1 — Retirement income number (its own section)              */
 /* ------------------------------------------------------------------ */
@@ -51,16 +68,11 @@ function RetirementNumberMath({ result }) {
   const adjusted = lifestyleFactor !== 1;
   const hasSE = b.selfEmploymentIncome > 0;
   const hasPretax = b.pretaxDeduction > 0;
-  const taxSaved = b.incomeTaxWithoutPretaxDeduction - b.incomeTax;
   const partlyDeducted = b.currentType === 'pretax' && b.pretaxDeduction < b.savings;
   return (
     <details className="details">
       <summary>How is this calculated?</summary>
       <div className="details-body">
-        <p>
-          Your take-home pay today, minus the costs that will be gone by retirement, minus what
-          you&rsquo;re saving. What&rsquo;s left is the lifestyle you already live on.
-        </p>
         <div className="calc">
           <Row label="Step 1: federal income tax" kind="heading" />
           <Row label="Gross income" value={$(b.grossIncome)} />
@@ -111,29 +123,15 @@ function RetirementNumberMath({ result }) {
           )}
         </div>
         <p className="hint">
-          {hasPretax ? (
+          {partlyDeducted && (
             <>
-              Your savings are Pre-tax, so they come out before income tax: that cuts your income
-              tax by {$(taxSaved)} (it would be {$(b.incomeTaxWithoutPretaxDeduction)} without
-              them). They&rsquo;re still subtracted in Step 2, because that money is saved, not
-              spent. FICA still applies to them.
-              {partlyDeducted && (
-                <>
-                  {' '}
-                  Only the {$(b.pretaxDeduction)} that fits under the IRS limit is deducted; the rest
-                  is treated as going to a taxable account.
-                </>
-              )}{' '}
+              Only the {$(b.pretaxDeduction)} that fits under the IRS limit is deducted; the rest is
+              treated as going to a taxable account.{' '}
             </>
-          ) : (
-            b.savings > 0 && (
-              <>Your savings are Roth, so they come out after income tax and don&rsquo;t lower it. </>
-            )
           )}
-          FICA comes out of your paycheck now but stops when you stop working, so it isn&rsquo;t
-          part of what you need to replace. Federal tax only; state tax isn&rsquo;t modeled.
-          {hasSE && <> Half of your self-employment tax is deducted from your income before income tax.</>}
+          FICA stops when you stop working, so it isn&rsquo;t replaced. Federal tax only.
         </p>
+        <Explained sections={['estimate']} />
       </div>
     </details>
   );
@@ -203,38 +201,15 @@ function RetirementNumberSection({ result }) {
 /* Section 1b — Your portfolio at retirement                            */
 /* ------------------------------------------------------------------ */
 
-// What each scenario contributes this year, what that (and the Existing Accounts you already
-// have) grow to by retirement, and the total. No new math: every number here already exists on
-// `result` (contributionSplit, grown, annuity, portfolio) — this is a different VIEW of numbers
-// used elsewhere, built to set up the "Tax rate comparison" card right after it: the contribution
-// difference is why the two scenarios differ at all, and that card's rate is measured on
-// withdrawing from Future Contributions stacked ON TOP of this section's Existing Accounts total.
+// What each scenario contributes this year and what that grows to, what the Existing Accounts
+// grow to, and the total. No new math: every number here already exists on `result`
+// (contribution, annuity, grown, portfolio).
 function PortfolioBuildup({ result }) {
   const { contribution, contributionSplit, grown, annuity, portfolio, years } = result;
-  const hasSide = contributionSplit.roth.excessToTaxable > 0.5 || contributionSplit.pretax.excessToTaxable > 0.5;
   const existingTotal = grown.pretax + grown.roth + grown.taxable;
-  const contributionGap = contribution.pretax - contribution.roth;
-  const hasContribution = contributionGap > 0.5;
 
   return (
     <>
-      <p className="note">
-        {hasContribution ? (
-          <>
-            <strong>Why this matters:</strong> a Pre-tax dollar comes out of income that would
-            otherwise be taxed, so Pre-tax puts more away for the same take-home pay. That extra{' '}
-            {$(contributionGap)} a year is the entire reason the two scenarios end up different
-            &mdash; everything below builds on it.
-          </>
-        ) : (
-          <>
-            <strong>Why this matters:</strong> there&rsquo;s nothing saved yet to compare. Once
-            you enter a contribution, the difference between Roth and Pre-tax shows up here first
-            &mdash; everything below builds on it.
-          </>
-        )}
-      </p>
-
       <div className="table-wrap">
         <table className="compare-table tradeoff-table">
           <thead>
@@ -245,72 +220,45 @@ function PortfolioBuildup({ result }) {
             </tr>
           </thead>
           <tbody>
-            <GroupRow title="Your contribution this year" sub="For the same take-home pay" />
+            <GroupRow title="Future Contributions" />
             <tr>
-              <th scope="row">To your account</th>
-              <td>{$(contributionSplit.roth.toAccount)}</td>
-              <td>{$(contributionSplit.pretax.toAccount)}</td>
+              <th scope="row">
+                Your contribution this year
+                <span className="th-sub">For the same take-home pay</span>
+              </th>
+              <td>
+                {$(contribution.roth)}
+                <SideNote amount={contributionSplit.roth.excessToTaxable} />
+              </td>
+              <td>
+                {$(contribution.pretax)}
+                <SideNote amount={contributionSplit.pretax.excessToTaxable} />
+              </td>
             </tr>
-            {hasSide && (
-              <tr>
-                <th scope="row">
-                  To a taxable account
-                  <span className="th-sub">Over the IRS limit</span>
-                </th>
-                <td>{$(contributionSplit.roth.excessToTaxable)}</td>
-                <td>{$(contributionSplit.pretax.excessToTaxable)}</td>
-              </tr>
-            )}
-            <tr className="total-row">
-              <th scope="row">Total contribution</th>
-              <td>{$(contribution.roth)}</td>
-              <td>{$(contribution.pretax)}</td>
+            <tr>
+              <th scope="row">
+                Grown to retirement
+                <span className="th-sub">Contributing every year for {years} years</span>
+              </th>
+              <td>
+                {$(annuity.roth.totalFutureValue)}
+                <SideNote amount={annuity.roth.side.futureValue} />
+              </td>
+              <td>
+                {$(annuity.pretax.totalFutureValue)}
+                <SideNote amount={annuity.pretax.side.futureValue} />
+              </td>
             </tr>
           </tbody>
           <tbody>
-            <GroupRow title="Existing Accounts, grown to retirement" sub={`Same either way, over ${years} years`} />
+            <GroupRow title="Existing Accounts" />
             <tr>
-              <th scope="row">Pre-tax</th>
-              <td>{$(grown.pretax)}</td>
-              <td>{$(grown.pretax)}</td>
-            </tr>
-            <tr>
-              <th scope="row">Roth</th>
-              <td>{$(grown.roth)}</td>
-              <td>{$(grown.roth)}</td>
-            </tr>
-            <tr>
-              <th scope="row">Taxable</th>
-              <td>{$(grown.taxable)}</td>
-              <td>{$(grown.taxable)}</td>
-            </tr>
-            <tr className="total-row">
-              <th scope="row">Existing Accounts total</th>
+              <th scope="row">
+                Grown to retirement
+                <span className="th-sub">Same either way</span>
+              </th>
               <td>{$(existingTotal)}</td>
               <td>{$(existingTotal)}</td>
-            </tr>
-          </tbody>
-          <tbody>
-            <GroupRow title="Future Contributions, grown to retirement" />
-            <tr>
-              <th scope="row">Pre-tax</th>
-              <td>{$(0)}</td>
-              <td>{$(annuity.pretax.futureValue)}</td>
-            </tr>
-            <tr>
-              <th scope="row">Roth</th>
-              <td>{$(annuity.roth.futureValue)}</td>
-              <td>{$(0)}</td>
-            </tr>
-            <tr>
-              <th scope="row">Taxable</th>
-              <td>{$(annuity.roth.side.futureValue)}</td>
-              <td>{$(annuity.pretax.side.futureValue)}</td>
-            </tr>
-            <tr className="total-row">
-              <th scope="row">Future Contributions total</th>
-              <td>{$(annuity.roth.totalFutureValue)}</td>
-              <td>{$(annuity.pretax.totalFutureValue)}</td>
             </tr>
           </tbody>
           <tbody>
@@ -328,28 +276,10 @@ function PortfolioBuildup({ result }) {
           </tbody>
         </table>
       </div>
-
-      <details className="details">
-        <summary>How is this calculated?</summary>
-        <div className="details-body">
-          <p>
-            Both scenarios cost you the same take-home pay today (see &ldquo;Why is the Pre-tax
-            side bigger?&rdquo; under the after-tax comparison for the exact arithmetic). Whatever
-            each scenario puts away is grown at your expected return for {years} years; anything
-            over the IRS limit builds a taxable account alongside the main one. Your Existing
-            Accounts grow the same way regardless of which you choose &mdash; the Roth-or-Traditional
-            decision only ever changes Future Contributions.
-          </p>
-          <p className="hint">
-            The total above is only a starting point, not the comparison itself: the bigger
-            Pre-tax total includes money that hasn&rsquo;t been taxed yet, so it isn&rsquo;t an
-            apples-to-apples number on its own. The <strong>tax rate comparison</strong> next is
-            where that gets settled: it measures the effective tax rate on withdrawing from Future
-            Contributions specifically, stacked <strong>on top of</strong> whatever Social Security
-            and your Existing Accounts already draw &mdash; never a flat rate on the total above.
-          </p>
-        </div>
-      </details>
+      <p className="hint">
+        The Pre-tax total hasn&rsquo;t been taxed yet, so a bigger total isn&rsquo;t the verdict. The
+        tax rate comparison below settles what you keep.
+      </p>
     </>
   );
 }
@@ -377,7 +307,6 @@ function yearsWithoutSSVerdict(result) {
 
 function YearsWithoutSocialSecurity({ result }) {
   const s = result.withoutSocialSecurity;
-  const { retirementNeed } = result;
   const win = (side) => (s.comparison.winner === side ? 'win' : '');
   const withdrawalNeeded = s.sideAware.available;
 
@@ -385,11 +314,8 @@ function YearsWithoutSocialSecurity({ result }) {
     <details className="details">
       <summary>Retirement years without Social Security</summary>
       <div className="details-body">
-        <p>
-          You may have years in retirement before Social Security starts, for example if you retire
-          before you claim benefits, or you may want to plan without it. Here Social Security is set
-          to $0, so your whole {$(retirementNeed.target)} retirement income number has to come from
-          your accounts. With no Social Security to phase in, the tax is plain brackets.
+        <p className="hint">
+          Social Security set to $0: for the years before you claim, or to plan without it.
         </p>
 
         <RateWalkthrough
@@ -437,24 +363,7 @@ function YearsWithoutSocialSecurity({ result }) {
 
         <p className="verdict simple-verdict">{yearsWithoutSSVerdict(result)}</p>
 
-        <p className="note">
-          {withdrawalNeeded && (
-            <>
-              <strong>Reading this:</strong> removing Social Security only removes tax &mdash; its
-              phase-in never lowers anyone&rsquo;s bill &mdash; so this rate is never higher than the
-              rate in the main result above; the difference between the two is the effect of Social
-              Security. This view&rsquo;s own bracket depends only on your Existing Accounts&rsquo;
-              own withdrawals and Future Contributions&rsquo; own withdrawal, not on how much you
-              need to spend: a large existing Pre-tax balance, whose forced withdrawal already sets
-              a high bracket on its own, is the main way this view favors Roth.
-            </>
-          )}
-          {!withdrawalNeeded && (
-            <>
-              <strong>Reading this:</strong> there is nothing saved to measure a rate on.
-            </>
-          )}
-        </p>
+        <Explained sections={['withoutSocialSecurity']} />
       </div>
     </details>
   );
@@ -493,19 +402,6 @@ function AfterTaxIncomeMath({ result }) {
     <details className="details">
       <summary>Show the calculation</summary>
       <div className="details-body">
-        <p>
-          Each side&rsquo;s Future Contributions withdrawal (4% of its projected value) is taxed at
-          that scenario&rsquo;s own rate &mdash; tax-free for Roth, at the effective rate on the
-          account withdrawal for Pre-tax
-          {hasSide && (
-            <>
-              {' '}
-              &mdash; and, since some of it spilled into a taxable account over the IRS limit, that
-              account&rsquo;s own withdrawal is taxed separately, at its own rate
-            </>
-          )}
-          .
-        </p>
         <div className="table-wrap">
           <table className="calc-table">
             <thead>
@@ -572,8 +468,7 @@ function AfterTaxIncomeMath({ result }) {
 // Section 2: the two rates the decision turns on, in their own block.
 // After-tax comparison (the trade-off in dollars): Future Contributions only, in its own block below the rates.
 function TradeOff({ result }) {
-  const { lumpSum, annuity, contribution, contributionSplit, comparison, limitCheck, rates, years } =
-    result;
+  const { lumpSum, annuity, contribution, contributionSplit, comparison, limitCheck, years } = result;
   const win = (side) => (comparison.winner === side ? 'win' : '');
   const anySide = contributionSplit.roth.excessToTaxable > 0 || contributionSplit.pretax.excessToTaxable > 0;
   return (
@@ -649,34 +544,11 @@ function TradeOff({ result }) {
         </table>
       </div>
       <AfterTaxIncomeMath result={result} />
-      <details className="details">
-        <summary>Why is the Pre-tax side bigger?</summary>
-        <div className="details-body">
-          <p>
-            The two contributions cost you the same take-home pay. A Pre-tax dollar comes out of
-            income that would have been taxed at your {formatPercent(rates.marginalNow, 0)} marginal
-            rate, so Pre-tax puts more away for the same paycheck: the Pre-tax side invests the tax it
-            saves today. The question is how much of it you keep. Every Pre-tax dollar that comes out
-            is taxed at the effective rate on the account withdrawal ({formatPercent(rates.effectiveRetirement)}),
-            while Roth withdrawals are tax-free. Pre-tax leaves more after tax when that rate is below
-            the rate you saved going in ({formatPercent(rates.taxSavedNow)}) &mdash; see the rates above
-            for the exact comparison.
-          </p>
-          {anySide && (
-            <p>
-              <strong>At the IRS limit.</strong> Only {$(limitCheck.limit)} a year can go into the
-              account. Whatever that side&rsquo;s take-home pay would have bought beyond the limit is
-              invested in a taxable account instead (for Pre-tax, that is the tax the contribution
-              saves). That money is part of your Future Contributions: it grows at the same return
-              and only its growth is taxed, as capital gains, so the figures above include it.
-            </p>
-          )}
-          <p className="hint">
-            These figures cover only your Future Contributions, not your Existing Accounts. The
-            total future portfolio comparison below includes both.
-          </p>
-        </div>
-      </details>
+      <p className="hint">
+        Future Contributions only. Your Existing Accounts are added in the total future portfolio
+        comparison below.
+      </p>
+      <Explained sections={anySide ? ['rates', 'limit'] : ['rates']} />
 
       <YearsWithoutSocialSecurity result={result} />
     </>
@@ -948,11 +820,6 @@ function FullTaxBreakdown({ stackDetails: st }) {
     <details className="details">
       <summary>Show the full tax calculation</summary>
       <div className="details-body full-tax-breakdown">
-        <p className="hint">
-          Every bracket, for each scenario&rsquo;s full picture: Social Security, Existing
-          Accounts, the taxable account Future Contributions build, and (Pre-tax only) the
-          account&rsquo;s own withdrawal.
-        </p>
         <FullTaxCalculation title="Roth scenario" d={explainFullTax(st.rothWorld)} />
         <FullTaxCalculation title="Pre-tax scenario" d={explainFullTax(st.preTaxWorld)} />
       </div>
@@ -973,24 +840,13 @@ function RateWalkthrough({ sideAware: s, socialSecurity, otherWithdrawals, summa
           <p className="hint">There is no withdrawal from Future Contributions to measure, so there is no rate to compare.</p>
         ) : (
           <>
-            <p className="note">
-              <strong>How the rates fit together.</strong> Step 1 is Social Security plus your Existing
-              Accounts. Step 2 is where the two scenarios&rsquo; pictures start to differ: once savings
-              exceed the IRS limit, the tax a Pre-tax contribution saves gets invested in a taxable
-              account instead, and the Roth and Pre-tax scenarios end up holding different amounts there
-              &mdash; those gains sit on top of ordinary income, so a bigger taxable account can lose the
-              cheap 0% bracket to Step 3&rsquo;s withdrawal, make more Social Security taxable, or add the
-              3.8% investment tax, and Step 2 works out the tax rate on that difference. Step 3 adds the
-              Pre-tax account&rsquo;s own withdrawal (4% of its projected value) and re-does the tax. The
-              rates are put together at the end: the tax saved now, after any tax on investing it,
-              against the effective rate on the account withdrawal.
-            </p>
             <div className="calc">
               {sideAwareRateSteps({ sideAware: s, socialSecurity, otherWithdrawals }).map((row) => (
                 <StepRow key={row.key} row={row} />
               ))}
             </div>
             <FullTaxBreakdown stackDetails={s.stackDetails} />
+            <Explained sections={['estimate', 'socialSecurity']} />
           </>
         )}
       </div>
@@ -1035,410 +891,10 @@ function TaxRates({ result }) {
         <strong>{LEAN_TEXT[s.lean]}</strong>
       </p>
       <p className="hint">
-        In dollars, the same comparison: {ahead} comes out ahead by {$(Math.abs(s.dollarDifference))} a year of
-        after-tax income (Future Contributions, at a 4% withdrawal, exact tax on the whole stack).
+        In dollars: {ahead} comes out ahead by {$(Math.abs(s.dollarDifference))} a year after tax.
       </p>
 
       <RateWalkthrough sideAware={s} socialSecurity={result.socialSecurity} otherWithdrawals={result.otherWithdrawals} />
-    </div>
-  );
-}
-
-/* ==================================================================================== */
-/* TEMPORARY (2026-09-29): the pre-2026-09-28 need-based rate calculation, restored from   */
-/* git history (commit 92b16f0) alongside the current block above so the user can compare  */
-/* them. Everything below reads `result.old` (compare.js's temporary `old` block). Delete   */
-/* this whole section, its RESULT_CARDS entry below, `result.old`, `lib/incomeNeed.js`,     */
-/* `tests/incomeNeed.test.js`, and `effectiveRateSteps`/`rateDriverRows` in rateSteps.js     */
-/* when the comparison is done — see CLAUDE.md's "result.old (TEMPORARY)" section.          */
-/* ==================================================================================== */
-
-function ExtraTaxSplitOld({ d }) {
-  if (!(d.extraCapitalGainsTax > 0.5 || d.extraNiit > 0.5)) return null;
-  return (
-    <>
-      <Row label="…of which extra income tax" value={$(d.extraOrdinaryTax)} kind="sub" />
-      <Row
-        label="…of which extra capital-gains tax (gains pushed into a higher bracket)"
-        value={$(d.extraCapitalGainsTax)}
-        kind="sub"
-      />
-      {d.extraNiit > 0.5 && (
-        <Row
-          label="…of which extra Net Investment Income Tax (more gains over the MAGI threshold)"
-          value={$(d.extraNiit)}
-          kind="sub"
-        />
-      )}
-    </>
-  );
-}
-
-// "What sets the rate": where the withdrawal lands in the brackets (and what is
-// taxed ahead of it), the Social Security phase-in, and capital-gains stacking.
-function RateDriversOld({ d }) {
-  const bracket = (r) => formatPercent(r, 0);
-  const W = $(d.withdrawal);
-  const std = $(d.standardDeduction);
-  const firstIncome = [
-    d.otherPretaxWithdrawal > 0.5 && `${$(d.otherPretaxWithdrawal)} a year from your Pre-tax Existing Accounts`,
-    d.taxableSSBefore > 0.5 && `${$(d.taxableSSBefore)} of taxable Social Security`,
-  ].filter(Boolean);
-  const deductionLeft = Math.max(0, d.standardDeduction - d.ordinaryIncomeBefore);
-
-  let landing;
-  if (firstIncome.length > 0) {
-    landing = (
-      <li>
-        <strong>Income that&rsquo;s taxed first.</strong> {firstIncome.join(' and ')}{' '}
-        {firstIncome.length > 1 ? 'are' : 'is'} taxed ahead of the Future Contributions withdrawal.{' '}
-        {d.startBracket > 0 ? (
-          <>
-            That uses up the whole {std} standard deduction and fills the lower brackets, so this{' '}
-            {W} withdrawal starts in the {bracket(d.startBracket)} bracket instead of at 0%
-          </>
-        ) : (
-          <>
-            That uses {$(d.deductionUsedBefore)} of the {std} standard deduction, so only the first{' '}
-            {$(Math.min(deductionLeft, d.withdrawal))} of this {W} withdrawal is tax-free
-          </>
-        )}
-        , and its last dollar lands in the {bracket(d.endBracket)} bracket. The more Pre-tax money
-        you already have, the higher the Future Contributions withdrawals start.
-      </li>
-    );
-  } else {
-    landing = (
-      <li>
-        <strong>Where it lands.</strong> Nothing else is taxed ahead of this withdrawal, so the first{' '}
-        {$(Math.min(d.standardDeduction, d.withdrawal))} of it is covered by the {std} standard
-        deduction and its last dollar lands in the {bracket(d.endBracket)} bracket. Pre-tax Existing
-        Accounts would change this: their withdrawals are taxed first and push this one into higher
-        brackets.
-      </li>
-    );
-  }
-
-  return (
-    <div className="note">
-      <strong>What sets the rate on these withdrawals</strong>
-      <ul className="drivers">
-        {landing}
-        {d.extraTaxableSS > 0.5 && (
-          <li>
-            <strong>The Social Security phase-in.</strong> This {W} withdrawal also pulls{' '}
-            {$(d.extraTaxableSS)} more of your Social Security into taxable income, so{' '}
-            {$(d.withdrawal + d.extraTaxableSS)} of income gets taxed, not just {W}. While your
-            combined income sits between the IRS thresholds, each extra dollar you withdraw makes up
-            to 85 cents of benefits taxable too. That is why this rate can be higher than your tax
-            bracket.
-          </li>
-        )}
-        {d.extraCapitalGainsTax > 0.5 && (
-          <li>
-            <strong>Capital gains pushed into a higher bracket.</strong> Your taxable-account
-            withdrawals are taxed at capital-gains rates stacked on top of your ordinary income. This
-            withdrawal raises that ordinary income, which pushes more of those gains into a higher
-            capital-gains bracket and adds {$(d.extraCapitalGainsTax)} of capital-gains tax. That tax
-            only exists because of this withdrawal, so it counts in the rate.
-          </li>
-        )}
-        {d.extraNiit > 0.5 && (
-          <li>
-            <strong>The Net Investment Income Tax.</strong> Above {NIIT_THRESHOLD_TEXT} of modified
-            AGI, taxable-account gains owe an extra 3.8%. This withdrawal isn&rsquo;t investment
-            income itself, but it raises your modified AGI, so more of your gains go over the line
-            and it adds {$(d.extraNiit)} of that tax.
-          </li>
-        )}
-      </ul>
-    </div>
-  );
-}
-
-function yearsWithoutSSVerdictOld(result) {
-  const s = result.old.withoutSocialSecurity;
-  const { winner, afterTaxIncomeDifference } = s.comparison;
-  const now = formatPercent(result.old.rates.marginalNow);
-  const later = formatPercent(s.effectiveRateRetirement);
-  if (winner === 'even') {
-    return `About even: your marginal rate today (${now}) and the effective rate on these withdrawals without Social Security (${later}) are nearly the same, so the tax treatment washes out.`;
-  }
-  const name = winner === 'pretax' ? 'Pre-tax (Traditional)' : 'Roth';
-  const why =
-    winner === 'pretax'
-      ? `the effective rate on these withdrawals without Social Security (${later}) is below your marginal rate today (${now})`
-      : `the effective rate on these withdrawals without Social Security (${later}) is above your marginal rate today (${now})`;
-  return `${name} comes out ahead by about ${$(afterTaxIncomeDifference)} of after-tax income per year, because ${why}.`;
-}
-
-function YearsWithoutSocialSecurityOld({ result }) {
-  const s = result.old.withoutSocialSecurity;
-  const { retirementNeed, otherWithdrawals: o } = result;
-  const rates = result.old.rates;
-  const std = result.current.standardDeduction;
-  const win = (side) => (s.comparison.winner === side ? 'win' : '');
-  const withdrawalNeeded = s.grossUp.grossWithdrawal > 0;
-  const extraTax = s.grossUp.solutionStack.totalTax - s.grossUp.baseStack.totalTax;
-  const higherLifestyle = retirementNeed.lifestyleFactor > 1;
-  const hasSide = s.annuity.roth.side.futureValue > 0 || s.annuity.pretax.side.futureValue > 0;
-
-  return (
-    <details className="details">
-      <summary>Retirement years without Social Security (old calculation)</summary>
-      <div className="details-body">
-        <p>
-          You may have years in retirement before Social Security starts, for example if you retire
-          before you claim benefits, or you may want to plan without it. Here Social Security is set
-          to $0, so your whole {$(retirementNeed.target)} retirement income number has to come from
-          your accounts. With no Social Security to phase in, the tax is plain brackets, and the
-          rate on these withdrawals is the blended rate: the extra tax they cause, divided by the
-          withdrawals.
-        </p>
-
-        <div className="calc">
-          <Row label="Retirement income without Social Security" kind="heading" />
-          <Row label="Retirement income number" value={$(retirementNeed.target)} kind="sub" />
-          <Row label="Existing Accounts, Pre-tax (4% withdrawal)" value={$(o.pretaxGross)} kind="sub" />
-          {o.roth > 0 && <Row label="Existing Accounts, Roth (4%, tax-free)" value={$(o.roth)} kind="sub" />}
-          {o.taxableGross > 0 && (
-            <Row label="Existing Accounts, taxable (4% withdrawal)" value={$(o.taxableGross)} kind="sub" />
-          )}
-          <Row
-            label="Pre-tax withdrawal needed from Future Contributions"
-            value={$(s.grossUp.grossWithdrawal)}
-            kind="sub"
-          />
-          {withdrawalNeeded ? (
-            <>
-              <Row
-                label={`Taxable income after the ${$(std)} standard deduction`}
-                value={$(s.taxableIncomeAtTop)}
-                kind="sub"
-              />
-              <Row
-                label="Extra tax caused by the Future Contributions withdrawal"
-                value={$(extraTax)}
-                kind="total"
-              />
-              <ExtraTaxSplitOld d={s.rateDrivers} />
-              <Row
-                label={`Effective rate on these withdrawals (${$(extraTax)} ÷ ${$(s.grossUp.grossWithdrawal)})`}
-                value={formatPercent(s.effectiveRateRetirement)}
-                kind="total"
-              />
-            </>
-          ) : (
-            <>
-              <Row
-                label="Future Contributions' own natural withdrawal (4% of their projected value)"
-                value={$(s.grossUp.probeSize)}
-                kind="sub"
-              />
-              <Row
-                label={`Taxable income after the ${$(std)} standard deduction, with that withdrawal added`}
-                value={$(s.grossUp.probeStack.ordinaryTaxableIncome)}
-                kind="sub"
-              />
-              <Row label="Total tax, with that withdrawal added" value={$(s.grossUp.probeStack.totalTax)} kind="sub" />
-              <Row label="Total tax without it (Existing Accounts only)" value={$(s.grossUp.baseStack.totalTax)} kind="sub" />
-              <Row
-                label={`Extra tax that withdrawal would cause (${$(s.grossUp.probeStack.totalTax)} − ${$(s.grossUp.baseStack.totalTax)})`}
-                value={$(s.grossUp.probeExtraTax)}
-                kind="total"
-              />
-              <ExtraTaxSplitOld d={s.rateDrivers} />
-              <Row
-                label={`Effective rate on these withdrawals (${$(s.grossUp.probeExtraTax)} ÷ ${$(s.grossUp.probeSize)})`}
-                value={formatPercent(s.effectiveRateRetirement)}
-                kind="total"
-              />
-            </>
-          )}
-          <Row
-            label="Bracket the last dollar falls in (for reference)"
-            value={formatPercent(s.marginalRateRetirement, 0)}
-            kind="sub"
-          />
-        </div>
-
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col" className="row-head"></th>
-                <th scope="col" className={win('roth')}>Roth</th>
-                <th scope="col" className={win('pretax')}>Pre-tax (Traditional)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">Future Contributions at retirement</th>
-                <td>{$(result.old.annuity.roth.futureValue)}</td>
-                <td>{$(result.old.annuity.pretax.futureValue)}</td>
-              </tr>
-              <tr>
-                <th scope="row">
-                  Annual withdrawal
-                  <span className="th-sub">4% of Future Contributions</span>
-                </th>
-                <td>{$(result.old.annuity.roth.annualWithdrawal)}</td>
-                <td>{$(result.old.annuity.pretax.annualWithdrawal)}</td>
-              </tr>
-              <tr>
-                <th scope="row">Effective rate on the withdrawal</th>
-                <td>0%</td>
-                <td>{formatPercent(s.effectiveRateRetirement)}</td>
-              </tr>
-              {hasSide && (
-                <tr>
-                  <th scope="row">
-                    Plus the taxable account (over the IRS limit)
-                    <span className="th-sub">4% withdrawal, after capital-gains tax</span>
-                  </th>
-                  <td>{$(s.annuity.roth.side.afterTaxWithdrawal)}</td>
-                  <td>{$(s.annuity.pretax.side.afterTaxWithdrawal)}</td>
-                </tr>
-              )}
-              <tr>
-                <th scope="row">After-tax income</th>
-                <td className={win('roth')}>{$(s.annuity.roth.totalAfterTaxIncome)}</td>
-                <td className={win('pretax')}>{$(s.annuity.pretax.totalAfterTaxIncome)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p className="verdict simple-verdict">{yearsWithoutSSVerdictOld(result)}</p>
-
-        <p className="hint">
-          Your marginal rate today is {formatPercent(rates.marginalNow, 0)}. The blended rate on
-          these withdrawals is lower than the bracket of their last dollar because the lower
-          brackets are taxed first.
-        </p>
-        <p className="note">
-          {withdrawalNeeded && !higherLifestyle && (
-            <>
-              <strong>Reading this:</strong> without Social Security, your retirement income is
-              lower than your income today, so your retirement bracket can&rsquo;t be higher than
-              your bracket now. This view can only tie or favor Pre-tax. Compare it with the main
-              result above: the difference between the two is the effect of Social Security.
-            </>
-          )}
-          {withdrawalNeeded && higherLifestyle && (
-            <>
-              <strong>Reading this:</strong> you expect to spend more in retirement than you do
-              today, so your retirement bracket can end up higher than your bracket now. That is how
-              a higher-earning future can favor Roth. Compare it with the main result above: the
-              difference between the two is the effect of Social Security.
-            </>
-          )}
-          {!withdrawalNeeded && (
-            <>
-              <strong>Reading this:</strong> your Existing Accounts alone already produce more taxable
-              income than you need, so your bracket in retirement is set by those balances, not by
-              your Future Contributions.
-            </>
-          )}
-        </p>
-      </div>
-    </details>
-  );
-}
-
-function EffectiveRateMathOld({ result }) {
-  const { annuity } = result.old;
-  const withdrawalNeeded = result.old.grossUp.grossWithdrawal > 0;
-
-  return (
-    <details className="details">
-      <summary>How are the retirement rates calculated? (old calculation)</summary>
-      <div className="details-body">
-        <p className="note">
-          <strong>How the rates fit together.</strong> Your <strong>marginal rate</strong> is the tax
-          on your next dollar of income today, which is exactly what a Pre-tax contribution saves you.
-          The <strong>effective rate on these withdrawals</strong> is the tax caused by the
-          withdrawals from your Future Contributions, as a share of those withdrawals, including the extra tax
-          that appears when Social Security benefits become taxable and when capital gains are pushed
-          into a higher bracket. That is the rate that matters for the Roth vs. Pre-tax choice:
-          Pre-tax comes out ahead when it is lower than your marginal rate today, and Roth when it is
-          higher. Your <strong>overall effective rate</strong> is simply all the tax you owe in
-          retirement divided by all the gross income you receive, Social Security and every account
-          included.
-        </p>
-
-        <p>
-          <strong>Future Contributions</strong> are the savings you make from now until retirement.
-          Everything else &mdash; Social Security plus withdrawals from your{' '}
-          <strong>Existing Accounts</strong> (the balances you already have) &mdash; is counted first.
-        </p>
-        <ol className="steps">
-          <li>
-            Work out how much Social Security and your Existing Accounts already deliver after tax
-            in your first year of retirement.
-          </li>
-          <li>
-            Whatever is still missing from your retirement income number has to come from
-            your Future Contributions. We calculate the pre-tax withdrawal that delivers exactly
-            that amount after tax.
-          </li>
-          <li>
-            Add that withdrawal on top of that income and re-do the tax. The <em>extra</em>{' '}
-            tax it causes, divided by the withdrawal, is the effective rate on these withdrawals.
-            Total tax divided by total gross income is the overall effective rate.
-          </li>
-        </ol>
-
-        <div className="calc">
-          {effectiveRateSteps(result).map((row) => (
-            <StepRow key={row.key} row={row} />
-          ))}
-        </div>
-
-        {!withdrawalNeeded && (
-          <p className="note">
-            Social Security and your Existing Accounts already cover the retirement income number,
-            so no withdrawal from Future Contributions is needed. The rate shown is what their own
-            natural withdrawal &mdash; {$(annuity.pretax.annualWithdrawal)}, 4% of their projected
-            value &mdash; <em>would</em> be taxed at on top of that income, since that is the size a
-            withdrawal from them would actually be.
-          </p>
-        )}
-        <RateDriversOld d={result.old.rateDrivers} />
-      </div>
-    </details>
-  );
-}
-
-function TaxRatesOld({ result }) {
-  const { rates } = result.old;
-  return (
-    <div className="tax-rates">
-      <p className="hint">
-        <strong>Temporary, for comparison:</strong> this card is the pre-2026-09-28 calculation,
-        restored so it can be checked against the block above. It will be removed again once the
-        comparison is done.
-      </p>
-      <div className="rate-pair">
-        <div className="rate-pair-item">
-          <div className="stat-label">Marginal rate while working</div>
-          <div className="stat-value">{formatPercent(rates.marginalNow)}</div>
-          <div className="stat-sub">Tax on your next dollar today</div>
-        </div>
-        <div className="rate-pair-vs">vs</div>
-        <div className="rate-pair-item highlight">
-          <div className="stat-label">Effective rate on these withdrawals</div>
-          <div className="stat-value">{formatPercent(rates.effectiveRetirement)}</div>
-          <div className="stat-sub">The rate that decides Roth vs. Pre-tax</div>
-        </div>
-      </div>
-
-      <p className="rate-lean">
-        <strong>{LEAN_TEXT[rates.lean]}</strong>
-      </p>
-
-      <EffectiveRateMathOld result={result} />
-      <YearsWithoutSocialSecurityOld result={result} />
     </div>
   );
 }
@@ -1520,18 +976,6 @@ function PortfolioMath({ result }) {
     <details className="details">
       <summary>Show the calculation</summary>
       <div className="details-body">
-        <p>
-          Each scenario draws the same share of every account (scaled until the after-tax income
-          matches your target). Social Security is added on top and is taxed under the IRS
-          combined-income rules, using your Pre-tax withdrawals and taxable-account gains as the
-          &ldquo;other income.&rdquo; Each taxable-account withdrawal is part cost basis (tax-free) and
-          part gain, in proportion to the account; the gain is taxed at the real 0% / 15% / 20% capital-gains rates, stacked on top of your ordinary
-          income &mdash; not a flat rate, so a withdrawal can be partly or fully tax-free when your
-          ordinary income is modest.
-          {owesNiit && (
-            <> Above {NIIT_THRESHOLD_TEXT} of modified AGI the gain also owes the 3.8% Net Investment Income Tax.</>
-          )}
-        </p>
         <div className="table-wrap">
           <table className="calc-table">
             <thead>
@@ -1686,6 +1130,7 @@ function PortfolioComparison({ result }) {
       </div>
 
       <PortfolioMath result={result} />
+      <Explained sections={['existing']} />
 
       {short.length > 0 && (
         <p className="alert">
@@ -1705,17 +1150,21 @@ const RESULT_CARDS = [
   { id: 'need', headingId: 'sec1', title: 'Retirement income number', Body: RetirementNumberSection },
   { id: 'buildup', headingId: 'sec-portfolio', title: 'Your portfolio at retirement', Body: PortfolioBuildup },
   { id: 'rates', headingId: 'sec2', title: 'Tax rate comparison', Body: TaxRates, className: 'key-card' },
-  // TEMPORARY (2026-09-29): the pre-2026-09-28 calculation, restored for comparison — see the
-  // "TEMPORARY" block above TaxRatesOld's definition for the full removal checklist.
-  { id: 'ratesOld', headingId: 'sec2-old', title: 'Tax rate comparison — old calculation', Body: TaxRatesOld, className: 'key-card' },
   { id: 'tradeoff', headingId: 'sec-tradeoff', title: 'After-tax comparison', Body: TradeOff },
-  { id: 'blend', headingId: 'sec-blend', title: 'Splitting your contribution', Body: BlendExplorer },
   { id: 'portfolio', headingId: 'sec3', title: 'Total future portfolio comparison', Body: PortfolioComparison },
 ];
 
-export default function ResultsSummary({ result }) {
+// The Roth/Pre-tax mix explorer: shown only where asked for (the #/next preview), after the
+// after-tax comparison. The public calculator leaves it out.
+const BLEND_CARD = { id: 'blend', headingId: 'sec-blend', title: 'Splitting your contribution', Body: BlendExplorer };
+
+const cardsFor = (showBlend) =>
+  showBlend ? RESULT_CARDS.flatMap((card) => (card.id === 'tradeoff' ? [card, BLEND_CARD] : [card])) : RESULT_CARDS;
+
+export default function ResultsSummary({ result, showBlend = false }) {
+  const cards = cardsFor(showBlend);
   // Every card starts open; closing one keeps its dropdowns as they were (the body is hidden, not removed).
-  const [open, setOpen] = useState(() => new Set(RESULT_CARDS.map((card) => card.id)));
+  const [open, setOpen] = useState(() => new Set(cards.map((card) => card.id)));
   if (!result.valid) {
     return (
       <section className="card" aria-labelledby="sec0">
@@ -1731,7 +1180,7 @@ export default function ResultsSummary({ result }) {
   }
 
   const headlines = resultHeadlines(result);
-  const allOpen = RESULT_CARDS.every((card) => open.has(card.id));
+  const allOpen = cards.every((card) => open.has(card.id));
   return (
     <div className="results">
       <div className="results-head">
@@ -1739,12 +1188,12 @@ export default function ResultsSummary({ result }) {
         <button
           type="button"
           className="link-button"
-          onClick={() => setOpen(new Set(allOpen ? [] : RESULT_CARDS.map((card) => card.id)))}
+          onClick={() => setOpen(new Set(allOpen ? [] : cards.map((card) => card.id)))}
         >
           {allOpen ? 'Collapse all results' : 'Expand all results'}
         </button>
       </div>
-      {RESULT_CARDS.map(({ id, headingId, title, Body, className }) => (
+      {cards.map(({ id, headingId, title, Body, className }) => (
         <Collapsible
           key={id}
           headingId={headingId}

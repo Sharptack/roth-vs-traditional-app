@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ARTICLE_HASH, CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, OLD_VS_NEW_HASH, SCENARIOS_HASH, nextPageFromHash, routeFromHash } from '../src/lib/route.js';
+import { ARTICLE_HASH, CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, SCENARIOS_HASH, articleHash, articleSectionFromHash, headingSlug, nextPageFromHash, routeFromHash } from '../src/lib/route.js';
 
 describe('routeFromHash', () => {
   it('shows the article only for the how-it-works hash', () => {
@@ -10,10 +10,18 @@ describe('routeFromHash', () => {
     expect(routeFromHash(SCENARIOS_HASH)).toBe('scenarios');
     expect(routeFromHash('#/scenarios')).toBe('scenarios');
   });
-  // TEMPORARY (2026-09-29): goes with result.old.
-  it('shows the old vs. new test page only for its hash', () => {
-    expect(routeFromHash(OLD_VS_NEW_HASH)).toBe('oldVsNew');
-    expect(routeFromHash('#/old-vs-new/extra')).toBe('calculator');
+  it('opens the article at a heading for "#/how-it-works/<slug>"', () => {
+    expect(headingSlug('Why maxing out changes the math')).toBe('why-maxing-out-changes-the-math');
+    expect(headingSlug("What this calculator doesn't capture")).toBe('what-this-calculator-doesnt-capture');
+    expect(articleHash('limit')).toBe('#/how-it-works/why-maxing-out-changes-the-math');
+    expect(routeFromHash(articleHash('limit'))).toBe('article');
+    expect(articleSectionFromHash(articleHash('limit'))).toBe('why-maxing-out-changes-the-math');
+    expect(articleSectionFromHash(ARTICLE_HASH)).toBe(null);
+    expect(articleSectionFromHash('#/how-it-works/')).toBe(null);
+    expect(articleSectionFromHash('#/how-it-works/Not A Slug')).toBe(null);
+    expect(routeFromHash('#/how-it-works/Not A Slug')).toBe('calculator');
+    // the removed test page's address is just the calculator now
+    expect(routeFromHash('#/old-vs-new')).toBe('calculator');
   });
   it('shows the preview for its hash and any page under it', () => {
     expect(routeFromHash(NEXT_HASH)).toBe('next');
@@ -35,7 +43,6 @@ describe('routeFromHash', () => {
     expect(routeFromHash(CALCULATOR_HASH)).toBe('calculator');
     expect(routeFromHash('#')).toBe('calculator');
     expect(routeFromHash('#/nope')).toBe('calculator');
-    expect(routeFromHash('#/how-it-works/extra')).toBe('calculator');
     expect(routeFromHash('#/scenarios/extra')).toBe('calculator');
   });
 });

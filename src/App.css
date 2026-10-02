@@ -479,6 +479,11 @@ a {
   color: var(--dim);
 }
 
+/* One line under a card or dropdown, linking to the article section that explains it. */
+.explained {
+  margin-top: 12px;
+}
+
 /* ---------- "Splitting your contribution" (blend explorer) ---------- */
 
 .blend-slider {
@@ -844,6 +849,11 @@ th.win .th-sub {
   margin: 0 0 12px;
   font-size: 1.75rem;
   line-height: 1.25;
+}
+
+.article h2,
+.article h3 {
+  scroll-margin-top: 16px;
 }
 
 .article h2 {
@@ -1546,96 +1556,6 @@ th.win .th-sub {
 
 .full-tax-breakdown .subhead {
   margin: 0 0 8px;
-}
-
-/* ---------- TEMPORARY (2026-09-29): old vs. new calculation test page (#/old-vs-new) ---------- */
-
-.ovn-page .card {
-  margin-bottom: 16px;
-}
-
-.ovn-stats {
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  margin-top: 16px;
-}
-
-.ovn-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  margin-bottom: 12px;
-}
-
-.ovn-controls .hint {
-  margin: 0;
-}
-
-.ovn-table {
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.ovn-table th,
-.ovn-table td {
-  vertical-align: top;
-}
-
-.ovn-table th.row-head {
-  min-width: 200px;
-}
-
-.ovn-table tr.ovn-flip > * {
-  background: var(--alert-bg);
-}
-
-.ovn-sub {
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--dim);
-}
-
-.ovn-causes {
-  min-width: 180px;
-  text-align: left;
-  color: var(--dim);
-}
-
-.ovn-winner {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
-.ovn-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.ovn-map td.ovn-map-flip {
-  outline: 2px solid var(--text);
-  outline-offset: -2px;
-  font-weight: 700;
-}
-
-.ovn-pair {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-  gap: 16px;
-}
-
-.ovn-chart-title {
-  margin: 0 0 4px;
-  font-size: 0.95rem;
-}
-
-@media (max-width: 520px) {
-  .ovn-pair {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* #/next preview (src/next/) */

@@ -187,7 +187,7 @@ export default function NextApp({ initialPage }) {
             <div className="results-column">
               {calculator.id === 'roth' && (
                 <>
-                  <ResultsSummary result={roth.result} />
+                  <ResultsSummary result={roth.result} showBlend />
                   <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} />
                 </>
               )}

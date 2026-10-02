@@ -72,7 +72,7 @@ This is also why the "effective rate on the account withdrawal" can look surpris
 
 ## Years without Social Security
 
-You may have years in retirement without Social Security, for example if you retire before you claim benefits, or you may simply want to plan without it. The calculator shows that case in a dropdown under the trade-off table. It sets Social Security to zero and re-runs the same three-step calculation, so the comparison uses exactly the same measure as the main result: the effective rate on the account withdrawal, just without the Social Security phase-in.
+You may have years in retirement without Social Security, for example if you retire before you claim benefits, or you may simply want to plan without it. The calculator shows that case in a dropdown under the after-tax comparison table. It sets Social Security to zero and re-runs the same three-step calculation, so the comparison uses exactly the same measure as the main result: the effective rate on the account withdrawal, just without the Social Security phase-in.
 
 Removing Social Security can only remove tax, never add it, so this rate is never higher than the rate in the main result — the difference between the two is the effect of Social Security itself. Without that phase-in pulling the rate up, this view usually favors Traditional a little more strongly than the main result does. The main way it can still favor Roth is a large Traditional balance in your Existing Accounts: if that balance's own 4% withdrawal already lands in a high bracket, it sets the floor everything else stacks on top of, whether or not Social Security is in the picture.
 
@@ -133,7 +133,7 @@ These matter, and a good decision should weigh them.
 
 ## The likely answer is often "some of each"
 
-We compared the two as pure extremes: all Roth or all Traditional. For many people the best answer is a **split**, taking the deduction at high current rates while filling up low retirement brackets with Roth money, so no bracket is over-used in either period. The calculator's **Splitting your contribution** card tries every mix from all Traditional to all Roth and finds the one that leaves the most after-tax income. At each mix it shows the same two rates as the main comparison: the tax saved now, and the effective rate on the Traditional part's withdrawal. The effective rate rises as the Traditional part grows, because a bigger withdrawal climbs further through the brackets. The best mix is where the rate on the next Traditional dollar would reach, or jump past, the tax it saves today. A split is also a sensible hedge when the result is close or you're unsure.
+We compared the two as pure extremes: all Roth or all Traditional. For many people the best answer is a **split**, taking the deduction at high current rates while filling up low retirement brackets with Roth money, so no bracket is over-used in either period. The reason a split can win is that the effective rate on the Traditional part rises as that part grows, because a bigger withdrawal climbs further through the brackets. The best mix is where the rate on the next Traditional dollar would reach, or jump past, the tax it saves today. This calculator compares only the two extremes and doesn't work out that mix for you. A split is also a sensible hedge when the result is close or you're unsure.
 
 ## Disclaimer
 
