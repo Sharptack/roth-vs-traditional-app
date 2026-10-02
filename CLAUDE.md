@@ -87,7 +87,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (574 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (582 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -199,6 +199,12 @@ flat form values (`toCompareInputs`) and never goes through the household; every
   selectors in a headless script read ITS numbers; scope to `.household-form`'s `main`. Driving Chrome: launch with
   `--remote-debugging-port` and use Node's built-in WebSocket on the DevTools protocol (no puppeteer installed); set React
   inputs with the native value setter + an input/change event.
+- **Rough edges, status 2026-10-02:** (1) mostly moot: the user's simplified portfolio card no longer says "To your
+  account"; (2) DONE: "Copy summary (inputs, results, link)" in `ShareHousehold.jsx`, text from `lib/householdText.js`
+  (`describeHousehold`, `householdShareText`: every input, one line per calculator tile, the link); (3) DONE: each
+  spouse's own Roth/Pre-tax type and account type (`spouseCurrentType` / `spouseAccountType`, default 'same'; stored on
+  the person's entry in `futureContributions.contributions` only when it differs; compare.js `contributors[].currentType /
+  accountType`, the tax calculator's deferrals and the projection's limits honor them). The original note follows.
 - **Still rough (user, 2026-10-01: "we may need to come back to some of that"; also noted in the plan doc):**
   (1) result-card copy still says "your account"/"To your account" when two people save; (2) the preview copies only a
   link, not the plain-text "Copy inputs" summary the current calculator copies (shareText reads flat inputs, so a
@@ -358,6 +364,16 @@ The plan's two "fit any time after phase 2" calculators; each a tile on `#/next`
   page compares the IRR with the household's assumed return WITH inflation added back ((1 + real)(1 + inflation) − 1),
   since pension payments are in the dollars of the day. Tax is left out (both options are taxed alike). Hand-verified
   (tests/pensionCalculator.test.js): IRR 10% and 13.0662%, $120,000 vs. $1,000 × 120 = 0%, survivor and COLA payment counts.
+
+## Tax-rate what-if and printing (preview, 2026-10-02)
+- **Tax rates in retirement (what-if):** Assumptions select (−2 / current law / +2 / +3 / +5 / +10 points; form key
+  `retirementRateShift`, `assumptions.retirementRateShift`). The adapter puts it in `retirementTaxRules.rateShift` (the
+  Roth comparison's retirement year); `runProjection` uses it for every year anyone is retired unless a caller passes
+  its own `retirementRateShift` (the break-even search does, measured from current law). Ordinary rates only. Hand-verified
+  (the RMD year: 3,760.59 + 3% × 33,404.95 = 4,762.74).
+- **Print stylesheet** (`@media print`, scoped to `.next-app`, so the public calculator prints as before): results first,
+  then the inputs full width (closed sections print as their one-line summaries), buttons and links hidden, cards kept
+  whole. Check it with the DevTools protocol: `Emulation.setEmulatedMedia({ media: 'print' })` then a screenshot.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -988,6 +1004,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-02 (c) — Preview: each spouse's own Roth/Pre-tax type and account type; "Copy summary" (plain text); a
+  retirement tax-rate what-if in Assumptions; a print stylesheet for preview pages. Public calculator untouched. 582 tests.
 - 2026-10-02 (b) — Recorded that the public calculator stays for a long while and may become the simple public tier
   (see "The public calculator stays"). Preview: the single-year Roth conversion calculator and the pension (lump sum vs.
   monthly) calculator, each with a tile and a page. Public calculator untouched. 574 tests.

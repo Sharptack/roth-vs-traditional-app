@@ -34,7 +34,7 @@ const afterTaxWealth = (row, heirTaxRate) => row.endBalances.pretax * (1 - heirT
 //   crossoverYear: the first year the leader changes (null if it never does).
 //   strategy (optional): the withdrawal strategy both runs use (default: proportional) — the
 //   comparison generalized to scenario x strategy (phase 7).
-export function compareLifetime(household, compareResult, { heirTaxRate = 0.24, endAge, retirementRateShift = 0, strategy } = {}) {
+export function compareLifetime(household, compareResult, { heirTaxRate = 0.24, endAge, retirementRateShift, strategy } = {}) {
   const need = compareResult.retirementNeed.target;
   const plans = lifetimeContributions(household, compareResult);
   const run = (contributions) => {

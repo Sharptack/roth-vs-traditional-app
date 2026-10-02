@@ -50,6 +50,9 @@ export function describeHousehold(household) {
     bullet('Inflation (fixed-dollar thresholds)', formatPercent(assumptions.inflationRate ?? 0, 1)),
     bullet('Age 65+ deductions in retirement', assumptions.ageDeductions ? 'included' : 'left out'),
     bullet('Tax saved now', assumptions.taxSavedAcrossContribution ? 'across the whole contribution' : 'at the marginal rate'),
+    ...(assumptions.retirementRateShift
+      ? [bullet('Tax rates in retirement (what-if)', `${assumptions.retirementRateShift > 0 ? '+' : '−'}${Math.abs(Math.round(assumptions.retirementRateShift * 100))} points`)]
+      : []),
   );
   return lines;
 }

@@ -90,9 +90,12 @@ function socialSecuritySchedule(household) {
 //                    Default: the household's Future Contributions as entered.
 //   endAge           person 1's age in the last projected year (default household.assumptions.endAge or 95).
 //   retirementRateShift  added to every ordinary bracket rate in the years anyone is retired (a tax-law
-//                    what-if: "rates 3 points higher in retirement"); default 0.
-export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, endAge, retirementRateShift = 0 } = {}) {
+//                    what-if: "rates 3 points higher in retirement"); default: the household's
+//                    assumptions.retirementRateShift, else 0.
+export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, endAge, retirementRateShift } = {}) {
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
+  // The household's own what-if (assumptions.retirementRateShift) unless a caller sets one.
+  const rateShiftInRetirement = retirementRateShift ?? assumptions.retirementRateShift ?? 0;
   const returnRate = assumptions.returnRate;
   const inflation = assumptions.inflationRate ?? 0;
   const lastAge = endAge ?? assumptions.endAge ?? DEFAULT_END_AGE;
@@ -186,7 +189,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         pretaxDeferrals,
         income: { ordinaryIncome, preferentialIncome, socialSecurity },
         thresholdScale,
-        rateShift: anyRetired ? retirementRateShift : 0,
+        rateShift: anyRetired ? rateShiftInRetirement : 0,
       };
     };
     // Totals only while solving; the row below runs the full engine once (marginal rates, room).
@@ -208,7 +211,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
           working,
           household,
           taxYear: year,
-          rateShift: retirementRateShift,
+          rateShift: rateShiftInRetirement,
           accounts: live.map((a) => ({ ...a })),
           rmdByAccount,
           need: needThisYear,

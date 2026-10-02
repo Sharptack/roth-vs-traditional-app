@@ -1798,3 +1798,52 @@ th.win .th-sub {
   display: block;
   margin-top: 8px;
 }
+
+/* ---------- printing a preview page (#/next): a client-ready sheet ----------
+   Scoped to .next-app so the public calculator prints as it always has. Results first, then the
+   inputs full width (closed sections print as their one-line summaries); no buttons. */
+@media print {
+  .next-app .calc-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Results first; the inputs follow as the record of what was assumed. */
+  .next-app .results-column {
+    order: -1;
+  }
+
+  .next-app .calc-layout:not(.comparing) .inputs-column {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .next-app .card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+
+  .next-app .lifetime-card,
+  .next-app .projection-table {
+    break-inside: auto;
+  }
+
+  .next-app .share-inputs,
+  .next-app .link-button,
+  .next-app .button,
+  .next-app .header-links,
+  .next-app .preview-banner a,
+  .next-app .form-head-actions,
+  .next-app .suite-tile-open {
+    display: none;
+  }
+
+  .next-app .table-scroll {
+    overflow: visible;
+  }
+
+  .next-app .projection-table {
+    font-size: 0.7rem;
+  }
+}

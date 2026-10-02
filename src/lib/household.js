@@ -25,7 +25,8 @@
 //                         socialSecurity }, projection: { endAge, heirTaxRate, strategy },
 //                  conversion: { amount }, pension: { lumpSum, monthly, startAge, cola,
 //                  survivorShare, endAge, spouseEndAge } },   // calculator-only inputs, under the calculator's name
-//   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedAcrossContribution },   // the last two: retirement-year
+//   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedAcrossContribution,
+//                  retirementRateShift },   // the last two: retirement-year
 //                                          // tax rules (phase 2); 0 / false = today's rules
 // }
 //
@@ -89,6 +90,7 @@ export const NEW_RULES_DEFAULT_VALUES = {
   inflationRate: '0.025',
   ageDeductions: 'yes', // 'yes' | 'no'
   taxSavedBasis: 'average', // 'average' (across the whole contribution) | 'marginal' (today's rule)
+  retirementRateShift: '0', // a tax-law what-if: points added to ordinary rates in retirement ('0.03' = +3)
 };
 
 export const PREVIEW_DEFAULT_VALUES = {
@@ -192,6 +194,7 @@ export function toHousehold(values, year) {
       inflationRate: values.inflationRate === undefined ? 0 : Number(values.inflationRate),
       ageDeductions: values.ageDeductions === 'yes',
       taxSavedAcrossContribution: values.taxSavedBasis === 'average',
+      retirementRateShift: Number(values.retirementRateShift ?? 0) || 0,
     },
   };
 }
@@ -319,8 +322,10 @@ export function householdToCompareInputs(household) {
   // Retirement-year tax rules (phase 2), at the snapshot retirement year: thresholds shrunk by
   // inflation over the years until then, and each person's age then (for the 65+ deductions).
   const inflationRate = assumptions.inflationRate ?? 0;
-  if (inflationRate !== 0 || assumptions.ageDeductions) {
+  const rateShift = assumptions.retirementRateShift ?? 0;
+  if (inflationRate !== 0 || assumptions.ageDeductions || rateShift !== 0) {
     inputs.retirementTaxRules = {
+      ...(rateShift !== 0 && { rateShift }),
       thresholdScale: 1 / (1 + inflationRate) ** yearsToRetirement,
       calendarYear: year + yearsToRetirement, // the senior deduction ends after 2028
       ages: assumptions.ageDeductions ? people.map((p) => ageOf(p) + yearsToRetirement) : [],

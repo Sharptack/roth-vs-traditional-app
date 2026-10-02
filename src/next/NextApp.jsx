@@ -161,7 +161,7 @@ export default function NextApp({ initialPage }) {
   const calculator = CALCULATORS.find((c) => c.id === page);
 
   return (
-    <div>
+    <div className="next-app">
       <p className="alert preview-banner" role="status">
         <strong>Preview, not finished.</strong> This is the next version of the calculator, built
         alongside the current one. Numbers and layout may change.{' '}

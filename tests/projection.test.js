@@ -142,3 +142,27 @@ describe('runProjection reconciles with the total portfolio section', () => {
     });
   }
 });
+
+describe('the retirement tax-rate what-if (2026, HAND CALC)', () => {
+  it("3 points higher in retirement: the RMD year's tax rises by 3% of taxable income", () => {
+    // the RMD case: withdrawal 49,504.95, taxable 33,404.95, tax 3,760.59.
+    // +3 points on every ordinary bracket: + 3% x 33,404.95 = 1,002.15 -> 4,762.74
+    const h = retiree({ age: 80, pretax: 1000000 });
+    h.assumptions.retirementRateShift = 0.03;
+    expect(runProjection(h, { need: 10000, endAge: 80 }).rows[0].totalTax).toBeCloseTo(4762.74, 2);
+    // a caller's own shift wins (the break-even search passes its own)
+    expect(runProjection(h, { need: 10000, endAge: 80, retirementRateShift: 0 }).rows[0].totalTax).toBeCloseTo(3760.59, 2);
+  });
+
+  it('working years are not shifted; the adapter passes the shift to the Roth comparison', () => {
+    const values = { ...PREVIEW_DEFAULT_VALUES, retirementRateShift: '0.03' };
+    const h = toHousehold(values, Y);
+    expect(runProjection(h, { need: 50000, endAge: 35 }).rows[0].incomeTax).toBeCloseTo(10970, 6);
+    expect(householdToCompareInputs(h).retirementTaxRules.rateShift).toBe(0.03);
+    expect(householdToCompareInputs(toHousehold(PREVIEW_DEFAULT_VALUES, Y)).retirementTaxRules.rateShift).toBeUndefined();
+    // a higher retirement rate can only raise the effective rate on the account withdrawal
+    const base = compareRothVsTraditional(householdToCompareInputs(toHousehold(PREVIEW_DEFAULT_VALUES, Y)));
+    const shifted = compareRothVsTraditional(householdToCompareInputs(h));
+    expect(shifted.rates.effectiveRetirement).toBeGreaterThan(base.rates.effectiveRetirement);
+  });
+});

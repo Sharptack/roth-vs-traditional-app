@@ -390,6 +390,20 @@ export default function HouseholdForm({
             ]}
             hint="The additional standard deduction at 65, and the senior deduction ($6,000 each, phased out above $75,000 / $150,000 of income). The senior deduction is law for 2025–2028 only and is applied when the retirement year falls in that window."
           />
+          <SelectInput
+            label="Tax rates in retirement (what-if)"
+            hint="Added to every ordinary bracket rate in retirement years, in the Roth comparison and the projection. Current law has no scheduled change; this is a what-if."
+            value={values.retirementRateShift}
+            onChange={set('retirementRateShift')}
+            options={[
+              { value: '-0.02', label: '2 points lower' },
+              { value: '0', label: 'Current law' },
+              { value: '0.02', label: '2 points higher' },
+              { value: '0.03', label: '3 points higher' },
+              { value: '0.05', label: '5 points higher' },
+              { value: '0.1', label: '10 points higher' },
+            ]}
+          />
           <RadioGroup
             legend="Tax a Pre-tax contribution saves today"
             name="hh-taxSavedBasis"
