@@ -392,3 +392,57 @@ describe('toHousehold / householdToCompareInputs', () => {
     });
   });
 });
+
+describe("each spouse's own Roth/Pre-tax type and account type (2026, HAND CALC)", () => {
+  it('splitAtTakeHomeByPerson: you Pre-tax in a 401(k), your spouse Roth in an IRA', () => {
+    // t = 22%. You: 10,000 Pre-tax -> take-home cost 7,800 (Roth 7,800 / Pre-tax 10,000).
+    // Spouse: 6,000 Roth, IRA limit 7,500 -> cost 6,000; Roth 6,000; Pre-tax 6,000 / 0.78 = 7,692.31
+    //   capped at 7,500 (costing 5,850), the other 150 to taxable.
+    // household: cost 13,800; Roth 13,800 + 0; Pre-tax 17,500 + 150
+    const r = splitAtTakeHomeByPerson(
+      [{ amount: 10000, limit: 24500, currentType: 'pretax' }, { amount: 6000, limit: 7500, currentType: 'roth' }],
+      'pretax',
+      0.22,
+    );
+    expect(r.takeHomeCost).toBeCloseTo(13800, 6);
+    expect(r.roth.toAccount).toBeCloseTo(13800, 6);
+    expect(r.roth.excessToTaxable).toBeCloseTo(0, 6);
+    expect(r.pretax.toAccount).toBeCloseTo(17500, 6);
+    expect(r.pretax.excessToTaxable).toBeCloseTo(150, 6);
+  });
+
+  it('through the household: only the Pre-tax spouse is deducted; each limit is for their own account', async () => {
+    const { householdToYearTaxParams } = await import('../src/lib/taxCalculator.js');
+    const { runProjection } = await import('../src/lib/projection.js');
+    const values = {
+      ...PREVIEW_DEFAULT_VALUES,
+      filingStatus: 'mfj',
+      includeSpouse: 'yes',
+      currentAge: '45',
+      spouseAge: '45',
+      spouseIncome: '60000',
+      savings: '10000',
+      spouseSavings: '9000',
+      spouseCurrentType: 'roth',
+      spouseAccountType: 'ira',
+    };
+    const h = toHousehold(values, Y);
+    expect(h.futureContributions.contributions[1]).toEqual({ owner: 'p2', amount: 9000, currentType: 'roth', accountType: 'ira' });
+    const r = compareRothVsTraditional(householdToCompareInputs(h));
+    // deducted today: your 10,000 only. Limits: 24,500 (401(k)) + 7,500 (IRA) = 32,000.
+    // The spouse's 9,000 is over the IRA limit: the message is theirs.
+    expect(r.current.pretaxDeduction).toBe(10000);
+    expect(r.limitCheck.limit).toBe(32000);
+    expect(r.limitCheck.message).toMatch(/^For your spouse: Your savings amount is above the 2026 IRA contribution limit of \$7,500/);
+    expect(r.contributionSplit.people[1].roth).toEqual({ toAccount: 7500, excessToTaxable: 1500 });
+    // the tax calculator and the projection agree: 10,000 deferred; the spouse's Roth IRA gets 7,500
+    expect(householdToYearTaxParams(h).pretaxDeferrals).toBe(10000);
+    const row = runProjection(h, { need: 0, endAge: 45 }).rows[0];
+    expect(row.contributions).toMatchObject({ pretax: 10000, roth: 7500, taxable: 1500 });
+  });
+
+  it("'Same as yours' leaves the spouse on the household's types", () => {
+    const h = toHousehold({ ...PREVIEW_DEFAULT_VALUES, filingStatus: 'mfj', includeSpouse: 'yes', spouseSavings: '5000' }, Y);
+    expect(h.futureContributions.contributions[1]).toEqual({ owner: 'p2', amount: 5000 });
+  });
+});

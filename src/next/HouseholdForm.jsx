@@ -280,6 +280,22 @@ export default function HouseholdForm({
             onChange={set('accountType')}
             options={toOptions(ACCOUNT_TYPES)}
           />
+          {spouse && (
+            <div className="field-row">
+              <SelectInput
+                label="Spouse's savings are"
+                value={values.spouseCurrentType}
+                onChange={set('spouseCurrentType')}
+                options={[{ value: 'same', label: 'Same as yours' }, ...toOptions(CONTRIBUTION_TYPES)]}
+              />
+              <SelectInput
+                label="Spouse's account type"
+                value={values.spouseAccountType}
+                onChange={set('spouseAccountType')}
+                options={[{ value: 'same', label: 'Same as yours' }, ...toOptions(ACCOUNT_TYPES)]}
+              />
+            </div>
+          )}
         </>
       ))}
 

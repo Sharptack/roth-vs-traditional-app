@@ -18,7 +18,8 @@
 //                                          // basisShare: taxable only, share of today's balance
 //   futureContributions: {                 // one Roth/Pre-tax type and account type for the household;
 //     currentType, accountType,            // each person saves their own amount, under their own limit
-//     contributions: [{ owner: 'p1', amount }] },
+//     contributions: [{ owner: 'p1', amount, currentType?, accountType? }] },   // a person's own
+//                                          // types, when they differ from the household's
 //   spending: { debtPaymentsEnding, otherExpensesEnding, retirementLifestyle },
 //   calculators: { tax: { ordinaryIncome, investmentOrdinaryIncome, preferentialIncome,
 //                         socialSecurity }, projection: { endAge, heirTaxRate, strategy },
@@ -60,6 +61,8 @@ export const SPOUSE_DEFAULT_VALUES = {
   spouseKnowsSocialSecurity: 'no',
   spouseSocialSecurityBenefit: '',
   spouseSavings: '0', // the spouse's own Future Contributions (annual)
+  spouseCurrentType: 'same', // 'same' (as yours) | 'pretax' | 'roth'
+  spouseAccountType: 'same', // 'same' (as yours) | '401k' | 'ira'
   claimAge: '', // '' = claim Social Security at retirement age
   spouseClaimAge: '',
 };
@@ -131,7 +134,13 @@ export function toHousehold(values, year) {
         claimAge: blankAsNull(values.spouseClaimAge),
       },
     });
-    contributions.push({ owner: 'p2', amount: blankAsZero(values.spouseSavings) });
+    contributions.push({
+      owner: 'p2',
+      amount: blankAsZero(values.spouseSavings),
+      // Their own Roth/Pre-tax type and account type, when not the same as person 1's.
+      ...(['pretax', 'roth'].includes(values.spouseCurrentType) && { currentType: values.spouseCurrentType }),
+      ...(['401k', 'ira'].includes(values.spouseAccountType) && { accountType: values.spouseAccountType }),
+    });
   }
   return {
     version: HOUSEHOLD_VERSION,
@@ -319,11 +328,16 @@ export function householdToCompareInputs(household) {
   }
   if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
   if (people.length > 1) {
-    inputs.contributors = people.map((p, i) => ({
-      amount: amountOf(p),
-      age: ageOf(p),
-      label: i === 0 ? 'For you' : 'For your spouse',
-    }));
+    inputs.contributors = people.map((p, i) => {
+      const c = fc.contributions.find((x) => x.owner === p.id) ?? {};
+      return {
+        amount: amountOf(p),
+        age: ageOf(p),
+        label: i === 0 ? 'For you' : 'For your spouse',
+        ...(c.currentType && { currentType: c.currentType }),
+        ...(c.accountType && { accountType: c.accountType }),
+      };
+    });
   }
   return inputs;
 }

@@ -100,7 +100,9 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   const ss = socialSecuritySchedule(household);
   const plan =
     contributions ??
-    fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount, type: fc.currentType }));
+    fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount, type: c.currentType ?? fc.currentType }));
+  // Each saver's account type (their own, else the household's) sets their IRS limit.
+  const accountTypeOf = (owner) => fc.contributions.find((c) => c.owner === owner)?.accountType ?? fc.accountType;
 
   // Working balances, one per account; contributions and surplus get accounts of their own.
   const accounts = household.accounts.map((a) => ({
@@ -139,12 +141,12 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       const i = people.findIndex((p) => p.id === c.owner);
       if (i < 0 || !working[i] || !((c.amount ?? c.takeHomeCost) > 0)) continue;
       if (c.takeHomeCost !== undefined) {
-        const limit = checkContributionLimit(c.takeHomeCost, fc.accountType, year, ages[i]).limit;
+        const limit = checkContributionLimit(c.takeHomeCost, accountTypeOf(c.owner), year, ages[i]).limit;
         const split = splitAtTakeHome(c.takeHomeCost, 'roth', c.rate, limit)[c.type];
         made.push({ owner: c.owner, type: c.type, toAccount: split.toAccount, excess: split.excessToTaxable });
         continue;
       }
-      const limit = checkContributionLimit(c.amount, fc.accountType, year, ages[i]).limit;
+      const limit = checkContributionLimit(c.amount, accountTypeOf(c.owner), year, ages[i]).limit;
       const toAccount = Math.min(c.amount, limit);
       made.push({ owner: c.owner, type: c.type, toAccount, excess: c.amount - toAccount });
     }

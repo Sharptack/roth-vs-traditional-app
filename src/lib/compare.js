@@ -27,7 +27,8 @@
 //                                            grossIncome/selfEmploymentIncome must be their sums.
 //                                            Absent = today's single-earner behavior, unchanged.
 //   contributors                           — OPTIONAL (household model, phase 1): who makes the
-//                                            Future Contributions, [{ amount, age, label }]. Each
+//                                            Future Contributions, [{ amount, age, label,
+//                                            currentType?, accountType? }]. Each
 //                                            person's amount is split at THEIR OWN IRS limit (own
 //                                            catch-up age); the household figures are the sums.
 //                                            `savings` must equal the sum of the amounts.
@@ -108,8 +109,10 @@ export function splitAtTakeHome(savings, currentType, marginalRate, limit) {
 // splitAtTakeHome per person, each at their own IRS limit, summed for the household (they file
 // one joint return, so the marginal rate is shared). people[i] is that person's own split.
 //   contributors: [{ amount, limit }]
+// A contributor may carry their own currentType (how THEIR savings are held today); otherwise
+// the household's applies.
 export function splitAtTakeHomeByPerson(contributors, currentType, marginalRate) {
-  const people = contributors.map((c) => splitAtTakeHome(c.amount, currentType, marginalRate, c.limit));
+  const people = contributors.map((c) => splitAtTakeHome(c.amount, c.currentType ?? currentType, marginalRate, c.limit));
   const sum = (pick) => people.reduce((acc, p) => acc + pick(p), 0);
   return {
     takeHomeCost: sum((p) => p.takeHomeCost),
@@ -253,14 +256,16 @@ export function compareRothVsTraditional(inputs) {
   // Who saves (household model): each person's amount at their own limit. Absent = one saver.
   const contributors = inputs.contributors?.map((c) => ({
     ...c,
-    limitCheck: checkContributionLimit(c.amount, accountType, year, c.age),
+    // Each person may have their own account type and Roth/Pre-tax type (default: the household's).
+    limitCheck: checkContributionLimit(c.amount, c.accountType ?? accountType, year, c.age),
   }));
-  const pretaxDeduction =
-    currentType !== 'pretax'
+  const pretaxDeduction = contributors
+    ? contributors
+        .filter((c) => (c.currentType ?? currentType) === 'pretax')
+        .reduce((acc, c) => acc + Math.min(Math.max(0, c.amount), c.limitCheck.limit), 0)
+    : currentType !== 'pretax'
       ? 0
-      : contributors
-        ? contributors.reduce((acc, c) => acc + Math.min(Math.max(0, c.amount), c.limitCheck.limit), 0)
-        : splitAtContributionLimit(savings, accountType, year, currentAge).toAccount;
+      : splitAtContributionLimit(savings, accountType, year, currentAge).toAccount;
   const withContribution = calculateTaxFromGross(
     grossIncome,
     filingStatus,
@@ -333,7 +338,7 @@ export function compareRothVsTraditional(inputs) {
   const splitAt = (t) =>
     contributors
       ? splitAtTakeHomeByPerson(
-          contributors.map((c) => ({ amount: c.amount, limit: c.limitCheck.limit })),
+          contributors.map((c) => ({ amount: c.amount, limit: c.limitCheck.limit, currentType: c.currentType })),
           currentType,
           t,
         )

@@ -151,7 +151,13 @@ export default function NextApp({ initialPage }) {
   };
 
   const formProps = { values, onChange: handleChange, locked, onEditCopy: () => setLocked(false) };
-  const share = !locked && <ShareHousehold values={values} />;
+  const share = !locked && (
+    <ShareHousehold
+      values={values}
+      household={roth.household}
+      tiles={CALCULATORS.map((c) => ({ title: c.title, ...tiles[c.id] }))}
+    />
+  );
   const calculator = CALCULATORS.find((c) => c.id === page);
 
   return (

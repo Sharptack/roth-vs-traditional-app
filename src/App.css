@@ -1793,3 +1793,8 @@ th.win .th-sub {
 .bb-added {
   fill: var(--series-4);
 }
+
+.share-inputs .share-summary {
+  display: block;
+  margin-top: 8px;
+}

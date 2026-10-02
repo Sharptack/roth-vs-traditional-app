@@ -1128,6 +1128,8 @@ describe('NextApp (#/next preview)', () => {
     expect(locked).toContain("Edit a copy");
     expect(locked).toMatch(/<fieldset class="locked-fieldset" disabled/);
     const { default: NextApp } = await import("../src/next/NextApp.jsx");
-    expect(renderToStaticMarkup(<NextApp />)).toContain("Copy link to this household");
+    const home = renderToStaticMarkup(<NextApp />);
+    expect(home).toContain("Copy link to this household");
+    expect(home).toContain("Copy summary (inputs, results, link)");
   });
 });

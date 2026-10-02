@@ -23,13 +23,12 @@ export function householdToYearTaxParams(household) {
   const { year, people, futureContributions: fc, filingStatus } = household;
   const tax = household.calculators?.tax ?? {};
   const ageOf = (p) => year - p.birthYear;
-  const pretaxDeferrals =
-    fc.currentType === 'pretax'
-      ? people.reduce((acc, p) => {
-          const amount = fc.contributions.find((c) => c.owner === p.id)?.amount ?? 0;
-          return acc + Math.min(Math.max(0, amount), checkContributionLimit(amount, fc.accountType, year, ageOf(p)).limit);
-        }, 0)
-      : 0;
+  // Each person's own Roth/Pre-tax type and account type, when they have one (else the household's).
+  const pretaxDeferrals = people.reduce((acc, p) => {
+    const c = fc.contributions.find((x) => x.owner === p.id);
+    if (!c || (c.currentType ?? fc.currentType) !== 'pretax') return acc;
+    return acc + Math.min(Math.max(0, c.amount), checkContributionLimit(c.amount, c.accountType ?? fc.accountType, year, ageOf(p)).limit);
+  }, 0);
   return {
     filingStatus,
     year,
