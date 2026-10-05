@@ -31,6 +31,8 @@ const FLAT_BALANCE_KEYS = ['otherPretaxBalance', 'otherRothBalance', 'otherTaxab
 const KEYS = [...Object.keys(DEFAULT_FORM_VALUES), ...Object.keys(SPOUSE_DEFAULT_VALUES), ...Object.keys(NEW_RULES_DEFAULT_VALUES), ...Object.keys(TAX_CALCULATOR_DEFAULT_VALUES), ...Object.keys(PROJECTION_DEFAULT_VALUES), ...Object.keys(CONVERSION_DEFAULT_VALUES), ...Object.keys(PENSION_DEFAULT_VALUES)].filter(
   (k) => !FLAT_BALANCE_KEYS.includes(k),
 );
+// Every household form field a link (or a saved household, savedHousehold.js) may carry.
+export const HOUSEHOLD_FORM_KEYS = KEYS;
 const ACCOUNT_TYPES = ['pretax', 'roth', 'taxable'];
 const OWNERS = ['p1', 'p2'];
 

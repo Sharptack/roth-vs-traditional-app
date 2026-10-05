@@ -1,0 +1,52 @@
+# Security: what's in place, and what to finish before launch
+
+Stage now: **testing**. No real client data yet (the app says: initials or a nickname, no client
+names, account numbers or Social Security numbers). Launch means real advisors and real clients.
+
+## In place now
+- **The database decides access** (Postgres row-level security, forced): an advisor can read,
+  change and delete only their own saved households. The owner is set by the database from the
+  session and can't be changed. The anon (public) key has no access to the table at all.
+  `supabase/tests/rls_check.sql` proves each rule.
+- **Invite only, twice**: public sign-up is off in Supabase, and the app's sign-in never creates a
+  user (`shouldCreateUser: false`).
+- **No passwords**: an emailed sign-in link, PKCE flow (the link carries a one-time code that only
+  the requesting browser can exchange; the app removes it from the address bar).
+- **Only known data is stored**: saved households are the form's values, cleaned to an allow-list of
+  fields, each a short string, the accounts list rebuilt field by field, on save and on load
+  (`src/lib/savedHousehold.js`); the database caps the size too.
+- **Keys**: only the URL and the anon key reach the browser, from environment variables, not the
+  repo. The service_role key is never used by the app.
+- **Browser hardening** (`netlify.toml`): an enforced Content-Security-Policy (scripts only from the
+  site itself; network only to the site and Supabase), no framing, nosniff, a strict referrer policy
+  (share links carry inputs in the address, so other sites get only the origin), HSTS.
+
+## Before launch
+**Compliance and vendor**
+- [ ] Firm compliance sign-off: record-keeping and retention, privacy (Reg S-P), approved vendors.
+- [ ] Supabase paid plan: daily backups / point-in-time recovery; request their SOC 2 report.
+- [ ] Decide what client data is stored at all. Keep names out if possible (labels / initials), or
+      encrypt them per field.
+
+**Accounts and sign-in**
+- [ ] Require two-factor (TOTP) for every advisor, and enforce it in the database policies
+      (`auth.jwt() ->> 'aal' = 'aal2'`), not just in the app.
+- [ ] Restrict sign-in to the firm's email domain (a Supabase auth hook).
+- [ ] Session lifetime: shorter access tokens, refresh-token reuse detection on, an inactivity
+      sign-out in the app.
+- [ ] Custom SMTP on the firm's domain (SPF, DKIM, DMARC) for the sign-in emails.
+- [ ] Two-factor on every admin account: Supabase, GitHub, Netlify, the domain registrar.
+
+**Data**
+- [ ] Audit log: who created, opened, changed, deleted each household and when (a table written by
+      database triggers, readable by no advisor).
+- [ ] Export and delete per client on request; a retention rule for old households.
+- [ ] Sharing between advisors (a team, an assistant) only through explicit, tested policies.
+
+**App and operations**
+- [ ] Make the GitHub repo private (nothing secret is in it, but there's no need to publish it).
+- [ ] Netlify: password-protect or remove any public preview of the signed-in area if needed.
+- [ ] Dependency checks on every change (`npm audit`), and keep `@supabase/supabase-js` current.
+- [ ] Supabase Security Advisor and Performance Advisor clean.
+- [ ] An outside penetration test, and a written incident-response plan (who to call, how to rotate
+      keys, how to notify).

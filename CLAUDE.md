@@ -5,7 +5,8 @@ the change log at the bottom. Read this first in a new session.
 
 ## What this is
 Client-side React (Vite) calculator: does a Roth or Pre-tax (Traditional) contribution leave more
-after-tax wealth? Bracket-aware, budget-driven ("top-down") model. No backend. Owner: Michael Sharpnack.
+after-tax wealth? Bracket-aware, budget-driven ("top-down") model. The public calculator has no backend; the `#/next` preview can
+sign advisors in and save households in Supabase (see "Backend"). Owner: Michael Sharpnack.
 Plain-language explainer in `ARTICLE.md`: must match actual behavior (update it when behavior changes), and it
 is **also the public "How this works" page** — see "Article page" below.
 
@@ -80,6 +81,9 @@ is **also the public "How this works" page** — see "Article page" below.
 - **Decisions 2026-10-01 (user):** the year-by-year projection (phase 4) STARTS TODAY (projects the working years too,
   so the projection page is the pre-retirement planner); NO feedback link yet (Netlify Forms not approved; revisit
   before any free version goes public).
+- **Backend (user, 2026-10-05):** Supabase, email-link sign-in, invite only. "For the initial stage and testing, I'm not
+  worried about compliance, but we definitely need to be tight security when it launches fully, so setting it up now
+  with an eye to that would be good." Simpler free versions: on hold (user, 2026-10-05).
 - **Exposure check:** the GitHub repo is public and the Netlify site is open to anyone with the link, and
   ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
   proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
@@ -87,7 +91,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (582 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (600 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -139,7 +143,8 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   links); see "Phase 1: household model". `src/next/`: the `#/next` preview (`NextApp.jsx`, `HouseholdForm.jsx`, `ShareHousehold.jsx`, `TaxResult.jsx`).
   Phase 2: `yearTax.js` (single-year engine), `yearTaxRows.js`, `taxCalculator.js`, `suiteTiles.js`, `data/ageDeductions.js`.
   Phase 3: `rmd.js`, `data/rmdTable.js`. Phase 4: `projection.js`. Phase 5: `projectionSummary.js`, `src/next/ProjectionResult.jsx`,
-  `components/charts/StackedBarChart.jsx`. Phase 6: `lifetimeComparison.js`, `src/next/LifetimeComparison.jsx`. Phase 7: `strategies.js`. Small calculators: `conversionCalculator.js`, `pensionCalculator.js`,
+  `components/charts/StackedBarChart.jsx`. Phase 6: `lifetimeComparison.js`, `src/next/LifetimeComparison.jsx`. Phase 7: `strategies.js`. Backend: `src/services/` (supabaseClient, cloud), `lib/savedHousehold.js`, `src/next/useCloud.js`, `AccountBar.jsx`,
+  `SavedHouseholds.jsx`, `supabase/`, `docs/`. Small calculators: `conversionCalculator.js`, `pensionCalculator.js`,
   `src/next/ConversionResult.jsx`, `src/next/PensionResult.jsx`.
 - `rateSteps.js`: `sideAwareRateSteps`, the "How are these rates calculated?" walk-through as data rows (three
   steps: Existing Accounts' income -> the taxable-account difference -> add Future Contributions' own
@@ -374,6 +379,36 @@ The plan's two "fit any time after phase 2" calculators; each a tile on `#/next`
 - **Print stylesheet** (`@media print`, scoped to `.next-app`, so the public calculator prints as before): results first,
   then the inputs full width (closed sections print as their one-line summaries), buttons and links hidden, cards kept
   whole. Check it with the DevTools protocol: `Emulation.setEmulatedMedia({ media: 'print' })` then a screenshot.
+
+## Backend: Supabase sign-in and saved households (2026-10-05, preview only)
+Setup for the user: `docs/backend-setup.md`. Security model and the launch checklist: `docs/security.md` (keep it current).
+- **Database** (`supabase/migrations/20261005000000_saved_households.sql`): one table `saved_households` (id, owner_id
+  default `auth.uid()` -> auth.users on delete cascade, label 1–80 chars, data jsonb object <= 100 KB, schema_version,
+  created_at, updated_at). Row-level security ENABLED and FORCED; anon and public have NO privileges; four policies
+  (select/insert/update/delete) all `(select auth.uid()) = owner_id`; a before-update trigger keeps owner_id and
+  created_at and stamps updated_at (an advisor can't hand a row to someone else). `supabase/tests/rls_check.sql`: paste
+  into the SQL editor after the migration; two throwaway users in a rolled-back transaction; raises "RLS FAIL: …" if any
+  rule is broken. NOT run by Claude (no project access): the user runs it.
+- **Auth**: invite only (public sign-up OFF in Supabase AND `shouldCreateUser: false` in `sendSignInLink`); email link,
+  PKCE (`flowType: 'pkce'`: `?code=` in the query string, coexisting with hash routes; only the requesting browser can
+  complete it); `emailRedirectTo` = origin + path + `#/next`; `useCloud` removes `code` from the address afterwards.
+- **Code**: `src/services/supabaseClient.js` (`backendConfigured`, `loadSupabase()`: dynamic import, so the public
+  calculator never downloads the library; env `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`, from `.env.local` locally and
+  Netlify env vars live; NO env = no sign-in UI at all); `src/services/cloud.js` (sendSignInLink, signOut, listHouseholds,
+  loadHousehold, saveHousehold, deleteHousehold, friendlyError; every function takes the client, tested with a fake);
+  `src/lib/savedHousehold.js` (pure: `caseFromValues` / `valuesFromCase` store the FORM values cleaned to an allow-list,
+  `HOUSEHOLD_FORM_KEYS` exported from householdLink.js, short strings only, accounts rebuilt field by field and capped at 50;
+  `cleanLabel`); `src/next/useCloud.js`, `AccountBar.jsx` (every preview page, under the banner),
+  `SavedHouseholds.jsx` (preview homepage, signed in only: save new / save changes over the open one / open / delete, with a
+  testing-stage notice: initials or a nickname, no client names, account numbers or SSNs). `NextApp` takes `client` for
+  tests (null = no backend).
+- **Headers** (`netlify.toml`, the whole site): an ENFORCED Content-Security-Policy (self only, plus *.supabase.co for
+  connect; style-src 'unsafe-inline' for React style attributes), X-Frame-Options DENY, nosniff, strict referrer policy,
+  Permissions-Policy, HSTS, COOP. Checked by serving dist with the policy enforced and loading every page in headless
+  Chrome: no violations. A new external resource will be BLOCKED until its origin is added to the right directive.
+- **Not verified against a real project** (Claude has none): sign-in, the RLS check, the redirect with `#/next` after the
+  code. The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
+  never loads the library). `.env.example` is committed (the `.gitignore` negation); `.env.local` is ignored.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -1004,6 +1039,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-05 — Backend, preview only: Supabase sign-in (email link, PKCE, invite only) and saved households (RLS table,
+  migration + self-check SQL), security headers with an enforced CSP, setup and security docs. Public calculator
+  unchanged (it never loads the backend library). 600 tests.
 - 2026-10-02 (c) — Preview: each spouse's own Roth/Pre-tax type and account type; "Copy summary" (plain text); a
   retirement tax-rate what-if in Assumptions; a print stylesheet for preview pages. Public calculator untouched. 582 tests.
 - 2026-10-02 (b) — Recorded that the public calculator stays for a long while and may become the simple public tier

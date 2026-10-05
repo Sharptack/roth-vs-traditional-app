@@ -6,3 +6,20 @@
 [build.environment]
   # Vite 8 needs Node 20.19+ or 22.12+.
   NODE_VERSION = "22"
+
+# Security headers on every response (added 2026-10-05 with the Supabase backend).
+# Content-Security-Policy: the app loads nothing from other origins except Supabase (the API and
+# its realtime socket), has no inline scripts (Vite builds one module file), and uses inline
+# style attributes (React), hence style-src 'unsafe-inline'. Checked with the policy ENFORCED on
+# every page (#/, the article, Visualization, every #/next page): no violations. If a new page or
+# library is blocked, the browser console names the directive; widen that one directive only.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Strict-Transport-Security = "max-age=31536000"
+    Cross-Origin-Opener-Policy = "same-origin"

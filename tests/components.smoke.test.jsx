@@ -1133,3 +1133,38 @@ describe('NextApp (#/next preview)', () => {
     expect(home).toContain("Copy summary (inputs, results, link)");
   });
 });
+
+describe('preview sign-in and saved households', () => {
+  it('no backend configured: no sign-in anywhere', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const html = renderToStaticMarkup(<NextApp client={null} />);
+    expect(html).not.toContain('Sign in to save households');
+    expect(html).not.toContain('Saved households');
+  });
+
+  it('the account bar: signed out offers a link sign-in; signed in shows who', async () => {
+    const { default: AccountBar } = await import('../src/next/AccountBar.jsx');
+    const out = renderToStaticMarkup(<AccountBar client={{}} cloud={{ configured: true, ready: true, session: null }} />);
+    expect(out).toContain('Sign in to save households');
+    const signedIn = renderToStaticMarkup(
+      <AccountBar client={{}} cloud={{ configured: true, ready: true, session: {}, email: 'advisor@firm.test' }} />,
+    );
+    expect(signedIn).toContain('Signed in as <strong>advisor@firm.test</strong>');
+    expect(signedIn).toContain('Sign out');
+    // until the session has been read, nothing (no flash of "Sign in")
+    expect(renderToStaticMarkup(<AccountBar client={{}} cloud={{ configured: true, ready: false, session: null }} />)).toBe('');
+  });
+
+  it('the saved households card: the testing-stage notice, save form, and the open household', async () => {
+    const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
+    const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
+    const html = renderToStaticMarkup(
+      <SavedHouseholds client={{}} values={PREVIEW_DEFAULT_VALUES} opened={{ id: 'n1', label: 'J.M. 2026' }} onOpen={() => {}} onSaved={() => {}} />,
+    );
+    expect(html).toContain('Saved households');
+    expect(html).toContain('Don&rsquo;t store client names'.replace('&rsquo;', '’'));
+    expect(html).toContain('On screen: <strong>J.M. 2026</strong>');
+    expect(html).toContain('Save changes');
+    expect(html).toContain('Or save as a new household');
+  });
+});

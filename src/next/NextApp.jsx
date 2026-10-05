@@ -31,6 +31,9 @@ import ConversionResult from './ConversionResult.jsx';
 import PensionResult from './PensionResult.jsx';
 import { compareLifetime } from '../lib/lifetimeComparison.js';
 import { strategyById } from '../lib/strategies.js';
+import { useCloud } from './useCloud.js';
+import AccountBar from './AccountBar.jsx';
+import SavedHouseholds from './SavedHouseholds.jsx';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -106,9 +109,14 @@ function usePreviewPage() {
   return page;
 }
 
-export default function NextApp({ initialPage }) {
+// client: a Supabase client for tests (null = no backend); omitted = the configured backend,
+// loaded on demand (services/supabaseClient.js).
+export default function NextApp({ initialPage, client }) {
   const [values, setValues] = useState(FROM_LINK?.values ?? PREVIEW_DEFAULT_VALUES);
   const [locked, setLocked] = useState(Boolean(FROM_LINK?.viewOnly));
+  // Sign-in and the saved household on screen ({ id, label }), when a backend is configured.
+  const cloud = useCloud(client);
+  const [opened, setOpened] = useState(null);
   const hashPage = usePreviewPage();
   const page = initialPage ?? hashPage; // initialPage: for tests (no browser hash)
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
@@ -167,6 +175,7 @@ export default function NextApp({ initialPage }) {
         alongside the current one. Numbers and layout may change.{' '}
         <a href={CALCULATOR_HASH}>Back to the current calculator &rarr;</a>
       </p>
+      <AccountBar client={cloud.client} cloud={cloud} onSignedOut={() => setOpened(null)} />
 
       {!calculator && (
         <>
@@ -179,6 +188,19 @@ export default function NextApp({ initialPage }) {
               <HouseholdForm {...formProps} title="Household" footer={share} />
             </div>
             <div className="results-column">
+              {cloud.session && (
+                <SavedHouseholds
+                  client={cloud.client}
+                  values={values}
+                  opened={opened}
+                  onOpen={({ id, label, values: saved }) => {
+                    setValues(saved);
+                    setLocked(false);
+                    setOpened({ id, label });
+                  }}
+                  onSaved={setOpened}
+                />
+              )}
               <div className="suite-tiles">
                 {CALCULATORS.map((c) => (
                   <a key={c.id} className="card suite-tile" href={NEXT_PAGES[c.id]}>
