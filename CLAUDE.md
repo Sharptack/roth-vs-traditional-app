@@ -406,8 +406,17 @@ Setup for the user: `docs/backend-setup.md`. Security model and the launch check
   connect; style-src 'unsafe-inline' for React style attributes), X-Frame-Options DENY, nosniff, strict referrer policy,
   Permissions-Policy, HSTS, COOP. Checked by serving dist with the policy enforced and loading every page in headless
   Chrome: no violations. A new external resource will be BLOCKED until its origin is added to the right directive.
-- **Not verified against a real project** (Claude has none): sign-in, the RLS check, the redirect with `#/next` after the
-  code. The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
+- **Live project set up 2026-10-06** (user, guided): project ref `srliygregdjkhmxqozfx`; migration run; the RLS self-check
+  passed ("RLS checks passed"); sign-up off, the user invited themselves; `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` set in
+  Netlify (NOT marked secret: they are built into the site, and Netlify's secret scanning would fail the build) and in
+  `.env.local` (git-ignored). Verified from outside with curl and the anon key: `/auth/v1/settings` disable_signup true,
+  anonymous off, email confirm on; reading and writing `saved_households` signed out -> 401 "permission denied"; a stranger's
+  OTP sign-up -> 422 signup_disabled. Gotcha found: a Site URL ending in `/**` sends invitation emails to a 404 (Site URL
+  must be the bare origin; only Redirect URLs take `/**`). The invitation link uses the implicit flow and lands with
+  `#access_token=…` in the address (on the launch checklist). The user pasted one such token in chat on 2026-10-06; they were
+  told to sign out once from the app (global sign-out revokes it).
+- **Not yet verified end to end** (as of 2026-10-06): the email-link sign-in round trip, saving/opening/deleting through the
+  UI, and the redirect with `#/next` after the code. The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
   never loads the library). `.env.example` is committed (the `.gitignore` negation); `.env.local` is ignored.
 
 ## Article page ("How this works")
@@ -1039,6 +1048,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-06 — Supabase project set up with the user (see "Live project set up"); verified from outside; setup guide
+  fixed (Site URL without `/**`). No code change. 600 tests.
 - 2026-10-05 — Backend, preview only: Supabase sign-in (email link, PKCE, invite only) and saved households (RLS table,
   migration + self-check SQL), security headers with an enforced CSP, setup and security docs. Public calculator
   unchanged (it never loads the backend library). 600 tests.
