@@ -88,6 +88,23 @@ is **also the public "How this works" page** — see "Article page" below.
   ARTICLE.md is written as a public page. Fine for now; raise it with the user before adding anything
   proprietary or client-specific (e.g. make the repo private / add Netlify password protection).
 
+## Where things stand / picking up on another device (2026-10-06)
+- **State:** the public calculator (`#/`) is live and the user keeps editing it. The `#/next` preview has all seven plan
+  phases, the conversion and pension calculators, and Supabase sign-in with saved households; the live Supabase project is
+  set up and checked from outside (see "Backend"). 600 tests.
+- **Next up:** (1) the user's end-to-end sign-in test ("Part 5": email-link sign-in on `#/next`, sign out once to revoke a
+  token pasted in chat, save / change / open / delete a household), first on localhost, then live; fix whatever it finds.
+  (2) Then, at the user's direction: items from `docs/security.md` (MFA enforced in RLS, firm-domain sign-in, audit log,
+  invitation links without tokens in the URL), saved households on calculator pages too, IRMAA, the lifetime verdict as
+  the Roth page headline. Free/simple versions are ON HOLD.
+- **New device setup:** `git clone` (or pull) -> `npm install` (Node 20.19+ or 22.12+ for Vite 8) -> create `.env.local` from
+  `.env.example` with the Supabase URL and anon/publishable key (Supabase -> Project Settings -> Data API; never the
+  service_role key) -> `npm test` (expect 600 passing) -> `npm run dev` (port 5173 is already allowed in Supabase's Redirect
+  URLs; another port needs adding there). Set the repo-local git identity: `git config user.name "Michael Sharpnack"` and
+  `git config user.email sharpnackm7@gmail.com`. The "Deployment / git" and "Machine gotchas" notes below describe the
+  ORIGINAL Intel Mac (Claude couldn't push there); update them if the new device differs (e.g. Claude can push).
+- **One device at a time:** pull before starting, sync when done, so the two never edit the same files apart.
+
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
@@ -1048,6 +1065,7 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-06 (b) — Added "Where things stand / picking up on another device" (handoff to a new device and chat).
 - 2026-10-06 — Supabase project set up with the user (see "Live project set up"); verified from outside; setup guide
   fixed (Site URL without `/**`). No code change. 600 tests.
 - 2026-10-05 — Backend, preview only: Supabase sign-in (email link, PKCE, invite only) and saved households (RLS table,
