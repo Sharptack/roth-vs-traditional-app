@@ -35,6 +35,10 @@ names, account numbers or Social Security numbers). Launch means real advisors a
 - [ ] Session lifetime: shorter access tokens, refresh-token reuse detection on, an inactivity
       sign-out in the app.
 - [ ] Custom SMTP on the firm's domain (SPF, DKIM, DMARC) for the sign-in emails.
+- [ ] Invitation emails: switch the "Invite user" email template to a token-hash link the app verifies
+      (`verifyOtp`), so accepting an invitation never puts session tokens in the address bar (today it
+      uses the implicit flow: `#access_token=…` lands on the Site URL).
+- [ ] Tighten Redirect URLs from `/**` to the exact addresses the app uses.
 - [ ] Two-factor on every admin account: Supabase, GitHub, Netlify, the domain registrar.
 
 **Data**

@@ -23,10 +23,12 @@ sign-in. About 20 minutes, once.
 1. **Sign In / Providers**: Email on. **Turn OFF "Allow new users to sign up."** (Invite only. The
    app also never creates users from the sign-in form, as a second lock.)
 2. **URL Configuration**:
-   - Site URL: `https://astonishing-sprite-b5d581.netlify.app`
+   - Site URL: `https://astonishing-sprite-b5d581.netlify.app` exactly, with no `/**` (the invitation email
+     sends people to the Site URL; with `/**` on it they land on a "Page not found").
    - Redirect URLs: add `https://astonishing-sprite-b5d581.netlify.app/**` and `http://localhost:5173/**`
-3. **Users → Invite user**: add each advisor's email (start with your own). They accept the
-   invitation, then sign in on the preview with "Email me a sign-in link".
+3. **Users → Add user → Send invitation**: add each advisor's email (start with your own). Clicking the
+   invitation confirms the account; the page it opens shows a long token in the address bar: close that
+   tab and don't share the address. Then sign in on the preview with "Email me a sign-in link".
 4. Supabase's built-in email sender is for testing (low hourly limit). Before launch, set up custom
    SMTP on the firm's domain (see docs/security.md).
 
