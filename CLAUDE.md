@@ -101,8 +101,10 @@ is **also the public "How this works" page** — see "Article page" below.
   `.env.example` with the Supabase URL and anon/publishable key (Supabase -> Project Settings -> Data API; never the
   service_role key) -> `npm test` (expect 600 passing) -> `npm run dev` (port 5173 is already allowed in Supabase's Redirect
   URLs; another port needs adding there). Set the repo-local git identity: `git config user.name "Michael Sharpnack"` and
-  `git config user.email sharpnackm7@gmail.com`. The "Deployment / git" and "Machine gotchas" notes below describe the
-  ORIGINAL Intel Mac (Claude couldn't push there); update them if the new device differs (e.g. Claude can push).
+  `git config user.email sharpnackm7@gmail.com`. See "Deployment / git" for what differs per device.
+- **Devices (2026-10-06):** the home Intel Mac (original) and a Windows 11 work laptop (`C:\Users\pwimi\projects\
+  roth-vs-traditional-app`, set up 2026-10-06: Git, GitHub CLI signed in as Sharptack over HTTPS, Node 24 LTS, 600 tests
+  passing; `.env.local` created from `.env.example`, the user fills in the two Supabase values).
 - **One device at a time:** pull before starting, sync when done, so the two never edit the same files apart.
 
 ## Commands
@@ -126,12 +128,23 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Repo: https://github.com/Sharptack/roth-vs-traditional-app (**public**). Branch `main`.
 - Live: https://astonishing-sprite-b5d581.netlify.app/ — Netlify auto-deploys on push to `main`
   (`netlify.toml`: `npm run build`, publish `dist`, Node 22). Site access was opened to "anyone with the link".
-- **Claude can commit but cannot push** (no GitHub credentials in Claude's shell). The user pushes with
-  VS Code Source Control → **Sync Changes**. Always tell them when there are unpushed commits.
-- Git identity is repo-local: Michael Sharpnack <sharpnackm7@gmail.com>. End commit messages with the
-  `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` line.
-- Machine gotchas: Intel Mac (Homebrew unsupported; `brew install gh` fails); no `gh`; system python
+- **Pushing depends on the device.** Home Mac: Claude can commit but cannot push (no GitHub credentials in Claude's
+  shell); the user pushes with VS Code Source Control → **Sync Changes**. Windows work laptop: Claude CAN push (`gh` is
+  signed in and is git's credential helper), but still only when the user says so (ground rule 5). Either way, always
+  tell the user when there are unpushed commits.
+- Git identity is repo-local: Michael Sharpnack <sharpnackm7@gmail.com>, the same on both devices, so commits don't say
+  which machine made them (git doesn't record that). End commit messages with the `Co-Authored-By:` line for the Claude
+  model in use.
+- Machine gotchas, home Mac: Intel Mac (Homebrew unsupported; `brew install gh` fails); no `gh`; system python
   shim was blocked until the Xcode license was accepted (now fine); use `node -e` for scripted edits.
+- Machine gotchas, Windows laptop: PowerShell 5.1 (no `&&`); tools installed with `winget` mid-session aren't on the
+  shell's PATH until it is refreshed from the registry or the terminal restarted. The headless-Chrome paths in
+  "Checking the UI" are the Mac's.
+- **Dependency audit (open, noted 2026-10-06):** `npm audit` reports 1 high: `source-map-js` 1.2.1 (GHSA-68fv-2mgg-jv7q,
+  a denial of service from a crafted source map), pulled in by vite -> postcss. Build-time tooling only: it isn't in the
+  site bundle and only reads this project's own files, so the live site isn't exposed. Fix deliberately, not mid-feature:
+  `npm audit fix` (or a vite update that carries a fixed postcss), then `npm test` and `npm run build`, commit the
+  `package-lock.json` change, and `npm install` on the other device after pulling. Re-run `npm audit` before launch.
 
 ## Code map
 - `src/data/`: `taxBrackets.js` (2025, 2026), `capitalGainsBrackets.js` (0%/15%/20% LTCG brackets),
@@ -1065,6 +1078,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-06 (c) — Set up the Windows work laptop as a second device (see "Devices"); recorded that Claude can push from
+  it, the per-device machine gotchas, and the open `npm audit` finding. No code change. 600 tests.
 - 2026-10-06 (b) — Added "Where things stand / picking up on another device" (handoff to a new device and chat).
 - 2026-10-06 — Supabase project set up with the user (see "Live project set up"); verified from outside; setup guide
   fixed (Site URL without `/**`). No code change. 600 tests.
