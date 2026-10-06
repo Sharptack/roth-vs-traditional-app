@@ -34,7 +34,11 @@ names, account numbers or Social Security numbers). Launch means real advisors a
 - [ ] Restrict sign-in to the firm's email domain (a Supabase auth hook).
 - [ ] Session lifetime: shorter access tokens, refresh-token reuse detection on, an inactivity
       sign-out in the app.
-- [ ] Custom SMTP on the firm's domain (SPF, DKIM, DMARC) for the sign-in emails.
+- [ ] Custom SMTP on the firm's domain (SPF, DKIM, DMARC) for the sign-in emails. It also removes the
+      built-in sender's low hourly cap. Plan (2026-10-06): once the domain is bought, a transactional
+      sender with a free tier (Resend first choice; Brevo, Postmark or Amazon SES also work) in
+      Supabase → Authentication → SMTP. Not Mailchimp's free plan: it has no transactional sending
+      (Mandrill is a paid add-on).
 - [ ] Invitation emails: switch the "Invite user" email template to a token-hash link the app verifies
       (`verifyOtp`), so accepting an invitation never puts session tokens in the address bar (today it
       uses the implicit flow: `#access_token=…` lands on the Site URL).

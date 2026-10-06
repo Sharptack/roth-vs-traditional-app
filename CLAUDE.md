@@ -449,8 +449,10 @@ Setup for the user: `docs/backend-setup.md`. Security model and the launch check
 - **End-to-end test on localhost (user, 2026-10-06, Windows laptop):** email-link sign-in worked and a household saved;
   after signing out, signing in again hit Supabase's "Email rate limit exceeded" (the built-in sender's project-wide hourly
   cap, used up by several link requests). Not a bug; `friendlyError` now says to wait up to an hour. Remaining: sign in
-  again, open / change / delete the household, then the same live. Custom SMTP (launch checklist) removes the cap; it can
-  be set up earlier if the cap keeps getting in the way of testing.
+  again, open / change / delete the household, then the same live. Custom SMTP (launch checklist) removes the cap.
+  **Planned (user, 2026-10-06):** the user has no domain yet and will buy one soon; then set up Resend's free tier as
+  Supabase's SMTP (DNS records on the new domain). Mailchimp's free plan was considered and doesn't fit (no
+  transactional email). Until then, wait out the hourly cap.
 - **Not yet verified end to end** (as of 2026-10-06): opening/changing/deleting through the UI, and all of it on the live site. The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
   never loads the library). `.env.example` is committed (the `.gitignore` negation); `.env.local` is ignored.
 
@@ -1083,6 +1085,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-06 (f) — Recorded the sign-in email plan: Resend on a domain the user will buy (docs/security.md, Backend).
+  No code change.
 - 2026-10-06 (e) — `npm audit fix` (source-map-js 1.2.1 -> 1.2.2, lockfile only; audit clean); test timeout raised to
   20 s (two slow tests were timing out intermittently on the Windows laptop). No app change. 600 tests.
 - 2026-10-06 (d) — Sign-in tested on localhost (worked; a household saved); the email rate-limit error now reads plainly
