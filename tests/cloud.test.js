@@ -95,9 +95,15 @@ describe('cloud: saved households', () => {
 });
 
 describe('cloud: errors', () => {
-  it('network failures read plainly; server messages pass through', () => {
+  it('network failures and the email cap read plainly; other server messages pass through', () => {
     expect(friendlyError('Failed to fetch')).toBe("Couldn't reach the sign-in service. Check the connection and try again.");
-    expect(friendlyError('Email rate limit exceeded')).toBe('Email rate limit exceeded');
+    expect(friendlyError('Email rate limit exceeded')).toBe(
+      'Too many sign-in emails have been sent in the last hour. Wait up to an hour, then ask for a new link.',
+    );
+    expect(friendlyError('email rate limit exceeded')).toMatch(/^Too many sign-in emails/);
+    expect(friendlyError('For security purposes, you can only request this after 42 seconds.')).toBe(
+      'For security purposes, you can only request this after 42 seconds.',
+    );
     expect(friendlyError(undefined)).toBe('Something went wrong talking to the server.');
   });
 });

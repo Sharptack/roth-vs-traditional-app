@@ -11,6 +11,10 @@ export function friendlyError(message) {
   if (/failed to fetch|networkerror|load failed|network request failed/i.test(message ?? '')) {
     return "Couldn't reach the sign-in service. Check the connection and try again.";
   }
+  // The project-wide cap on sign-in emails per hour (very low with Supabase's built-in sender).
+  if (/email rate limit/i.test(message ?? '')) {
+    return 'Too many sign-in emails have been sent in the last hour. Wait up to an hour, then ask for a new link.';
+  }
   return message || 'Something went wrong talking to the server.';
 }
 

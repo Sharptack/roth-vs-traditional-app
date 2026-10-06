@@ -445,8 +445,12 @@ Setup for the user: `docs/backend-setup.md`. Security model and the launch check
   must be the bare origin; only Redirect URLs take `/**`). The invitation link uses the implicit flow and lands with
   `#access_token=…` in the address (on the launch checklist). The user pasted one such token in chat on 2026-10-06; they were
   told to sign out once from the app (global sign-out revokes it).
-- **Not yet verified end to end** (as of 2026-10-06): the email-link sign-in round trip, saving/opening/deleting through the
-  UI, and the redirect with `#/next` after the code. The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
+- **End-to-end test on localhost (user, 2026-10-06, Windows laptop):** email-link sign-in worked and a household saved;
+  after signing out, signing in again hit Supabase's "Email rate limit exceeded" (the built-in sender's project-wide hourly
+  cap, used up by several link requests). Not a bug; `friendlyError` now says to wait up to an hour. Remaining: sign in
+  again, open / change / delete the household, then the same live. Custom SMTP (launch checklist) removes the cap; it can
+  be set up earlier if the cap keeps getting in the way of testing.
+- **Not yet verified end to end** (as of 2026-10-06): opening/changing/deleting through the UI, and all of it on the live site. The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
   never loads the library). `.env.example` is committed (the `.gitignore` negation); `.env.local` is ignored.
 
 ## Article page ("How this works")
@@ -1078,6 +1082,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-06 (d) — Sign-in tested on localhost (worked; a household saved); the email rate-limit error now reads plainly
+  (`friendlyError`). 600 tests.
 - 2026-10-06 (c) — Set up the Windows work laptop as a second device (see "Devices"); recorded that Claude can push from
   it, the per-device machine gotchas, and the open `npm audit` finding. No code change. 600 tests.
 - 2026-10-06 (b) — Added "Where things stand / picking up on another device" (handoff to a new device and chat).
