@@ -9,5 +9,8 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.{js,jsx}'],
     environment: 'node',
+    // The slowest tests (the break-even search, the preview smoke test) take 4–5 s with the
+    // whole suite running on the Windows laptop, right at Vitest's 5 s default.
+    testTimeout: 20000,
   },
 });

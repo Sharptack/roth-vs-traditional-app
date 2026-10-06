@@ -140,11 +140,12 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
 - Machine gotchas, Windows laptop: PowerShell 5.1 (no `&&`); tools installed with `winget` mid-session aren't on the
   shell's PATH until it is refreshed from the registry or the terminal restarted. The headless-Chrome paths in
   "Checking the UI" are the Mac's.
-- **Dependency audit (open, noted 2026-10-06):** `npm audit` reports 1 high: `source-map-js` 1.2.1 (GHSA-68fv-2mgg-jv7q,
-  a denial of service from a crafted source map), pulled in by vite -> postcss. Build-time tooling only: it isn't in the
-  site bundle and only reads this project's own files, so the live site isn't exposed. Fix deliberately, not mid-feature:
-  `npm audit fix` (or a vite update that carries a fixed postcss), then `npm test` and `npm run build`, commit the
-  `package-lock.json` change, and `npm install` on the other device after pulling. Re-run `npm audit` before launch.
+- **Dependency audit (FIXED 2026-10-06):** `npm audit` reported 1 high: `source-map-js` 1.2.1 (GHSA-68fv-2mgg-jv7q, a
+  denial of service from a crafted source map), via vite -> postcss; build-time only, never in the site bundle.
+  `npm audit fix` moved it to 1.2.2 (lockfile only); tests and build pass, audit clean. After pulling on the other device,
+  run `npm install` so its `node_modules` matches the lockfile. Re-run `npm audit` before launch, and after any update.
+- **Test timeout:** `testTimeout: 20000` in vite.config.js (2026-10-06). On the Windows laptop the break-even test and the
+  `#/next` smoke test take 4–5 s with the full suite running, so Vitest's 5 s default failed them about half the time.
 
 ## Code map
 - `src/data/`: `taxBrackets.js` (2025, 2026), `capitalGainsBrackets.js` (0%/15%/20% LTCG brackets),
@@ -1082,6 +1083,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-06 (e) — `npm audit fix` (source-map-js 1.2.1 -> 1.2.2, lockfile only; audit clean); test timeout raised to
+  20 s (two slow tests were timing out intermittently on the Windows laptop). No app change. 600 tests.
 - 2026-10-06 (d) — Sign-in tested on localhost (worked; a household saved); the email rate-limit error now reads plainly
   (`friendlyError`). 600 tests.
 - 2026-10-06 (c) — Set up the Windows work laptop as a second device (see "Devices"); recorded that Claude can push from
