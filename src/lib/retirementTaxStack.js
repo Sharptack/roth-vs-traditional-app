@@ -20,16 +20,16 @@
 //   - Net Investment Income Tax: 3.8% on the gain, limited to MAGI above
 //     $200,000 Single / $250,000 MFJ. MAGI = Pre-tax withdrawals + taxable
 //     Social Security + gains (Roth withdrawals and cost basis are in neither).
-import { calculateTax, getStandardDeduction } from './taxCalculations.js';
-import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
-import { calculateCapitalGainsTax, calculateNiit } from './capitalGainsTax.js';
-import { calculateYearTax } from './yearTax.js';
+import { calculateYearTaxTotals } from './yearTax.js';
 
-// taxRules (optional; the #/next preview): { thresholdScale, rateShift, ages, calendarYear } — when given, the
-// year is taxed by the single-year engine (yearTax.js) with those rules: fixed-dollar thresholds
-// scaled for inflation, a rate what-if, and the age 65+ deductions for the given ages. Without it,
-// the code below runs exactly as before (the current calculator). Both agree to the cent when the
-// rules are neutral (tested).
+// taxRules (optional; the #/next preview): { thresholdScale, rateShift, ages, calendarYear }:
+// fixed-dollar thresholds scaled for inflation, a rate what-if, and the age 65+ deductions for the
+// given ages. Without it, today's rules (the current calculator).
+//
+// One engine: this is the single-year engine (yearTax.js) with only retirement income. It used to
+// carry its own copy of the rules for the current calculator; the agreement grids in
+// tests/yearTax.test.js prove the two gave identical results to the cent, so the copy was removed
+// (2026-10-07) and every caller now shares one implementation.
 export function calculateRetirementTax({
   pretaxWithdrawal = 0,
   taxableWithdrawal = 0,
@@ -40,57 +40,25 @@ export function calculateRetirementTax({
   taxRules,
 }) {
   const capitalGains = taxableWithdrawal * taxableGainShare;
-  if (taxRules) {
-    const r = calculateYearTax({
-      filingStatus,
-      year,
-      people: (taxRules.ages ?? []).map((age) => ({ age })),
-      income: { ordinaryIncome: pretaxWithdrawal, preferentialIncome: capitalGains, socialSecurity: ssBenefit },
-      thresholdScale: taxRules.thresholdScale ?? 1,
-      rateShift: taxRules.rateShift ?? 0,
-      calendarYear: taxRules.calendarYear ?? year,
-    });
-    return {
-      taxableSS: r.lines.taxableSocialSecurity,
-      grossOrdinaryIncome: r.lines.ordinaryGross,
-      capitalGains,
-      ordinaryTaxableIncome: r.lines.ordinaryTaxableIncome,
-      ordinaryTax: r.ordinaryTax,
-      capitalGainsTax: r.capitalGainsTax,
-      magi: r.lines.magi,
-      niit: r.niit,
-      totalTax: r.incomeTax,
-      standardDeduction: r.lines.standardDeduction,
-    };
-  }
-  const taxableSS = calculateTaxableSocialSecurity(
-    pretaxWithdrawal + capitalGains,
-    ssBenefit,
+  const r = calculateYearTaxTotals({
     filingStatus,
     year,
-  );
-  const standardDeduction = getStandardDeduction(filingStatus, year);
-  const grossOrdinaryIncome = pretaxWithdrawal + taxableSS;
-  const ordinaryTaxableIncome = Math.max(0, grossOrdinaryIncome - standardDeduction);
-  const ordinaryTax = calculateTax(ordinaryTaxableIncome, filingStatus, year);
-  const capitalGainsTax = calculateCapitalGainsTax(
-    grossOrdinaryIncome,
-    capitalGains,
-    standardDeduction,
-    filingStatus,
-    year,
-  );
-  const magi = grossOrdinaryIncome + capitalGains;
-  const niit = calculateNiit(magi, capitalGains, filingStatus, year);
+    people: (taxRules?.ages ?? []).map((age) => ({ age })),
+    income: { ordinaryIncome: pretaxWithdrawal, preferentialIncome: capitalGains, socialSecurity: ssBenefit },
+    thresholdScale: taxRules?.thresholdScale ?? 1,
+    rateShift: taxRules?.rateShift ?? 0,
+    calendarYear: taxRules?.calendarYear ?? year,
+  });
   return {
-    taxableSS,
-    grossOrdinaryIncome, // before the standard deduction
+    taxableSS: r.lines.taxableSocialSecurity,
+    grossOrdinaryIncome: r.lines.ordinaryGross, // before the standard deduction
     capitalGains, // the taxed part of the taxable-account withdrawal
-    ordinaryTaxableIncome,
-    ordinaryTax,
-    capitalGainsTax,
-    magi, // modified AGI for the NIIT
-    niit, // Net Investment Income Tax on the gains
-    totalTax: ordinaryTax + capitalGainsTax + niit,
+    ordinaryTaxableIncome: r.lines.ordinaryTaxableIncome,
+    ordinaryTax: r.ordinaryTax,
+    capitalGainsTax: r.capitalGainsTax,
+    magi: r.lines.magi, // modified AGI for the NIIT
+    niit: r.niit, // Net Investment Income Tax on the gains
+    totalTax: r.incomeTax,
+    standardDeduction: r.lines.standardDeduction,
   };
 }
