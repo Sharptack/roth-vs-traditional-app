@@ -41,14 +41,26 @@ const CURRENT_YEAR = new Date().getFullYear();
 const FROM_LINK = typeof window === 'undefined' ? null : householdValuesFromSearch(window.location.search);
 
 // The Roth calculator's whole calculation, outside React so it can be tested.
-export function previewResult(values, year) {
+//  blend: compute the blend explorer (only the Roth page shows it; it is most of the run time).
+export function previewResult(values, year, { blend = true } = {}) {
   const household = toHousehold(values, year);
   const householdErrors = validateHousehold(household);
-  const result = compareRothVsTraditional(householdToCompareInputs(household));
+  const result = compareRothVsTraditional({ ...householdToCompareInputs(household), skipBlend: !blend });
   if (householdErrors.length === 0) return { household, result };
   const errors = [...(result.valid ? [] : result.errors), ...householdErrors];
   return { household, result: { valid: false, errors } };
 }
+
+// Each calculator's result from the household (shared by its page, its tile and Copy summary).
+const irmaaOf = (household) => ({ irmaa: Boolean(household.assumptions.medicareIrmaa) });
+const taxOf = (household) => taxCalculatorResult(householdToYearTaxParams(household), irmaaOf(household));
+const conversionOf = (household) =>
+  conversionResult(householdToYearTaxParams(household), household.calculators.conversion.amount, irmaaOf(household));
+const projectionOf = (r) => (r.result.valid ? projectionView(r.household, r.result.retirementNeed.target) : null);
+// The homepage (any page that isn't a calculator) shows every calculator's tile; a calculator
+// page shows only its own result.
+const isHome = (page) => !CALCULATORS.some((c) => c.id === page);
+const shownOn = (page, id) => isHome(page) || page === id;
 
 export const CALCULATORS = [
   {
@@ -121,30 +133,21 @@ export default function NextApp({ initialPage, client }) {
   const page = initialPage ?? hashPage; // initialPage: for tests (no browser hash)
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
 
-  const roth = useMemo(() => previewResult(values, CURRENT_YEAR), [values]);
-  const tax = useMemo(
-    () => taxCalculatorResult(householdToYearTaxParams(roth.household), { irmaa: Boolean(roth.household.assumptions.medicareIrmaa) }),
-    [roth],
-  );
-  const conversion = useMemo(
-    () =>
-      conversionResult(householdToYearTaxParams(roth.household), roth.household.calculators.conversion.amount, {
-        irmaa: Boolean(roth.household.assumptions.medicareIrmaa),
-      }),
-    [roth],
-  );
-  const pensionInputs = useMemo(() => householdToPensionInputs(roth.household), [roth]);
-  const pension = useMemo(() => pensionResult(pensionInputs), [pensionInputs]);
-  const pretaxBalance = roth.household.accounts.filter((a) => a.type === 'pretax').reduce((s, a) => s + (a.balance || 0), 0);
-  const realReturn = roth.household.assumptions.returnRate;
-  const inflation = roth.household.assumptions.inflationRate ?? 0;
+  // Each calculator is worked out only where it is shown: its own page, or the homepage's tiles
+  // (the blend explorer only on the Roth page). Copy summary works out the rest when pressed.
+  const roth = useMemo(() => previewResult(values, CURRENT_YEAR, { blend: page === 'roth' }), [values, page]);
+  const h = roth.household;
+  const tax = useMemo(() => (shownOn(page, 'tax') ? taxOf(h) : null), [h, page]);
+  const conversion = useMemo(() => (shownOn(page, 'conversion') ? conversionOf(h) : null), [h, page]);
+  const pensionInputs = useMemo(() => householdToPensionInputs(h), [h]);
+  const pension = useMemo(() => (shownOn(page, 'pension') ? pensionResult(pensionInputs) : null), [pensionInputs, page]);
+  const pretaxBalance = h.accounts.filter((a) => a.type === 'pretax').reduce((sum, a) => sum + (a.balance || 0), 0);
+  const realReturn = h.assumptions.returnRate;
+  const inflation = h.assumptions.inflationRate ?? 0;
   // The projection runs many whole projections (sustainable spending), so it follows the inputs a
   // beat behind while typing (useDeferredValue) instead of blocking each keystroke.
   const deferredRoth = useDeferredValue(roth);
-  const projection = useMemo(
-    () => (deferredRoth.result.valid ? projectionView(deferredRoth.household, deferredRoth.result.retirementNeed.target) : null),
-    [deferredRoth],
-  );
+  const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
   // The lifetime Roth vs. Pre-tax comparison (phase 6): only on the Roth page (two projections and
   // two sustainable-spending searches), a beat behind the inputs like the projection.
   const lifetime = useMemo(() => {
@@ -156,22 +159,27 @@ export default function NextApp({ initialPage, client }) {
       strategy: strategyById(own.strategy),
     });
   }, [deferredRoth, page]);
-  const tiles = {
+  const tilesOf = (parts) => ({
     roth: rothTile(roth.result),
-    tax: taxTile(tax),
-    projection: projectionTile(projection),
-    conversion: conversionTile(conversion),
-    pension: pensionTile(pension, pensionInputs),
+    tax: taxTile(parts.tax),
+    projection: projectionTile(parts.projection),
+    conversion: conversionTile(parts.conversion),
+    pension: pensionTile(parts.pension, pensionInputs),
+  });
+  const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection }) : null;
+  // For Copy summary: every calculator's headline, working out on demand what this page skipped.
+  const summaryTiles = () => {
+    const all = tilesOf({
+      tax: tax ?? taxOf(h),
+      conversion: conversion ?? conversionOf(h),
+      pension: pension ?? pensionResult(pensionInputs),
+      projection: projection ?? projectionOf(roth),
+    });
+    return CALCULATORS.map((c) => ({ title: c.title, ...all[c.id] }));
   };
 
   const formProps = { values, onChange: handleChange, locked, onEditCopy: () => setLocked(false) };
-  const share = !locked && (
-    <ShareHousehold
-      values={values}
-      household={roth.household}
-      tiles={CALCULATORS.map((c) => ({ title: c.title, ...tiles[c.id] }))}
-    />
-  );
+  const share = !locked && <ShareHousehold values={values} household={h} getTiles={summaryTiles} />;
   const calculator = CALCULATORS.find((c) => c.id === page);
   // Saved households: the whole card on the homepage, compact on a calculator page.
   const saved = (compact) =>

@@ -17,7 +17,7 @@ import { compareWithRisingIncome } from './risingIncome.js';
 //                     (the "did Roth actually win" outcome)
 export function runScenarioPoint(base, overrides, year) {
   const inputs = { ...base, ...overrides, year };
-  const result = compareRothVsTraditional(inputs);
+  const result = compareRothVsTraditional({ ...inputs, skipBlend: true });
   if (!result.valid) {
     throw new Error(`Invalid scenario inputs: ${result.errors.join('; ')}`);
   }

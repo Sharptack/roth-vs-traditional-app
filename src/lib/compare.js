@@ -43,6 +43,10 @@
 //                                            rateShift, ages } for the retirement-year tax, run
 //                                            through the single-year engine (calculateRetirementTax's
 //                                            taxRules). Absent = today's retirement tax, unchanged.
+//   skipBlend                              — OPTIONAL, boolean: don't compute the Roth/Pre-tax blend
+//                                            explorer (result.blend = { available: false }). It is most
+//                                            of this function's run time and only the preview's Roth
+//                                            page shows it. Absent/false = computed, as before.
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
@@ -412,7 +416,7 @@ export function compareRothVsTraditional(inputs) {
   // same budget differently" exploration, not a separate what-if income. Skipped when there is
   // nothing to split ($0 saved).
   let blend = { available: false };
-  if (contributionSplit.takeHomeCost > 0.5) {
+  if (!inputs.skipBlend && contributionSplit.takeHomeCost > 0.5) {
     const existingOnlyTax = calculateRetirementTax({
       pretaxWithdrawal: otherWithdrawals.pretaxGross,
       taxableWithdrawal: otherWithdrawals.taxableGross,

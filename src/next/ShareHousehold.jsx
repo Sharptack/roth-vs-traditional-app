@@ -7,8 +7,9 @@ import { householdLinkSearch } from '../lib/householdLink.js';
 import { householdShareText } from '../lib/householdText.js';
 import { NEXT_HASH } from '../lib/route.js';
 
-// household, tiles: for the summary ([{ title, headline, detail }] per calculator).
-export default function ShareHousehold({ values, household, tiles }) {
+// household, getTiles: for the summary; getTiles() -> [{ title, headline, detail }] per calculator,
+// called only when the summary is copied (some calculators are worked out on demand).
+export default function ShareHousehold({ values, household, getTiles }) {
   const [viewOnly, setViewOnly] = useState(false);
   const [status, setStatus] = useState('idle'); // 'idle' | 'copied' | 'manual'
   const [copied, setCopied] = useState(''); // what was (or should be) copied
@@ -19,7 +20,7 @@ export default function ShareHousehold({ values, household, tiles }) {
     return `${origin}${pathname}${householdLinkSearch(values, { viewOnly })}${NEXT_HASH}`;
   };
   const copy = async (kind) => {
-    const text = kind === 'link' ? link() : householdShareText({ household, tiles, url: link() });
+    const text = kind === 'link' ? link() : householdShareText({ household, tiles: getTiles(), url: link() });
     setWhat(kind);
     setCopied(text);
     try {
@@ -38,7 +39,7 @@ export default function ShareHousehold({ values, household, tiles }) {
       <label className="checkbox">
         <input type="checkbox" checked={viewOnly} onChange={(e) => setViewOnly(e.target.checked)} /> View only
       </label>
-      {household && tiles && (
+      {household && getTiles && (
         <button type="button" className="link-button share-summary" onClick={() => copy('summary')}>
           Copy summary (inputs, results, link)
         </button>

@@ -42,7 +42,7 @@ function resultLines(result) {
 // A readable summary of the scenario (inputs, headline results, link) to paste into a chat.
 export function shareText({ values, compareValues = null, year, url }) {
   const inputs = toCompareInputs(values, year);
-  const result = compareRothVsTraditional(inputs);
+  const result = compareRothVsTraditional({ ...inputs, skipBlend: true });
   const lines = [
     `Roth vs. Pre-tax calculator scenario (${year} tax rules)`,
     `Link: ${url}`,
@@ -64,7 +64,7 @@ export function shareText({ values, compareValues = null, year, url }) {
         : changes.map((c) => bullet(c.label, `${c.from} -> ${c.to}`))),
       '',
       'Results with the change',
-      ...resultLines(compareRothVsTraditional(changedIn)),
+      ...resultLines(compareRothVsTraditional({ ...changedIn, skipBlend: true })),
     );
   }
   return lines.join('\n');

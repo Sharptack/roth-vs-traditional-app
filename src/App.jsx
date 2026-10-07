@@ -114,12 +114,13 @@ export default function App() {
   // Results update live: recomputed on every input change, no submit button.
   const current = useMemo(() => {
     const inputs = toCompareInputs(values, CURRENT_YEAR);
-    return { inputs, result: compareRothVsTraditional(inputs) };
+    // skipBlend: the public page doesn't show the blend explorer (the preview's Roth page does).
+    return { inputs, result: compareRothVsTraditional({ ...inputs, skipBlend: true }) };
   }, [values]);
   const changed = useMemo(() => {
     if (!compareValues) return null;
     const inputs = toCompareInputs(compareValues, CURRENT_YEAR);
-    return { inputs, result: compareRothVsTraditional(inputs) };
+    return { inputs, result: compareRothVsTraditional({ ...inputs, skipBlend: true }) };
   }, [compareValues]);
 
   return (
