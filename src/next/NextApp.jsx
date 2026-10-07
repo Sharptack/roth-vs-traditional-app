@@ -167,6 +167,22 @@ export default function NextApp({ initialPage, client }) {
     />
   );
   const calculator = CALCULATORS.find((c) => c.id === page);
+  // Saved households: the whole card on the homepage, compact on a calculator page.
+  const saved = (compact) =>
+    cloud.session && (
+      <SavedHouseholds
+        client={cloud.client}
+        values={values}
+        opened={opened}
+        compact={compact}
+        onOpen={({ id, label, values: stored }) => {
+          setValues(stored);
+          setLocked(false);
+          setOpened({ id, label, values: stored });
+        }}
+        onSaved={setOpened}
+      />
+    );
 
   return (
     <div className="next-app">
@@ -188,19 +204,7 @@ export default function NextApp({ initialPage, client }) {
               <HouseholdForm {...formProps} title="Household" footer={share} />
             </div>
             <div className="results-column">
-              {cloud.session && (
-                <SavedHouseholds
-                  client={cloud.client}
-                  values={values}
-                  opened={opened}
-                  onOpen={({ id, label, values: saved }) => {
-                    setValues(saved);
-                    setLocked(false);
-                    setOpened({ id, label });
-                  }}
-                  onSaved={setOpened}
-                />
-              )}
+              {saved(false)}
               <div className="suite-tiles">
                 {CALCULATORS.map((c) => (
                   <a key={c.id} className="card suite-tile" href={NEXT_PAGES[c.id]}>
@@ -234,6 +238,7 @@ export default function NextApp({ initialPage, client }) {
           </header>
           <main className="calc-layout">
             <div className="inputs-column">
+              {saved(true)}
               <HouseholdForm
                 key={`${calculator.id}-own`}
                 {...formProps}

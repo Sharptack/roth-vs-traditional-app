@@ -91,14 +91,16 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Where things stand / picking up on another device (2026-10-06)
 - **State:** the public calculator (`#/`) is live and the user keeps editing it. The `#/next` preview has all seven plan
   phases, the conversion and pension calculators, and Supabase sign-in with saved households; the live Supabase project is
-  set up and checked from outside (see "Backend"). 600 tests.
-- **Next up (user, 2026-10-07), in this order:** (1) items from `docs/security.md` (MFA enforced in RLS, firm-domain
-  sign-in, audit log, invitation links without tokens in the URL); (2) saved households on calculator pages too; (3) IRMAA.
+  set up and checked from outside (see "Backend"). 603 tests.
+- **Next up (user, 2026-10-07), in this order:** (1) DONE 2026-10-07: saved households on calculator pages too; (2) IRMAA. Security work is
+  PAUSED (user, 2026-10-07: "mainly on functionality of the calculator"; no real client data for a while, a handful of
+  advisors testing). Done: the audit log (verified live). Left for before launch: invitation links without tokens in the
+  URL, MFA, firm-domain sign-in, custom SMTP (see `docs/security.md`). Don't resume them unless the user asks.
   The lifetime verdict as the Roth page headline is set aside for now. Free/simple versions are ON HOLD. DONE: the user's
   end-to-end sign-in test passed on the LIVE site 2026-10-07 (sign in, save / open / change / delete a household).
 - **New device setup:** `git clone` (or pull) -> `npm install` (Node 20.19+ or 22.12+ for Vite 8) -> create `.env.local` from
   `.env.example` with the Supabase URL and anon/publishable key (Supabase -> Project Settings -> Data API; never the
-  service_role key) -> `npm test` (expect 600 passing) -> `npm run dev` (port 5173 is already allowed in Supabase's Redirect
+  service_role key) -> `npm test` (expect 603 passing) -> `npm run dev` (port 5173 is already allowed in Supabase's Redirect
   URLs; another port needs adding there). Set the repo-local git identity: `git config user.name "Michael Sharpnack"` and
   `git config user.email sharpnackm7@gmail.com`. See "Deployment / git" for what differs per device.
 - **Devices (2026-10-06):** the home Intel Mac (original) and a Windows 11 work laptop (`C:\Users\pwimi\projects\
@@ -109,7 +111,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (600 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (603 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -429,7 +431,10 @@ Setup for the user: `docs/backend-setup.md`. Security model and the launch check
   `src/lib/savedHousehold.js` (pure: `caseFromValues` / `valuesFromCase` store the FORM values cleaned to an allow-list,
   `HOUSEHOLD_FORM_KEYS` exported from householdLink.js, short strings only, accounts rebuilt field by field and capped at 50;
   `cleanLabel`); `src/next/useCloud.js`, `AccountBar.jsx` (every preview page, under the banner),
-  `SavedHouseholds.jsx` (preview homepage, signed in only: save new / save changes over the open one / open / delete, with a
+  `SavedHouseholds.jsx` (signed in only; the whole card on the preview homepage, `compact` at the top of every calculator
+  page's inputs column: the household on screen + Save changes, the rest in a closed section; "Unsaved changes" marker from
+  `sameSavedHousehold` (savedHousehold.js: compares what would be stored), opening another asks first when there are
+  unsaved changes; `opened` = { id, label, values as last opened/saved } in NextApp; save new / save changes over the open one / open / delete, with a
   testing-stage notice: initials or a nickname, no client names, account numbers or SSNs). `NextApp` takes `client` for
   tests (null = no backend).
 - **Headers** (`netlify.toml`, the whole site): an ENFORCED Content-Security-Policy (self only, plus *.supabase.co for
@@ -1103,6 +1108,10 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-07 (d) — Preview: saved households on every calculator page (compact card), an "Unsaved changes" marker and a
+  confirm before opening over unsaved changes. Checked in headless Chrome with a fake signed-in client. 603 tests.
+- 2026-10-07 (c) — Opening households verified on the live site after the audit-log deploy. Security work paused at the
+  user's request; next is saved households on calculator pages, then IRMAA. No code change. 600 tests.
 - 2026-10-07 (b) — Audit log for saved households (migration + self-check, tested in PGlite); opening a household now goes
   through `open_saved_household`. MFA and domain restriction deferred by the user. 600 tests.
 - 2026-10-07 — The user's sign-in test passed on the live site (save / open / change / delete). Next: security items,

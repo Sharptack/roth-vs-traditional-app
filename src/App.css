@@ -1901,6 +1901,37 @@ th.win .th-sub {
   flex: 1;
 }
 
+.saved-on-screen {
+  margin: 0 0 8px;
+}
+
+.saved-changed {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.saved-households.compact {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.saved-households.compact .details {
+  margin-top: 4px;
+}
+
+.saved-households.compact .save-form label {
+  flex-basis: 100%;
+}
+
+.saved-households.compact .save-form input {
+  min-width: 0;
+  flex: 1;
+}
+
 .error-text {
   color: var(--critical, #b42318);
 }

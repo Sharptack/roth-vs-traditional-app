@@ -65,3 +65,11 @@ export function cleanLabel(label) {
   if (trimmed.length > MAX_LABEL_LENGTH) return { label: trimmed, error: `Keep the name under ${MAX_LABEL_LENGTH} characters.` };
   return { label: trimmed, error: null };
 }
+
+// Whether the form values would store the same household as the saved values (the "Unsaved
+// changes" marker). Compares what would be stored, so a field that is never saved, or an
+// account row's id, doesn't count as a change. false when there is nothing saved to compare to.
+export function sameSavedHousehold(values, savedValues) {
+  if (!savedValues) return false;
+  return JSON.stringify(caseFromValues(values)) === JSON.stringify(caseFromValues(savedValues));
+}
