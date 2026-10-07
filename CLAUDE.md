@@ -48,7 +48,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 627 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 686 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -84,6 +84,9 @@ npm run build     # static site -> dist/ (base './')
   inputs `earners`, `contributors`, `retirementTaxRules`, `taxSavedAcrossContribution`, `skipBlend`), `sideAwareRates.js`
   (the rate comparison; identity (X − e) × W = the exact after-tax difference), `portfolioTax.js`, `blend.js`,
   `rateSteps.js`, `growthCalculations.js`, `contributionLimits.js`, `socialSecurity.js`, `risingIncome.js`, `scenarios.js`.
+- `src/lib/` version 2 household (phase 0, not wired to the UI yet): `householdValues.js` (v2 form values: people,
+  income/contribution/account/liability rows, linked age/birthdate), `householdV2.js` (`toHouseholdV2`: v2 values →
+  the same household object), `householdUpgrade.js` (v1 → v2). Pins: `tests/householdV1Pins.test.js` + `tests/fixtures/`.
 - `src/lib/` preview: `household.js` (form values → household → compare inputs), `householdForm.js`, `householdLink.js`
   (share links), `householdText.js`, `savedHousehold.js`, `taxCalculator.js`, `conversionCalculator.js`,
   `pensionCalculator.js`, `irmaa.js`, `rmd.js`, `projection.js` (`runProjection`: the year loop, strategy seam),
@@ -118,6 +121,12 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (recent; older entries in docs/history.md)
+- 2026-10-07 (j) — Round 2 phase 0, step (a), commits 1–5 of 9 (local, unpushed): v1 results pinned for 11 example
+  households; v2 form values; v2 values → household object; Social Security from an entered PIA (spousal top-up from
+  both PIAs; "estimate" mode needs no PIA); v1 → v2 conversion (same results except the decided change: a known
+  benefit becomes a PIA, so a couple can gain a spousal top-up). Next: 6 saved households in v2 (`schema_version` 2,
+  v1 converts on open), 7 share links `hh=2`, 8 the preview computes through v2 (form still v1 until step b),
+  9 notes. 686 tests.
 - 2026-10-07 (i) — Decided: the new version replaces the public calculator at the end of round 2's phase 1 (switchover
   steps in the plan doc). No code change. 627 tests.
 - 2026-10-07 (h) — Code and efficiency pass (one commit each): LF line endings; tests capped at 4 workers; ESLint
