@@ -107,6 +107,9 @@ npm run build     # static site -> dist/ (base './')
 - Known gaps (planned or noted in the round 2 doc): tax drag on taxable accounts, employer contributions, Roth IRA
   income limits and the high-earner Roth catch-up rule, QBI, survivor years, separate pre/post-retirement returns,
   early-withdrawal penalties, tax-exempt interest, QCDs, state tax (out of scope).
+- Open (2026-10-07): the version 2 household allows one contribution type (Roth or Pre-tax) and one account type per
+  person; a split (e.g. Roth 401(k) + Pre-tax IRA) is a validation error, and taxable contribution rows are left out
+  of the Roth comparison. To be modelled fully later (open item in the plan doc, after the third decision set).
 
 ## Checking the UI
 Headless Chrome via the DevTools protocol (Node's built-in WebSocket; no puppeteer): launch with
