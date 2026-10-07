@@ -22,6 +22,10 @@ function fakeClient(reply = { data: null, error: null }) {
       calls.push(['from', table]);
       return chain([['from', table]]);
     },
+    rpc: (fn, args) => {
+      calls.push(['rpc', fn, args]);
+      return chain([['rpc', fn, args]]);
+    },
     auth: {
       signInWithOtp: async (args) => (calls.push(['signInWithOtp', args]), { data: {}, error: null }),
       signOut: async () => (calls.push(['signOut']), { error: null }),
@@ -81,6 +85,8 @@ describe('cloud: saved households', () => {
   it('loads and cleans; a row that is not ours is refused', async () => {
     const good = recording({ id: 'n1', label: 'J', data: caseFromValues({ ...PREVIEW_DEFAULT_VALUES, grossIncome: '80000' }) });
     expect((await loadHousehold(good.client, 'n1')).values.grossIncome).toBe('80000');
+    // Through the logged database function, never a direct read of the contents.
+    expect(good.seen()[0]).toEqual([['rpc', 'open_saved_household', { target_id: 'n1' }], ['single']]);
     const bad = recording({ id: 'n2', label: 'X', data: ['not', 'ours'] });
     await expect(loadHousehold(bad.client, 'n2')).rejects.toThrow('That saved household could not be read.');
   });

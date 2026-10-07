@@ -16,8 +16,21 @@ sign-in. About 20 minutes, once.
 2. Check it: paste `supabase/tests/rls_check.sql` into a new query → **Run**. It should end with
    **"RLS checks passed"**. It changes nothing (it rolls itself back). If it stops with
    "RLS FAIL: …", don't use sign-in until that's fixed.
-3. **Advisors → Security Advisor** (in the dashboard): it should show no errors for
+3. The audit log: paste all of `supabase/migrations/20261007000000_household_audit.sql` → **Run**.
+   Then paste `supabase/tests/audit_check.sql` → **Run**: it should end with **"Audit checks
+   passed"** (it also rolls itself back). Run `rls_check.sql` again too: still "RLS checks passed".
+   Run this migration BEFORE deploying an app version that opens households through
+   `open_saved_household` (from 2026-10-07), and deploy that version right after: the old app reads
+   the contents directly, which this migration switches off.
+4. **Advisors → Security Advisor** (in the dashboard): it should show no errors for
    `saved_households`.
+
+**Reading the audit log** (SQL Editor; advisors can't see it from the app):
+```sql
+select e.at, e.action, u.email as by_advisor, e.label, e.label_changed, e.data_changed, e.household_id
+from audit.household_events e left join auth.users u on u.id = e.actor_id
+order by e.at desc limit 200;
+```
 
 ## 3. Sign-in settings (Authentication)
 1. **Sign In / Providers**: Email on. **Turn OFF "Allow new users to sign up."** (Invite only. The

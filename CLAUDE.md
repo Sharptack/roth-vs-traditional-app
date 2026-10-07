@@ -92,11 +92,10 @@ is **also the public "How this works" page** — see "Article page" below.
 - **State:** the public calculator (`#/`) is live and the user keeps editing it. The `#/next` preview has all seven plan
   phases, the conversion and pension calculators, and Supabase sign-in with saved households; the live Supabase project is
   set up and checked from outside (see "Backend"). 600 tests.
-- **Next up:** (1) the user's end-to-end sign-in test ("Part 5": email-link sign-in on `#/next`, sign out once to revoke a
-  token pasted in chat, save / change / open / delete a household), first on localhost, then live; fix whatever it finds.
-  (2) Then, at the user's direction: items from `docs/security.md` (MFA enforced in RLS, firm-domain sign-in, audit log,
-  invitation links without tokens in the URL), saved households on calculator pages too, IRMAA, the lifetime verdict as
-  the Roth page headline. Free/simple versions are ON HOLD.
+- **Next up (user, 2026-10-07), in this order:** (1) items from `docs/security.md` (MFA enforced in RLS, firm-domain
+  sign-in, audit log, invitation links without tokens in the URL); (2) saved households on calculator pages too; (3) IRMAA.
+  The lifetime verdict as the Roth page headline is set aside for now. Free/simple versions are ON HOLD. DONE: the user's
+  end-to-end sign-in test passed on the LIVE site 2026-10-07 (sign in, save / open / change / delete a household).
 - **New device setup:** `git clone` (or pull) -> `npm install` (Node 20.19+ or 22.12+ for Vite 8) -> create `.env.local` from
   `.env.example` with the Supabase URL and anon/publishable key (Supabase -> Project Settings -> Data API; never the
   service_role key) -> `npm test` (expect 600 passing) -> `npm run dev` (port 5173 is already allowed in Supabase's Redirect
@@ -453,8 +452,27 @@ Setup for the user: `docs/backend-setup.md`. Security model and the launch check
   **Planned (user, 2026-10-06):** the user has no domain yet and will buy one soon; then set up Resend's free tier as
   Supabase's SMTP (DNS records on the new domain). Mailchimp's free plan was considered and doesn't fit (no
   transactional email). Until then, wait out the hourly cap.
-- **Not yet verified end to end** (as of 2026-10-06): opening/changing/deleting through the UI, and all of it on the live site. The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
+- **Verified end to end on the live site (user, 2026-10-07):** sign-in and saving / opening / changing / deleting a
+  household all work. (Earlier note, 2026-10-06: opening/changing/deleting and the live site were not yet verified.) The UI was checked in Chrome against a placeholder project URL (bar shows, failures read plainly, the public page
   never loads the library). `.env.example` is committed (the `.gitignore` negation); `.env.local` is ignored.
+
+- **Audit log (2026-10-07)** (`supabase/migrations/20261007000000_household_audit.sql`, self-check
+  `supabase/tests/audit_check.sql`): `audit.household_events` (own schema, not exposed by the Data API; RLS on, no
+  policies, no privileges for anon/authenticated) records create / open / change / delete with actor, owner, label, and
+  for a change `label_changed` / `data_changed`; never the contents; no FK, so history outlives the household. Triggers
+  log writes (`audit.log_household_write`, security definer). Reads can't fire triggers, so `authenticated` lost SELECT
+  on the `data` column (column grants on every other column) and the contents come ONLY from
+  `public.open_saved_household(target_id)` (security definer: caller's own row, logs 'open'); `cloud.js` `loadHousehold`
+  calls it via `client.rpc`. Because RLS is FORCED, a definer function runs under RLS as its owner, which the
+  `to authenticated` policies don't cover: the migration adds a select policy for the owner role (`current_user` at run
+  time) with the same `auth.uid() = owner_id` test (found by testing as a non-superuser owner; without it the function
+  opens nothing). DEPLOY ORDER: run the migration, then deploy the app right away (each half alone breaks opening).
+  **Testing SQL without Supabase:** PGlite (Postgres in WASM, `npm install @electric-sql/pglite` in the scratchpad, not
+  the repo) with a stub `auth` schema (`auth.users`, `auth.uid()` reading `request.jwt.claims`), roles anon /
+  authenticated, and the migrations run as a NON-superuser owner (`set role`); then the check scripts, plus deliberate
+  mutations to prove each check can fail. All passed 2026-10-07.
+- **Security items deferred (user, 2026-10-07):** MFA ("skip for now") and the firm-domain sign-in restriction (wait until
+  the domain exists) stay on the launch checklist.
 
 ## Article page ("How this works")
 - `ARTICLE.md` is the single source of truth: `ArticlePage.jsx` imports it with Vite's `?raw` and renders it with
@@ -1085,6 +1103,10 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-07 (b) — Audit log for saved households (migration + self-check, tested in PGlite); opening a household now goes
+  through `open_saved_household`. MFA and domain restriction deferred by the user. 600 tests.
+- 2026-10-07 — The user's sign-in test passed on the live site (save / open / change / delete). Next: security items,
+  saved households on calculator pages, IRMAA (lifetime headline set aside). No code change. 600 tests.
 - 2026-10-06 (f) — Recorded the sign-in email plan: Resend on a domain the user will buy (docs/security.md, Backend).
   No code change.
 - 2026-10-06 (e) — `npm audit fix` (source-map-js 1.2.1 -> 1.2.2, lockfile only; audit clean); test timeout raised to

@@ -40,9 +40,10 @@ export async function listHouseholds(client) {
   return check(await client.from(TABLE).select('id, label, updated_at').order('updated_at', { ascending: false }));
 }
 
-// -> { id, label, values } (form values, cleaned), or throws.
+// -> { id, label, values } (form values, cleaned), or throws. The contents can only be read through
+// this database function, which logs the open in the audit log (supabase/migrations, household_audit).
 export async function loadHousehold(client, id) {
-  const row = check(await client.from(TABLE).select('id, label, data, updated_at').eq('id', id).single());
+  const row = check(await client.rpc('open_saved_household', { target_id: id }).single());
   const values = valuesFromCase(row.data);
   if (!values) throw new Error('That saved household could not be read.');
   return { id: row.id, label: row.label, values };

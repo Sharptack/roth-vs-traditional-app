@@ -15,6 +15,12 @@ names, account numbers or Social Security numbers). Launch means real advisors a
 - **Only known data is stored**: saved households are the form's values, cleaned to an allow-list of
   fields, each a short string, the accounts list rebuilt field by field, on save and on load
   (`src/lib/savedHousehold.js`); the database caps the size too.
+- **Audit log** (`supabase/migrations/20261007000000_household_audit.sql`): every create, open,
+  change and delete of a household is recorded (when, which advisor, which household, its label;
+  for a change, whether the label and/or contents changed; never the contents). Writes are logged
+  by database triggers; the contents can only be read through `open_saved_household`, which logs
+  the open, so nothing reads a household unlogged. No advisor and not the public key can read or
+  alter the log. `supabase/tests/audit_check.sql` proves each rule.
 - **Keys**: only the URL and the anon key reach the browser, from environment variables, not the
   repo. The service_role key is never used by the app.
 - **Browser hardening** (`netlify.toml`): an enforced Content-Security-Policy (scripts only from the
@@ -46,8 +52,10 @@ names, account numbers or Social Security numbers). Launch means real advisors a
 - [ ] Two-factor on every admin account: Supabase, GitHub, Netlify, the domain registrar.
 
 **Data**
-- [ ] Audit log: who created, opened, changed, deleted each household and when (a table written by
-      database triggers, readable by no advisor).
+- [x] Audit log: who created, opened, changed, deleted each household and when (a table written by
+      database triggers, readable by no advisor). Done 2026-10-07, see "In place now". Still to
+      decide: how long to keep it, and whether to also log sign-ins (Supabase's own auth logs keep
+      those for a short time on the free plan).
 - [ ] Export and delete per client on request; a retention rule for old households.
 - [ ] Sharing between advisors (a team, an assistant) only through explicit, tested policies.
 
