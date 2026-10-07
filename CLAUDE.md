@@ -93,7 +93,13 @@ is **also the public "How this works" page** — see "Article page" below.
   phases, the conversion and pension calculators, and Supabase sign-in with saved households; the live Supabase project is
   set up and checked from outside (see "Backend"); Medicare IRMAA in the projection, tax and conversion pages. 619 tests.
 - **Next up (user, 2026-10-07), in this order:** (1) DONE 2026-10-07: saved households on calculator pages too; (2) DONE 2026-10-07: IRMAA (see "Medicare IRMAA").
-  Nothing queued after that: ask the user. Security work is
+  **Round 2 plan (2026-10-07):** https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095 (round one's doc is
+  marked finished and links to it). Phases: 1 survivor years, 2 retirement spending, 3 funding calculator, 4 Social Security
+  calculator, 5 year-by-year planner (per-year Roth conversions and contributions), 6 Monte Carlo, 7 guardrails spending,
+  8 inherited accounts, 9 household plans and comparison; throughout: a docs section (an article per feature, replacing the
+  single ARTICLE.md page), a feedback link, and the user's adjustments to the current calculators (list coming; proposed as
+  phase 0). Simplified free versions move to a later release. Open questions are listed at the end of the doc; wait for
+  the user's answers and adjustments before building. Security work is
   PAUSED (user, 2026-10-07: "mainly on functionality of the calculator"; no real client data for a while, a handful of
   advisors testing). Done: the audit log (verified live). Left for before launch: invitation links without tokens in the
   URL, MFA, firm-domain sign-in, custom SMTP (see `docs/security.md`). Don't resume them unless the user asks.
@@ -1136,6 +1142,8 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-07 (f) — Round one's plan doc brought up to date and marked finished; round 2 plan doc drafted (see "Next up").
+  No code change. 619 tests.
 - 2026-10-07 (e) — Medicare IRMAA in the preview (cms.gov 2025/2026 data, hand-verified): charged in the projection from 65
   on MAGI two years back; shown on the tax page (next premium, room to the next tier) and the conversion page (IRMAA added,
   room in the tier); an Assumptions switch (default on). Public calculator untouched. 619 tests.
