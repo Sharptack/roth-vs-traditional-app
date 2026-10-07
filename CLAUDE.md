@@ -109,8 +109,17 @@ is **also the public "How this works" page** — see "Article page" below.
   portfolio); 9 guardrails (50% start; risk-based a la Income Lab, Guyton-Klinger beside it); 10 household plans (one
   household's facts, several saved plans, compared in every calculator). Throughout: a public docs section starting now
   (ARTICLE.md stays as the Roth article) and a feedback link anyone can use (proposed Netlify Forms, to confirm). Later
-  release: inherited accounts (both sides), staged spending, simplified free versions, launch checklist. A second set of
-  open questions is at the end of the doc; wait for answers before building. Security work is
+  release: inherited accounts (both sides), staged spending, simplified free versions, launch checklist.
+  **Second set of decisions (same day):** inputs page laid out in blocks (people, income, assets, LIABILITIES); new phase 11:
+  liabilities + a mortgage calculator (pay off or invest, payoff year flows into the plan); phase 7 = new BLOCKS on the
+  existing Roth vs. Pre-tax calculator (bracket over time; the answer again with conversions in years taxed below a chosen
+  rate), its layout unchanged; feedback via Netlify Forms (free); age and birthdate one linked pair per person; contribution
+  rows = owner, Roth/Pre-tax/taxable, account type; income rows = W-2, 1099, Other (ordinary or tax-exempt), other types
+  behind an "Add other income types" menu (an advanced options page is a later round); each spouse's retirement age moves
+  independently, retirement starts when the last retires; legacy goal as balance first, after-tax later; sex input (male,
+  female, another gender / prefer not to say; hover note: life expectancy only); Monte Carlo from the S&P 500's real return
+  and standard deviation; few conversion options; the docs section is called "Docs". Five questions remain at the end of
+  the doc (inflation default 3%?, S&P data source, the third sex option's table, other debts, the dev branch). Security work is
   PAUSED (user, 2026-10-07: "mainly on functionality of the calculator"; no real client data for a while, a handful of
   advisors testing). Done: the audit log (verified live). Left for before launch: invitation links without tokens in the
   URL, MFA, firm-domain sign-in, custom SMTP (see `docs/security.md`). Don't resume them unless the user asks.
@@ -151,6 +160,13 @@ npm run build     # static site -> dist/   (vite base './', works from any URL/s
   shell); the user pushes with VS Code Source Control → **Sync Changes**. Windows work laptop: Claude CAN push (`gh` is
   signed in and is git's credential helper), but still only when the user says so (ground rule 5). Either way, always
   tell the user when there are unpushed commits.
+- **Netlify credits (user, 2026-10-07): keep production deploys down.** Each push to `main` that builds costs 15 credits
+  (free plan: 300 a month, about 20 deploys); branch deploys, deploy previews, skipped builds and form submissions are free
+  (docs.netlify.com, "How credits work"). So: commit locally and push in BATCHES, only when the user asks (when a step is
+  ready to try live), never after every change; test locally first. `netlify.toml` has an `ignore` rule that skips the build
+  when nothing the site is built from changed (src, index.html, public, package files, vite.config.js, ARTICLE.md,
+  netlify.toml); a new folder the site imports from must be added to that list. A free `dev` branch deploy for testing
+  is an open option (needs Netlify branch deploys on and a Supabase redirect URL).
 - Git identity is repo-local: Michael Sharpnack <sharpnackm7@gmail.com>, the same on both devices, so commits don't say
   which machine made them (git doesn't record that). End commit messages with the `Co-Authored-By:` line for the Claude
   model in use.
@@ -1153,6 +1169,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-07 (g) — Round 2 plan reworked twice with the user's answers (mortgage calculator added as phase 11; phase 7 as
+  blocks on the Roth calculator). `netlify.toml`: an ignore rule skips builds that change no site files (saves credits).
+  619 tests.
 - 2026-10-07 (f) — Round one's plan doc brought up to date and marked finished; round 2 plan doc drafted (see "Next up").
   No code change. 619 tests.
 - 2026-10-07 (e) — Medicare IRMAA in the preview (cms.gov 2025/2026 data, hand-verified): charged in the projection from 65
