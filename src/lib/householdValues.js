@@ -17,8 +17,9 @@
 //                                          // full retirement age, as typed. claimAge '' = at retirement
 //   incomes: [ { id, owner, type, treatment, amount, fromAge, toAge } ],
 //                                          // type: INCOME_TYPES; treatment: 'ordinary' | 'taxExempt'
-//                                          // (only for 'other'); ages are the owner's, blank fromAge =
-//                                          // from now, blank toAge = until the owner retires
+//                                          // (only for 'other'); fromAge..toAge are the owner's first
+//                                          // and last ages it's received (both included); blank
+//                                          // fromAge = from now, blank toAge = until the owner retires
 //   contributions: [ { id, owner, tax: 'pretax' | 'roth' | 'taxable', account: '401k' | 'ira', amount } ],
 //   accounts: [ { id, owner, type: 'pretax' | 'roth' | 'taxable', balance, basisShare } ],   // as version 1
 //   liabilities: [ { id, kind, balance, rate, payment } ],   // kind: LIABILITY_KINDS; payment monthly
