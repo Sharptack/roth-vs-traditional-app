@@ -7,8 +7,10 @@ when behavior, decisions or workflow change, and add a line to the change log at
 
 ## What this is
 Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). Two parts on one site:
-- **The public calculator** (`#/`): Roth vs. Pre-tax contributions, no backend. A LIVING product the user edits
-  directly; it stays public for a long while and may become the simple free tier. Never plan its removal.
+- **The public calculator** (`#/`): Roth vs. Pre-tax contributions, no backend. The user still edits it directly.
+  **It is REPLACED at the switchover (user, 2026-10-07), at the end of round 2's phase 1:** the new version moves to
+  `#/`, old public links open as a one-person household, ARTICLE.md becomes the Roth Docs article, the old code is
+  deleted by a checklist (see the plan doc's "Switchover" section). Until then it stays intact.
 - **The `#/next` preview**: the new suite: a household model, a tax calculator, the Roth comparison, a year-by-year
   projection with withdrawal strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabase sign-in
   with saved households. Not linked from the public page; "Preview, not finished" banner.
@@ -36,7 +38,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
    BEFORE running the code, kept in comments) → only then UI. When code and hand math disagree, find out which is wrong.
 2. All financial logic is pure and framework-free in `src/lib/`. Data is year-keyed in `src/data/`; `getYearData` picks
    the latest year <= the one requested. Old hand-calc tests pin `year: 2025`/`2026`.
-3. **The public calculator's numbers must not change** unless the user asks: shared `src/lib` changes are additive
+3. **Until the switchover, the public calculator's numbers must not change** unless the user asks: shared `src/lib` changes are additive
    (new optional inputs whose defaults reproduce today's results), and every existing test must pass unchanged.
    When a preview page reuses a public component, check the public page still renders the same.
 4. New preview UI goes in `src/next/`; new math in `src/lib` (shared).
@@ -113,6 +115,8 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (recent; older entries in docs/history.md)
+- 2026-10-07 (i) — Decided: the new version replaces the public calculator at the end of round 2's phase 1 (switchover
+  steps in the plan doc). No code change. 627 tests.
 - 2026-10-07 (h) — Code and efficiency pass (one commit each): LF line endings; tests capped at 4 workers; ESLint
   (`npm run lint`) and its fixes; one tax engine (`calculateRetirementTax` wraps `calculateYearTax`, public numbers
   unchanged); the annual-update registry, reminder test and checklist; `skipBlend` and per-page computing in the
