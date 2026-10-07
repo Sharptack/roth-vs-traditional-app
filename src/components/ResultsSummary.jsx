@@ -710,7 +710,7 @@ function BlendExplorer({ result }) {
               <tbody>
                 {blend.points
                   .filter((_, i) => i % 5 === 0 || i === optimalIndex)
-                  .map((p, i, arr) => (
+                  .map((p) => (
                     <tr
                       key={p.rothShare}
                       className={Math.round(p.rothShare * 100) === optimalIndex ? 'total-row' : ''}

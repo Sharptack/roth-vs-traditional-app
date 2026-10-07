@@ -122,10 +122,15 @@ export default function NextApp({ initialPage, client }) {
   const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
 
   const roth = useMemo(() => previewResult(values, CURRENT_YEAR), [values]);
-  const irmaaOn = { irmaa: Boolean(roth.household.assumptions.medicareIrmaa) };
-  const tax = useMemo(() => taxCalculatorResult(householdToYearTaxParams(roth.household), irmaaOn), [roth]);
+  const tax = useMemo(
+    () => taxCalculatorResult(householdToYearTaxParams(roth.household), { irmaa: Boolean(roth.household.assumptions.medicareIrmaa) }),
+    [roth],
+  );
   const conversion = useMemo(
-    () => conversionResult(householdToYearTaxParams(roth.household), roth.household.calculators.conversion.amount, irmaaOn),
+    () =>
+      conversionResult(householdToYearTaxParams(roth.household), roth.household.calculators.conversion.amount, {
+        irmaa: Boolean(roth.household.assumptions.medicareIrmaa),
+      }),
     [roth],
   );
   const pensionInputs = useMemo(() => householdToPensionInputs(roth.household), [roth]);
