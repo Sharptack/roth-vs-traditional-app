@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import ArticlePage from './components/ArticlePage.jsx';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import InputForm, { DEFAULT_OPEN_INPUTS } from './components/InputForm.jsx';
 import ResultsSummary from './components/ResultsSummary.jsx';
 import ScenarioCompare from './components/ScenarioCompare.jsx';
-import ScenariosPage from './components/ScenariosPage.jsx';
 import ShareInputs from './components/ShareInputs.jsx';
-import NextApp from './next/NextApp.jsx';
 import { compareRothVsTraditional } from './lib/compare.js';
 import { CLEARED_FORM_VALUES, DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
 import { valuesFromSearch } from './lib/shareInputs.js';
 import { ARTICLE_HASH, SCENARIOS_HASH, articleSectionFromHash, routeFromHash } from './lib/route.js';
 import './App.css';
+
+// Pages other than the calculator load when first opened, so the calculator itself downloads less:
+// the article brings the markdown library, the preview brings the household calculators and sign-in.
+const ArticlePage = lazy(() => import('./components/ArticlePage.jsx'));
+const ScenariosPage = lazy(() => import('./components/ScenariosPage.jsx'));
+const NextApp = lazy(() => import('./next/NextApp.jsx'));
 
 /*
  * Future enhancements (explicitly out of scope for this version)
@@ -72,13 +75,23 @@ function useRoute() {
   }, []);
 
   useEffect(() => {
-    const heading = section ? document.getElementById(section) : null;
-    if (heading) {
-      heading.scrollIntoView();
-    } else if (!firstRender.current) {
-      window.scrollTo(0, route === 'calculator' ? calculatorScroll.current : 0);
-    }
+    const first = firstRender.current;
     firstRender.current = false;
+    if (!section) {
+      if (!first) window.scrollTo(0, route === 'calculator' ? calculatorScroll.current : 0);
+      return undefined;
+    }
+    // A link to an article heading: the article loads on demand, so wait for the heading to exist
+    // (up to about two seconds of animation frames), then scroll to it.
+    let frame;
+    let tries = 0;
+    const scrollToHeading = () => {
+      const heading = document.getElementById(section);
+      if (heading) heading.scrollIntoView();
+      else if (tries++ < 120) frame = requestAnimationFrame(scrollToHeading);
+    };
+    scrollToHeading();
+    return () => cancelAnimationFrame(frame);
   }, [route, section]);
 
   return route;
@@ -210,9 +223,11 @@ export default function App() {
         </footer>
       </div>
 
-      {route === 'article' && <ArticlePage />}
-      {route === 'scenarios' && <ScenariosPage />}
-      {route === 'next' && <NextApp />}
+      <Suspense fallback={<p className="hint">Loading&hellip;</p>}>
+        {route === 'article' && <ArticlePage />}
+        {route === 'scenarios' && <ScenariosPage />}
+        {route === 'next' && <NextApp />}
+      </Suspense>
     </div>
   );
 }
