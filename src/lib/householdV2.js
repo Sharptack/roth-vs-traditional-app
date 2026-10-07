@@ -7,6 +7,8 @@
 // so the calculators read it unchanged; it adds the rows themselves and the new person fields:
 //   version: 2
 //   people[i] += { birthDate, ageEntry, sex, planToAge, socialSecurity: { mode, pia } }
+//                                          // mode 'pia': the benefit is worked out from the PIA
+//                                          // (socialSecurity.js benefitFromPIA), spousal top-up included
 //   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge }]       // numbers; ages null when blank
 //   contributionRows: [{ id, owner, tax, account, amount }]
 //   liabilities: [{ id, kind, balance, rate, payment }]
@@ -77,8 +79,7 @@ export function toHouseholdV2(values, year) {
       socialSecurity: {
         mode: ss.mode === 'pia' ? 'pia' : 'estimate',
         pia: ss.mode === 'pia' ? parseNumber(ss.pia) : null,
-        // A PIA is read by the Social Security math from commit 4; until then it's carried only.
-        known: false,
+        known: false, // version 1's "known annual benefit"; version 2 enters a PIA instead
         benefit: NaN,
         claimAge: blankAsNull(ss.claimAge),
       },

@@ -20,7 +20,9 @@
 //   year                                   — tax year (defaults to current year)
 //   earners                                — OPTIONAL (household model, phase 1): one entry per
 //                                            earner, [{ wages, selfEmploymentIncome, currentAge,
-//                                            claimAge, knowsSocialSecurity, socialSecurityBenefit }].
+//                                            claimAge, knowsSocialSecurity, socialSecurityBenefit,
+//                                            pia? }] (pia: an entered monthly benefit at full
+//                                            retirement age, socialSecurity.js).
 //                                            When given, payroll tax and Social Security are figured
 //                                            per person (own wage base, spousal top-up) and the flat
 //                                            knowsSocialSecurity/socialSecurityBenefit are ignored.
@@ -198,6 +200,9 @@ export function validateInputs(inputs) {
       if (!isNum(e.currentAge) || !isNum(e.claimAge)) errors.push("Enter each person's age and retirement age.");
       if (e.knowsSocialSecurity && (!isNum(e.socialSecurityBenefit) || e.socialSecurityBenefit < 0)) {
         errors.push("Enter each person's annual Social Security benefit.");
+      }
+      if (e.pia !== undefined && (!isNum(e.pia) || e.pia < 0)) {
+        errors.push("Enter each person's monthly Social Security benefit at full retirement age (PIA).");
       }
     }
   }

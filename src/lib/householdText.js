@@ -12,7 +12,11 @@ function personLines(p, year, label) {
     p.wages > 0 && `${formatCurrency(p.wages)} W-2`,
     p.selfEmploymentIncome > 0 && `${formatCurrency(p.selfEmploymentIncome)} 1099`,
   ].filter(Boolean);
-  const ss = p.socialSecurity.known ? `${formatCurrency(p.socialSecurity.benefit)} a year (entered)` : 'estimated';
+  const ss = p.socialSecurity.known
+    ? `${formatCurrency(p.socialSecurity.benefit)} a year (entered)`
+    : p.socialSecurity.mode === 'pia'
+      ? `${formatCurrency(p.socialSecurity.pia)} a month at full retirement age (PIA, entered)`
+      : 'estimated';
   const claim = p.socialSecurity.claimAge ? `, claimed at ${p.socialSecurity.claimAge}` : ', claimed at retirement';
   return [
     bullet(label, `age ${year - p.birthYear}, retires at ${p.retirementAge}`),

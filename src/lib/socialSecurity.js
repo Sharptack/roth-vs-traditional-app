@@ -67,7 +67,13 @@ export function estimateSocialSecurityBenefit({
   const coveredIncome = Math.max(0, Math.min(annualIncome, wageBase));
   const aime = coveredIncome / 12;
   const pia = calculatePIA(aime, data.bendPoint1, data.bendPoint2);
+  return { ...benefitFromPIA({ pia, currentAge, retirementAge, year }), aime, dataYear };
+}
 
+// The benefit from a PIA (monthly, at full retirement age, in today's dollars) claimed at
+// `retirementAge` (clamped to 62-70): the PIA times the claiming adjustment for that age.
+// Used for a PIA the user enters (the version 2 household, round 2 phase 0) and by the estimate.
+export function benefitFromPIA({ pia, currentAge, retirementAge, year }) {
   const birthYear = year - currentAge;
   const fraMonths = getFullRetirementAgeMonths(birthYear);
   const claimingAge = Math.min(LATEST_CLAIMING_AGE, Math.max(EARLIEST_CLAIMING_AGE, retirementAge));
@@ -78,11 +84,9 @@ export function estimateSocialSecurityBenefit({
     annualBenefit: monthlyBenefit * 12,
     monthlyBenefit,
     pia,
-    aime,
     fullRetirementAge: fraMonths / 12,
     claimingAge,
     adjustmentFactor,
-    dataYear,
   };
 }
 
@@ -98,8 +102,11 @@ export function spousalAdjustmentFactor(monthsFromFRA) {
 
 // Household Social Security (the household model, phase 1): each person's benefit from their
 // OWN earnings, plus a spousal top-up when half the other spouse's PIA is larger than their own.
-//   earners: [{ earnings, currentAge, claimAge, knowsSocialSecurity, socialSecurityBenefit }]
+//   earners: [{ earnings, currentAge, claimAge, knowsSocialSecurity, socialSecurityBenefit, pia? }]
 //     earnings = covered earnings (W-2 wages + net self-employment earnings) for the estimate;
+//     pia = OPTIONAL, the monthly benefit at full retirement age as entered (version 2 household):
+//     their own benefit is worked out from it instead of from earnings, and it counts for the
+//     spousal top-up both ways, like an estimated PIA;
 //     claimAge defaults to the person's retirement age as passed (clamped to 62-70), the same
 //     rule estimateSocialSecurityBenefit uses.
 // Rules (SSA): the spousal benefit is up to 50% of the other spouse's PIA. When a person is
@@ -116,6 +123,10 @@ export function estimateHouseholdSocialSecurity({ earners, year }) {
   const own = earners.map((e) => {
     if (e.knowsSocialSecurity) {
       return { known: true, annualBenefit: e.socialSecurityBenefit, ownBenefit: e.socialSecurityBenefit, spousalTopUp: 0 };
+    }
+    if (e.pia !== undefined) {
+      const fromPia = benefitFromPIA({ pia: e.pia, currentAge: e.currentAge, retirementAge: e.claimAge, year });
+      return { known: false, fromPia: true, ...fromPia, ownBenefit: fromPia.annualBenefit, spousalTopUp: 0 };
     }
     const est = estimateSocialSecurityBenefit({
       annualIncome: e.earnings,
@@ -147,7 +158,7 @@ export function estimateHouseholdSocialSecurity({ earners, year }) {
 
   return {
     annualBenefit: people.reduce((acc, p) => acc + p.annualBenefit, 0),
-    estimated: people.some((p) => !p.known),
+    estimated: people.some((p) => !p.known && !p.fromPia), // worked out from earnings (not entered)
     people,
   };
 }

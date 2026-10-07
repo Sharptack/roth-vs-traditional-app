@@ -270,7 +270,7 @@ export function validateHousehold(household) {
 //    Contributions grow until then; currentAge is person 1's age and retirementAge = that age +
 //    years until the first retirement.
 //  - `earners` (per-person payroll tax and Social Security) is set when there are two people or
-//    anyone has a claiming age of their own; `contributors` (per-person IRS limits) when there are
+//    anyone has a claiming age or an entered PIA of their own; `contributors` (per-person IRS limits) when there are
 //    two people. Otherwise both are left out, so a one-person household runs exactly today's path.
 export function householdToCompareInputs(household) {
   const { year, people, accounts, futureContributions: fc, spending, assumptions } = household;
@@ -312,7 +312,9 @@ export function householdToCompareInputs(household) {
     year,
   };
   const ownClaimAge = people.some((p) => p.socialSecurity.claimAge !== null && p.socialSecurity.claimAge !== undefined);
-  if (people.length > 1 || ownClaimAge) {
+  // An entered PIA (version 2 household) is read per person too.
+  const ownPia = people.some((p) => p.socialSecurity.mode === 'pia');
+  if (people.length > 1 || ownClaimAge || ownPia) {
     inputs.earners = people.map((p) => ({
       wages: p.wages,
       selfEmploymentIncome: p.selfEmploymentIncome,
@@ -320,6 +322,7 @@ export function householdToCompareInputs(household) {
       claimAge: p.socialSecurity.claimAge ?? p.retirementAge,
       knowsSocialSecurity: p.socialSecurity.known,
       socialSecurityBenefit: p.socialSecurity.benefit,
+      ...(p.socialSecurity.mode === 'pia' && { pia: p.socialSecurity.pia }),
     }));
   }
   // Retirement-year tax rules (phase 2), at the snapshot retirement year: thresholds shrunk by

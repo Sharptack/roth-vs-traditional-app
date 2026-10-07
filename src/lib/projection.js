@@ -71,6 +71,7 @@ function socialSecuritySchedule(household) {
         claimAge: p.socialSecurity.claimAge ?? p.retirementAge,
         knowsSocialSecurity: p.socialSecurity.known,
         socialSecurityBenefit: p.socialSecurity.benefit,
+        ...(p.socialSecurity.mode === 'pia' && { pia: p.socialSecurity.pia }),
       };
     }),
     year,
