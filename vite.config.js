@@ -12,5 +12,8 @@ export default defineConfig({
     // The slowest tests (the break-even search, the preview smoke test) take 4–5 s with the
     // whole suite running on the Windows laptop, right at Vitest's 5 s default.
     testTimeout: 20000,
+    // One worker per test file by default ran the Windows laptop out of memory (workers aborted
+    // with exit code 134). Four at a time runs the whole suite reliably and about as fast.
+    maxWorkers: 4,
   },
 });
