@@ -93,13 +93,24 @@ is **also the public "How this works" page** — see "Article page" below.
   phases, the conversion and pension calculators, and Supabase sign-in with saved households; the live Supabase project is
   set up and checked from outside (see "Backend"); Medicare IRMAA in the projection, tax and conversion pages. 619 tests.
 - **Next up (user, 2026-10-07), in this order:** (1) DONE 2026-10-07: saved households on calculator pages too; (2) DONE 2026-10-07: IRMAA (see "Medicare IRMAA").
-  **Round 2 plan (2026-10-07):** https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095 (round one's doc is
-  marked finished and links to it). Phases: 1 survivor years, 2 retirement spending, 3 funding calculator, 4 Social Security
-  calculator, 5 year-by-year planner (per-year Roth conversions and contributions), 6 Monte Carlo, 7 guardrails spending,
-  8 inherited accounts, 9 household plans and comparison; throughout: a docs section (an article per feature, replacing the
-  single ARTICLE.md page), a feedback link, and the user's adjustments to the current calculators (list coming; proposed as
-  phase 0). Simplified free versions move to a later release. Open questions are listed at the end of the doc; wait for
-  the user's answers and adjustments before building. Security work is
+  **Round 2 plan (2026-10-07, reworked with the user's answers and adjustments the same day):**
+  https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095 (round one's doc is marked finished and links to it).
+  Phases: 0 inputs, calculators and blocks (a dedicated inputs page with spouses side by side; income sources and
+  contributions as add-a-row lists; birthdates; Social Security entered as the PIA; one inputs card per calculator holding
+  only what it reads, linking to the inputs page; a collapse bar for the inputs column; block layout everywhere; a version 2
+  household that converts version 1 links and saved households); 1 calculator updates (tax calculator rows checked against
+  TaxClarity, a larger chart with marginal AND effective rate; pension on actuarial life expectancy; Roth vs. Pre-tax merged
+  with the public version); 2 survivor years (plan-to age per person, default 95; 80% spending after the first death);
+  3 what resources allow you to spend (sustainable spending with a legacy goal; spending stays flat, staged spending
+  designed only); 4 Pre-retirement funding (4% threshold AND sustainable spending vs. the need, within 5% = about even,
+  one household savings figure); 5 Social Security (from the PIA; gross; discount 0 default; lifetime totals to plan-to
+  ages; spouse grid; chance-of-being-alive chart); 6 year-by-year planner (new page); 7 Roth vs. Pre-tax with conversions in
+  low-income years (four-way view); 8 Monte Carlo (one return and volatility, sliders, distribution charts for income and
+  portfolio); 9 guardrails (50% start; risk-based a la Income Lab, Guyton-Klinger beside it); 10 household plans (one
+  household's facts, several saved plans, compared in every calculator). Throughout: a public docs section starting now
+  (ARTICLE.md stays as the Roth article) and a feedback link anyone can use (proposed Netlify Forms, to confirm). Later
+  release: inherited accounts (both sides), staged spending, simplified free versions, launch checklist. A second set of
+  open questions is at the end of the doc; wait for answers before building. Security work is
   PAUSED (user, 2026-10-07: "mainly on functionality of the calculator"; no real client data for a while, a handful of
   advisors testing). Done: the audit log (verified live). Left for before launch: invitation links without tokens in the
   URL, MFA, firm-domain sign-in, custom SMTP (see `docs/security.md`). Don't resume them unless the user asks.
