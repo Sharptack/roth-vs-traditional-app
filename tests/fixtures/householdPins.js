@@ -8,8 +8,10 @@ import { householdToPensionInputs, pensionResult } from '../../src/lib/pensionCa
 import { projectionView } from '../../src/lib/projectionSummary.js';
 import { compareLifetime } from '../../src/lib/lifetimeComparison.js';
 import { strategyById } from '../../src/lib/strategies.js';
+import { compareRothVsTraditional } from '../../src/lib/compare.js';
+import { toHouseholdV2, validateHouseholdV2 } from '../../src/lib/householdV2.js';
 
-const YEAR = 2026;
+export const YEAR = 2026;
 
 // Numbers rounded to 1e-6 (so a harmless floating-point difference doesn't count as a change);
 // objects kept to their scalars, `depth` levels down; arrays left out unless listed.
@@ -29,9 +31,22 @@ function scalars(obj, depth = 2) {
   return out;
 }
 
-// Each calculator's results for one household, as NextApp works them out.
+// Each calculator's results for one version 1 household (form values), as NextApp works them out.
 export function pinsFor(values) {
-  const { household, result } = previewResult(values, YEAR, { blend: false });
+  return pinsFromPreview(previewResult(values, YEAR, { blend: false }));
+}
+
+// The same for version 2 values: the household from toHouseholdV2, its errors merged the way
+// NextApp's previewResult merges them.
+export function pinsForV2(values) {
+  const household = toHouseholdV2(values, YEAR);
+  const householdErrors = validateHouseholdV2(household);
+  const result = compareRothVsTraditional({ ...householdToCompareInputs(household), skipBlend: true });
+  if (householdErrors.length === 0) return pinsFromPreview({ household, result });
+  return pinsFromPreview({ household, result: { valid: false, errors: [...(result.valid ? [] : result.errors), ...householdErrors] } });
+}
+
+function pinsFromPreview({ household, result }) {
   const pins = { compareInputs: scalars(householdToCompareInputs(household), 3) };
   pins.roth = result.valid
     ? {
