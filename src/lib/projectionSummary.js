@@ -8,6 +8,7 @@ export const DEFAULT_HEIR_TAX_RATE = 0.24;
 
 // summarizeProjection(rows, { heirTaxRate, endAge }) -> the lifetime summary, in today's dollars:
 //   totalTax / totalIncomeTax       every year's tax (income + payroll / income tax only)
+//   totalIrmaa / irmaaYears         Medicare IRMAA surcharges, all years, and how many years had one
 //   retirementAfterTaxIncome        after-tax income in the years anyone is retired (incl. surplus)
 //   endingBalance                   by account type at the end age, and the total
 //   endingAfterTax                  Pre-tax at the heirs' rate, Roth and taxable in full: heirs get a
@@ -30,6 +31,8 @@ export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE 
   return {
     totalTax: sum((r) => r.totalTax),
     totalIncomeTax: sum((r) => r.incomeTax),
+    totalIrmaa: sum((r) => r.irmaa ?? 0),
+    irmaaYears: rows.filter((r) => r.irmaa > 0).length,
     retirementAfterTaxIncome: sum((r) => r.afterTaxIncome, retired),
     endingBalance: end,
     endingAfterTax: end.pretax * (1 - heirTaxRate) + end.roth + end.taxable,
@@ -78,7 +81,7 @@ export function projectionView(household, need) {
     const sum = summarizeProjection(runProjection(household, { endAge: own.endAge, strategy: s.strategy, need }).rows, {
       heirTaxRate: own.heirTaxRate,
     });
-    return { id: s.id, label: s.label, totalIncomeTax: sum.totalIncomeTax, endingAfterTax: sum.endingAfterTax, moneyLastsTo: sum.moneyLastsTo, runsOut: sum.runsOut };
+    return { id: s.id, label: s.label, totalIncomeTax: sum.totalIncomeTax, totalIrmaa: sum.totalIrmaa, endingAfterTax: sum.endingAfterTax, moneyLastsTo: sum.moneyLastsTo, runsOut: sum.runsOut };
   });
   return {
     rows,

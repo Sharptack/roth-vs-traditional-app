@@ -116,7 +116,7 @@ describe('runProjection reconciles with the total portfolio section', () => {
   // Security from the first retirement year; the projection starts it at the claiming age, 62 at
   // the earliest), and the IRS limit unchanged over the saving years when saving over it (the
   // snapshot holds today's limit; the projection adds catch-up at 50 and the 60-63 tier). Today's
-  // rules (no inflation, no age deductions), contributions as entered (Pre-tax): the first
+  // rules (no inflation, no age deductions, no IRMAA: the snapshot doesn't model it), contributions as entered (Pre-tax): the first
   // retirement year must equal compare.js's all-Pre-tax portfolio, to the cent.
   const cases = [
     {},
@@ -126,7 +126,7 @@ describe('runProjection reconciles with the total portfolio section', () => {
   ];
   for (const c of cases) {
     it(`first retirement year matches (${JSON.stringify(c).slice(0, 60)})`, () => {
-      const values = { ...PREVIEW_DEFAULT_VALUES, inflationRate: '0', ageDeductions: 'no', taxSavedBasis: 'marginal', ...c };
+      const values = { ...PREVIEW_DEFAULT_VALUES, inflationRate: '0', ageDeductions: 'no', medicareIrmaa: 'no', taxSavedBasis: 'marginal', ...c };
       const h = toHousehold(values, Y);
       const r = compareRothVsTraditional(householdToCompareInputs(h));
       expect(r.valid).toBe(true);
@@ -164,5 +164,45 @@ describe('the retirement tax-rate what-if (2026, HAND CALC)', () => {
     const base = compareRothVsTraditional(householdToCompareInputs(toHousehold(PREVIEW_DEFAULT_VALUES, Y)));
     const shifted = compareRothVsTraditional(householdToCompareInputs(h));
     expect(shifted.rates.effectiveRetirement).toBeGreaterThan(base.rates.effectiveRetirement);
+  });
+});
+
+describe('runProjection: Medicare IRMAA (2026, HAND CALC)', () => {
+  // Single, 80, born 1946, $2,787,600 Pre-tax, no Social Security, return 0, need 0: withdrawals are
+  // exactly the RMDs, so MAGI doesn't depend on the surcharge.
+  //   year 0: 2,787,600 / 20.2 = 138,000.00  (MAGI over $137,000: tier 2)
+  //   year 1: 2,649,600 / 19.4 = 136,577.32  (tier 1)
+  //   year 2: 2,513,022.68 / 18.5 = 135,839.06
+  // Surcharges (per person, 2026): tier 2 = (202.90 + 37.50) x 12 = 2,884.80; tier 1 = (81.20 + 14.50) x 12 = 1,148.40.
+  //   year 0: the years before the projection are taken at year 0's MAGI -> tier 2, 2,884.80
+  //   year 1: 2 years back = before the projection -> year 0's MAGI -> 2,884.80
+  //   year 2: year 0's MAGI (138,000) -> 2,884.80
+  //   year 3: year 1's MAGI (136,577.32) -> 1,148.40
+  const household = (irmaa) => ({ ...retiree({ age: 80, pretax: 2787600 }), assumptions: { returnRate: 0, inflationRate: 0, ageDeductions: false, medicareIrmaa: irmaa } });
+
+  it('the surcharge follows MAGI two years back, and comes out of after-tax cash', () => {
+    const on = runProjection(household(true), { need: 0, endAge: 83 }).rows;
+    const off = runProjection(household(false), { need: 0, endAge: 83 }).rows;
+    expect(on.map((r) => r.magi)).toEqual([expect.closeTo(138000, 2), expect.closeTo(136577.32, 2), expect.closeTo(135839.06, 2), expect.any(Number)]);
+    expect(on.map((r) => r.irmaaTier)).toEqual([2, 2, 2, 1]);
+    expect(on.map((r) => r.irmaa)).toEqual([expect.closeTo(2884.8, 6), expect.closeTo(2884.8, 6), expect.closeTo(2884.8, 6), expect.closeTo(1148.4, 6)]);
+    // same withdrawals and tax; cash and the reinvested surplus are lower by exactly the surcharge
+    on.forEach((r, i) => {
+      expect(r.withdrawals.total).toBeCloseTo(off[i].withdrawals.total, 6);
+      expect(r.totalTax).toBeCloseTo(off[i].totalTax, 6);
+      expect(off[i].afterTaxIncome - r.afterTaxIncome).toBeCloseTo(r.irmaa, 6);
+      expect(off[i].surplus - r.surplus).toBeCloseTo(r.irmaa, 6);
+    });
+    expect(off.every((r) => r.irmaa === 0 && r.irmaaTier === 0)).toBe(true);
+  });
+
+  it('under 65 (no Medicare) nothing is charged, whatever the income', () => {
+    // 64 with a $100,000 need from a large Pre-tax balance: MAGI well over the threshold, no Medicare yet
+    const h = { ...retiree({ age: 64, pretax: 3000000 }), assumptions: { returnRate: 0, inflationRate: 0, ageDeductions: false, medicareIrmaa: true } };
+    const { rows } = runProjection(h, { need: 100000, endAge: 65 });
+    expect(rows[0].magi).toBeGreaterThan(109000);
+    expect(rows[0].irmaa).toBe(0);
+    // at 65 the surcharge starts, set by the earlier years' MAGI
+    expect(rows[1].irmaa).toBeGreaterThan(0);
   });
 });

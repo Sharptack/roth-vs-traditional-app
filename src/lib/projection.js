@@ -22,7 +22,14 @@
 //      and reinvested surplus are added at the end of the year (as futureValueAnnuity assumes).
 //
 // After-tax cash in a year = wages + Social Security + withdrawals − all tax (income and payroll)
-// − the year's contributions (they are paid out of that cash). In the first retirement year of a
+// − the year's contributions (they are paid out of that cash) − any Medicare IRMAA surcharge.
+//
+// IRMAA (assumptions.medicareIrmaa; off when absent): each person 65 or older pays the Part B and
+// Part D surcharges set by the household's MAGI two years earlier (lib/irmaa.js). The surcharge is
+// known at the start of the year, so it is a fixed cost the strategy meets like tax. The two years
+// before the first projected year are taken to have the first year's MAGI (for the first year
+// itself, as worked out before its surcharge). While everyone is still working the surcharge is
+// recorded but, like tax, comes out of the paycheck. In the first retirement year of a
 // one-person household this is exactly what the total portfolio section computes (tested).
 //
 // Simplifications (v1): spending is flat in today's dollars; earnings are flat (no raises); no
@@ -34,6 +41,8 @@ import { checkContributionLimit } from './contributionLimits.js';
 import { requiredMinimumDistribution } from './rmd.js';
 import { solveMonotonicIncreasing } from './solver.js';
 import { splitAtTakeHome } from './compare.js';
+import { irmaaCost, medicareEnrollees } from './irmaa.js';
+import { IRMAA_LOOKBACK_YEARS } from '../data/irmaa.js';
 
 export const DEFAULT_END_AGE = 95;
 
@@ -167,6 +176,11 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       rmdTotal += required;
     });
 
+    // Medicare IRMAA this year (set by MAGI two years back; see the header). evaluate() subtracts it.
+    const enrolled = assumptions.medicareIrmaa ? medicareEnrollees(ages) : 0;
+    let irmaa = null;
+    let irmaaThisYear = 0;
+
     const peopleThisYear = people.map((p, i) => ({
       age: assumptions.ageDeductions ? ages[i] : undefined,
       wages: working[i] ? p.wages : 0,
@@ -198,43 +212,53 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       const tax = full ? calculateYearTax(params) : calculateYearTaxTotals(params);
       const withdrawn = Object.values(withdrawals).reduce((s, w) => s + w, 0);
       const earned = peopleThisYear.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0);
-      return { tax, cash: earned + socialSecurity + withdrawn - tax.totalTax - contributionCash };
+      return { tax, cash: earned + socialSecurity + withdrawn - tax.totalTax - contributionCash - irmaaThisYear };
     };
 
-    // 4. Withdrawals: the strategy once anyone has retired; RMDs only while everyone works.
     const live = accounts.filter((a) => a.balance > 0);
     const needThisYear = anyRetired ? need : 0;
-    const proposed = anyRetired
-      ? strategy({
-          year: calendarYear,
-          ages,
-          working,
-          household,
-          taxYear: year,
-          rateShift: rateShiftInRetirement,
-          accounts: live.map((a) => ({ ...a })),
-          rmdByAccount,
-          need: needThisYear,
-          socialSecurity,
-          filingStatus,
-          evaluate,
+    const solveYear = () => {
+      // 4. Withdrawals: the strategy once anyone has retired; RMDs only while everyone works.
+      const proposed = anyRetired
+        ? strategy({
+            year: calendarYear,
+            ages,
+            working,
+            household,
+            taxYear: year,
+            rateShift: rateShiftInRetirement,
+            accounts: live.map((a) => ({ ...a })),
+            rmdByAccount,
+            need: needThisYear,
+            socialSecurity,
+            filingStatus,
+            evaluate,
+          })
+        : { withdrawals: { ...rmdByAccount }, conversions: [] };
+      // The engine's rules, whatever the strategy returned: at least the RMD, at most the balance.
+      const withdrawals = {};
+      for (const a of live) {
+        const w = Math.max(proposed.withdrawals?.[a.id] ?? 0, rmdByAccount[a.id] ?? 0);
+        withdrawals[a.id] = Math.min(a.balance, Math.max(0, w));
+      }
+      // Conversions (Roth conversions, phase 7): only from Pre-tax accounts, never more than what is
+      // left after this year's withdrawals; taxed as ordinary income this year (taxParams).
+      const conversions = (proposed.conversions ?? [])
+        .map((c) => {
+          const a = accounts.find((x) => x.id === c.from && x.type === 'pretax');
+          return a ? { from: a.id, owner: a.owner, amount: Math.max(0, Math.min(c.amount, a.balance - (withdrawals[a.id] ?? 0))) } : null;
         })
-      : { withdrawals: { ...rmdByAccount }, conversions: [] };
-    // The engine's rules, whatever the strategy returned: at least the RMD, at most the balance.
-    const withdrawals = {};
-    for (const a of live) {
-      const w = Math.max(proposed.withdrawals?.[a.id] ?? 0, rmdByAccount[a.id] ?? 0);
-      withdrawals[a.id] = Math.min(a.balance, Math.max(0, w));
+        .filter((c) => c && c.amount > 0);
+      const { tax, cash } = evaluate(withdrawals, conversions, true);
+      return { withdrawals, conversions, tax, cash };
+    };
+    if (enrolled > 0) {
+      const back = t - IRMAA_LOOKBACK_YEARS;
+      const lookbackMagi = back >= 0 ? rows[back].magi : rows.length > 0 ? rows[0].magi : solveYear().tax.lines.magi;
+      irmaa = irmaaCost({ magi: lookbackMagi, filingStatus, year, enrolled });
+      irmaaThisYear = irmaa.total;
     }
-    // Conversions (Roth conversions, phase 7): only from Pre-tax accounts, never more than what is
-    // left after this year's withdrawals; taxed as ordinary income this year (taxParams).
-    const conversions = (proposed.conversions ?? [])
-      .map((c) => {
-        const a = accounts.find((x) => x.id === c.from && x.type === 'pretax');
-        return a ? { from: a.id, owner: a.owner, amount: Math.max(0, Math.min(c.amount, a.balance - (withdrawals[a.id] ?? 0))) } : null;
-      })
-      .filter((c) => c && c.amount > 0);
-    const { tax, cash } = evaluate(withdrawals, conversions, true);
+    const { withdrawals, conversions, tax, cash } = solveYear();
     // Surplus to reinvest: once retired, cash above the need; while everyone works, the after-tax
     // money from any RMD (cash with it minus cash without it), since the paycheck covers spending.
     const surplus = anyRetired ? Math.max(0, cash - needThisYear) : rmdTotal > 0 ? Math.max(0, cash - evaluate({}).cash) : 0;
@@ -296,6 +320,9 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       incomeTax: tax.incomeTax,
       payrollTax: tax.payrollTax,
       totalTax: tax.totalTax,
+      magi: tax.lines.magi,
+      irmaa: irmaaThisYear, // Medicare Part B + D surcharges this year (0 when off or no one is 65+)
+      irmaaTier: irmaa ? irmaa.tier : 0,
       effectiveRate: tax.effectiveRate,
       ordinaryBracketRate: tax.ordinaryBracketRate,
       marginalPretaxRate: tax.marginalRates.ordinaryIncome.incomeTax,

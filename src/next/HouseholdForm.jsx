@@ -390,6 +390,17 @@ export default function HouseholdForm({
             ]}
             hint="The additional standard deduction at 65, and the senior deduction ($6,000 each, phased out above $75,000 / $150,000 of income). The senior deduction is law for 2025–2028 only and is applied when the retirement year falls in that window."
           />
+          <RadioGroup
+            legend="Medicare IRMAA surcharges"
+            name="hh-medicareIrmaa"
+            value={values.medicareIrmaa}
+            onChange={set('medicareIrmaa')}
+            options={[
+              { value: 'yes', label: 'Include' },
+              { value: 'no', label: 'Leave out' },
+            ]}
+            hint="From 65, Medicare Part B and Part D premiums carry a surcharge when income two years earlier was above $109,000 ($218,000 joint) in 2026. Charged in the projection as a cost each year; the tax and Roth conversion pages show the effect of this year's income."
+          />
           <SelectInput
             label="Tax rates in retirement (what-if)"
             hint="Added to every ordinary bracket rate in retirement years, in the Roth comparison and the projection. Current law has no scheduled change; this is a what-if."

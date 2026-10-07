@@ -91,8 +91,9 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Where things stand / picking up on another device (2026-10-06)
 - **State:** the public calculator (`#/`) is live and the user keeps editing it. The `#/next` preview has all seven plan
   phases, the conversion and pension calculators, and Supabase sign-in with saved households; the live Supabase project is
-  set up and checked from outside (see "Backend"). 603 tests.
-- **Next up (user, 2026-10-07), in this order:** (1) DONE 2026-10-07: saved households on calculator pages too; (2) IRMAA. Security work is
+  set up and checked from outside (see "Backend"); Medicare IRMAA in the projection, tax and conversion pages. 619 tests.
+- **Next up (user, 2026-10-07), in this order:** (1) DONE 2026-10-07: saved households on calculator pages too; (2) DONE 2026-10-07: IRMAA (see "Medicare IRMAA").
+  Nothing queued after that: ask the user. Security work is
   PAUSED (user, 2026-10-07: "mainly on functionality of the calculator"; no real client data for a while, a handful of
   advisors testing). Done: the audit log (verified live). Left for before launch: invitation links without tokens in the
   URL, MFA, firm-domain sign-in, custom SMTP (see `docs/security.md`). Don't resume them unless the user asks.
@@ -100,7 +101,7 @@ is **also the public "How this works" page** — see "Article page" below.
   end-to-end sign-in test passed on the LIVE site 2026-10-07 (sign in, save / open / change / delete a household).
 - **New device setup:** `git clone` (or pull) -> `npm install` (Node 20.19+ or 22.12+ for Vite 8) -> create `.env.local` from
   `.env.example` with the Supabase URL and anon/publishable key (Supabase -> Project Settings -> Data API; never the
-  service_role key) -> `npm test` (expect 603 passing) -> `npm run dev` (port 5173 is already allowed in Supabase's Redirect
+  service_role key) -> `npm test` (expect 619 passing) -> `npm run dev` (port 5173 is already allowed in Supabase's Redirect
   URLs; another port needs adding there). Set the repo-local git identity: `git config user.name "Michael Sharpnack"` and
   `git config user.email sharpnackm7@gmail.com`. See "Deployment / git" for what differs per device.
 - **Devices (2026-10-06):** the home Intel Mac (original) and a Windows 11 work laptop (`C:\Users\pwimi\projects\
@@ -111,7 +112,7 @@ is **also the public "How this works" page** — see "Article page" below.
 ## Commands
 ```
 npm run dev       # dev server (occupies the terminal; Ctrl+C to stop, or use a second tab)
-npm test          # vitest: calc layer + component smoke tests (603 tests at last count)
+npm test          # vitest: calc layer + component smoke tests (619 tests at last count)
 npm run build     # static site -> dist/   (vite base './', works from any URL/sub-path)
 ```
 
@@ -380,7 +381,7 @@ Pre-tax comparison and its break-even use the chosen strategy (scenario × strat
 reinvested) and a 12% conversion (66,500 converted, tax 5,800 paid from taxable), none after RMDs start, and every
 strategy meeting the need within the engine's rules. FINDING ($300k Pre-tax + $100k taxable, defaults otherwise): the
 conventional order pays the MOST tax and leaves the least (Pre-tax grows into big RMDs); filling 22% leaves the most.
-Not modeled: IRMAA, the 10-year rule for heirs (noted on the page).
+Not modeled: the 10-year rule for heirs (noted on the page). IRMAA: added 2026-10-07 (see "Medicare IRMAA").
 
 ## Small calculators after phase 2 (built 2026-10-02, in the preview)
 The plan's two "fit any time after phase 2" calculators; each a tile on `#/next` and its own page.
@@ -392,7 +393,7 @@ The plan's two "fit any time after phase 2" calculators; each a tile on `#/next`
   bisection, with its cost) and the bracket bar with each segment's `added` slice. Own input `convAmount`
   (`calculators.conversion.amount`); the page also lists "This year's other income". `TaxResult.jsx` now exports
   `BracketBar` (optional `added` slices, `caption`). Hand-verified (tests/conversionCalculator.test.js): 12% case, SS
-  phase-in 21.57%, gains pushed to 15%, the default household $50,000 -> $11,364. Not modeled: IRMAA, the five-year rule.
+  phase-in 21.57%, gains pushed to 15%, the default household $50,000 -> $11,364. Not modeled: the five-year rule. IRMAA added 2026-10-07.
 - **Pension: lump sum or monthly** (`#/next/pension`; `lib/pensionCalculator.js`): `irr(flows)` (bisection), `pensionPayments`
   (monthly, a yearly cost-of-living step, a survivor share from the owner's end age to the spouse's), `pensionResult` (IRR a
   year, total payments, the age the payments add up to the lump sum, `presentValueAt(rate)`, IRR by end age 75–100),
@@ -401,6 +402,33 @@ The plan's two "fit any time after phase 2" calculators; each a tile on `#/next`
   page compares the IRR with the household's assumed return WITH inflation added back ((1 + real)(1 + inflation) − 1),
   since pension payments are in the dollars of the day. Tax is left out (both options are taxed alike). Hand-verified
   (tests/pensionCalculator.test.js): IRR 10% and 13.0662%, $120,000 vs. $1,000 × 120 = 0%, survivor and COLA payment counts.
+
+## Medicare IRMAA (preview, 2026-10-07)
+- **Data** `src/data/irmaa.js` (2025, 2026; cms.gov fact sheets, both read directly 2026-10-07): per tier the MONTHLY Part B
+  and Part D surcharges per person; thresholds single/mfj; a tier applies ABOVE its threshold (equal stays below) except
+  the top one, AT $500,000 / $750,000 or more. MFS not modeled. `MEDICARE_AGE` 65, `IRMAA_LOOKBACK_YEARS` 2.
+- **`lib/irmaa.js`**: `irmaaTier(magi, filingStatus, year)` (tier, partB, partD, annual per person, nextThreshold,
+  roomToNext), `medicareEnrollees(ages)` (65+, assumed enrolled in B and D), `irmaaCost` (x enrolled),
+  `irmaaFromThisYear` (this year's MAGI -> the premium two years on, for whoever is 65 by then). Only the SURCHARGE is a
+  cost; the standard premium is spending. MAGI = AGI (no tax-exempt interest modeled). Thresholds held fixed in today's
+  dollars (the law indexes them); left out: the top threshold is fixed in dollars until 2028, premiums rising faster
+  than prices.
+- **Projection** (`assumptions.medicareIrmaa`, OFF when absent, so hand-built test households are unchanged): each year,
+  for people 65+, the surcharge from the MAGI two rows back; the two years before the projection = year 0's MAGI (for
+  year 0 itself, a pre-pass without the surcharge). A fixed cost subtracted from after-tax cash (strategies meet it like
+  tax; they don't aim around the cliffs). Rows: `magi`, `irmaa`, `irmaaTier`. Summary: `totalIrmaa`, `irmaaYears`;
+  strategies table column. While everyone works it is recorded, but like tax it comes out of the paycheck.
+- **Tax page**: "Medicare premiums in {year + 2}" (MAGI, tier, surcharge, room to the next tier), shown when anyone is 65 by
+  then (`taxCalculatorResult(params, { irmaa })`). **Conversion page**: the IRMAA the conversion adds two years on, "Tax cost
+  plus IRMAA", and the largest conversion that stays in the tier (`conversionResult(params, amount, { irmaa })`, bisection:
+  in the Social Security phase-in MAGI rises faster than the conversion — hand case: $63,500 of room, not $83,650).
+- **Form**: Assumptions "Medicare IRMAA surcharges" (`medicareIrmaa`, default 'yes' in `NEW_RULES_DEFAULT_VALUES`, so links and
+  saved households carry it). The Roth snapshot (compare.js, shared with the public calculator) does NOT model IRMAA; the
+  projection's reconciliation test turns it off.
+- **FINDING (defaults):** the lifetime Roth vs. Pre-tax comparison goes from about even (Roth $136,523 vs. Pre-tax $135,870)
+  to Roth ahead by $3,122/yr (Pre-tax $133,401): the Pre-tax path pays $101,662 of surcharges over life (from 77, up to
+  tier 4) vs. Roth's $23,051 at the actual need. Roth's sustainable spending is unchanged (at that spending its MAGI stays
+  under $109,000). With $500k-$1M existing Pre-tax both sides pay about the same IRMAA, so the gap barely moves.
 
 ## Tax-rate what-if and printing (preview, 2026-10-02)
 - **Tax rates in retirement (what-if):** Assumptions select (−2 / current law / +2 / +3 / +5 / +10 points; form key
@@ -1108,6 +1136,9 @@ check true phone width, load the app in an iframe of width 390 inside a wrapper 
 `documentElement.scrollWidth`. Use `--dump-dom` to assert rendered text on the live site.
 
 ## Change log
+- 2026-10-07 (e) — Medicare IRMAA in the preview (cms.gov 2025/2026 data, hand-verified): charged in the projection from 65
+  on MAGI two years back; shown on the tax page (next premium, room to the next tier) and the conversion page (IRMAA added,
+  room in the tier); an Assumptions switch (default on). Public calculator untouched. 619 tests.
 - 2026-10-07 (d) — Preview: saved households on every calculator page (compact card), an "Unsaved changes" marker and a
   confirm before opening over unsaved changes. Checked in headless Chrome with a fake signed-in client. 603 tests.
 - 2026-10-07 (c) — Opening households verified on the live site after the audit-log deploy. Security work paused at the

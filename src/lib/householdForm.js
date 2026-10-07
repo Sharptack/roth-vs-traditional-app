@@ -116,7 +116,7 @@ export const HOUSEHOLD_SECTIONS = [
     id: 'assumptions',
     title: 'Assumptions',
     summary: (v) =>
-      `${Math.round(Number(v.returnRate) * 100)}% return after inflation · ${Math.round(Number(v.inflationRate ?? 0) * 1000) / 10}% inflation${Number(v.retirementRateShift) ? ` · rates ${Number(v.retirementRateShift) > 0 ? '+' : '−'}${Math.abs(Math.round(Number(v.retirementRateShift) * 100))} pts in retirement` : ''}`,
+      `${Math.round(Number(v.returnRate) * 100)}% return after inflation · ${Math.round(Number(v.inflationRate ?? 0) * 1000) / 10}% inflation${Number(v.retirementRateShift) ? ` · rates ${Number(v.retirementRateShift) > 0 ? '+' : '−'}${Math.abs(Math.round(Number(v.retirementRateShift) * 100))} pts in retirement` : ''}${v.medicareIrmaa === 'no' ? ' · no IRMAA' : ''}`,
   },
 ];
 

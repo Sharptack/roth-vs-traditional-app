@@ -4,6 +4,7 @@
 import { calculateYearTax } from './yearTax.js';
 import { yearTaxRows } from './yearTaxRows.js';
 import { checkContributionLimit } from './contributionLimits.js';
+import { irmaaFromThisYear } from './irmaa.js';
 import { getBrackets } from './taxCalculations.js';
 
 // The calculator's own form fields (stored in the household under calculators.tax).
@@ -72,7 +73,9 @@ export function headlineSource(lines) {
 // Everything the page shows: the result, its rows, the headline and the other marginal rates.
 //  marginal: { source, label, incomeTax, total }; others: the remaining sources, same shape.
 //  (Payroll tax applies only to wages and 1099 income, so `total` differs only for those.)
-export function taxCalculatorResult(params) {
+//  irmaa (options.irmaa): the Medicare premium surcharge this year's MAGI sets two years on
+//  (lib/irmaa.js irmaaFromThisYear), else null.
+export function taxCalculatorResult(params, { irmaa = false } = {}) {
   const r = calculateYearTax(params);
   const rows = yearTaxRows(params, r);
   const lead = headlineSource(r.lines);
@@ -85,6 +88,9 @@ export function taxCalculatorResult(params) {
       .filter((s) => s !== lead)
       .map(asRate),
     bar: bracketFill(params, r),
+    irmaa: irmaa
+      ? irmaaFromThisYear({ magi: r.lines.magi, filingStatus: params.filingStatus, year: params.year, ages: (params.people ?? []).map((p) => p.age).filter(Number.isFinite) })
+      : null,
   };
 }
 

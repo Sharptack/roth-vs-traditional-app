@@ -27,6 +27,8 @@ const COLUMNS = [
   { key: 'taxableSS', label: 'Taxable SS', value: (r) => r.taxableSocialSecurity },
   { key: 'incomeTax', label: 'Income tax', value: (r) => r.incomeTax, key1: true },
   { key: 'payroll', label: 'Payroll tax', value: (r) => r.payrollTax },
+  { key: 'magi', label: 'MAGI', value: (r) => r.magi },
+  { key: 'irmaa', label: 'Medicare IRMAA', value: (r) => r.irmaa },
   { key: 'effective', label: 'Effective rate', value: (r) => r.effectiveRate, format: (v) => formatPercent(v) },
   { key: 'bracket', label: 'Bracket', value: (r) => r.ordinaryBracketRate, format: (v) => formatPercent(v, 0) },
   { key: 'marginal', label: 'Next Pre-tax $', value: (r) => r.marginalPretaxRate, format: (v) => formatPercent(v) },
@@ -86,6 +88,7 @@ export default function ProjectionResult({ view }) {
   }
   const { rows, summary: s, sustainable, need, funded, endAge } = view;
   const retired = rows.filter((r) => r.working.some((w) => !w));
+  const showIrmaa = view.strategies.some((st) => st.totalIrmaa > 0);
   const over = funded >= 1;
   return (
     <div className="results">
@@ -116,6 +119,7 @@ export default function ProjectionResult({ view }) {
             <tr>
               <th scope="col">Strategy</th>
               <th scope="col">Lifetime income tax</th>
+              {showIrmaa && <th scope="col">Medicare IRMAA</th>}
               <th scope="col">After tax for heirs at {endAge}</th>
               <th scope="col">Money lasts to</th>
             </tr>
@@ -130,6 +134,7 @@ export default function ProjectionResult({ view }) {
                     {st.id === view.strategy && <span className="dim"> (chosen)</span>}
                   </th>
                   <td>{$(st.totalIncomeTax)}</td>
+                  {showIrmaa && <td>{$(st.totalIrmaa)}</td>}
                   <td>
                     {$(st.endingAfterTax)}
                     {best && <span className="pill"> most left</span>}
@@ -141,8 +146,9 @@ export default function ProjectionResult({ view }) {
           </tbody>
         </table>
         <p className="hint">
-          Not modeled yet: IRMAA (Medicare premium surcharges set by income two years earlier), which matters for large
-          conversions, and the 10-year rule for heirs of Pre-tax accounts.
+          Medicare IRMAA: the Part B and Part D surcharges from 65, set by income two years earlier (when included in
+          Assumptions). The strategies don&rsquo;t aim around its thresholds; they only pay it. Not modeled yet: the 10-year
+          rule for heirs of Pre-tax accounts.
         </p>
       </section>
 
@@ -151,6 +157,12 @@ export default function ProjectionResult({ view }) {
         <div className="calc">
           <div className="calc-row"><span>Total tax paid (income and payroll)</span><span>{$(s.totalTax)}</span></div>
           <div className="calc-row sub"><span>of which federal income tax</span><span>{$(s.totalIncomeTax)}</span></div>
+          {s.totalIrmaa > 0 && (
+            <div className="calc-row">
+              <span>Medicare IRMAA surcharges ({s.irmaaYears} {s.irmaaYears === 1 ? 'year' : 'years'})</span>
+              <span>{$(s.totalIrmaa)}</span>
+            </div>
+          )}
           <div className="calc-row"><span>After-tax income in retirement, all years</span><span>{$(s.retirementAfterTaxIncome)}</span></div>
           <div className="calc-row"><span>Average effective rate (income tax ÷ gross income)</span><span>{formatPercent(s.averageEffectiveRate)}</span></div>
           <div className="calc-row"><span>Highest-tax year</span><span>{s.highestTaxYear.year}: {$(s.highestTaxYear.amount)}</span></div>
@@ -213,7 +225,7 @@ export default function ProjectionResult({ view }) {
       <p className="disclaimer">
         Estimates only — not tax or financial advice. Today&rsquo;s dollars at a constant after-inflation return; spending
         flat; earnings flat while working; withdrawals in proportion from every account once anyone retires, with RMDs
-        as a floor; no survivor years, state tax or IRMAA.
+        as a floor; no survivor years or state tax. IRMAA tiers in today&rsquo;s dollars, at this year&rsquo;s amounts.
       </p>
     </div>
   );

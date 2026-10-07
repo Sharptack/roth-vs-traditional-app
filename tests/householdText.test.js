@@ -16,6 +16,7 @@ describe('the household as text', () => {
       '- Return after inflation: 7%',
       '- Inflation (fixed-dollar thresholds): 2.5%',
       '- Age 65+ deductions in retirement: included',
+      '- Medicare IRMAA surcharges: included',
       '- Tax saved now: across the whole contribution',
     ]);
   });

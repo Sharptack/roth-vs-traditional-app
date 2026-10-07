@@ -88,7 +88,7 @@ export function BracketBar({ bar, caption }) {
 }
 
 export default function TaxResult({ tax }) {
-  const { result: r, marginal, others, rows, bar } = tax;
+  const { result: r, marginal, others, rows, bar, irmaa: i } = tax;
   const hasPayroll = r.payrollTax > 0;
   return (
     <div className="results">
@@ -133,6 +133,31 @@ export default function TaxResult({ tax }) {
 
         <h3 className="subhead">Filling up the brackets</h3>
         <BracketBar bar={bar} />
+
+        {i && i.enrolled > 0 && (
+          <>
+            <h3 className="subhead">Medicare premiums in {i.premiumYear}</h3>
+            <div className="calc">
+              <div className="calc-row"><span>MAGI this year (sets the {i.premiumYear} premiums)</span><span>{$(i.magi)}</span></div>
+              <div className="calc-row"><span>IRMAA tier</span><span>{i.tier === 0 ? 'None' : `${i.tier} of 5`}</span></div>
+              <div className="calc-row">
+                <span>Surcharge in {i.premiumYear}</span>
+                <span>
+                  {$(i.total)} a year
+                  {i.enrolled > 1 && i.total > 0 && <span className="dim"> ({$(i.annual)} each)</span>}
+                </span>
+              </div>
+              <div className="calc-row">
+                <span>Room before the next tier</span>
+                <span>{i.roomToNext === null ? 'Top tier' : <>{$(i.roomToNext)} <span className="dim">(next tier above {$(i.nextThreshold)})</span></>}</span>
+              </div>
+            </div>
+            <p className="hint">
+              Part B and Part D surcharges for anyone 65 or older by {i.premiumYear}, at this year&rsquo;s amounts. Each tier is a
+              cliff: one dollar over the line costs the whole step.
+            </p>
+          </>
+        )}
 
         <details className="details">
           <summary>Show the calculation</summary>

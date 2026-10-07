@@ -7,6 +7,7 @@
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
 import { bracketFill } from './taxCalculator.js';
 import { getBrackets } from './taxCalculations.js';
+import { irmaaFromThisYear } from './irmaa.js';
 
 // The calculator's own form field (stored in the household under calculators.conversion).
 export const CONVERSION_DEFAULT_VALUES = {
@@ -24,8 +25,14 @@ const withConversion = (params, amount) => ({
 //      extraTaxableSocialSecurity, deductionLost,          what the conversion dragged along
 //      fills: [{ rate, amount, cost, costRate }]           the conversion that fills each bracket
 //      bar }                                               the fill-up-the-bracket bar, after
+//      irmaa                                               (options.irmaa) Medicare IRMAA two years on,
+//                                                          else null: { premiumYear, before, after,
+//                                                          added, room } — room: the largest conversion
+//                                                          that keeps MAGI in the current tier (null at
+//                                                          the top); by bisection, since a conversion can
+//                                                          make Social Security taxable too
 //   bar.segments[].filled is the whole fill after the conversion; .added is the conversion's part.
-export function conversionResult(params, amount) {
+export function conversionResult(params, amount, { irmaa = false } = {}) {
   const size = Math.max(0, Number.isFinite(amount) ? amount : 0);
   const before = calculateYearTax(params);
   const after = calculateYearTax(withConversion(params, size));
@@ -58,6 +65,7 @@ export function conversionResult(params, amount) {
   });
 
   return {
+    irmaa: irmaa ? conversionIrmaa(params, before, after) : null,
     amount: size,
     before,
     after,
@@ -73,4 +81,25 @@ export function conversionResult(params, amount) {
     fills,
     bar,
   };
+}
+
+function conversionIrmaa(params, before, after) {
+  const ages = (params.people ?? []).map((p) => p.age).filter(Number.isFinite);
+  const at = (magi) => irmaaFromThisYear({ magi, filingStatus: params.filingStatus, year: params.year, ages });
+  const was = at(before.lines.magi);
+  const now = at(after.lines.magi);
+  let room = null;
+  if (was.nextThreshold !== null) {
+    // MAGI rises at least a dollar per dollar converted, so the room is never more than the gap.
+    const stays = (x) => at(calculateYearTaxTotals(withConversion(params, x)).lines.magi).tier === was.tier;
+    let lo = 0;
+    let hi = was.nextThreshold - was.magi + 1;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (stays(mid)) lo = mid;
+      else hi = mid;
+    }
+    room = lo;
+  }
+  return { premiumYear: was.premiumYear, before: was, after: now, added: now.total - was.total, room };
 }

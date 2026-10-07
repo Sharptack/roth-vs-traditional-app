@@ -1210,3 +1210,42 @@ describe('preview sign-in and saved households', () => {
     expect(none).toContain('Don’t store client names');
   });
 });
+
+describe('preview pages: Medicare IRMAA', () => {
+  const person = (age, income) => ({ filingStatus: 'single', year: 2026, people: [{ age, wages: 0, selfEmploymentIncome: 0 }], pretaxDeferrals: 0, income });
+
+  it('the tax page: the 2028 premium this year sets, for someone 65 by then; nothing for someone younger', async () => {
+    const { default: TaxResult } = await import('../src/next/TaxResult.jsx');
+    const { taxCalculatorResult } = await import('../src/lib/taxCalculator.js');
+    // $150,000 pension at 64: tier 2, $2,884.80; $21,000 of room to $171,000
+    const html = renderToStaticMarkup(<TaxResult tax={taxCalculatorResult(person(64, { ordinaryIncome: 150000 }), { irmaa: true })} />);
+    expect(html).toContain('Medicare premiums in 2028');
+    expect(html).toContain('2 of 5');
+    expect(html).toContain('$2,885 a year');
+    expect(html).toContain('$21,000');
+    const young = renderToStaticMarkup(<TaxResult tax={taxCalculatorResult(person(50, { ordinaryIncome: 150000 }), { irmaa: true })} />);
+    expect(young).not.toContain('Medicare premiums');
+  });
+
+  it('the conversion page: the IRMAA the conversion adds and the room in the tier', async () => {
+    const { default: ConversionResult } = await import('../src/next/ConversionResult.jsx');
+    const { conversionResult } = await import('../src/lib/conversionCalculator.js');
+    // the hand case in conversionCalculator.test.js: +$1,736.40 (tier 1 to 2), room $11,500
+    const c = conversionResult(person(64, { ordinaryIncome: 100000, socialSecurity: 30000 }), 20000, { irmaa: true });
+    const html = renderToStaticMarkup(<ConversionResult conversion={c} pretaxBalance={500000} />);
+    expect(html).toContain('Medicare IRMAA in 2028 (tier 1 to 2)');
+    expect(html).toContain('$1,736');
+    expect(html).toContain('Tax cost plus IRMAA');
+    expect(html).toContain('converting up to $11,500 keeps');
+  });
+
+  it('the projection page: the lifetime IRMAA total and the column in the strategy table', async () => {
+    const { default: ProjectionResult } = await import('../src/next/ProjectionResult.jsx');
+    const { projectionView } = await import('../src/lib/projectionSummary.js');
+    const { PREVIEW_DEFAULT_VALUES, toHousehold } = await import('../src/lib/household.js');
+    const h = toHousehold({ ...PREVIEW_DEFAULT_VALUES, currentAge: '66', retirementAge: '67', otherPretaxBalance: '3000000', accounts: undefined }, 2026);
+    const html = renderToStaticMarkup(<ProjectionResult view={projectionView(h, 60000)} />);
+    expect(html).toMatch(/Medicare IRMAA surcharges \(\d+ years\)/);
+    expect(html).toContain('<th scope="col">Medicare IRMAA</th>');
+  });
+});

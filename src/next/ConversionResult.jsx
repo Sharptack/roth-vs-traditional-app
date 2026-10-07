@@ -7,6 +7,7 @@ import { BracketBar } from './TaxResult.jsx';
 const pct = (r) => formatPercent(r, 1);
 
 export default function ConversionResult({ conversion: c, pretaxBalance }) {
+  const irmaa = c.irmaa && c.irmaa.after.enrolled > 0 ? c.irmaa : null;
   const dragged = c.extraTaxableSocialSecurity > 0.5 || c.deductionLost > 0.5 || c.parts.capitalGainsTax > 0.5 || c.parts.niit > 0.5;
   return (
     <div className="results">
@@ -31,6 +32,15 @@ export default function ConversionResult({ conversion: c, pretaxBalance }) {
           )}
           {c.parts.niit > 0.5 && <div className="calc-row"><span>More Net Investment Income Tax</span><span>{$(c.parts.niit)}</span></div>}
           <div className="calc-row total"><span>Tax cost</span><span>{$(c.cost)}</span></div>
+          {irmaa && irmaa.added > 0.5 && (
+            <>
+              <div className="calc-row">
+                <span>Medicare IRMAA in {irmaa.premiumYear} (tier {irmaa.before.tier} to {irmaa.after.tier})</span>
+                <span>{$(irmaa.added)}</span>
+              </div>
+              <div className="calc-row total"><span>Tax cost plus IRMAA</span><span>{$(c.cost + irmaa.added)}</span></div>
+            </>
+          )}
           {c.extraTaxableSocialSecurity > 0.5 && (
             <div className="calc-row sub"><span>Social Security the conversion made taxable</span><span>{$(c.extraTaxableSocialSecurity)}</span></div>
           )}
@@ -44,6 +54,14 @@ export default function ConversionResult({ conversion: c, pretaxBalance }) {
             : 'The cost is the year’s tax with the conversion minus the tax without it.'}{' '}
           Paying the tax from money outside the Pre-tax account lets the whole amount go to Roth.
         </p>
+        {irmaa && (
+          <p className="hint">
+            {irmaa.room === null
+              ? `This year's income is already in the top Medicare IRMAA tier for ${irmaa.premiumYear}.`
+              : `Medicare IRMAA in ${irmaa.premiumYear}: converting up to ${$(irmaa.room)} keeps this year's MAGI in ${irmaa.before.tier === 0 ? 'the no-surcharge tier' : `tier ${irmaa.before.tier}`}.`}{' '}
+            The surcharge is set by this year&rsquo;s income and paid two years later, by anyone 65 or older by then.
+          </p>
+        )}
       </section>
 
       {c.fills.length > 0 && (
@@ -87,8 +105,8 @@ export default function ConversionResult({ conversion: c, pretaxBalance }) {
       </section>
 
       <p className="disclaimer">
-        Estimates only — not tax or financial advice. One year, federal tax under current law. Not modeled: IRMAA
-        (Medicare premium surcharges two years later), state tax, the five-year rule on converted amounts. For
+        Estimates only — not tax or financial advice. One year, federal tax under current law. IRMAA at this
+        year&rsquo;s amounts (when included in Assumptions). Not modeled: state tax, the five-year rule on converted amounts. For
         conversions over several years, use the withdrawal strategies on the projection page.
       </p>
     </div>

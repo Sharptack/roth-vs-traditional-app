@@ -26,7 +26,8 @@
 //                  conversion: { amount }, pension: { lumpSum, monthly, startAge, cola,
 //                  survivorShare, endAge, spouseEndAge } },   // calculator-only inputs, under the calculator's name
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedAcrossContribution,
-//                  retirementRateShift },   // the last two: retirement-year
+//                  retirementRateShift, medicareIrmaa },   // medicareIrmaa: the projection charges
+//                                          // Medicare IRMAA surcharges (lib/irmaa.js);   // the last two: retirement-year
 //                                          // tax rules (phase 2); 0 / false = today's rules
 // }
 //
@@ -91,6 +92,7 @@ export const NEW_RULES_DEFAULT_VALUES = {
   ageDeductions: 'yes', // 'yes' | 'no'
   taxSavedBasis: 'average', // 'average' (across the whole contribution) | 'marginal' (today's rule)
   retirementRateShift: '0', // a tax-law what-if: points added to ordinary rates in retirement ('0.03' = +3)
+  medicareIrmaa: 'yes', // 'yes' | 'no': Medicare IRMAA surcharges at 65+ (projection, tax and conversion pages)
 };
 
 export const PREVIEW_DEFAULT_VALUES = {
@@ -195,6 +197,7 @@ export function toHousehold(values, year) {
       ageDeductions: values.ageDeductions === 'yes',
       taxSavedAcrossContribution: values.taxSavedBasis === 'average',
       retirementRateShift: Number(values.retirementRateShift ?? 0) || 0,
+      medicareIrmaa: values.medicareIrmaa === 'yes',
     },
   };
 }

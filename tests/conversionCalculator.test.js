@@ -83,3 +83,42 @@ describe('the conversion calculator in the household', () => {
     expect(c.fills[0].amount).toBeCloseTo(31800, 2);
   });
 });
+
+describe('conversionResult: Medicare IRMAA two years on (2026, HAND CALC)', () => {
+  // single, 64 (65 in 2028, so on Medicare when this year's MAGI counts); age deductions apply but
+  // don't change MAGI (= AGI here). Per person: tier 1 = 1,148.40 a year, tier 2 = 2,884.80.
+  const person64 = (income) => ({ filingStatus: 'single', year: Y, people: [{ age: 64, wages: 0, selfEmploymentIncome: 0 }], income });
+
+  it('Social Security already fully taxable: MAGI rises dollar for dollar', () => {
+    // $100,000 pension + $30,000 Social Security: provisional income 115,000, so 85% (25,500) is
+    // taxable either way. MAGI 125,500 -> tier 1 ($109,000-$137,000); room to 137,000 = 11,500.
+    // Converting $20,000: MAGI 145,500 -> tier 2; the conversion adds 2,884.80 - 1,148.40 = 1,736.40.
+    const c = conversionResult(person64({ ordinaryIncome: 100000, socialSecurity: 30000 }), 20000, { irmaa: true });
+    expect(c.irmaa.premiumYear).toBe(2028);
+    expect(c.irmaa.before.magi).toBeCloseTo(125500, 6);
+    expect(c.irmaa.before.tier).toBe(1);
+    expect(c.irmaa.after.tier).toBe(2);
+    expect(c.irmaa.added).toBeCloseTo(1736.4, 6);
+    expect(c.irmaa.room).toBeCloseTo(11500, 2);
+  });
+
+  it('in the Social Security phase-in, MAGI rises faster than the conversion, so the room is smaller', () => {
+    // $20,000 pension + $30,000 Social Security: provisional 35,000, taxable SS 0.85 x 1,000 + 4,500 = 5,350,
+    // MAGI 25,350. All of Social Security that can be taxed (25,500) is taxed once provisional income
+    // passes 34,000 + 21,000 / 0.85 = 58,705.88, i.e. converting 23,705.88. At $109,000 of MAGI it is
+    // maxed: 20,000 + x + 25,500 = 109,000 -> x = 63,500 (not 109,000 - 25,350 = 83,650).
+    const c = conversionResult(person64({ ordinaryIncome: 20000, socialSecurity: 30000 }), 10000, { irmaa: true });
+    expect(c.irmaa.before.magi).toBeCloseTo(25350, 6);
+    expect(c.irmaa.before.tier).toBe(0);
+    expect(c.irmaa.added).toBe(0);
+    expect(c.irmaa.room).toBeCloseTo(63500, 2);
+  });
+
+  it('off unless asked for, and no one on Medicare in two years pays nothing', () => {
+    expect(conversionResult(person64({ ordinaryIncome: 100000 }), 20000).irmaa).toBeNull();
+    const young = { ...person64({ ordinaryIncome: 100000 }), people: [{ age: 60, wages: 0, selfEmploymentIncome: 0 }] };
+    const c = conversionResult(young, 20000, { irmaa: true });
+    expect(c.irmaa.after.tier).toBe(1);
+    expect(c.irmaa.added).toBe(0);
+  });
+});
