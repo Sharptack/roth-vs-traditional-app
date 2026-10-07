@@ -118,8 +118,13 @@ is **also the public "How this works" page** — see "Article page" below.
   behind an "Add other income types" menu (an advanced options page is a later round); each spouse's retirement age moves
   independently, retirement starts when the last retires; legacy goal as balance first, after-tax later; sex input (male,
   female, another gender / prefer not to say; hover note: life expectancy only); Monte Carlo from the S&P 500's real return
-  and standard deviation; few conversion options; the docs section is called "Docs". Five questions remain at the end of
-  the doc (inflation default 3%?, S&P data source, the third sex option's table, other debts, the dev branch). Security work is
+  and standard deviation; few conversion options; the docs section is called "Docs". **Third set:** inflation default stays
+  2.5%, adjustable in Assumptions; outputs stay in TODAY'S dollars (real) by default, with a later switch to view future
+  (nominal) dollars (the user said "nominal" but described after-inflation amounts; confirmed reading: today's dollars);
+  S&P 500 data = NYU Stern (Damodaran) yearly returns from 1928, less inflation; sex input labelled "Biological sex", male
+  or female only, with a note that it is used only for life expectancy; phase 11 = a debt pay-off calculator for EVERY debt
+  (mortgage, car, student loan, credit card, other; avalanche/snowball; pay off or invest); no dev branch, batch pushes.
+  No open questions in the doc right now. Security work is
   PAUSED (user, 2026-10-07: "mainly on functionality of the calculator"; no real client data for a while, a handful of
   advisors testing). Done: the audit log (verified live). Left for before launch: invitation links without tokens in the
   URL, MFA, firm-domain sign-in, custom SMTP (see `docs/security.md`). Don't resume them unless the user asks.
