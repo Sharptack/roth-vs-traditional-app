@@ -2025,3 +2025,74 @@ th.win .th-sub {
 .next-app .field input[type='date'] {
   min-width: 0;
 }
+
+/* the collapse bar between a preview calculator's inputs and results: tucks the inputs away to the
+   left and widens the results; the same bar brings them back */
+.calc-layout.with-bar {
+  grid-template-columns: minmax(0, 420px) 28px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.calc-layout.with-bar.inputs-hidden {
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+
+.calc-layout .inputs-column[hidden] {
+  display: none;
+}
+
+.collapse-bar {
+  position: sticky;
+  top: 16px;
+  height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.collapse-bar:hover,
+.collapse-bar:focus-visible {
+  border-color: var(--accent);
+}
+
+.collapse-bar > span:first-child {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.collapse-bar-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+@media (max-width: 900px) {
+  .calc-layout.with-bar,
+  .calc-layout.with-bar.inputs-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calc-layout.with-bar .inputs-column[hidden] {
+    display: flex;
+  }
+
+  .collapse-bar {
+    display: none;
+  }
+}
+
+@media print {
+  .next-app .collapse-bar {
+    display: none;
+  }
+}

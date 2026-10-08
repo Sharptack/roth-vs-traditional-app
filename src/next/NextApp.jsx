@@ -127,6 +127,8 @@ export default function NextApp({ initialPage, client }) {
   // Sign-in and the saved household on screen ({ id, label }), when a backend is configured.
   const cloud = useCloud(client);
   const [opened, setOpened] = useState(null);
+  // The collapse bar: the inputs tucked away on calculator pages (kept from page to page).
+  const [inputsHidden, setInputsHidden] = useState(false);
   const hashPage = usePreviewPage();
   const page = initialPage ?? hashPage; // initialPage: for tests (no browser hash)
 
@@ -301,8 +303,9 @@ export default function NextApp({ initialPage, client }) {
               </p>
             )}
           </header>
-          <main className="calc-layout">
-            <div className="inputs-column">
+          <main className={`calc-layout with-bar${inputsHidden ? ' inputs-hidden' : ''}`}>
+            {/* Hidden, not removed, so what is typed and which sections are open survive. */}
+            <div className="inputs-column" id="calc-inputs" hidden={inputsHidden}>
               {saved(true)}
               <HouseholdInputs
                 key={calculator.id}
@@ -319,6 +322,16 @@ export default function NextApp({ initialPage, client }) {
                 footer={share}
               />
             </div>
+            <button
+              type="button"
+              className="collapse-bar"
+              aria-controls="calc-inputs"
+              aria-expanded={!inputsHidden}
+              onClick={() => setInputsHidden(!inputsHidden)}
+            >
+              <span aria-hidden="true">{inputsHidden ? '›' : '‹'}</span>
+              <span className="collapse-bar-label">{inputsHidden ? 'Show inputs' : 'Hide inputs'}</span>
+            </button>
             <div className="results-column">
               {calculator.id === 'roth' && (
                 <>

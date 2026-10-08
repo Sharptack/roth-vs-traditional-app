@@ -1120,6 +1120,9 @@ describe('NextApp (#/next preview)', () => {
     // the Roth page: its five cards, the blend explorer and the lifetime comparison
     expect(blockCount(roth)).toBe(7);
     for (const page of [tax, proj, conv, pen]) expect(page).toMatch(/(Expand|Collapse) all results/);
+    // the collapse bar: on calculator pages only, inputs shown at first
+    expect(roth).toContain('class="collapse-bar" aria-controls="calc-inputs" aria-expanded="true"');
+    expect(html).not.toContain('collapse-bar');
   });
 
   it('the inputs page: every section as its own card, and links to each calculator', async () => {
