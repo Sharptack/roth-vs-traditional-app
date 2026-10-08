@@ -52,7 +52,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 704 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 709 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -91,17 +91,18 @@ npm run build     # static site -> dist/ (base './')
 - `src/lib/` version 2 household (phase 0): `householdValues.js` (v2 form values: people, income/contribution/
   account/liability rows, linked age/birthdate; `cleanHouseholdValues`, the allow-list for saves and links),
   `householdV2.js` (`toHouseholdV2`: v2 values → the same household object the calculators read),
-  `householdUpgrade.js` (v1 → v2). The preview computes through v2 (`NextApp.previewResult` converts the form's v1
-  values); the form, saving and links still use v1 until step (b), whose v2 functions are ready
-  (`savedHousehold.js` `caseFromValuesV2`/`valuesV2FromCase`, `householdLink.js` `householdLinkSearchV2`/
-  `householdValuesV2FromSearch`). v1 pins: `tests/householdV1Pins.test.js` + `tests/fixtures/`.
-- `src/lib/` preview: `household.js` (form values → household → compare inputs), `householdForm.js`, `householdLink.js`
+  `householdUpgrade.js` (v1 → v2), `householdInputs.js` (the inputs page's sections and summaries, and
+  `CALCULATOR_INPUTS`: the sections and fields each calculator reads). The preview's form, saves (schema_version 2)
+  and links (`?hh=2`) are v2 since step (b); v1 saves and links open converted. v1 pins:
+  `tests/householdV1Pins.test.js` + `tests/fixtures/`.
+- `src/lib/` preview: `household.js` (v1 form values → household → compare inputs), `householdLink.js`
   (share links), `householdText.js`, `savedHousehold.js`, `taxCalculator.js`, `conversionCalculator.js`,
   `pensionCalculator.js`, `irmaa.js`, `rmd.js`, `projection.js` (`runProjection`: the year loop, strategy seam),
   `strategies.js`, `projectionSummary.js` (sustainable spending, `projectionView`), `lifetimeComparison.js`, `suiteTiles.js`.
 - UI: `src/App.jsx` (public page; the article, Visualization and preview load lazily), `src/components/` (public
   components; `ResultsSummary.jsx` is large and gets split per block in phase 0; `charts/`), `src/next/` (preview pages;
-  `NextApp.jsx` computes each calculator only on its own page or the homepage tiles), `src/services/` (Supabase).
+  `NextApp.jsx` computes each calculator only on its own page or the homepage tiles; `HouseholdInputs.jsx` is the v2
+  form: the inputs page `#/next/inputs` and each calculator's inputs card), `src/services/` (Supabase).
 - Backend: `supabase/migrations/` (saved households with forced RLS; an audit log; households open only through
   `open_saved_household`), `supabase/tests/` (self-check SQL the user runs), `docs/backend-setup.md`, `docs/security.md`.
 - Tests: `tests/` mirrors `src/lib`, plus `components.smoke.test.jsx`.
@@ -132,6 +133,12 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (recent; older entries in docs/history.md)
+- 2026-10-08 (b) — Round 2 phase 0, step (b) done (local, unpushed): the inputs page `#/next/inputs` (every section its
+  own card; people side by side; income, contribution, account and debt rows; linked age/birthdate; sex; plan-to
+  age; PIA); each calculator page has ONE inputs card with only what it reads (+ "All inputs" link); the homepage
+  shows the household in brief; saves and links are v2; the old v1 form is removed. Chosen (to confirm): sex and
+  plan-to age show on the inputs page only until a calculator reads them; a debt's rate is typed as a percent.
+  Next: step (c), blocks everywhere and the collapse bar. 709 tests.
 - 2026-10-08 — Round 2 phase 0, step (a) done (local, unpushed): v1 results pinned for 11 example households; v2
   form values; v2 values → household object; Social Security from an entered PIA; v1 → v2 conversion; saved
   households and share links in v2 (`?hh=2&v=<base64url JSON>`, same allow-list); the preview computes through v2.
