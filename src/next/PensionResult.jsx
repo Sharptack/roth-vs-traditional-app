@@ -1,7 +1,9 @@
 // The pension calculator's results: the return the lump sum would have to earn to match the
 // monthly benefit, against the household's own assumed return. Renders
 // lib/pensionCalculator.js's pensionResult; no math of its own.
+import { pensionHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
+import Blocks from './Blocks.jsx';
 
 const pct = (r) => (r === null ? '—' : formatPercent(r, 1));
 const age = (a) => (a === null ? 'never' : `${Math.floor(a)}${a % 1 > 0.001 ? ` and ${Math.round((a % 1) * 12)} months` : ''}`);
@@ -11,10 +13,9 @@ const age = (a) => (a === null ? 'never' : `${Math.floor(a)}${a % 1 > 0.001 ? ` 
 export default function PensionResult({ pension: p, inputs, nominalReturn, realReturn, inflation }) {
   const worth = p.presentValueAt(nominalReturn);
   const better = p.irr !== null && p.irr > nominalReturn;
-  return (
-    <div className="results">
-      <section className="card key-card" aria-labelledby="pen-irr">
-        <h2 id="pen-irr">The pension&rsquo;s rate of return</h2>
+  const h = pensionHeadlines(p, inputs, nominalReturn);
+  const rate = (
+      <>
         <div className="hero">
           <div className="hero-value">{p.irr === null ? 'None' : `${pct(p.irr)} a year`}</div>
           <div className="hero-sub">
@@ -42,11 +43,10 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
           <div className="calc-row total"><span>Total of all payments</span><span>{$(p.totalPayments)}</span></div>
           <div className="calc-row sub"><span>Payments add up to the lump sum at age</span><span>{age(p.breakEvenAge)}</span></div>
         </div>
-      </section>
-
-      {p.byEndAge.length > 0 && (
-        <section className="card" aria-labelledby="pen-ages">
-          <h2 id="pen-ages">How long you live decides it</h2>
+      </>
+  );
+  const ages = (
+        <>
           <table className="compare-table strategy-table">
             <thead>
               <tr>
@@ -68,13 +68,15 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
               ? 'Each row ends your own payments at that age; the survivor share then runs to your spouse’s end age.'
               : 'Each row ends the payments at that age.'}
           </p>
-        </section>
-      )}
-
-      <p className="disclaimer">
-        Estimates only — not tax or financial advice. Tax is left out: both are taxed alike (the lump sum rolled into a
-        Pre-tax account, the pension as ordinary income). Not modeled: the plan&rsquo;s own solvency and PBGC limits.
-      </p>
-    </div>
+        </>
+  );
+  return (
+    <Blocks
+      blocks={[
+        { id: 'irr', title: 'The pension’s rate of return', summary: h.irr, className: 'key-card', content: rate },
+        p.byEndAge.length > 0 && { id: 'ages', title: 'How long you live decides it', summary: h.ages, content: ages },
+      ]}
+      disclaimer="Estimates only — not tax or financial advice. Tax is left out: both are taxed alike (the lump sum rolled into a Pre-tax account, the pension as ordinary income). Not modeled: the plan’s own solvency and PBGC limits."
+    />
   );
 }

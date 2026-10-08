@@ -1073,7 +1073,7 @@ describe('NextApp (#/next preview)', () => {
     const tax = renderToStaticMarkup(<NextApp initialPage="tax" />);
     expect(tax).toContain('Tax rates this year');
     expect(tax).toContain('Filling up the brackets');
-    expect(tax).toContain('Show the calculation');
+    expect(tax).toContain('>The calculation<');
     expect(firstTitle(tax)).toBe('Income');
     expect(tax).toContain('+ Add other income types');
     expect(tax).not.toContain('Claim at');
@@ -1108,6 +1108,18 @@ describe('NextApp (#/next preview)', () => {
     expect(html).toContain('href="#/next/conversion"');
     expect(html).toContain('href="#/next/pension"');
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
+    // every calculator's results are blocks: collapsible cards with a headline, one Expand/Collapse all
+    const blockCount = (page) => (page.match(/class="collapsible card collapsible-card/g) ?? []).length;
+    expect(blockCount(tax)).toBeGreaterThanOrEqual(4);
+    expect(tax).toContain('22.0% marginal · 11.0% effective</span>');
+    expect(blockCount(proj)).toBe(6);
+    expect(proj).toMatch(/Peak \$[\d,]+ in \d{4}/);
+    expect(blockCount(conv)).toBe(3);
+    expect(blockCount(pen)).toBe(2);
+    expect(pen).toMatch(/a year vs\. [\d.]+% assumed/);
+    // the Roth page: its five cards, the blend explorer and the lifetime comparison
+    expect(blockCount(roth)).toBe(7);
+    for (const page of [tax, proj, conv, pen]) expect(page).toMatch(/(Expand|Collapse) all results/);
   });
 
   it('the inputs page: every section as its own card, and links to each calculator', async () => {

@@ -1,8 +1,10 @@
-// "Over a lifetime" (roadmap phase 6), on the preview's Roth page below the existing results:
+// "Over a lifetime" (roadmap phase 6), a block on the preview's Roth page below the existing results:
 // Roth vs. Pre-tax Future Contributions, each projected year by year to the end age, side by side.
 // Renders lib/lifetimeComparison.js; no math of its own.
 import { useState } from 'react';
+import Collapsible from '../components/Collapsible.jsx';
 import LineChart from '../components/charts/LineChart.jsx';
+import { lifetimeHeadline } from '../lib/blockHeadlines.js';
 import { formatCurrency as $ } from '../lib/format.js';
 import { breakEvenRateShift } from '../lib/lifetimeComparison.js';
 import { STRATEGIES, strategyById } from '../lib/strategies.js';
@@ -43,6 +45,7 @@ function BreakEven({ household, result, endAge, winner }) {
 
 export default function LifetimeComparison({ lifetime, household, result }) {
   const [tableFor, setTableFor] = useState(null);
+  const [open, setOpen] = useState(true);
   if (!lifetime) return null;
   const { roth, pretax, winner, difference: d, wealthGap, crossoverYear } = lifetime;
   const endAge = roth.endAge;
@@ -56,8 +59,14 @@ export default function LifetimeComparison({ lifetime, household, result }) {
     [`Ending balance after tax for heirs`, roth.summary.endingAfterTax, pretax.summary.endingAfterTax, d.endingAfterTax],
   ];
   return (
-    <section className="card lifetime-card" aria-labelledby="lifetime">
-      <h2 id="lifetime">Over a lifetime, year by year</h2>
+    <Collapsible
+      headingId="lifetime"
+      className="lifetime-card"
+      title="Over a lifetime, year by year"
+      summary={lifetimeHeadline(lifetime)}
+      open={open}
+      onToggle={() => setOpen(!open)}
+    >
       <p className="lead-verdict">
         <strong>
           {winner === 'even'
@@ -160,6 +169,6 @@ export default function LifetimeComparison({ lifetime, household, result }) {
         ))}
       </div>
       {tableFor && <YearTable rows={(tableFor === 'roth' ? roth : pretax).rows} />}
-    </section>
+    </Collapsible>
   );
 }

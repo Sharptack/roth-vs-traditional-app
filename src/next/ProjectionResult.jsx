@@ -1,10 +1,12 @@
-// The projection page's results (roadmap phase 5): funded status, the lifetime summary, income by
+// The projection page's results (roadmap phase 5), as blocks: funded status, the withdrawal strategies, the lifetime summary, income by
 // source per year, balances over time, and the year-by-year table. Renders
 // lib/projectionSummary.js's projectionView; no math of its own.
 import { useState } from 'react';
 import LineChart from '../components/charts/LineChart.jsx';
 import StackedBarChart from '../components/charts/StackedBarChart.jsx';
+import { projectionHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
+import Blocks from './Blocks.jsx';
 
 // One color per source, the same in every chart (color follows the entity, never the position).
 const COLORS = { ss: 'var(--series-1)', pretax: 'var(--series-2)', taxable: 'var(--series-3)', roth: 'var(--series-4)' };
@@ -90,10 +92,9 @@ export default function ProjectionResult({ view }) {
   const retired = rows.filter((r) => r.working.some((w) => !w));
   const showIrmaa = view.strategies.some((st) => st.totalIrmaa > 0);
   const over = funded >= 1;
-  return (
-    <div className="results">
-      <section className="card key-card" aria-labelledby="proj-funded">
-        <h2 id="proj-funded">Funded status</h2>
+  const h = projectionHeadlines(view);
+  const fundedBlock = (
+      <>
         <div className="hero">
           <div className="hero-value">{Math.round(funded * 100)}%</div>
           <div className="hero-sub">
@@ -107,10 +108,10 @@ export default function ProjectionResult({ view }) {
             : `At ${$(need)} a year the money lasts to ${endAge}, with ${$(s.endingBalance.total)} left.`}{' '}
           Sustainable spending is the highest steady after-tax income, in today&rsquo;s dollars, that lasts to the end age.
         </p>
-      </section>
-
-      <section className="card" aria-labelledby="proj-strategies">
-        <h2 id="proj-strategies">Compare withdrawal strategies</h2>
+      </>
+  );
+  const strategies = (
+      <>
         <p className="hint">
           Each strategy run at the retirement income number ({$(need)} a year), all else the same. The chosen one is marked.
         </p>
@@ -150,10 +151,10 @@ export default function ProjectionResult({ view }) {
           Assumptions). The strategies don&rsquo;t aim around its thresholds; they only pay it. Not modeled yet: the 10-year
           rule for heirs of Pre-tax accounts.
         </p>
-      </section>
-
-      <section className="card" aria-labelledby="proj-summary">
-        <h2 id="proj-summary">Lifetime summary</h2>
+      </>
+  );
+  const lifetime = (
+      <>
         <div className="calc">
           <div className="calc-row"><span>Total tax paid (income and payroll)</span><span>{$(s.totalTax)}</span></div>
           <div className="calc-row sub"><span>of which federal income tax</span><span>{$(s.totalIncomeTax)}</span></div>
@@ -175,11 +176,9 @@ export default function ProjectionResult({ view }) {
           All in today&rsquo;s dollars. Heirs pay no tax on Roth money, and inherited taxable accounts get a step-up in
           cost basis, so they count in full.
         </p>
-      </section>
-
-      {retired.length > 0 && (
-        <section className="card" aria-labelledby="proj-income">
-          <h2 id="proj-income">Income by source in retirement</h2>
+      </>
+  );
+  const income = retired.length > 0 && (
           <StackedBarChart
             x={retired.map((r) => r.year)}
             stacks={[
@@ -195,11 +194,8 @@ export default function ProjectionResult({ view }) {
             xLabel="Year"
             yLabel="Dollars a year (today's)"
           />
-        </section>
-      )}
-
-      <section className="card" aria-labelledby="proj-balances">
-        <h2 id="proj-balances">Balances over time</h2>
+  );
+  const balances = (
         <LineChart
           series={[
             { key: 'pretax', label: 'Pre-tax', color: COLORS.pretax, points: rows.map((r) => ({ x: r.year, y: r.endBalances.pretax })) },
@@ -215,18 +211,18 @@ export default function ProjectionResult({ view }) {
           xLabel="Year (end of year)"
           yLabel="Balance (today's dollars)"
         />
-      </section>
-
-      <section className="card" aria-labelledby="proj-table">
-        <h2 id="proj-table">Year by year</h2>
-        <YearTable rows={rows} />
-      </section>
-
-      <p className="disclaimer">
-        Estimates only — not tax or financial advice. Today&rsquo;s dollars at a constant after-inflation return; spending
-        flat; earnings flat while working; withdrawals in proportion from every account once anyone retires, with RMDs
-        as a floor; no survivor years or state tax. IRMAA tiers in today&rsquo;s dollars, at this year&rsquo;s amounts.
-      </p>
-    </div>
+  );
+  return (
+    <Blocks
+      blocks={[
+        { id: 'funded', title: 'Funded status', summary: h.funded, className: 'key-card', content: fundedBlock },
+        { id: 'strategies', title: 'Compare withdrawal strategies', summary: h.strategies, content: strategies },
+        { id: 'summary', title: 'Lifetime summary', summary: h.summary, content: lifetime },
+        income && { id: 'income', title: 'Income by source in retirement', summary: h.income, content: income },
+        { id: 'balances', title: 'Balances over time', summary: h.balances, content: balances },
+        { id: 'table', title: 'Year by year', summary: h.table, content: <YearTable rows={rows} /> },
+      ]}
+      disclaimer="Estimates only — not tax or financial advice. Today’s dollars at a constant after-inflation return; spending flat; earnings flat while working; withdrawals in proportion from every account once anyone retires, with RMDs as a floor; no survivor years or state tax. IRMAA tiers in today’s dollars, at this year’s amounts."
+    />
   );
 }

@@ -1,7 +1,9 @@
-// The tax calculator's results (roadmap phase 2): marginal rate, then effective rate, the other
-// sources' marginal rates, the "fill up the bracket" bar, and the full calculation. Renders
+// The tax calculator's results (roadmap phase 2), as blocks: marginal and effective rates, the other
+// sources' marginal rates, the "fill up the bracket" bar, IRMAA, and the full calculation. Renders
 // lib/taxCalculator.js's taxCalculatorResult; no math of its own.
+import { taxHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
+import Blocks from './Blocks.jsx';
 
 const pct = (r) => formatPercent(r, 1);
 
@@ -90,88 +92,105 @@ export function BracketBar({ bar, caption }) {
 export default function TaxResult({ tax }) {
   const { result: r, marginal, others, rows, bar, irmaa: i } = tax;
   const hasPayroll = r.payrollTax > 0;
+  const h = taxHeadlines(tax);
   return (
-    <div className="results">
-      <section className="card tax-result" aria-labelledby="tax-rates">
-        <h2 id="tax-rates">Tax rates this year</h2>
-        <div className="tax-rate-pair">
-          <div className="rate-pair-item highlight">
-            <div className="stat-label">Marginal rate</div>
-            <div className="stat-value">{pct(marginal.incomeTax)}</div>
-            <div className="stat-sub">
-              Federal income tax on the next $100 of {marginal.phrase}
-              {Math.abs(marginal.total - marginal.incomeTax) > 1e-9 && <>; {pct(marginal.total)} with payroll tax</>}
+    <Blocks
+      blocks={[
+        {
+          id: 'rates',
+          title: 'Tax rates this year',
+          summary: h.rates,
+          className: 'key-card tax-result',
+          content: (
+            <div className="tax-rate-pair">
+              <div className="rate-pair-item highlight">
+                <div className="stat-label">Marginal rate</div>
+                <div className="stat-value">{pct(marginal.incomeTax)}</div>
+                <div className="stat-sub">
+                  Federal income tax on the next $100 of {marginal.phrase}
+                  {Math.abs(marginal.total - marginal.incomeTax) > 1e-9 && <>; {pct(marginal.total)} with payroll tax</>}
+                </div>
+              </div>
+              <div className="rate-pair-item">
+                <div className="stat-label">Effective rate</div>
+                <div className="stat-value">{pct(r.effectiveRate)}</div>
+                <div className="stat-sub">
+                  {$(r.incomeTax)} income tax ÷ {$(r.lines.grossIncome)} gross income
+                  {hasPayroll && <>; {pct(r.effectiveRateWithPayroll)} with {$(r.payrollTax)} payroll tax</>}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="rate-pair-item">
-            <div className="stat-label">Effective rate</div>
-            <div className="stat-value">{pct(r.effectiveRate)}</div>
-            <div className="stat-sub">
-              {$(r.incomeTax)} income tax ÷ {$(r.lines.grossIncome)} gross income
-              {hasPayroll && <>; {pct(r.effectiveRateWithPayroll)} with {$(r.payrollTax)} payroll tax</>}
-            </div>
-          </div>
-        </div>
-
-        <h3 className="subhead">The next $100 of other income</h3>
-        <div className="calc">
-          {others.map((o) => (
-            <div className="calc-row" key={o.source}>
-              <span>{o.label}</span>
-              <span>
-                {pct(o.incomeTax)}
-                {Math.abs(o.total - o.incomeTax) > 1e-9 && <span className="dim"> ({pct(o.total)} with payroll)</span>}
-              </span>
-            </div>
-          ))}
-        </div>
-        <p className="hint">
-          Each is the extra federal tax from $100 more of that income alone. They differ because each kind is taxed
-          differently: the next Pre-tax dollar can pull Social Security into tax with it, and gains can sit in the 0%
-          bracket.
-        </p>
-
-        <h3 className="subhead">Filling up the brackets</h3>
-        <BracketBar bar={bar} />
-
-        {i && i.enrolled > 0 && (
-          <>
-            <h3 className="subhead">Medicare premiums in {i.premiumYear}</h3>
+          ),
+        },
+        others.length > 0 && {
+          id: 'others',
+          title: 'The next $100 of other income',
+          summary: h.others,
+          content: (
+            <>
+              <div className="calc">
+                {others.map((o) => (
+                  <div className="calc-row" key={o.source}>
+                    <span>{o.label}</span>
+                    <span>
+                      {pct(o.incomeTax)}
+                      {Math.abs(o.total - o.incomeTax) > 1e-9 && <span className="dim"> ({pct(o.total)} with payroll)</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="hint">
+                Each is the extra federal tax from $100 more of that income alone. They differ because each kind is taxed
+                differently: the next Pre-tax dollar can pull Social Security into tax with it, and gains can sit in the 0%
+                bracket.
+              </p>
+            </>
+          ),
+        },
+        { id: 'brackets', title: 'Filling up the brackets', summary: h.brackets, content: <BracketBar bar={bar} /> },
+        h.irmaa && {
+          id: 'irmaa',
+          title: `Medicare premiums in ${i.premiumYear}`,
+          summary: h.irmaa,
+          content: (
+            <>
+              <div className="calc">
+                <div className="calc-row"><span>MAGI this year (sets the {i.premiumYear} premiums)</span><span>{$(i.magi)}</span></div>
+                <div className="calc-row"><span>IRMAA tier</span><span>{i.tier === 0 ? 'None' : `${i.tier} of 5`}</span></div>
+                <div className="calc-row">
+                  <span>Surcharge in {i.premiumYear}</span>
+                  <span>
+                    {$(i.total)} a year
+                    {i.enrolled > 1 && i.total > 0 && <span className="dim"> ({$(i.annual)} each)</span>}
+                  </span>
+                </div>
+                <div className="calc-row">
+                  <span>Room before the next tier</span>
+                  <span>{i.roomToNext === null ? 'Top tier' : <>{$(i.roomToNext)} <span className="dim">(next tier above {$(i.nextThreshold)})</span></>}</span>
+                </div>
+              </div>
+              <p className="hint">
+                Part B and Part D surcharges for anyone 65 or older by {i.premiumYear}, at this year&rsquo;s amounts. Each tier is a
+                cliff: one dollar over the line costs the whole step.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'calculation',
+          title: 'The calculation',
+          summary: h.calculation,
+          closed: true,
+          content: (
             <div className="calc">
-              <div className="calc-row"><span>MAGI this year (sets the {i.premiumYear} premiums)</span><span>{$(i.magi)}</span></div>
-              <div className="calc-row"><span>IRMAA tier</span><span>{i.tier === 0 ? 'None' : `${i.tier} of 5`}</span></div>
-              <div className="calc-row">
-                <span>Surcharge in {i.premiumYear}</span>
-                <span>
-                  {$(i.total)} a year
-                  {i.enrolled > 1 && i.total > 0 && <span className="dim"> ({$(i.annual)} each)</span>}
-                </span>
-              </div>
-              <div className="calc-row">
-                <span>Room before the next tier</span>
-                <span>{i.roomToNext === null ? 'Top tier' : <>{$(i.roomToNext)} <span className="dim">(next tier above {$(i.nextThreshold)})</span></>}</span>
-              </div>
+              {rows.map((row) => (
+                <Row key={row.key} row={row} />
+              ))}
             </div>
-            <p className="hint">
-              Part B and Part D surcharges for anyone 65 or older by {i.premiumYear}, at this year&rsquo;s amounts. Each tier is a
-              cliff: one dollar over the line costs the whole step.
-            </p>
-          </>
-        )}
-
-        <details className="details">
-          <summary>Show the calculation</summary>
-          <div className="details-body calc">
-            {rows.map((row) => (
-              <Row key={row.key} row={row} />
-            ))}
-          </div>
-        </details>
-      </section>
-      <p className="disclaimer">
-        Estimates only — not tax or financial advice. Federal tax for this year under current law: the standard
-        deduction (with the age 65+ deductions), no itemizing, credits, AMT, QBI deduction or state tax.
-      </p>
-    </div>
+          ),
+        },
+      ]}
+      disclaimer="Estimates only — not tax or financial advice. Federal tax for this year under current law: the standard deduction (with the age 65+ deductions), no itemizing, credits, AMT, QBI deduction or state tax."
+    />
   );
 }
