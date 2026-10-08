@@ -16,8 +16,9 @@ describe('life tables (HAND CALC)', () => {
     expect(survival(qs, 4, 1)).toBe(0); // past the table
   });
 
-  it('life expectancy: certain death at 70 from 65 is exactly 5 years', () => {
-    expect(lifeExpectancy(diesAt(70), 65)).toBeCloseTo(5, 12);
+  it('life expectancy: certain death in the first month at 70, from 65: 5 years and half a month', () => {
+    // 60 whole months, then the month the death falls in counts half (deaths spread through it)
+    expect(lifeExpectancy(diesAt(70), 65)).toBeCloseTo(5 + 1 / 24, 12);
     expect(survivalCurve(diesAt(70), 65)).toHaveLength(1 + 6 * 12);
   });
 
@@ -35,7 +36,7 @@ describe('the pension on life expectancy (HAND CALC)', () => {
     const table = pensionOnLifeTable(offer, diesAt(70));
     expect(table.irr).toBeCloseTo(fixed.irr, 10);
     expect(table.expectedPayments).toBeCloseTo(fixed.totalPayments, 6);
-    expect(table.lifeExpectancy).toBeCloseTo(5, 12);
+    expect(table.lifeExpectancy).toBeCloseTo(5 + 1 / 24, 12);
   });
 
   it('with a spouse: the survivor share runs while the spouse lives on after the owner', () => {
@@ -57,5 +58,25 @@ describe('the pension on life expectancy (HAND CALC)', () => {
     expect(r.flows[0]).toBeCloseTo(1000 * 0.5 ** (1 / 12), 9);
     expect(r.flows).toHaveLength(24); // to the end of the table (age 66's year: nothing paid)
     expect(r.flows[12]).toBe(0);
+  });
+});
+
+describe('the SSA table as copied', () => {
+  it("rebuilds SSA's number of lives and comes within a week of its life expectancy to 90", async () => {
+    const { LIFE_TABLE, SSA_LIFE_EXPECTANCY } = await import('../src/data/lifeTable.js');
+    expect(LIFE_TABLE.male).toHaveLength(120);
+    expect(LIFE_TABLE.female).toHaveLength(120);
+    // lives from 100,000 at birth: SSA prints 79,084 men and 87,399 women at 65, 50,785 / 64,606 at 80
+    const lives = (qs, age) => qs.slice(0, age).reduce((l, q) => l * (1 - q), 100000);
+    expect(Math.round(lives(LIFE_TABLE.male, 65))).toBe(79084);
+    expect(Math.round(lives(LIFE_TABLE.male, 80))).toBe(50785);
+    expect(Math.abs(lives(LIFE_TABLE.female, 65) - 87399)).toBeLessThan(1);
+    expect(Math.round(lives(LIFE_TABLE.female, 80))).toBe(64606);
+    for (const sex of ['male', 'female']) {
+      for (const [age, e] of Object.entries(SSA_LIFE_EXPECTANCY[sex])) {
+        const ours = lifeExpectancy(LIFE_TABLE[sex], Number(age));
+        expect(Math.abs(ours - e), `${sex} ${age}`).toBeLessThan(Number(age) <= 90 ? 0.025 : 0.05);
+      }
+    }
   });
 });

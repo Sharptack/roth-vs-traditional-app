@@ -39,7 +39,11 @@ export function survivalCurve(qs, age) {
   return curve;
 }
 
-// Expected years of life left from `age` (months alive, summed, ÷ 12).
+// Expected years of life left from `age`: each month counted by the chance of being alive through
+// it, the average of its start and end (deaths spread through the month), ÷ 12.
 export function lifeExpectancy(qs, age) {
-  return survivalCurve(qs, age).slice(1).reduce((a, s) => a + s, 0) / 12;
+  const c = survivalCurve(qs, age);
+  let months = 0;
+  for (let k = 1; k < c.length; k++) months += (c[k - 1] + c[k]) / 2;
+  return months / 12;
 }
