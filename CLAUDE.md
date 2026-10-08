@@ -7,22 +7,19 @@ git history holds what changed in the code; `docs/history.md` is the frozen arch
 re-deciding something old). Don't copy decisions into this file. Add one change-log line per step at the bottom.
 
 ## What this is
-Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). Two parts on one site:
-- **The public calculator** (`#/`): Roth vs. Pre-tax contributions, no backend. The user still edits it directly.
-  **It is REPLACED at the switchover (user, 2026-10-07), at the end of round 2's phase 1:** the new version moves to
-  `#/`, old public links open as a one-person household, ARTICLE.md becomes the Roth Docs article, the old code is
-  deleted by a checklist (see the plan doc's "Switchover" section). Until then it stays intact.
-- **The `#/next` preview**: the new suite: a household model, a tax calculator, the Roth comparison, a year-by-year
-  projection with withdrawal strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabase sign-in
-  with saved households. Not linked from the public page; "Preview, not finished" banner.
-- `ARTICLE.md` is the public "How this works" page for the public calculator (rendered by `ArticlePage.jsx`); it must
-  match actual behavior. It becomes the Roth article of the planned Docs section.
+Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack): a suite of calculators on one
+household model: the tax calculator, the Roth vs. Pre-tax comparison, a year-by-year projection with withdrawal
+strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabase sign-in with saved households.
+- **The switchover is done (2026-10-08):** the suite is the site at `#/`; the old single Roth calculator's code is
+  deleted. Old links still work: `#/next/...` → the same page, `#/how-it-works` → `#/docs/roth`, an old
+  `?grossIncome=...` link opens as a one-person household.
+- **Docs** (`#/docs`): one markdown article per feature in `articles/`; each must match actual behavior.
+- Gating, free/simple versions: later (the user, 2026-10-08: focus on the product's UI and functionality now).
 
 ## Direction and roadmap
 - Rate terms (the user's, standard usage, everywhere in the preview): **marginal rate** = the tax bracket; **average tax
   rate** = total tax ÷ total income (what most sources call "effective tax rate", so never write "effective rate" alone for
-  it); **effective marginal rate (EMTR)** = the real tax on the next dollar, with everything it sets off. Public explanation: Docs article
-  `articles/rates.md`. The Roth comparison keeps its pairing: marginal today vs. the effective rate on the withdrawal.
+  it); **effective marginal rate (EMTR)** = the real tax on the next dollar, with everything it sets off. Explained in `articles/rates.md`. The Roth comparison keeps its pairing: marginal today vs. the effective rate on the withdrawal.
 - Audience: internal advisor tool; advisor-level density is fine. Desktop-first (phone must not break, no polish goal).
 - **Round 2 plan (current):** https://claude.ai/artifact/DQyr9BcgMUKAkxpue1SmNU (same doc as
   https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095; a Claude Doc, edited only through the Claude
@@ -31,10 +28,8 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 1 steps (a)-(e) are done (2026-10-08); next is the switchover (the plan doc's checklist),
-  waiting on the user's go-ahead.
-- **Docs** (`#/docs`, public): one markdown article per feature in `articles/` (listed in `src/lib/docs.js`); each
-  phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
+- **Current step:** phase 1 and the switchover are done (2026-10-08); next is phase 2 (survivor years).
+- **Docs**: articles listed in `src/lib/docs.js`; each phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
   `index.html`; Netlify's form detection must be on).
 - Round one's plan (finished): https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45.
 - Defaults decided: everything in TODAY's dollars (real return; brackets and limits indexed by law); fixed-dollar
@@ -47,17 +42,17 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
    BEFORE running the code, kept in comments) → only then UI. When code and hand math disagree, find out which is wrong.
 2. All financial logic is pure and framework-free in `src/lib/`. Data is year-keyed in `src/data/`; `getYearData` picks
    the latest year <= the one requested. Old hand-calc tests pin `year: 2025`/`2026`.
-3. **Until the switchover, the public calculator's numbers must not change** unless the user asks: shared `src/lib` changes are additive
-   (new optional inputs whose defaults reproduce today's results), and every existing test must pass unchanged.
-   When a preview page reuses a public component, check the public page still renders the same.
-4. New preview UI goes in `src/next/`; new math in `src/lib` (shared).
+3. Results change only on purpose: a change to existing numbers is one the user decided (record it in the plan doc).
+   New engine options default to today's results; the v1 pins (`tests/householdV1Pins.test.js`) change by additions
+   only unless a decided change says otherwise.
+4. Calculator pages go in `src/next/`; shared components in `src/components/`; math in `src/lib`.
 5. Don't push or publish without the user's say-so. Report failures and skipped steps plainly.
 6. Run `npm test` and `npm run lint` before committing. One logical change per commit, so history stays clean.
 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 781 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 759 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -67,7 +62,7 @@ npm run build     # static site -> dist/ (base './')
   https://astonishing-sprite-b5d581.netlify.app/ (Netlify builds on push to `main`).
 - **Netlify credits: keep production deploys down.** A build costs 15 credits (free plan 300/month, about 20). Commit
   locally and push in BATCHES, only when the user asks. `netlify.toml`'s `ignore` rule skips builds when no site file
-  changed (src, index.html, public, package files, vite.config.js, ARTICLE.md, articles, netlify.toml); add any new folder the site
+  changed (src, index.html, public, package files, vite.config.js, articles, netlify.toml); add any new folder the site
   imports from. Skipped builds, branch deploys and form submissions are free.
 - Pushing: on the Windows laptop Claude can push (`gh` signed in); on the home Mac the user pushes (VS Code Sync
   Changes). Always say when commits are unpushed.
@@ -92,10 +87,10 @@ npm run build     # static site -> dist/ (base './')
   and `taxBreakdown.js` (the calculation as rows); `childTaxCredit.js` and `dependents.js` (the credit, and who counts each year); `rateProfile.js` (the tax page's two buckets: bracket and next-dollar rate
   up the income scale); `iraRules.js` (Roth IRA limits, IRA deduction phase-out, Roth catch-up).
   The preview turns QBI on through `household.assumptions.qualifiedBusinessIncome` (version 2 households).
-- `src/lib/` Roth comparison (public + preview): `compare.js` (orchestrator, every number on the Roth page; optional
+- `src/lib/` Roth comparison: `compare.js` (orchestrator, every number on the Roth page; optional
   inputs `earners`, `contributors`, `retirementTaxRules`, `taxSavedAcrossContribution`, `skipBlend`), `sideAwareRates.js`
   (the rate comparison; identity (X − e) × W = the exact after-tax difference), `portfolioTax.js`, `blend.js`,
-  `rateSteps.js`, `growthCalculations.js`, `contributionLimits.js`, `socialSecurity.js`, `risingIncome.js`, `scenarios.js`.
+  `rateSteps.js`, `growthCalculations.js`, `contributionLimits.js`, `socialSecurity.js`, `risingIncome.js`, `scenarios.js`; `formInputs.js`/`shareInputs.js` (the old calculator's v1 values and links, still read).
 - `src/lib/` version 2 household (phase 0): `householdValues.js` (v2 form values: people, income/contribution/
   account/liability rows, linked age/birthdate; `cleanHouseholdValues`, the allow-list for saves and links),
   `householdV2.js` (`toHouseholdV2`: v2 values → the same household object the calculators read),
@@ -103,16 +98,15 @@ npm run build     # static site -> dist/ (base './')
   `CALCULATOR_INPUTS`: the sections and fields each calculator reads). The preview's form, saves (schema_version 2)
   and links (`?hh=2`) are v2 since step (b); v1 saves and links open converted. v1 pins:
   `tests/householdV1Pins.test.js` + `tests/fixtures/`.
-- `src/lib/` preview: `household.js` (v1 form values → household → compare inputs), `householdLink.js`
+- `src/lib/` calculators: `household.js` (v1 form values → household → compare inputs), `householdLink.js`
   (share links), `householdText.js`, `savedHousehold.js`, `taxCalculator.js`, `conversionCalculator.js`,
   `pensionCalculator.js`, `irmaa.js`, `rmd.js`, `projection.js` (`runProjection`: the year loop, strategy seam),
   `strategies.js`, `projectionSummary.js` (sustainable spending, `projectionView`), `lifetimeComparison.js`, `suiteTiles.js`.
-- UI: `src/App.jsx` (public page; the article, Docs, Visualization and preview load lazily; the feedback footer),
-  `src/components/` (public components, `DocsPage.jsx`, `Feedback.jsx`; `ResultsSummary.jsx` is the Roth page's blocks,
-  shared with the public page until the switchover; `charts/`), `src/next/` (preview pages;
-  `NextApp.jsx` computes each calculator only on its own page or the homepage tiles; `HouseholdInputs.jsx` is the v2
-  form: the inputs page `#/next/inputs` and each calculator's inputs card; `Blocks.jsx` lays out results as blocks,
-  headlines from `src/lib/blockHeadlines.js`), `src/services/` (Supabase).
+- UI: `src/App.jsx` (the shell: hash routes from `src/lib/route.js`, NextApp always mounted, Docs and Visualization
+  lazy, the feedback footer), `src/components/` (`ResultsSummary.jsx` = the Roth page's blocks, `fields.jsx` = form
+  inputs, `DocsPage.jsx`, `Feedback.jsx`, `charts/`), `src/next/` (`NextApp.jsx`: the home page, the inputs page
+  and each calculator, computed only on its own page or the home tiles; `HouseholdInputs.jsx` = the v2 form;
+  `Blocks.jsx` lays out results, headlines from `src/lib/blockHeadlines.js`), `src/services/` (Supabase).
 - Backend: `supabase/migrations/` (saved households with forced RLS; an audit log; households open only through
   `open_saved_household`), `supabase/tests/` (self-check SQL the user runs), `docs/backend-setup.md`, `docs/security.md`.
 - Tests: `tests/` mirrors `src/lib`, plus `components.smoke.test.jsx`.
@@ -120,12 +114,12 @@ npm run build     # static site -> dist/ (base './')
 ## How the model works (short; full detail in docs/history.md)
 - Today: income tax + payroll tax; the marginal rate is read before any Pre-tax deduction. Retirement income number =
   take-home pay − costs that end − savings, × lifestyle.
-- Roth vs. Pre-tax (public): same take-home cost both ways; over the IRS limit the excess goes to a taxable "side
+- Roth vs. Pre-tax: same take-home cost both ways; over the IRS limit the excess goes to a taxable "side
   account"; the effective rate is the extra tax Future Contributions' own 4% withdrawal causes on top of Social Security
   + Existing Accounts + the side account; taxable withdrawals split pro-rata into basis and gain.
-- Social Security (preview, v2): per person, estimated from earnings or from an entered PIA; the spousal top-up from
+- Social Security: per person, estimated from earnings or from an entered PIA; the spousal top-up from
   both.
-- Preview additions: inflation on fixed thresholds, 65+ deductions, tax saved across the whole contribution, a
+- Also: inflation on fixed thresholds, 65+ deductions, tax saved across the whole contribution, a
   retirement rate what-if, IRMAA (two-year lookback), RMDs, a projection from today to the end age with strategies and
   conversions, sustainable spending, the lifetime comparison (headline = sustainable spending).
 - Known gaps, planned additions and open questions: the plan doc.
@@ -133,10 +127,12 @@ npm run build     # static site -> dist/ (base './')
 ## Checking the UI
 Headless Chrome via the DevTools protocol (Node's built-in WebSocket; no puppeteer): launch with
 `--remote-debugging-port`, navigate, evaluate, `Page.captureScreenshot`. Windows: `C:/Program Files/Google/Chrome/
-Application/chrome.exe`. The public calculator stays mounted (hidden) behind other routes, so scope selectors (e.g.
-`.next-app`). Set React inputs with the native value setter + an input event.
+Application/chrome.exe`. The calculators stay mounted (hidden) behind the Docs and Visualization routes, so scope selectors
+(e.g. `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (k) — The switchover: the calculators are the site at `#/`, old links redirect, the old calculator's code
+  deleted, ARTICLE.md → `articles/roth.md` (updated to the Roth page). 759 tests (old-calculator tests removed).
 - 2026-10-08 (j) — Phase 1 steps (d) and (e): Start a new household, who can contribute, Compare a change, Use in the plan
   (trial), snapshot at the last retirement; EMTR terms; Docs articles (tax, pension, rates). 781 tests.
 - 2026-10-08 (i) — Phase 1 step (c): pension on SSA period life table (src/data/lifeTable.js); Docs rates article. 771 tests.
