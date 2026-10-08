@@ -1,9 +1,10 @@
 # CLAUDE.md — project notes for Claude Code
 
-Read this first in a new session. Keep it SHORT: it loads into every session. Current rules, structure, decisions
-and state only. Detail and history (why each feature is built the way it is, every past decision, the change log
-from 2026-09-19 to 2026-10-07) live in **`docs/history.md`**; search it before re-deciding something. Update this file
-when behavior, decisions or workflow change, and add a line to the change log at the bottom.
+Read this first in a new session. Keep it SHORT: it loads into every session. It holds only what a session needs to
+work: ground rules, commands, code map, the current step, and pointers. **Where things are written:** the round 2 plan
+doc (below) holds the plan, each step's status and every decision with its reason, the single source of truth;
+git history holds what changed in the code; `docs/history.md` is the frozen archive of round one (search it before
+re-deciding something old). Don't copy decisions into this file. Add one change-log line per step at the bottom.
 
 ## What this is
 Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). Two parts on one site:
@@ -23,14 +24,10 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095; a Claude Doc, edited only through the Claude
   Docs connector). **Keep it updated:** at the end of each step, and whenever the user decides something, write the
   status and decisions into it. If the connector is unavailable, say so and queue the text in
-  `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Phases: 0 inputs,
-  calculators and blocks (inputs page in blocks with people side by side, income/contribution/liability rows, linked
-  age/birthdate, biological sex for life tables, PIA input, one inputs card per calculator, collapse bar, blocks
-  everywhere, version 2 household); 1 calculator updates (tax page vs. TaxClarity, pension on life tables, Roth merge);
-  2 survivor years (+ engine additions, see the doc); 3 what resources allow you to spend (legacy goal); 4 Pre-retirement
-  funding; 5 Social Security; 6 year-by-year planner; 7 Roth vs. Pre-tax with conversions (blocks on the Roth page);
-  8 Monte Carlo; 9 guardrails; 10 household plans; 11 liabilities and debt pay-off. Throughout: a public Docs section,
-  a Netlify Forms feedback link. Later / advanced rounds are listed in the doc. Decisions are recorded in its tables.
+  `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
+  (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
+  include), the decision tables and the open questions.
+- **Current step:** phase 0, step (c): blocks everywhere and the collapse bar.
 - Round one's plan (finished): https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45.
 - Defaults decided: everything in TODAY's dollars (real return; brackets and limits indexed by law); fixed-dollar
   thresholds (SS taxability, NIIT, Additional Medicare, the senior deduction) shrink at the inflation input (2.5%) via
@@ -113,18 +110,12 @@ npm run build     # static site -> dist/ (base './')
 - Roth vs. Pre-tax (public): same take-home cost both ways; over the IRS limit the excess goes to a taxable "side
   account"; the effective rate is the extra tax Future Contributions' own 4% withdrawal causes on top of Social Security
   + Existing Accounts + the side account; taxable withdrawals split pro-rata into basis and gain.
-- Social Security (preview, v2): per person, "estimate from earnings" or an entered PIA (monthly, at full retirement age);
-  the spousal top-up is worked out from both PIAs either way. A v1 "known annual benefit" converts to the PIA that
-  gives it at its claiming age (decided 2026-10-07; a couple can gain a top-up v1 never gave).
+- Social Security (preview, v2): per person, estimated from earnings or from an entered PIA; the spousal top-up from
+  both.
 - Preview additions: inflation on fixed thresholds, 65+ deductions, tax saved across the whole contribution, a
   retirement rate what-if, IRMAA (two-year lookback), RMDs, a projection from today to the end age with strategies and
   conversions, sustainable spending, the lifetime comparison (headline = sustainable spending).
-- Known gaps (planned or noted in the round 2 doc): tax drag on taxable accounts, employer contributions, Roth IRA
-  income limits and the high-earner Roth catch-up rule, QBI, survivor years, separate pre/post-retirement returns,
-  early-withdrawal penalties, tax-exempt interest, QCDs, state tax (out of scope).
-- Open (2026-10-07): the version 2 household allows one contribution type (Roth or Pre-tax) and one account type per
-  person; a split (e.g. Roth 401(k) + Pre-tax IRA) is a validation error, and taxable contribution rows are left out
-  of the Roth comparison. To be modelled fully later (open item in the plan doc, after the third decision set).
+- Known gaps, planned additions and open questions: the plan doc.
 
 ## Checking the UI
 Headless Chrome via the DevTools protocol (Node's built-in WebSocket; no puppeteer): launch with
@@ -132,28 +123,9 @@ Headless Chrome via the DevTools protocol (Node's built-in WebSocket; no puppete
 Application/chrome.exe`. The public calculator stays mounted (hidden) behind other routes, so scope selectors (e.g.
 `.next-app`). Set React inputs with the native value setter + an input event.
 
-## Change log (recent; older entries in docs/history.md)
-- 2026-10-08 (b) — Round 2 phase 0, step (b) done (local, unpushed): the inputs page `#/next/inputs` (every section its
-  own card; people side by side; income, contribution, account and debt rows; linked age/birthdate; sex; plan-to
-  age; PIA); each calculator page has ONE inputs card with only what it reads (+ "All inputs" link); the homepage
-  shows the household in brief; saves and links are v2; the old v1 form is removed. Chosen (to confirm): sex and
-  plan-to age show on the inputs page only until a calculator reads them; a debt's rate is typed as a percent.
-  Next: step (c), blocks everywhere and the collapse bar. 709 tests.
-- 2026-10-08 — Round 2 phase 0, step (a) done (local, unpushed): v1 results pinned for 11 example households; v2
-  form values; v2 values → household object; Social Security from an entered PIA; v1 → v2 conversion; saved
-  households and share links in v2 (`?hh=2&v=<base64url JSON>`, same allow-list); the preview computes through v2.
-  Results unchanged except the decided Social Security change. Decided: debt payments that end stay a spending field
-  (liabilities are separate rows); ages or birthdates, a birthdate giving the exact birth year (calculators use the age
-  reached this calendar year); income rows' ages include both ends; the tax calculator's other income converts to
-  rows for this year only; one contribution type per person for now (open item). Next: step (b), the inputs page and
-  per-calculator cards (the form moves to v2; saving and links switch to v2). 704 tests.
-- 2026-10-07 (i) — Decided: the new version replaces the public calculator at the end of round 2's phase 1 (switchover
-  steps in the plan doc). No code change. 627 tests.
-- 2026-10-07 (h) — Code and efficiency pass (one commit each): LF line endings; tests capped at 4 workers; ESLint
-  (`npm run lint`) and its fixes; one tax engine (`calculateRetirementTax` wraps `calculateYearTax`, public numbers
-  unchanged); the annual-update registry, reminder test and checklist; `skipBlend` and per-page computing in the
-  preview; lazy-loaded pages (main bundle 509 kB → 314 kB). CLAUDE.md slimmed; the full old file is
-  `docs/history.md`. 627 tests.
-- 2026-10-07 (g) — Round 2 plan reworked with the user's answers; Netlify ignore rule. 619 tests.
-- 2026-10-07 (e) — Medicare IRMAA in the preview (projection, tax and conversion pages). 619 tests.
-- 2026-10-07 (d) — Saved households on every preview calculator page, with an "Unsaved changes" marker. 603 tests.
+## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (c) — Plan doc caught up (queue written, "How the plan fits together" added); this file trimmed to pointers.
+- 2026-10-08 (b) — Phase 0 step (b): inputs page, one inputs card per calculator, saves and links in v2. 709 tests.
+- 2026-10-08 (a) — Phase 0 step (a): the v2 household, conversion from v1, v1 results pinned. 704 tests.
+- 2026-10-07 — Code pass (LF, ESLint, one tax engine, annual-update registry, lazy pages), IRMAA, saved households on
+  every page, the switchover decided, the round 2 plan reworked. 627 tests.
