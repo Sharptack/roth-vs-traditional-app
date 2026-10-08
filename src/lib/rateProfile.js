@@ -23,32 +23,36 @@ import { irmaaFromThisYear } from './irmaa.js';
 export const PROFILE_SOURCES = ['ordinaryIncome', 'preferentialIncome'];
 const DEFAULT_STEPS = 200;
 
-// params with every income source (and Pre-tax deferrals, which go with the pay) times t.
+// params with every income source times t. Pre-tax deferrals stay as they are (a set amount),
+// but never more than the pay they come out of.
 function scaled(params, t) {
   const income = Object.fromEntries(Object.entries(params.income ?? {}).map(([k, v]) => [k, (v ?? 0) * t]));
   const people = (params.people ?? []).map((p) => ({ ...p, wages: (p.wages ?? 0) * t, selfEmploymentIncome: (p.selfEmploymentIncome ?? 0) * t }));
-  return { ...params, income, people, pretaxDeferrals: (params.pretaxDeferrals ?? 0) * t };
+  const earned = people.reduce((a, p) => a + p.wages + p.selfEmploymentIncome, 0);
+  return { ...params, income, people, pretaxDeferrals: Math.min(params.pretaxDeferrals ?? 0, earned) };
 }
 
 const plus = (params, source, x) => ({ ...params, income: { ...params.income, [source]: (params.income?.[source] ?? 0) + x } });
 
-// The thresholds the source climbs through, and where it stands on them.
+// The thresholds the source climbs through, and where it stands on them. sheltered: still under
+// the deductions (no taxable income yet), which counts as a bracket of its own.
 function ladder(params, r, source) {
   if (source === 'preferentialIncome') {
     const cg = getYearData(CAPITAL_GAINS_BRACKETS, params.year).data[params.filingStatus];
-    return { tops: cg.map((b) => b.upTo), at: (x) => x.lines.taxableIncome, now: r.lines.taxableIncome };
+    return { tops: cg.map((b) => b.upTo), at: (x) => x.lines.taxableIncome, now: r.lines.taxableIncome, sheltered: r.lines.agi <= r.lines.deductions };
   }
   const brackets = getBrackets(params.filingStatus, params.year);
-  return { tops: brackets.map((b) => b.upTo), at: (x) => x.lines.ordinaryTaxableIncome, now: r.lines.ordinaryTaxableIncome };
+  return { tops: brackets.map((b) => b.upTo), at: (x) => x.lines.ordinaryTaxableIncome, now: r.lines.ordinaryTaxableIncome, sheltered: r.lines.ordinaryGross <= r.lines.deductions };
 }
 
-// How much more of `source` takes the household through the next two brackets (or, past the top
-// bracket, half as much again as today, at least $100,000).
+// How much more of `source` takes the household through the next two brackets above today's (or,
+// past the top bracket, half as much again as today, at least $100,000). Under the deductions,
+// the next two are the first two brackets.
 export function extraThroughTwoBrackets(params, source = 'ordinaryIncome') {
   const r = calculateYearTaxTotals(params);
-  const { tops, at, now } = ladder(params, r, source);
+  const { tops, at, now, sheltered } = ladder(params, r, source);
   const i = tops.findIndex((top) => now < top);
-  const target = tops[Math.min(i + 1, tops.length - 1)];
+  const target = tops[Math.min(sheltered ? 1 : i + 2, tops.length - 1)];
   if (!Number.isFinite(target)) return Math.max(100000, r.lines.grossIncome * 0.5);
   // Taxable income only grows with more income: double, then halve, in whole dollars, to the
   // smallest amount that reaches the target.

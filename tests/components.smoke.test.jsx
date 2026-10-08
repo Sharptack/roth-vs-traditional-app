@@ -1072,7 +1072,9 @@ describe('NextApp (#/next preview)', () => {
     expect(roth).not.toMatch(/NaN|Infinity/);
     const tax = renderToStaticMarkup(<NextApp initialPage="tax" />);
     expect(tax).toContain('Tax rates this year');
-    expect(tax).toContain('Filling up the brackets');
+    expect(tax).toContain('Rates as income rises');
+    expect(tax).toContain('class="rate-buckets"');
+    expect(tax).toContain('Effective rate');
     expect(tax).toContain('>The calculation<');
     expect(firstTitle(tax)).toBe('Income');
     expect(tax).toContain('+ Add other income types');

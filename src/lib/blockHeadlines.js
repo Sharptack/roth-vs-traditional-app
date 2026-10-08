@@ -21,7 +21,7 @@ export function taxHeadlines(t) {
   return {
     rates: taxTile(t).headline,
     others: t.others.length > 0 ? `${rateRange(t.others.map((o) => o.incomeTax))} on the next $100` : '',
-    brackets: `Up to ${bracketLine(t.bar)}`,
+    buckets: `${formatPercent(t.result.bracketRoom.ordinary.rate, 0)} bracket, ${$(t.result.bracketRoom.ordinary.room)} of room`,
     irmaa: !i || i.enrolled === 0 ? '' : i.tier === 0 ? `No surcharge in ${i.premiumYear}` : `Tier ${i.tier} of 5: ${$(i.total)} in ${i.premiumYear}`,
     calculation: `${$(t.result.incomeTax)} federal income tax`,
   };

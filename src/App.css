@@ -2154,3 +2154,40 @@ th.win .th-sub {
   color: var(--accent);
   cursor: pointer;
 }
+
+/* the tax page's two buckets (RateBuckets.jsx) */
+.rate-buckets {
+  margin: 0;
+}
+
+.rate-buckets svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.rate-buckets-switch {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rb-head { font-size: 15px; font-weight: 700; fill: var(--text); }
+.rb-sub { font-size: 12px; fill: var(--dim); }
+.rb-eff { fill: var(--series-2); }
+.rb-tick { font-size: 15px; font-weight: 600; fill: var(--text); }
+.rb-today-text { font-weight: 800; }
+.rb-label { font-size: 13px; fill: var(--text); }
+.rb-label.rb-eff { fill: var(--series-2); font-weight: 600; }
+.rb-dim { fill: var(--dim); }
+.rb-strong { font-weight: 700; }
+.rb-marginal { fill: var(--series-1); }
+.rb-effective { fill: var(--series-2); }
+.rb-above { opacity: 0.35; }
+.rb-sheltered { fill: var(--line); }
+.rb-wall { fill: none; stroke: var(--text); stroke-width: 1.5; }
+.rb-axis { stroke: var(--dim); stroke-width: 1; }
+.rb-today { stroke: var(--text); stroke-width: 1.5; }
+.rb-room { fill: none; stroke: var(--text); stroke-width: 1.5; }
+.rb-cliff { stroke: #c62828; stroke-width: 2; }
+.rb-cliff-text { fill: #c62828; font-weight: 600; }

@@ -1,9 +1,11 @@
 // The tax calculator's results (roadmap phase 2), as blocks: marginal and effective rates, the other
 // sources' marginal rates, the "fill up the bracket" bar, IRMAA, and the full calculation. Renders
 // lib/taxCalculator.js's taxCalculatorResult; no math of its own.
+import { useMemo } from 'react';
 import { taxHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
 import Blocks from './Blocks.jsx';
+import RateBuckets from './RateBuckets.jsx';
 
 const pct = (r) => formatPercent(r, 1);
 
@@ -121,7 +123,8 @@ export function BracketBar({ bar, caption }) {
 }
 
 export default function TaxResult({ tax }) {
-  const { result: r, marginal, others, rows, bar, irmaa: i } = tax;
+  const { result: r, marginal, others, rows, irmaa: i } = tax;
+  const ages = useMemo(() => (tax.params.people ?? []).map((p) => p.age).filter(Number.isFinite), [tax.params]);
   const hasPayroll = r.payrollTax > 0;
   const h = taxHeadlines(tax);
   return (
@@ -178,7 +181,13 @@ export default function TaxResult({ tax }) {
             </>
           ),
         },
-        { id: 'brackets', title: 'Filling up the brackets', summary: h.brackets, content: <BracketBar bar={bar} /> },
+        {
+          id: 'buckets',
+          title: 'Rates as income rises',
+          summary: h.buckets,
+          className: 'key-card',
+          content: <RateBuckets params={tax.params} irmaa={Boolean(i)} ages={ages} />,
+        },
         h.irmaa && {
           id: 'irmaa',
           title: `Medicare premiums in ${i.premiumYear}`,

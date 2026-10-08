@@ -83,6 +83,7 @@ export function taxCalculatorResult(params, { irmaa = false } = {}) {
   const lead = headlineSource(r.lines);
   const asRate = (source) => ({ source, label: SOURCE_LABELS[source], phrase: SOURCE_PHRASES[source], ...r.marginalRates[source] });
   return {
+    params, // for the rate buckets (rateProfile.js), which re-run the engine up the income scale
     result: r,
     rows,
     marginal: asRate(lead),

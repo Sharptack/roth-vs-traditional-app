@@ -6,15 +6,15 @@ describe('result block headlines', () => {
   it('the tax calculator', () => {
     const t = {
       marginal: { incomeTax: 0.22 },
-      result: { effectiveRate: 0.11, incomeTax: 10970 },
       others: [{ incomeTax: 0.22 }, { incomeTax: 0.15 }, { incomeTax: 0.22 }],
       bar: { currentRate: 0.22, room: 12345 },
+      result: { effectiveRate: 0.11, incomeTax: 10970, bracketRoom: { ordinary: { rate: 0.22, room: 12345 } } },
       irmaa: { enrolled: 1, tier: 2, total: 2000, premiumYear: 2028 },
     };
     expect(taxHeadlines(t)).toEqual({
       rates: '22.0% marginal · 11.0% effective',
       others: '15.0% to 22.0% on the next $100', // lowest 15%, highest 22%
-      brackets: 'Up to the 22.0% bracket, $12,345 of room',
+      buckets: '22% bracket, $12,345 of room',
       irmaa: 'Tier 2 of 5: $2,000 in 2028',
       calculation: '$10,970 federal income tax',
     });

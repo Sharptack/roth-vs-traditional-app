@@ -59,6 +59,8 @@ describe('rateProfile: the two buckets (2026, HAND CALC)', () => {
     // today taxable 83,900: 21,800 of room left in 22% (to 105,700); the next ordinary dollar 22%
     expect(w.now.room).toBe(21800);
     expect(w.now.nextRate).toBeCloseTo(0.22, 9);
+    // through the two brackets above today's 22%: 24% and 32%, to taxable 256,225: 256,225 − 83,900 = 172,325 more
+    expect(extraThroughTwoBrackets({ filingStatus: 'single', year: 2026, people: [{ wages: 100000 }] })).toBe(172325);
   });
 
   it('capital gains view: the 0% / 15% / 20% brackets on taxable income', () => {
@@ -70,5 +72,16 @@ describe('rateProfile: the two buckets (2026, HAND CALC)', () => {
     // y 70,000: 30,000 of gains, taxable 53,900: 15%
     expect(at(g, 70000).nextRate).toBeCloseTo(0.15, 9);
     expect(at(g, 70000).bracket).toBe(0.15);
+  });
+});
+
+describe('rateProfile: a Pre-tax 401(k) stays put as the pay is built up', () => {
+  it('the sheltered part is the standard deduction plus the deferral: 16,100 + 10,000 = 26,100', () => {
+    const w = rateProfile({ filingStatus: 'single', year: 2026, people: [{ wages: 100000 }], pretaxDeferrals: 10000 }, { step: 100 });
+    // y 26,000: taxable 0 -> sheltered; y 26,200: taxable 100 -> 10%
+    expect(w.rows.find((r) => r.income === 26000).sheltered).toBe(true);
+    expect(w.rows.find((r) => r.income === 26200).nextRate).toBeCloseTo(0.1, 9);
+    // y 8,000: the deferral can't be more than the pay (8,000), still sheltered
+    expect(w.rows.find((r) => r.income === 8000).sheltered).toBe(true);
   });
 });
