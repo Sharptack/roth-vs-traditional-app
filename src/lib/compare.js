@@ -289,8 +289,9 @@ export function compareRothVsTraditional(inputs) {
       : splitAtContributionLimit(savings, accountType, year, currentAge).toAccount;
   // Today's income tax after these above-the-line adjustments. With the preview option
   // qualifiedBusinessIncome, 1099 earnings (less half the self-employment tax) also get the QBI
-  // deduction (qbi.js, basic rule), and the marginal rate is measured on the next $100, since a
-  // deduction capped at 20% of taxable income shrinks the tax on each extra dollar.
+  // deduction (qbi.js, basic rule). The marginal rate stays the bracket of the last dollar (the
+  // comparison's "marginal today"); the tax saved across the whole contribution (option
+  // taxSavedAcrossContribution) counts the QBI deduction and the credit through the real tax.
   const earnersSE = inputs.earners ? inputs.earners.reduce((acc, e) => acc + (e.selfEmploymentIncome ?? 0), 0) : selfEmploymentIncome;
   const qbi = inputs.qualifiedBusinessIncome ? Math.max(0, earnersSE - fica.selfEmployment.deduction) : 0;
   // Itemized deductions beyond the standard deduction come off like an adjustment.
@@ -303,17 +304,12 @@ export function compareRothVsTraditional(inputs) {
     hasCredits
       ? childTaxCredit({ ...credits, magi: grossIncome - shown, regularTax, earnedIncome: grossIncome - fica.selfEmployment.deduction, filingStatus, year }).total
       : 0;
-  const probe = hasCredits ? 1000 : 100;
   const taxAfter = (shown) => {
     const adjustments = shown + itemizedExtra;
     const plain = { ...calculateTaxFromGross(grossIncome, filingStatus, year, adjustments), adjustments: shown };
     if (!(qbi > 0) && !hasCredits) return plain;
     const deduction = (adj) =>
       qbi > 0 ? qbiDeduction({ qbi, taxableIncome: Math.max(0, grossIncome - adj - plain.standardDeduction), filingStatus, year }).deduction : 0;
-    const taxOf = (s) => {
-      const t = calculateTaxFromGross(grossIncome, filingStatus, year, s + itemizedExtra + deduction(s + itemizedExtra)).tax;
-      return t - creditOn(s, t);
-    };
     const d = deduction(adjustments);
     const before = calculateTaxFromGross(grossIncome, filingStatus, year, adjustments + d);
     const credit = creditOn(shown, before.tax);
@@ -323,8 +319,6 @@ export function compareRothVsTraditional(inputs) {
       adjustments: shown,
       qbiDeduction: d,
       childTaxCredit: credit,
-      // measured over $1,000 with the credit (it phases out in $50 steps per $1,000), else $100
-      marginalRate: (taxOf(shown - probe) - (before.tax - credit)) / probe,
     };
   };
   const withContribution = taxAfter(fica.selfEmployment.deduction + pretaxDeduction);

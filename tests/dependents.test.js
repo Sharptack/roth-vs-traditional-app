@@ -33,8 +33,8 @@ describe('children and dependents', () => {
     const r = compareRothVsTraditional(householdToCompareInputs(h));
     expect(r.current.tax).toBeCloseTo(5640, 6);
     expect(r.retirementNeed.breakdown.childTaxCredit).toBe(4400);
-    // no phase-out here: the next $1,000 is taxed at the 12% bracket
-    expect(r.current.marginalRate).toBeCloseTo(0.12, 9);
+    // the marginal rate today stays the bracket: taxable 87,800 is in 12%
+    expect(r.current.marginalRate).toBe(0.12);
   });
 
   it('in the phase-out, the next $1,000 also loses $50 of credit: 24% + 5% = 29%', () => {

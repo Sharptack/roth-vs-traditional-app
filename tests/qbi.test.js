@@ -88,8 +88,7 @@ describe('the Roth comparison takes QBI on 1099 earnings (version 2 households)'
     expect(r.retirementNeed.breakdown.qbiDeduction).toBeCloseTo(15367.045, 4);
     expect(r.current.taxableIncome).toBeCloseTo(61468.18, 4);
     expect(r.current.tax).toBeCloseTo(8235.0, 2);
-    // $100 more income before deductions: QBI grows by $20 (the 20%-of-taxable-income cap binds),
-    // so $80 more is taxed at 22%: 17.6%
-    expect(r.current.marginalRate).toBeCloseTo(0.176, 6);
+    // the marginal rate today stays the bracket: taxable 61,468.18 is in 22%
+    expect(r.current.marginalRate).toBe(0.22);
   });
 });
