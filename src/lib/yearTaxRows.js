@@ -79,7 +79,7 @@ export function yearTaxRows(params, r) {
   add('taxableIncome', 'Taxable income (Form 1040 line 15)', L.taxableIncome, 'total');
 
   add('ordinaryHeading', 'Ordinary income tax', null, 'heading');
-  add('ordinaryTaxable', 'Ordinary taxable income (taxable income less gains and qualified dividends)', L.ordinaryTaxableIncome, 'line');
+  add('ordinaryTaxable', 'Taxable ordinary income after deductions (taxable income less gains and qualified dividends)', L.ordinaryTaxableIncome, 'line');
   bracketSlices(0, L.ordinaryTaxableIncome, getBrackets(filingStatus, year), rateShift).forEach((sl, i) =>
     add(`ordinary${i}`, `${pct(sl.rate)} on ${Math.round(sl.amount).toLocaleString('en-US')}`, sl.tax, 'bracket', sl),
   );
