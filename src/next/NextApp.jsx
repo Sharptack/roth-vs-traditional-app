@@ -40,6 +40,8 @@ import { strategyById } from '../lib/strategies.js';
 import { useCloud } from './useCloud.js';
 import AccountBar from './AccountBar.jsx';
 import SavedHouseholds from './SavedHouseholds.jsx';
+import ContributionNotes from './ContributionNotes.jsx';
+import { contributionNotes } from '../lib/contributionRules.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -153,6 +155,8 @@ export default function NextApp({ initialPage, client }) {
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
   // The lifetime Roth vs. Pre-tax comparison (phase 6): only on the Roth page (two projections and
   // two sustainable-spending searches), a beat behind the inputs like the projection.
+  // Who can contribute to what (the Roth page only).
+  const notes = useMemo(() => (page === 'roth' ? contributionNotes(h) : []), [h, page]);
   const lifetime = useMemo(() => {
     if (page !== 'roth' || !deferredRoth.result.valid) return null;
     const own = deferredRoth.household.calculators?.projection ?? {};
@@ -375,6 +379,7 @@ export default function NextApp({ initialPage, client }) {
             <div className="results-column">
               {calculator.id === 'roth' && (
                 <>
+                  <ContributionNotes notes={notes} />
                   <ResultsSummary result={roth.result} showBlend />
                   <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} />
                 </>

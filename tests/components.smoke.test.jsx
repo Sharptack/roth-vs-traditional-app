@@ -1318,6 +1318,16 @@ describe('Docs (#/docs)', () => {
   });
 });
 
+describe('Who can contribute (the Roth page)', () => {
+  it('lists the notes, and shows nothing without any', async () => {
+    const { default: ContributionNotes } = await import('../src/next/ContributionNotes.jsx');
+    expect(renderToStaticMarkup(<ContributionNotes notes={[]} />)).toBe('');
+    const html = renderToStaticMarkup(<ContributionNotes notes={[{ owner: 'p1', kind: 'rothIra', status: 'none', message: 'No Roth IRA.' }]} />);
+    expect(html).toContain('Who can contribute');
+    expect(html).toContain('<li>No Roth IRA.</li>');
+  });
+});
+
 describe('Send feedback', () => {
   it('is on every page, closed until clicked', async () => {
     const html = renderToStaticMarkup(<App />);

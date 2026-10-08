@@ -2206,3 +2206,13 @@ th.win .th-sub {
   grid-column: 1 / -1;
   margin: 0;
 }
+
+.contribution-notes h2 {
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+
+.contribution-notes ul {
+  margin: 0;
+  padding-left: 18px;
+}
