@@ -1107,6 +1107,8 @@ describe('NextApp (#/next preview)', () => {
     expect(pen).toContain('rate of return');
     expect(pen).toContain('How long you live decides it');
     expect(pen).toContain('Lump sum offered');
+    expect(pen).toContain('href="#/docs/pension"');
+    expect(tax).toContain('href="#/docs/tax"');
     expect(firstTitle(pen)).toBe('Pension offer');
     expect(pen).not.toContain('Expected retirement lifestyle');
     expect(pen).not.toMatch(/NaN|Infinity/);

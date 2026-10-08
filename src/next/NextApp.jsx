@@ -90,6 +90,7 @@ export const CALCULATORS = [
     title: 'Tax calculator',
     blurb: 'This year’s federal tax: the marginal rate, the effective marginal rate (EMTR), the average tax rate, and the room left in each bracket.',
     ownTitle: 'Tax calculator inputs',
+    article: 'tax',
   },
   {
     id: 'projection',
@@ -108,6 +109,7 @@ export const CALCULATORS = [
     title: 'Pension: lump sum or monthly',
     blurb: 'The return the lump sum would have to earn to match the monthly benefit.',
     ownTitle: 'Pension inputs',
+    article: 'pension',
   },
 ];
 
@@ -350,6 +352,11 @@ export default function NextApp({ initialPage, client }) {
             </p>
             <h1>{calculator.title} (preview)</h1>
             <p>{calculator.blurb}</p>
+            {calculator.article && (
+              <p className="header-links">
+                <a href={docsHash(calculator.article)}>How this calculator works &rarr;</a>
+              </p>
+            )}
             {calculator.id === 'roth' && Number.isFinite(roth.household.people[0].birthYear) && (
               <p className="header-links">
                 RMDs start at {rmdStartAge(roth.household.people[0].birthYear)}.{' '}

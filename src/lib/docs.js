@@ -16,6 +16,16 @@ export const DOCS_ARTICLES = [
     blurb: 'Every input on the inputs page: what it means, which calculators read it, and how saving and sharing work.',
   },
   {
+    slug: 'tax',
+    title: 'The tax calculator',
+    blurb: 'This year’s tax line by line, the three rates, and the two buckets: what each shows and how it is worked out.',
+  },
+  {
+    slug: 'pension',
+    title: 'The pension calculator',
+    blurb: 'Lump sum or monthly: the expected return on life expectancy, survivor benefits, and how long you live.',
+  },
+  {
     slug: 'rates',
     title: 'Tax rates: marginal, average and effective marginal',
     blurb: 'The marginal rate, the average tax rate and the effective marginal rate (EMTR): what each one means.',
