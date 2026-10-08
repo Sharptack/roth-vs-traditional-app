@@ -83,7 +83,9 @@ export function yearTaxRows(params, r) {
   bracketSlices(0, L.ordinaryTaxableIncome, getBrackets(filingStatus, year), rateShift).forEach((sl, i) =>
     add(`ordinary${i}`, `${pct(sl.rate)} on ${Math.round(sl.amount).toLocaleString('en-US')}`, sl.tax, 'bracket', sl),
   );
-  add('ordinaryTax', 'Ordinary income tax', r.ordinaryTax, 'total');
+  // A subtotal only when capital-gains tax, NIIT or a credit sits between it and federal income tax;
+  // otherwise it would repeat the federal income tax line.
+  if (L.preferentialIncome > 0 || r.niit > 0 || nonZero(L.childTaxCredit)) add('ordinaryTax', 'Ordinary income tax', r.ordinaryTax, 'total');
 
   if (L.preferentialIncome > 0) {
     add('gainsHeading', 'Capital-gains tax', null, 'heading');

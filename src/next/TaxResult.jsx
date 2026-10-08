@@ -176,7 +176,7 @@ export default function TaxResult({ tax }) {
         },
         {
           id: 'buckets',
-          title: 'Rates as income rises',
+          title: 'Tax bracket visual',
           summary: h.buckets,
           content: <RateBuckets params={tax.params} irmaa={Boolean(i)} ages={ages} />,
         },

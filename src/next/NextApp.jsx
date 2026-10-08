@@ -12,7 +12,7 @@
 // CALCULATOR_INPUTS), editing the same household, and a link to the inputs page.
 // State is its own; the current calculator's inputs are not shared or touched.
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import ResultsSummary from '../components/ResultsSummary.jsx';
+import ResultsSummary, { RothDisclaimer } from '../components/ResultsSummary.jsx';
 import { compareRothVsTraditional } from '../lib/compare.js';
 import { householdToCompareInputs } from '../lib/household.js';
 import { toHouseholdV2, validateHouseholdV2 } from '../lib/householdV2.js';
@@ -426,8 +426,9 @@ export default function NextApp({ initialPage, client }) {
                   {!comparing && !locked && (
                     <UseInPlan choice={choice} onUse={() => setValues((v) => applyContributionSwitch(v, contributionSwitch(v, h, roth.result)))} />
                   )}
-                  <ResultsSummary result={roth.result} showBlend />
+                  <ResultsSummary result={roth.result} showBlend disclaimer={false} />
                   <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} />
+                  <RothDisclaimer dataYear={roth.result.dataYear} />
                 </>
               )}
               {calculator.id === 'tax' && <TaxResult tax={tax} />}

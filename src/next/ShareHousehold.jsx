@@ -37,7 +37,7 @@ export default function ShareHousehold({ values, household, getTiles }) {
         Copy link to this household
       </button>
       <label className="checkbox">
-        <input type="checkbox" checked={viewOnly} onChange={(e) => setViewOnly(e.target.checked)} /> View only
+        <input type="checkbox" checked={viewOnly} onChange={(e) => setViewOnly(e.target.checked)} /> Link opens view-only
       </label>
       {household && getTiles && (
         <button type="button" className="link-button share-summary" onClick={() => copy('summary')}>

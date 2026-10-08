@@ -1170,7 +1170,18 @@ const BLEND_CARD = { id: 'blend', headingId: 'sec-blend', title: 'Splitting your
 const cardsFor = (showBlend) =>
   showBlend ? RESULT_CARDS.flatMap((card) => (card.id === 'tradeoff' ? [card, BLEND_CARD] : [card])) : RESULT_CARDS;
 
-export default function ResultsSummary({ result, showBlend = false }) {
+// The page's closing line. The calculators page puts it under everything on the Roth page.
+export function RothDisclaimer({ dataYear }) {
+  return (
+    <p className="disclaimer">
+      Estimates only — not tax or financial advice. Based on {dataYear} federal tax rules,
+      with no state tax, no inflation, and a simplified proportional withdrawal from every
+      account. Results are in today&rsquo;s dollars.
+    </p>
+  );
+}
+
+export default function ResultsSummary({ result, showBlend = false, disclaimer = true }) {
   const cards = cardsFor(showBlend);
   // Every card starts open; closing one keeps its dropdowns as they were (the body is hidden, not removed).
   const [open, setOpen] = useState(() => new Set(cards.map((card) => card.id)));
@@ -1215,11 +1226,7 @@ export default function ResultsSummary({ result, showBlend = false }) {
           <Body result={result} />
         </Collapsible>
       ))}
-      <p className="disclaimer">
-        Estimates only — not tax or financial advice. Based on {result.dataYear} federal tax rules,
-        with no state tax, no inflation, and a simplified proportional withdrawal from every
-        account. Results are in today&rsquo;s dollars.
-      </p>
+      {disclaimer && <RothDisclaimer dataYear={result.dataYear} />}
     </div>
   );
 }

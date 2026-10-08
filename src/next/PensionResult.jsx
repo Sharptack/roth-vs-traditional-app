@@ -65,7 +65,7 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
           <table className="compare-table strategy-table">
             <thead>
               <tr>
-                <th scope="col">Payments to age</th>
+                <th scope="col">If payments stop at age</th>
                 <th scope="col">Return a year</th>
               </tr>
             </thead>

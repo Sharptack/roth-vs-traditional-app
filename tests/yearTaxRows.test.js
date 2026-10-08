@@ -29,6 +29,16 @@ describe('yearTaxRows (2026, HAND CALC)', () => {
     expect(get('totalTax').value).toBeCloseTo(65913, 6);
   });
 
+  it('the ordinary subtotal shows only when something sits between it and federal income tax', () => {
+    // wages 60,000 single: taxable 60,000 - 16,100 = 43,900; 1,240 + 12% x 31,500 (3,780) = 5,020
+    const wagesOnly = rowsFor({ filingStatus: 'single', year: Y, people: [{ wages: 60000 }] });
+    expect(wagesOnly.get('ordinaryTax')).toBeUndefined();
+    expect(wagesOnly.get('incomeTax').value).toBeCloseTo(5020, 6);
+    // with gains, ordinary and federal income tax differ, so both lines stay
+    const withGains = rowsFor({ filingStatus: 'single', year: Y, people: [{ wages: 60000 }], income: { preferentialIncome: 10000 } });
+    expect(withGains.get('ordinaryTax').value).toBeCloseTo(5020, 6);
+  });
+
   it('gains split across the 0% and 15% brackets', () => {
     // pension 40,000 -> ordinary taxable 23,900; gains 40,000 stack 23,900 -> 63,900
     // 0% on 23,900 -> 49,450 (25,550), 15% on 49,450 -> 63,900 (14,450 -> 2,167.50)
