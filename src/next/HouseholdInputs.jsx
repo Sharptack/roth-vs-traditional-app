@@ -187,7 +187,7 @@ export default function HouseholdInputs({
             {personFields.has('sex') && (
               <SelectInput
                 label="Biological sex"
-                hint="Used only for life expectancy."
+                hint="Used only for life expectancy (SSA's period life table): the pension calculator, and from phase 2 the plan."
                 value={p.sex}
                 onChange={setPerson(p.id, 'sex')}
                 options={SEX_OPTIONS}
@@ -600,10 +600,7 @@ export default function HouseholdInputs({
         <>
           <CurrencyInput label="Lump sum offered" value={p.lumpSum} onChange={set('lumpSum')} />
           <CurrencyInput label="Monthly benefit" value={p.monthly} onChange={set('monthly')} />
-          <div className="field-row">
-            <AgeInput label="Payments start at age" value={p.startAge} onChange={set('startAge')} />
-            <AgeInput label="Payments to age" value={p.endAge} onChange={set('endAge')} />
-          </div>
+          <AgeInput label="Payments start at age" value={p.startAge} onChange={set('startAge')} />
           <SelectInput
             label="Cost-of-living increase each year"
             value={p.cola}
@@ -624,9 +621,6 @@ export default function HouseholdInputs({
                   { value: '1', label: '100%' },
                 ]}
               />
-              {p.survivorShare !== '0' && (
-                <AgeInput label="Survivor payments to your spouse's age" value={p.spouseEndAge} onChange={set('spouseEndAge')} />
-              )}
             </>
           )}
         </>

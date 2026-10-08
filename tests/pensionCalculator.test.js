@@ -80,9 +80,12 @@ describe('the pension calculator in the household', () => {
     // you 60, spouse 57; payments start at 65 (in 5 years) -> the spouse is 62 then
     const values = { ...PREVIEW_DEFAULT_VALUES, filingStatus: 'mfj', includeSpouse: 'yes', currentAge: '60', retirementAge: '65', spouseAge: '57', spouseRetirementAge: '65', penSurvivor: '0.5', penLumpSum: '120000', penMonthly: '1000', penEndAge: '75', penSpouseEndAge: '80' };
     const inputs = householdToPensionInputs(toHousehold(values, 2026));
-    expect(inputs).toEqual({ lumpSum: 120000, monthly: 1000, startAge: 65, cola: 0, survivorShare: 0.5, endAge: 75, spouseAgeAtStart: 62, spouseEndAge: 80 });
+    expect(inputs).toEqual({ lumpSum: 120000, monthly: 1000, startAge: 65, cola: 0, survivorShare: 0.5, endAge: 75, spouseAgeAtStart: 62, spouseEndAge: 80, sex: '', spouseSex: '' });
     // own 120 payments; the spouse is 72 at your 75 -> 8 more years = 96 payments of 500
     const r = pensionResult(inputs);
+    // and on life expectancy (the average of the two tables, no sex entered)
+    expect(r.expected.irr).toBeGreaterThan(-0.5);
+    expect(r.expected.lifeExpectancy).toBeGreaterThan(15);
     expect(r.months).toEqual({ own: 120, survivor: 96 });
     expect(r.totalPayments).toBe(168000);
     expect(pensionTile(r, inputs).headline).toMatch(/^\d+\.\d% a year$/);

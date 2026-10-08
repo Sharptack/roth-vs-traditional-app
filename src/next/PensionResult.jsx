@@ -1,5 +1,6 @@
 // The pension calculator's results: the return the lump sum would have to earn to match the
-// monthly benefit, against the household's own assumed return. Renders
+// monthly benefit for life (each payment counted by the chance of being alive for it, SSA's
+// period life table), against the household's own assumed return; and the same at fixed ages. Renders
 // lib/pensionCalculator.js's pensionResult; no math of its own.
 import { pensionHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
@@ -11,22 +12,26 @@ const age = (a) => (a === null ? 'never' : `${Math.floor(a)}${a % 1 > 0.001 ? ` 
 // nominalReturn: the household's assumed return with inflation added back (the pension's payments
 // are in the dollars of the day they're paid).
 export default function PensionResult({ pension: p, inputs, nominalReturn, realReturn, inflation }) {
-  const worth = p.presentValueAt(nominalReturn);
-  const better = p.irr !== null && p.irr > nominalReturn;
+  const e = p.expected;
+  const worth = e.presentValueAt(nominalReturn);
+  const better = e.irr !== null && e.irr > nominalReturn;
+  const table = (sex) => (sex === 'male' ? 'men' : sex === 'female' ? 'women' : 'men and women averaged');
+  const endAt = (age, years) => Math.round(age + years);
   const h = pensionHeadlines(p, inputs, nominalReturn);
   const rate = (
       <>
         <div className="hero">
-          <div className="hero-value">{p.irr === null ? 'None' : `${pct(p.irr)} a year`}</div>
+          <div className="hero-value">{e.irr === null ? 'None' : `${pct(e.irr)} a year`}</div>
           <div className="hero-sub">
-            What {$(inputs.lumpSum)} would have to earn, every year, to pay {$(inputs.monthly)} a month from {inputs.startAge} to{' '}
-            {inputs.endAge}
-            {p.months.survivor > 0 && <>, then {formatPercent(inputs.survivorShare, 0)} of it to a surviving spouse until {inputs.spouseEndAge}</>}.
+            What {$(inputs.lumpSum)} would have to earn, every year, to pay {$(inputs.monthly)} a month from {inputs.startAge} for
+            life
+            {e.spouseLifeExpectancy !== null && <>, then {formatPercent(inputs.survivorShare, 0)} of it to a surviving spouse for theirs</>}:
+            each payment counted by the chance of being alive to receive it.
           </div>
         </div>
         <p className="rate-lean">
           <strong>
-            {p.irr === null
+            {e.irr === null
               ? 'The payments never add up to the lump sum.'
               : better
                 ? 'The monthly benefit pays more than the lump sum is assumed to earn.'
@@ -38,9 +43,19 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
             <span>Assumed return ({formatPercent(realReturn, 0)} after {formatPercent(inflation, 1)} inflation)</span>
             <span>{pct(nominalReturn)}</span>
           </div>
-          <div className="calc-row"><span>The payments&rsquo; value today at that return</span><span>{$(worth)}</span></div>
+          <div className="calc-row"><span>The payments&rsquo; expected value today at that return</span><span>{$(worth)}</span></div>
           <div className="calc-row"><span>The lump sum offered</span><span>{$(inputs.lumpSum)}</span></div>
-          <div className="calc-row total"><span>Total of all payments</span><span>{$(p.totalPayments)}</span></div>
+          <div className="calc-row">
+            <span>Life expectancy at {inputs.startAge} ({table(inputs.sex)})</span>
+            <span>{e.lifeExpectancy.toFixed(1)} years, to about {endAt(inputs.startAge, e.lifeExpectancy)}</span>
+          </div>
+          {e.spouseLifeExpectancy !== null && (
+            <div className="calc-row">
+              <span>Your spouse&rsquo;s, from {inputs.spouseAgeAtStart} ({table(inputs.spouseSex)})</span>
+              <span>{e.spouseLifeExpectancy.toFixed(1)} years, to about {endAt(inputs.spouseAgeAtStart, e.spouseLifeExpectancy)}</span>
+            </div>
+          )}
+          <div className="calc-row total"><span>Expected payments in all</span><span>{$(e.expectedPayments)}</span></div>
           <div className="calc-row sub"><span>Payments add up to the lump sum at age</span><span>{age(p.breakEvenAge)}</span></div>
         </div>
       </>
@@ -64,8 +79,8 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
             </tbody>
           </table>
           <p className="hint">
-            {p.months.survivor > 0
-              ? 'Each row ends your own payments at that age; the survivor share then runs to your spouse’s end age.'
+            {e.spouseLifeExpectancy !== null
+              ? 'Each row ends your own payments at that age; the survivor share then runs to your spouse’s life expectancy.'
               : 'Each row ends the payments at that age.'}
           </p>
         </>
@@ -76,7 +91,7 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
         { id: 'irr', title: 'The pension’s rate of return', summary: h.irr, className: 'key-card', content: rate },
         p.byEndAge.length > 0 && { id: 'ages', title: 'How long you live decides it', summary: h.ages, content: ages },
       ]}
-      disclaimer="Estimates only — not tax or financial advice. Tax is left out: both are taxed alike (the lump sum rolled into a Pre-tax account, the pension as ordinary income). Not modeled: the plan’s own solvency and PBGC limits."
+      disclaimer="Estimates only — not tax or financial advice. Tax is left out: both are taxed alike (the lump sum rolled into a Pre-tax account, the pension as ordinary income). Life expectancy from SSA’s period life table. Not modeled: the plan’s own solvency and PBGC limits."
     />
   );
 }

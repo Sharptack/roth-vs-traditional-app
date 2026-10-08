@@ -36,13 +36,13 @@ describe('result block headlines', () => {
   });
 
   it('the pension calculator', () => {
-    const p = { irr: 0.054, byEndAge: [{ endAge: 80, irr: 0.01 }, { endAge: 95, irr: null }] };
+    const p = { irr: 0.06, expected: { irr: 0.054 }, byEndAge: [{ endAge: 80, irr: 0.01 }, { endAge: 95, irr: null }] };
     const inputs = { lumpSum: 300000, monthly: 1800, endAge: 90 };
     expect(pensionHeadlines(p, inputs, 0.1)).toEqual({
       irr: '5.4% a year vs. 10.0% assumed',
       ages: '1.0% to age 80, none to age 95',
     });
-    expect(pensionHeadlines({ ...p, irr: null, byEndAge: [] }, inputs, 0.1)).toEqual({ irr: 'No return vs. 10.0% assumed', ages: '' });
+    expect(pensionHeadlines({ ...p, expected: { irr: null }, byEndAge: [] }, inputs, 0.1)).toEqual({ irr: 'No return vs. 10.0% assumed', ages: '' });
   });
 
   it('the projection', () => {

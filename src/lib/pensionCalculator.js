@@ -9,7 +9,8 @@
 // age. Both options are taxed alike (the lump sum rolls into a Pre-tax account, the pension is
 // ordinary income), so tax is left out. Not modeled: the plan's own solvency, PBGC limits.
 import { parseNumber } from './formInputs.js';
-import { lifeExpectancy, survivalCurve } from './lifeTable.js';
+import { deathRates, lifeExpectancy, survivalCurve } from './lifeTable.js';
+import { LIFE_TABLE } from '../data/lifeTable.js';
 
 // The calculator's own form fields (stored in the household under calculators.pension).
 export const PENSION_DEFAULT_VALUES = {
@@ -59,8 +60,14 @@ const annual = (monthlyRate) => (monthlyRate === null ? null : (1 + monthlyRate)
 
 // -> { irr (a year), totalPayments, breakEvenAge (when payments received add up to the lump sum,
 //      no interest; null if never), presentValueAt(rate a year), byEndAge: [{ endAge, irr }] }
+//   expected: the same on life expectancy (pensionOnLifeTable, SSA's period life table, by each
+//     person's sex: inputs.sex, inputs.spouseSex; '' = the average of the two). With it, the
+//     byEndAge rows run a survivor share to the spouse's life expectancy.
 export function pensionResult(inputs) {
   const { lumpSum, startAge } = inputs;
+  const expected = pensionOnLifeTable(inputs, deathRates(LIFE_TABLE, inputs.sex ?? ''), deathRates(LIFE_TABLE, inputs.spouseSex ?? ''));
+  const spouseEndAge =
+    expected.spouseLifeExpectancy !== null ? inputs.spouseAgeAtStart + expected.spouseLifeExpectancy : inputs.spouseEndAge;
   const { payments, ownMonths, survivorMonths } = pensionPayments(inputs);
   const rate = annual(irr([-lumpSum, ...payments]));
   let sum = 0;
@@ -71,7 +78,7 @@ export function pensionResult(inputs) {
   };
   const byEndAge = [75, 80, 85, 90, 95, 100]
     .filter((age) => age > startAge)
-    .map((endAge) => ({ endAge, irr: annual(irr([-lumpSum, ...pensionPayments({ ...inputs, endAge }).payments])) }));
+    .map((endAge) => ({ endAge, irr: annual(irr([-lumpSum, ...pensionPayments({ ...inputs, endAge, spouseEndAge }).payments])) }));
   return {
     irr: rate,
     totalPayments: payments.reduce((s, p) => s + p, 0),
@@ -79,6 +86,7 @@ export function pensionResult(inputs) {
     breakEvenAge: breakEvenMonth < 0 ? null : startAge + (breakEvenMonth + 1) / 12,
     presentValueAt,
     byEndAge,
+    expected,
   };
 }
 
@@ -133,6 +141,8 @@ export function householdToPensionInputs(household) {
     endAge: own.endAge,
     spouseAgeAtStart: p2 ? household.year - p2.birthYear + yearsUntilStart : null,
     spouseEndAge: own.spouseEndAge,
+    sex: p1.sex ?? '',
+    spouseSex: p2 ? (p2.sex ?? '') : '',
   };
 }
 

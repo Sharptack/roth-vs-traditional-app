@@ -213,7 +213,7 @@ export const CALCULATOR_INPUTS = {
   },
   pension: {
     sections: ['pension', 'household', 'people', 'assumptions'],
-    fields: { people: ['age'], assumptions: ['returnRate', 'inflationRate'] },
+    fields: { people: ['age', 'sex'], assumptions: ['returnRate', 'inflationRate'] },
   },
 };
 

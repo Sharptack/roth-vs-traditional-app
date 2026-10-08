@@ -34,11 +34,13 @@ export function conversionTile(c) {
   };
 }
 
-// Pension: the return the lump sum would have to earn to match the monthly benefit.
+// Pension: the return the lump sum would have to earn to match the monthly benefit, on life
+// expectancy (each payment counted by the chance of being alive to receive it).
 export function pensionTile(p, inputs) {
+  const r = p.expected?.irr ?? null;
   return {
-    headline: p.irr === null ? 'No return' : `${formatPercent(p.irr)} a year`,
-    detail: `what ${formatCurrency(inputs.lumpSum)} must earn to match ${formatCurrency(inputs.monthly)} a month to age ${inputs.endAge}`,
+    headline: r === null ? 'No return' : `${formatPercent(r)} a year`,
+    detail: `what ${formatCurrency(inputs.lumpSum)} must earn to match ${formatCurrency(inputs.monthly)} a month for life`,
   };
 }
 
