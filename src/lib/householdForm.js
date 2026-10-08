@@ -10,7 +10,9 @@ import { STRATEGIES } from './strategies.js';
 
 export { accountRowsFromFlat } from './household.js';
 
-export const ACCOUNT_TYPE_LABELS = { pretax: 'Pre-tax', roth: 'Roth', taxable: 'Taxable' };
+import { ACCOUNT_TYPE_LABELS, accountsSummary } from './householdInputs.js';
+
+export { ACCOUNT_TYPE_LABELS, accountsSummary };
 
 const money = (text) => {
   const n = parseNumber(text);
@@ -29,16 +31,6 @@ export function newAccountRow(accounts) {
 function personSummary(income, incomeType, age, retirementAge) {
   const type = incomeType === '1099' ? ' (1099)' : incomeType === 'both' ? ' (W-2 + 1099)' : '';
   return `${money(income)}${type} · age ${age || '—'}, retires at ${retirementAge || '—'}`;
-}
-
-// Totals by type, for the Existing Accounts summary: "Pre-tax $100,000 · Roth $20,000".
-export function accountsSummary(accounts) {
-  const totals = {};
-  for (const a of accounts ?? []) totals[a.type] = (totals[a.type] ?? 0) + (blankIsZero(a.balance) || 0);
-  const parts = Object.keys(ACCOUNT_TYPE_LABELS)
-    .filter((t) => totals[t] > 0)
-    .map((t) => `${ACCOUNT_TYPE_LABELS[t]} ${formatCurrency(totals[t])}`);
-  return parts.length > 0 ? parts.join(' · ') : 'None';
 }
 
 export const HOUSEHOLD_SECTIONS = [

@@ -22,7 +22,8 @@
 //                                          // fromAge = from now, blank toAge = until the owner retires
 //   contributions: [ { id, owner, tax: 'pretax' | 'roth' | 'taxable', account: '401k' | 'ira', amount } ],
 //   accounts: [ { id, owner, type: 'pretax' | 'roth' | 'taxable', balance, basisShare } ],   // as version 1
-//   liabilities: [ { id, kind, balance, rate, payment } ],   // kind: LIABILITY_KINDS; payment monthly
+//   liabilities: [ { id, kind, balance, rate, payment } ],   // kind: LIABILITY_KINDS; rate: the annual
+//                                          // interest rate in percent, as typed (6.5); payment monthly
 //   spending: { debtPayments, otherExpenses, retirementLifestyle },   // the costs that end at retirement
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedBasis, retirementRateShift, medicareIrmaa },
 //   calculators: { projection: { endAge, heirTaxRate, strategy }, conversion: { amount },
