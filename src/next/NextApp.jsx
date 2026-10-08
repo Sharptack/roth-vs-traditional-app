@@ -83,7 +83,7 @@ export const CALCULATORS = [
   {
     id: 'tax',
     title: 'Tax calculator',
-    blurb: 'This year’s federal tax: marginal and effective rates, and the room left in each bracket.',
+    blurb: 'This year’s federal tax: the marginal, effective and average rates, and the room left in each bracket.',
     ownTitle: 'Tax calculator inputs',
   },
   {

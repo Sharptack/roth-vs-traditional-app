@@ -5,22 +5,30 @@
 import { useState } from 'react';
 import Collapsible, { toggleId } from '../components/Collapsible.jsx';
 
-// blocks: [{ id, title, summary, content, className, closed }] (falsy entries are skipped);
-//   closed: starts closed (long detail, like the full tax calculation).
+// blocks: [{ id, title, summary, content, className, closed, fixed }] (falsy entries are skipped);
+//   closed: starts closed (long detail, like the full tax calculation); fixed: always open, with no
+//   toggle (the headline figures a page leads with).
 // disclaimer: the line under the blocks.
 export default function Blocks({ blocks, disclaimer }) {
   const shown = blocks.filter(Boolean);
-  const [open, setOpen] = useState(() => new Set(shown.filter((b) => !b.closed).map((b) => b.id)));
-  const allOpen = shown.every((b) => open.has(b.id));
+  const toggled = shown.filter((b) => !b.fixed);
+  const [open, setOpen] = useState(() => new Set(toggled.filter((b) => !b.closed).map((b) => b.id)));
+  const allOpen = toggled.every((b) => open.has(b.id));
   return (
     <div className="results">
       <div className="results-head">
         <h2 className="sr-only">Results</h2>
-        <button type="button" className="link-button" onClick={() => setOpen(new Set(allOpen ? [] : shown.map((b) => b.id)))}>
+        <button type="button" className="link-button" onClick={() => setOpen(new Set(allOpen ? [] : toggled.map((b) => b.id)))}>
           {allOpen ? 'Collapse all results' : 'Expand all results'}
         </button>
       </div>
-      {shown.map((b) => (
+      {shown.map((b) =>
+        b.fixed ? (
+          <section key={b.id} className={`card ${b.className ?? ''}`} aria-labelledby={`block-${b.id}`}>
+            <h2 id={`block-${b.id}`}>{b.title}</h2>
+            {b.content}
+          </section>
+        ) : (
         <Collapsible
           key={b.id}
           headingId={`block-${b.id}`}
@@ -32,7 +40,8 @@ export default function Blocks({ blocks, disclaimer }) {
         >
           {b.content}
         </Collapsible>
-      ))}
+        ),
+      )}
       {disclaimer && <p className="disclaimer">{disclaimer}</p>}
     </div>
   );

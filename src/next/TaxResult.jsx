@@ -9,16 +9,17 @@ import RateBuckets from './RateBuckets.jsx';
 
 const pct = (r) => formatPercent(r, 1);
 
-// The rows, with each run of bracket rows folded into a "By bracket" dropdown.
+// The rows, with the ordinary brackets folded into a "By bracket" dropdown.
 function CalculationRows({ rows }) {
   const out = [];
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i].kind !== 'bracket') {
+    // Only the ordinary brackets fold away; the capital-gains rows (0%, 15%, 20%) stay in view.
+    if (rows[i].kind !== 'bracket' || !rows[i].key.startsWith('ordinary')) {
       out.push(<Row key={rows[i].key} row={rows[i]} />);
       continue;
     }
     const run = [];
-    while (i < rows.length && rows[i].kind === 'bracket') run.push(rows[i++]);
+    while (i < rows.length && rows[i].kind === 'bracket' && rows[i].key.startsWith('ordinary')) run.push(rows[i++]);
     i -= 1;
     out.push(
       <details key={`${run[0].key}-brackets`} className="details calc-brackets">
@@ -135,26 +136,42 @@ export default function TaxResult({ tax }) {
           title: 'Tax rates this year',
           summary: h.rates,
           className: 'key-card tax-result',
+          fixed: true,
           content: (
-            <div className="tax-rate-pair">
-              <div className="rate-pair-item highlight">
+            <div className="tax-rate-pair tax-rate-three">
+              <div className="rate-pair-item">
                 <div className="stat-label">Marginal rate</div>
+                <div className="stat-value">{formatPercent(r.bracketRoom.ordinary.rate, 0)}</div>
+                <div className="stat-sub">
+                  {r.lines.ordinaryGross <= r.lines.deductions
+                    ? 'Still under the deductions: no ordinary taxable income yet'
+                    : 'The tax bracket of the last dollar of ordinary income'}
+                </div>
+              </div>
+              <div className="rate-pair-item highlight">
+                <div className="stat-label">Effective rate</div>
                 <div className="stat-value">{pct(marginal.incomeTax)}</div>
                 <div className="stat-sub">
-                  Federal income tax on the next $100 of {marginal.phrase}
+                  The real federal income tax on the next $100 of {marginal.phrase}, with everything it sets off
                   {Math.abs(marginal.total - marginal.incomeTax) > 1e-9 && <>; {pct(marginal.total)} with payroll tax</>}
                 </div>
               </div>
               <div className="rate-pair-item">
-                <div className="stat-label">Effective rate</div>
+                <div className="stat-label">Average rate</div>
                 <div className="stat-value">{pct(r.effectiveRate)}</div>
                 <div className="stat-sub">
-                  {$(r.incomeTax)} income tax ÷ {$(r.lines.grossIncome)} gross income
+                  {$(r.incomeTax)} income tax ÷ {$(r.lines.grossIncome)} total income
                   {hasPayroll && <>; {pct(r.effectiveRateWithPayroll)} with {$(r.payrollTax)} payroll tax</>}
                 </div>
               </div>
             </div>
           ),
+        },
+        {
+          id: 'buckets',
+          title: 'Rates as income rises',
+          summary: h.buckets,
+          content: <RateBuckets params={tax.params} irmaa={Boolean(i)} ages={ages} />,
         },
         others.length > 0 && {
           id: 'others',
@@ -180,13 +197,6 @@ export default function TaxResult({ tax }) {
               </p>
             </>
           ),
-        },
-        {
-          id: 'buckets',
-          title: 'Rates as income rises',
-          summary: h.buckets,
-          className: 'key-card',
-          content: <RateBuckets params={tax.params} irmaa={Boolean(i)} ages={ages} />,
         },
         h.irmaa && {
           id: 'irmaa',

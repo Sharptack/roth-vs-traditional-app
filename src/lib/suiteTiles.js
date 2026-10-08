@@ -16,11 +16,13 @@ export function rothTile(result) {
   };
 }
 
-// Tax calculator: the marginal rate on the next dollar of the leading source, and the effective rate.
+// Tax calculator, in the preview's terms (decided 2026-10-08): the marginal rate is the bracket, the
+// effective rate the real tax on the next dollar of the leading source, the average rate total
+// income tax ÷ total income.
 export function taxTile(t) {
   return {
-    headline: `${formatPercent(t.marginal.incomeTax)} marginal · ${formatPercent(t.result.effectiveRate)} effective`,
-    detail: `${formatCurrency(t.result.incomeTax)} federal income tax this year`,
+    headline: `${formatPercent(t.result.bracketRoom.ordinary.rate, 0)} marginal · ${formatPercent(t.marginal.incomeTax)} effective`,
+    detail: `${formatPercent(t.result.effectiveRate)} average: ${formatCurrency(t.result.incomeTax)} federal income tax this year`,
   };
 }
 

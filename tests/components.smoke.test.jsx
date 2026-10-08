@@ -1047,7 +1047,8 @@ describe('NextApp (#/next preview)', () => {
     expect(html).toContain('Client household (preview)');
     expect(html).toContain('href="#/next/roth"');
     expect(html).toContain('href="#/next/tax"');
-    expect(html).toContain('22.0% marginal · 11.0% effective');
+    expect(html).toContain('22% marginal · 22.0% effective');
+    expect(html).toContain('11.0% average: $10,970 federal income tax this year');
     expect(html).not.toMatch(/NaN|Infinity/);
     // the homepage: the household in brief, with a link to the inputs page
     expect(html).toContain('href="#/next/inputs"');
@@ -1112,8 +1113,11 @@ describe('NextApp (#/next preview)', () => {
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
     // every calculator's results are blocks: collapsible cards with a headline, one Expand/Collapse all
     const blockCount = (page) => (page.match(/class="collapsible card collapsible-card/g) ?? []).length;
-    expect(blockCount(tax)).toBeGreaterThanOrEqual(4);
-    expect(tax).toContain('22.0% marginal · 11.0% effective</span>');
+    expect(blockCount(tax)).toBeGreaterThanOrEqual(3); // the rates sit in a fixed card above them
+    expect(tax).toContain('<h2 id="block-rates">Tax rates this year</h2>');
+    expect(tax).toContain('>Marginal rate<');
+    expect(tax).toContain('>Effective rate<');
+    expect(tax).toContain('>Average rate<');
     expect(blockCount(proj)).toBe(6);
     expect(proj).toMatch(/Peak \$[\d,]+ in \d{4}/);
     expect(blockCount(conv)).toBe(3);

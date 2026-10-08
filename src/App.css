@@ -2191,3 +2191,13 @@ th.win .th-sub {
 .rb-room { fill: none; stroke: var(--text); stroke-width: 1.5; }
 .rb-cliff { stroke: #c62828; stroke-width: 2; }
 .rb-cliff-text { fill: #c62828; font-weight: 600; }
+
+.tax-rate-pair.tax-rate-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 760px) {
+  .tax-rate-pair.tax-rate-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

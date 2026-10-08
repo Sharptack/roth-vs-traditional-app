@@ -12,7 +12,7 @@ describe('result block headlines', () => {
       irmaa: { enrolled: 1, tier: 2, total: 2000, premiumYear: 2028 },
     };
     expect(taxHeadlines(t)).toEqual({
-      rates: '22.0% marginal · 11.0% effective',
+      rates: '22% marginal · 22.0% effective',
       others: '15.0% to 22.0% on the next $100', // lowest 15%, highest 22%
       buckets: '22% bracket, $12,345 of room',
       irmaa: 'Tier 2 of 5: $2,000 in 2028',

@@ -31,9 +31,9 @@ const COLUMNS = [
   { key: 'payroll', label: 'Payroll tax', value: (r) => r.payrollTax },
   { key: 'magi', label: 'MAGI', value: (r) => r.magi },
   { key: 'irmaa', label: 'Medicare IRMAA', value: (r) => r.irmaa },
-  { key: 'effective', label: 'Effective rate', value: (r) => r.effectiveRate, format: (v) => formatPercent(v) },
-  { key: 'bracket', label: 'Bracket', value: (r) => r.ordinaryBracketRate, format: (v) => formatPercent(v, 0) },
-  { key: 'marginal', label: 'Next Pre-tax $', value: (r) => r.marginalPretaxRate, format: (v) => formatPercent(v) },
+  { key: 'bracket', label: 'Marginal rate (bracket)', value: (r) => r.ordinaryBracketRate, format: (v) => formatPercent(v, 0) },
+  { key: 'marginal', label: 'Effective rate (next Pre-tax $)', value: (r) => r.marginalPretaxRate, format: (v) => formatPercent(v) },
+  { key: 'effective', label: 'Average rate', value: (r) => r.effectiveRate, format: (v) => formatPercent(v) },
   { key: 'room', label: 'Bracket room', value: (r) => r.bracketRoom },
   { key: 'afterTax', label: 'After-tax income', value: (r) => r.afterTaxIncome, key1: true },
   { key: 'surplus', label: 'Reinvested', value: (r) => r.surplus },
@@ -165,7 +165,7 @@ export default function ProjectionResult({ view }) {
             </div>
           )}
           <div className="calc-row"><span>After-tax income in retirement, all years</span><span>{$(s.retirementAfterTaxIncome)}</span></div>
-          <div className="calc-row"><span>Average effective rate (income tax ÷ gross income)</span><span>{formatPercent(s.averageEffectiveRate)}</span></div>
+          <div className="calc-row"><span>Average rate (income tax ÷ gross income)</span><span>{formatPercent(s.averageEffectiveRate)}</span></div>
           <div className="calc-row"><span>Highest-tax year</span><span>{s.highestTaxYear.year}: {$(s.highestTaxYear.amount)}</span></div>
           <div className="calc-row"><span>Money lasts to</span><span>{s.runsOut ? `age ${s.moneyLastsTo}` : `${endAge} (the end age)`}</span></div>
           <div className="calc-row total"><span>Ending balance at {endAge}</span><span>{$(s.endingBalance.total)}</span></div>
