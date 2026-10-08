@@ -27,8 +27,8 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 1, step (b): the tax calculator as rows and the two-bucket rate chart (design in the plan
-  doc's decision tables). Step (a) (QBI, IRA rules) is done.
+- **Current step:** phase 1, step (c): the pension calculator on life tables. Steps (a) (QBI, IRA rules) and (b) (tax
+  rows, itemized deductions, the two-bucket chart) are done.
 - **Docs** (`#/docs`, public): one markdown article per feature in `articles/` (listed in `src/lib/docs.js`); each
   phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
   `index.html`; Netlify's form detection must be on).
@@ -53,7 +53,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 740 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 754 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -85,7 +85,8 @@ npm run build     # static site -> dist/ (base './')
   `thresholdScale`, `rateShift`, `calendarYear`, `qbi`; `calculateYearTaxTotals` = without the marginal probes) built from
   `taxCalculations`, `capitalGainsTax`, `ficaTax`, `socialSecurityTax`, `qbi.js` (the QBI deduction, basic rule);
   `retirementTaxStack.js` (`calculateRetirementTax`, a thin wrapper over the engine since 2026-10-07); `yearTaxRows.js`
-  and `taxBreakdown.js` (the calculation as rows); `iraRules.js` (Roth IRA limits, IRA deduction phase-out, Roth catch-up).
+  and `taxBreakdown.js` (the calculation as rows); `rateProfile.js` (the tax page's two buckets: bracket and next-dollar rate
+  up the income scale); `iraRules.js` (Roth IRA limits, IRA deduction phase-out, Roth catch-up).
   The preview turns QBI on through `household.assumptions.qualifiedBusinessIncome` (version 2 households).
 - `src/lib/` Roth comparison (public + preview): `compare.js` (orchestrator, every number on the Roth page; optional
   inputs `earners`, `contributors`, `retirementTaxRules`, `taxSavedAcrossContribution`, `skipBlend`), `sideAwareRates.js`
@@ -132,6 +133,7 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (g) — Phase 1 step (b): itemized deductions; tax rows rebuilt; the two buckets (rateProfile.js). 754 tests.
 - 2026-10-08 (f) — Phase 1 step (a): QBI deduction in the preview; Roth IRA / IRA-deduction / Roth catch-up rules. 740 tests.
 - 2026-10-08 (e) — Phase 0 done: the Docs section with the inputs article; Send feedback on every page. 724 tests.
 - 2026-10-08 (d) — Phase 0 step (c): results as blocks with headlines on every calculator; the collapse bar. 714 tests.
