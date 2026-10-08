@@ -215,3 +215,94 @@ export function setGroupField(values, group, field, value) {
   }
   return { ...values, [group]: { ...values[group], [field]: value } };
 }
+
+// ---- Cleaning values from outside (a saved household, a share link) ----
+//
+// Security: anything stored or linked is untrusted. cleanHouseholdValues rebuilds version 2 values
+// field by field from an allow-list: every value a short string, every choice one of its known
+// options (else the default), rows capped and renumbered, rows with an unknown type or owner
+// dropped, unknown keys never copied. -> values, or null when it isn't a version 2 household.
+export const MAX_ROWS = 50;
+const MAX_VALUE_LENGTH = 64;
+const str = (v, fallback = '') => (typeof v === 'string' ? v.slice(0, MAX_VALUE_LENGTH) : fallback);
+const oneOf = (v, options, fallback) => (options.includes(v) ? v : fallback);
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+// A group (spending, assumptions, a calculator's inputs): only the default's keys, as strings.
+function cleanGroup(raw, defaults) {
+  const src = isObject(raw) ? raw : {};
+  return Object.fromEntries(Object.keys(defaults).map((k) => [k, str(src[k], defaults[k])]));
+}
+
+function cleanPerson(raw, id) {
+  const d = newPerson(id);
+  const src = isObject(raw) ? raw : {};
+  const ss = isObject(src.socialSecurity) ? src.socialSecurity : {};
+  return {
+    id,
+    ageEntry: oneOf(src.ageEntry, ['age', 'birthdate'], 'age'),
+    age: str(src.age, d.age),
+    birthDate: str(src.birthDate),
+    sex: oneOf(src.sex, ['', 'male', 'female'], ''),
+    retirementAge: str(src.retirementAge, d.retirementAge),
+    planToAge: str(src.planToAge, d.planToAge),
+    socialSecurity: { mode: oneOf(ss.mode, SS_MODES, 'estimate'), pia: str(ss.pia), claimAge: str(ss.claimAge) },
+  };
+}
+
+// Each list's row: its choice fields with their options (a row with another value is dropped),
+// and its text fields.
+const ROW_RULES = {
+  incomes: {
+    choices: { owner: OWNERS, type: INCOME_TYPES },
+    optional: { treatment: INCOME_TREATMENTS },
+    text: ['amount', 'fromAge', 'toAge'],
+  },
+  contributions: { choices: { owner: OWNERS, tax: CONTRIBUTION_TAX_TYPES, account: CONTRIBUTION_ACCOUNTS }, text: ['amount'] },
+  accounts: { choices: { owner: OWNERS, type: ACCOUNT_TYPES }, text: ['balance', 'basisShare'] },
+  liabilities: { choices: { kind: LIABILITY_KINDS }, text: ['balance', 'rate', 'payment'] },
+};
+
+function cleanRows(raw, list) {
+  if (!Array.isArray(raw)) return [];
+  const { prefix, row: template } = ROW_TEMPLATES[list];
+  const rules = ROW_RULES[list];
+  return raw
+    .slice(0, MAX_ROWS)
+    .filter((r) => isObject(r) && Object.entries(rules.choices).every(([k, options]) => options.includes(r[k])))
+    .map((r, i) => {
+      const row = { id: `${prefix}${i + 1}` };
+      for (const k of Object.keys(template)) {
+        if (rules.choices[k]) row[k] = r[k];
+        else if (rules.optional?.[k]) row[k] = oneOf(r[k], rules.optional[k], template[k]);
+        else row[k] = str(r[k], template[k]);
+      }
+      return row;
+    });
+}
+
+export function cleanHouseholdValues(raw) {
+  if (!isObject(raw) || raw.version !== HOUSEHOLD_VALUES_VERSION) return null;
+  const D = DEFAULT_HOUSEHOLD_VALUES;
+  const rawPeople = Array.isArray(raw.people) ? raw.people.filter(isObject) : [];
+  const find = (id) => rawPeople.find((p) => p.id === id);
+  const people = [cleanPerson(find('p1'), 'p1'), ...(find('p2') ? [cleanPerson(find('p2'), 'p2')] : [])];
+  const accounts = cleanRows(raw.accounts, 'accounts');
+  const calculators = isObject(raw.calculators) ? raw.calculators : {};
+  return {
+    version: HOUSEHOLD_VALUES_VERSION,
+    filingStatus: oneOf(raw.filingStatus, ['single', 'mfj'], D.filingStatus),
+    includeSpouse: oneOf(raw.includeSpouse, ['yes', 'no'], D.includeSpouse),
+    people,
+    incomes: cleanRows(raw.incomes, 'incomes'),
+    contributions: cleanRows(raw.contributions, 'contributions'),
+    // The accounts list never starts empty (as version 1).
+    accounts: accounts.length > 0 ? accounts : D.accounts.map((a) => ({ ...a })),
+    liabilities: cleanRows(raw.liabilities, 'liabilities'),
+    spending: cleanGroup(raw.spending, D.spending),
+    assumptions: cleanGroup(raw.assumptions, D.assumptions),
+    calculators: Object.fromEntries(
+      Object.entries(D.calculators).map(([name, defaults]) => [name, cleanGroup(calculators[name], defaults)]),
+    ),
+  };
+}

@@ -9,8 +9,13 @@
 // can never inject anything else into the app's state. The database also caps the size.
 import { HOUSEHOLD_FORM_KEYS } from './householdLink.js';
 import { PREVIEW_DEFAULT_VALUES } from './household.js';
+import { HOUSEHOLD_VALUES_VERSION, cleanHouseholdValues } from './householdValues.js';
+import { upgradeHouseholdValues } from './householdUpgrade.js';
 
 export const SAVED_SCHEMA_VERSION = 1;
+// Version 2 households (round 2 phase 0) are stored as their cleaned values, with this
+// schema_version. Saving in version 2 starts when the form edits version 2 values (step b).
+export const SAVED_SCHEMA_VERSION_V2 = HOUSEHOLD_VALUES_VERSION;
 export const MAX_LABEL_LENGTH = 80;
 export const MAX_ACCOUNTS = 50;
 const MAX_VALUE_LENGTH = 64;
@@ -72,4 +77,26 @@ export function cleanLabel(label) {
 export function sameSavedHousehold(values, savedValues) {
   if (!savedValues) return false;
   return JSON.stringify(caseFromValues(values)) === JSON.stringify(caseFromValues(savedValues));
+}
+
+// ---- Version 2 (round 2 phase 0) ----
+
+// Version 2 values -> the object stored in saved_households.data (the cleaned values themselves).
+export function caseFromValuesV2(values) {
+  return cleanHouseholdValues(values);
+}
+
+// A stored object of either version -> version 2 values: a version 2 object is cleaned; a
+// version 1 object is cleaned as version 1 and converted (householdUpgrade.js; year = the year
+// it's opened in). null when it's neither.
+export function valuesV2FromCase(data, year) {
+  if (data && typeof data === 'object' && data.version === HOUSEHOLD_VALUES_VERSION) return cleanHouseholdValues(data);
+  const v1 = valuesFromCase(data);
+  return v1 ? upgradeHouseholdValues(v1, year) : null;
+}
+
+// The "Unsaved changes" marker for version 2 values (row ids don't count, as in version 1).
+export function sameSavedHouseholdV2(values, savedValues) {
+  if (!savedValues) return false;
+  return JSON.stringify(caseFromValuesV2(values)) === JSON.stringify(caseFromValuesV2(savedValues));
 }
