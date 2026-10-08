@@ -68,7 +68,8 @@ export function extraThroughTwoBrackets(params, source = 'ordinaryIncome') {
   return reaches(lo) ? lo : hi;
 }
 
-// -> { today, top, step, source, rows: [{ income, bracket, sheltered, nextRate, irmaaJump }], now }
+// -> { today, top, step, source, rows: [{ income, bracket, sheltered, nextRate, irmaaJump }],
+//      edges: [{ income, from, to }] (each bracket change to the dollar; -1 = sheltered), now }
 //   income: total income (gross) at the bottom of the step; bracket: the ordinary bracket rate there
 //   (the capital-gains rate for source 'preferentialIncome'); sheltered: under the deductions;
 //   nextRate: the extra federal income tax over the step ÷ the step (payroll tax left out);
@@ -105,6 +106,27 @@ export function rateProfile(params, { source = 'ordinaryIncome', steps = DEFAULT
     });
     here = next;
   }
+  // Each bracket edge to the dollar (the rows only find it within a step): halve the step it falls
+  // in until the income where the bracket changes is known to the cent, then round to the dollar.
+  const bracketAt = (y) => {
+    const r = calculateYearTaxTotals(paramsAt(y));
+    if (r.lines.ordinaryGross <= r.lines.deductions && source !== 'preferentialIncome') return -1;
+    return source === 'preferentialIncome' ? cgRate(r) : r.ordinaryBracketRate;
+  };
+  const edges = [];
+  for (let i = 1; i < rows.length; i++) {
+    const was = rows[i - 1].sheltered && source !== 'preferentialIncome' ? -1 : rows[i - 1].bracket;
+    const is = rows[i].sheltered && source !== 'preferentialIncome' ? -1 : rows[i].bracket;
+    if (was === is) continue;
+    let lo = rows[i - 1].income;
+    let hi = rows[i].income;
+    while (hi - lo > 0.01) {
+      const mid = (lo + hi) / 2;
+      if (bracketAt(mid) === was) lo = mid;
+      else hi = mid;
+    }
+    edges.push({ income: Math.round(hi), from: was, to: is });
+  }
   const room = source === 'preferentialIncome' ? base.bracketRoom.capitalGains : base.bracketRoom.ordinary;
   const probe = calculateYearTaxTotals(plus(params, source, 100));
   return {
@@ -113,6 +135,7 @@ export function rateProfile(params, { source = 'ordinaryIncome', steps = DEFAULT
     step,
     source,
     rows,
+    edges,
     now: { bracket: room.rate, room: room.room, nextBracket: room.nextRate, nextRate: (probe.incomeTax - base.incomeTax) / 100 },
   };
 }

@@ -85,3 +85,12 @@ describe('rateProfile: a Pre-tax 401(k) stays put as the pay is built up', () =>
     expect(w.rows.find((r) => r.income === 8000).sheltered).toBe(true);
   });
 });
+
+describe('rateProfile: bracket edges to the dollar', () => {
+  it('a $100,000 worker with a $10,000 Pre-tax 401(k): 26,100, 38,500, 76,500, 131,800, 227,875', () => {
+    // sheltered to 16,100 + 10,000 = 26,100; then each bracket top + 26,100: 12,400, 50,400, 105,700, 201,775
+    const w = rateProfile({ filingStatus: 'single', year: 2026, people: [{ wages: 100000 }], pretaxDeferrals: 10000 });
+    expect(w.edges.map((e) => e.income)).toEqual([26100, 38500, 76500, 131800, 227875]);
+    expect(w.edges.map((e) => e.to)).toEqual([0.1, 0.12, 0.22, 0.24, 0.32]);
+  });
+});

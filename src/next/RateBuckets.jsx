@@ -51,7 +51,7 @@ export default function RateBuckets({ params, irmaa, ages }) {
 
   // Income scale: $0, each bracket edge, today, the top; a label too close to one already placed
   // is dropped (today's always stays).
-  const tickValues = [0, ...marginal.filter((r, i) => i > 0 && marginal[i - 1].value !== r.value).map((r) => r.from), top];
+  const tickValues = [0, ...profile.edges.map((e) => e.income), top];
   const ticks = [];
   for (const v of [today, ...tickValues]) if (!ticks.some((t) => Math.abs(y(t) - y(v)) < 18)) ticks.push(v);
 
