@@ -113,6 +113,14 @@ export const INPUT_SECTIONS = [
     },
   },
   {
+    id: 'deductions',
+    title: 'Deductions',
+    summary: (v) => {
+      const itemized = blankIsZero(v.deductions?.itemized);
+      return itemized > 0 ? `Itemized ${formatCurrency(itemized)} a year, when more than the standard deduction` : 'The standard deduction';
+    },
+  },
+  {
     id: 'spending',
     title: 'Spending',
     summary: (v) => {
@@ -174,19 +182,19 @@ export const ASSUMPTION_FIELDS = ['returnRate', 'inflationRate', 'ageDeductions'
 const FOR_ROTH = ['age', 'retirementAge', 'socialSecurity'];
 export const CALCULATOR_INPUTS = {
   roth: {
-    sections: ['contributions', 'household', 'people', 'income', 'accounts', 'spending', 'assumptions', 'projection'],
+    sections: ['contributions', 'household', 'people', 'income', 'deductions', 'accounts', 'spending', 'assumptions', 'projection'],
     fields: { people: FOR_ROTH },
   },
   tax: {
-    sections: ['income', 'household', 'people', 'contributions', 'assumptions'],
+    sections: ['income', 'household', 'people', 'contributions', 'deductions', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   projection: {
-    sections: ['projection', 'household', 'people', 'income', 'contributions', 'accounts', 'spending', 'assumptions'],
+    sections: ['projection', 'household', 'people', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
     fields: { people: FOR_ROTH },
   },
   conversion: {
-    sections: ['conversion', 'household', 'people', 'income', 'contributions', 'accounts', 'assumptions'],
+    sections: ['conversion', 'household', 'people', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   pension: {

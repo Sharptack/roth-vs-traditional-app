@@ -49,6 +49,10 @@
 //                                            explorer (result.blend = { available: false }). It is most
 //                                            of this function's run time and only the preview's Roth
 //                                            page shows it. Absent/false = computed, as before.
+//   itemizedDeductions                     — OPTIONAL, number (the #/next preview): this year's itemized
+//                                            deductions, taken instead of the standard deduction when
+//                                            larger. Absent/0 = the standard deduction, as before.
+//                                            (Retirement years: retirementTaxRules.itemizedDeductions.)
 //   qualifiedBusinessIncome                — OPTIONAL, boolean (the #/next preview): today's tax takes the
 //                                            QBI deduction on 1099 earnings (qbi.js, basic rule).
 //                                            Absent/false = no QBI deduction, as before.
@@ -56,7 +60,7 @@
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
-import { calculateTaxFromGross } from './taxCalculations.js';
+import { calculateTaxFromGross, getStandardDeduction } from './taxCalculations.js';
 import { qbiDeduction } from './qbi.js';
 import { calculateEmploymentTaxes, calculateHouseholdEmploymentTaxes } from './ficaTax.js';
 import { estimateHouseholdSocialSecurity, estimateSocialSecurityBenefit } from './socialSecurity.js';
@@ -285,14 +289,17 @@ export function compareRothVsTraditional(inputs) {
   // deduction capped at 20% of taxable income shrinks the tax on each extra dollar.
   const earnersSE = inputs.earners ? inputs.earners.reduce((acc, e) => acc + (e.selfEmploymentIncome ?? 0), 0) : selfEmploymentIncome;
   const qbi = inputs.qualifiedBusinessIncome ? Math.max(0, earnersSE - fica.selfEmployment.deduction) : 0;
-  const taxAfter = (adjustments) => {
-    const plain = calculateTaxFromGross(grossIncome, filingStatus, year, adjustments);
+  // Itemized deductions beyond the standard deduction come off like an adjustment.
+  const itemizedExtra = Math.max(0, (inputs.itemizedDeductions ?? 0) - getStandardDeduction(filingStatus, year));
+  const taxAfter = (shown) => {
+    const adjustments = shown + itemizedExtra;
+    const plain = { ...calculateTaxFromGross(grossIncome, filingStatus, year, adjustments), adjustments: shown };
     if (!(qbi > 0)) return plain;
     const deduction = (adj) => qbiDeduction({ qbi, taxableIncome: Math.max(0, grossIncome - adj - plain.standardDeduction), filingStatus, year }).deduction;
     const taxOf = (adj) => calculateTaxFromGross(grossIncome, filingStatus, year, adj + deduction(adj)).tax;
     const d = deduction(adjustments);
     const withQbi = calculateTaxFromGross(grossIncome, filingStatus, year, adjustments + d);
-    return { ...withQbi, adjustments, qbiDeduction: d, marginalRate: (taxOf(adjustments - 100) - withQbi.tax) / 100 };
+    return { ...withQbi, adjustments: shown, qbiDeduction: d, marginalRate: (taxOf(adjustments - 100) - withQbi.tax) / 100 };
   };
   const withContribution = taxAfter(fica.selfEmployment.deduction + pretaxDeduction);
   // Income tax as if the savings were NOT deducted, i.e. the top of your pay
@@ -657,6 +664,7 @@ export function compareRothVsTraditional(inputs) {
         standardDeduction: current.standardDeduction,
         taxableIncome: current.taxableIncome,
         ...(current.qbiDeduction > 0 && { qbiDeduction: current.qbiDeduction }),
+        ...(itemizedExtra > 0 && { itemizedDeductions: inputs.itemizedDeductions }),
         incomeTax: current.tax,
         // Income tax had the savings not been deducted (equal to incomeTax
         // when nothing is Pre-tax); the difference is the tax the deduction saves.

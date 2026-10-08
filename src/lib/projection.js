@@ -206,6 +206,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         thresholdScale,
         rateShift: anyRetired ? rateShiftInRetirement : 0,
         qbi: Boolean(assumptions.qualifiedBusinessIncome), // QBI on 1099 earnings while working (qbi.js)
+        itemizedDeductions: household.deductions?.itemized ?? 0, // every year, in today's dollars
       };
     };
     // Totals only while solving; the row below runs the full engine once (marginal rates, room).

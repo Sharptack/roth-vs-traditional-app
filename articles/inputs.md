@@ -81,6 +81,10 @@ Debts as they stand today: a mortgage, car loan, student loan, credit card or ot
 
 No calculator reads these yet. A debt pay-off calculator, and each debt's payments running to its payoff date in the projection, come in a later phase. Until then, debt payments that will end before retirement go under Spending.
 
+## Deductions
+
+**Itemized deductions:** one yearly total of mortgage interest, state and local taxes (up to the cap), charitable gifts and any other itemized deductions. When it is larger than the standard deduction, it is used instead, this year and in every year of the projection, in today's dollars. Someone who itemizes loses the extra standard deduction at 65 but keeps the senior deduction. Left blank, the standard deduction applies.
+
 ## Spending
 
 - **Debt payments that will end by retirement** and **other expenses that will end by retirement** (for example private school or college), each a year.

@@ -24,6 +24,10 @@
 //                   higher). Capital-gains rates are not shifted.
 //   calendarYear    the calendar year being taxed, when `year` is the law's data year instead (a
 //                   future year taxed under today's law); only the senior deduction's end date uses it.
+//   itemizedDeductions  the year's itemized deductions, a total (mortgage interest, state and local
+//                   taxes, charitable gifts...). Taken instead of the standard deduction when larger;
+//                   an itemizer loses the extra standard deduction at 65 but keeps the senior
+//                   deduction. Default 0: the standard deduction, as before.
 //   qbi             true: take the qualified business income deduction on 1099 earnings (lib/qbi.js,
 //                   the basic rule). Off by default, so the current calculator's numbers don't change.
 //
@@ -31,7 +35,8 @@
 // deduction and (2025-2028) the senior deduction (data/ageDeductions.js). Callers that pass no
 // ages get today's standard deduction only, so every existing calculation is unchanged.
 //
-// Simplifications: standard deduction only (no itemizing), no AMT, credits or state tax; the QBI
+// Simplifications: itemized deductions only as one total (itemizedDeductions), no AMT, credits or
+// state tax; the QBI
 // deduction only with the qbi option, basic rule. People with an age and no earnings (retirees) are fine: they owe no payroll tax.
 import { calculateHouseholdEmploymentTaxes } from './ficaTax.js';
 import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
@@ -78,7 +83,7 @@ export function calculateYearTaxTotals(params) {
   return core(params);
 }
 
-function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year, qbi = false }) {
+function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year, qbi = false, itemizedDeductions = 0 }) {
   const ordinaryIncome = income.ordinaryIncome ?? 0;
   const investmentOrdinaryIncome = income.investmentOrdinaryIncome ?? 0;
   const preferentialIncome = Math.max(0, income.preferentialIncome ?? 0);
@@ -112,8 +117,12 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
   const agi = ordinaryGross + preferentialIncome;
   const baseStandardDeduction = getStandardDeduction(filingStatus, year);
   const age = ageDeductions(people, filingStatus, year, agi, { calendarYear, thresholdScale });
-  // Everything subtracted from AGI; "standardDeduction" below is this total.
-  const standardDeduction = baseStandardDeduction + age.additional65 + age.senior;
+  // Everything subtracted from AGI; "standardDeduction" below is this total. Itemizing replaces the
+  // standard deduction and its 65+ extra when larger; the senior deduction applies either way.
+  const itemized = Math.max(0, itemizedDeductions);
+  const itemizing = itemized > baseStandardDeduction + age.additional65;
+  const additional65 = itemizing ? 0 : age.additional65;
+  const standardDeduction = (itemizing ? itemized : baseStandardDeduction) + additional65 + age.senior;
   // QBI: 1099 earnings less the deductible half of self-employment tax; the deduction comes off
   // taxable income (not AGI), from the ordinary part first, so gains still stack on top.
   const qualifiedBusinessIncome = qbi ? Math.max(0, selfEmploymentIncome - payroll.selfEmployment.deduction) : 0;
@@ -153,9 +162,11 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
       agi,
       magi: agi, // for NIIT and the senior deduction, MAGI = AGI here (no foreign-income exclusion modeled)
       baseStandardDeduction,
-      additional65Deduction: age.additional65,
+      additional65Deduction: additional65,
+      itemizedDeductions: itemized,
+      itemizing,
       seniorDeduction: age.senior,
-      standardDeduction, // the total of the three above
+      standardDeduction, // the total: the standard deduction (or the itemized total), 65+ extra, senior
       qualifiedBusinessIncome,
       qbiDeduction: qbiResult.deduction,
       deductions, // the standard deduction total plus the QBI deduction

@@ -414,6 +414,15 @@ export default function HouseholdInputs({
       </>
     ),
 
+    deductions: () => (
+      <CurrencyInput
+        label="Itemized deductions (total a year)"
+        hint="Mortgage interest, state and local taxes (up to the cap), charitable gifts and other itemized deductions, as one total. Used instead of the standard deduction when it is larger, this year and every year of the projection. Leave blank for the standard deduction."
+        value={values.deductions?.itemized ?? ''}
+        onChange={setGroup('deductions', 'itemized')}
+      />
+    ),
+
     spending: () => (
       <>
         <CurrencyInput

@@ -247,3 +247,53 @@ describe('calculateYearTax agrees with the existing engines to the cent', () => 
     expect(checked).toBe(180);
   });
 });
+
+describe('itemized deductions (one total)', () => {
+  // single, 67, 2026, $80,000 of Pre-tax withdrawals (worked by hand):
+  //   standard: 16,100 + 2,050 (65+) = 18,150; senior 6,000 − 6% × (80,000 − 75,000) = 5,700
+  //   itemized 30,000 > 18,150 -> 30,000 + 5,700 = 35,700; taxable 44,300
+  //     tax 10% × 12,400 + 12% × 31,900 = 1,240 + 3,828 = 5,068
+  //   standard: 18,150 + 5,700 = 23,850; taxable 56,150 -> 1,240 + 4,560 + 22% × 5,750 = 7,065
+  const base = { filingStatus: 'single', year: 2026, people: [{ age: 67 }], income: { ordinaryIncome: 80000 } };
+
+  it('takes the itemized total when larger, keeping the senior deduction but not the 65+ extra', async () => {
+    const { calculateYearTaxTotals } = await import('../src/lib/yearTax.js');
+    const r = calculateYearTaxTotals({ ...base, itemizedDeductions: 30000 });
+    expect(r.lines.itemizing).toBe(true);
+    expect(r.lines.additional65Deduction).toBe(0);
+    expect(r.lines.seniorDeduction).toBeCloseTo(5700, 6);
+    expect(r.lines.standardDeduction).toBeCloseTo(35700, 6);
+    expect(r.incomeTax).toBeCloseTo(5068, 6);
+  });
+
+  it('keeps the standard deduction when it is larger, or when none is given', async () => {
+    const { calculateYearTaxTotals } = await import('../src/lib/yearTax.js');
+    expect(calculateYearTaxTotals({ ...base, itemizedDeductions: 15000 }).incomeTax).toBeCloseTo(7065, 6);
+    const none = calculateYearTaxTotals(base);
+    expect(none.lines.itemizing).toBe(false);
+    expect(none.incomeTax).toBeCloseTo(7065, 6);
+  });
+});
+
+describe('itemized deductions reach the Roth comparison and the retirement-year rows', () => {
+  it('today: single, $100,000 W-2, $30,000 itemized, saving Roth -> taxable $70,000, tax $10,112 (HAND CALC)', async () => {
+    // 100,000 − 30,000 = 70,000 taxable; 1,240 + 4,560 + 22% × 19,600 (4,312) = 10,112
+    const { DEFAULT_HOUSEHOLD_VALUES: D, setGroupField, updateRow } = await import('../src/lib/householdValues.js');
+    const { toHouseholdV2 } = await import('../src/lib/householdV2.js');
+    const { householdToCompareInputs } = await import('../src/lib/household.js');
+    const { compareRothVsTraditional } = await import('../src/lib/compare.js');
+    const v = setGroupField(updateRow(D, 'contributions', 'c1', 'tax', 'roth'), 'deductions', 'itemized', '30000');
+    const r = compareRothVsTraditional(householdToCompareInputs(toHouseholdV2(v, 2026)));
+    expect(r.current.taxableIncome).toBeCloseTo(70000, 6);
+    expect(r.current.tax).toBeCloseTo(10112, 6);
+    expect(r.retirementNeed.breakdown.itemizedDeductions).toBe(30000);
+  });
+
+  it('the retirement-year rows agree with the engine when itemizing (the $5,068 case above)', async () => {
+    const { explainFullTax } = await import('../src/lib/taxBreakdown.js');
+    const { calculateRetirementTax } = await import('../src/lib/retirementTaxStack.js');
+    const args = { pretaxWithdrawal: 80000, filingStatus: 'single', year: 2026, taxRules: { ages: [67], itemizedDeductions: 30000 } };
+    expect(calculateRetirementTax(args).totalTax).toBeCloseTo(5068, 6);
+    expect(explainFullTax(args).totalTax).toBeCloseTo(5068, 6);
+  });
+});

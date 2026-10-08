@@ -48,6 +48,7 @@ export function calculateRetirementTax({
     thresholdScale: taxRules?.thresholdScale ?? 1,
     rateShift: taxRules?.rateShift ?? 0,
     calendarYear: taxRules?.calendarYear ?? year,
+    itemizedDeductions: taxRules?.itemizedDeductions ?? 0,
   });
   return {
     taxableSS: r.lines.taxableSocialSecurity,

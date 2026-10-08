@@ -329,9 +329,11 @@ export function householdToCompareInputs(household) {
   // inflation over the years until then, and each person's age then (for the 65+ deductions).
   const inflationRate = assumptions.inflationRate ?? 0;
   const rateShift = assumptions.retirementRateShift ?? 0;
-  if (inflationRate !== 0 || assumptions.ageDeductions || rateShift !== 0) {
+  const itemized = household.deductions?.itemized ?? 0;
+  if (inflationRate !== 0 || assumptions.ageDeductions || rateShift !== 0 || itemized > 0) {
     inputs.retirementTaxRules = {
       ...(rateShift !== 0 && { rateShift }),
+      ...(itemized > 0 && { itemizedDeductions: itemized }),
       thresholdScale: 1 / (1 + inflationRate) ** yearsToRetirement,
       calendarYear: year + yearsToRetirement, // the senior deduction ends after 2028
       ages: assumptions.ageDeductions ? people.map((p) => ageOf(p) + yearsToRetirement) : [],
@@ -339,6 +341,7 @@ export function householdToCompareInputs(household) {
   }
   if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
   if (assumptions.qualifiedBusinessIncome) inputs.qualifiedBusinessIncome = true;
+  if (itemized > 0) inputs.itemizedDeductions = itemized;
   if (people.length > 1) {
     inputs.contributors = people.map((p, i) => {
       const c = fc.contributions.find((x) => x.owner === p.id) ?? {};

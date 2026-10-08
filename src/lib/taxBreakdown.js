@@ -37,7 +37,11 @@ export function explainFullTax({
     grossOrdinaryIncome + capitalGains,
     { calendarYear: taxRules?.calendarYear ?? year, thresholdScale },
   );
-  const standardDeduction = baseStandardDeduction + age.additional65 + age.senior;
+  // Itemizing (taxRules.itemizedDeductions, when larger) replaces the standard deduction and its 65+
+  // extra; the senior deduction applies either way (as yearTax.js).
+  const itemized = Math.max(0, taxRules?.itemizedDeductions ?? 0);
+  const itemizing = itemized > baseStandardDeduction + age.additional65;
+  const standardDeduction = (itemizing ? itemized : baseStandardDeduction + age.additional65) + age.senior;
   const ordinaryTaxableIncome = Math.max(0, grossOrdinaryIncome - standardDeduction);
 
   // Ordinary brackets: each row is the slice of ordinaryTaxableIncome inside that bracket.

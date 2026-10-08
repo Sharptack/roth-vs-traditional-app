@@ -24,6 +24,7 @@
 //   accounts: [ { id, owner, type: 'pretax' | 'roth' | 'taxable', balance, basisShare } ],   // as version 1
 //   liabilities: [ { id, kind, balance, rate, payment } ],   // kind: LIABILITY_KINDS; rate: the annual
 //                                          // interest rate in percent, as typed (6.5); payment monthly
+//   deductions: { itemized },               // itemized deductions, one yearly total ('' = the standard deduction)
 //   spending: { debtPayments, otherExpenses, retirementLifestyle },   // the costs that end at retirement
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedBasis, retirementRateShift, medicareIrmaa },
 //   calculators: { projection: { endAge, heirTaxRate, strategy }, conversion: { amount },
@@ -77,6 +78,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
   contributions: [{ id: 'c1', ...ROW_TEMPLATES.contributions.row, amount: '10000' }],
   accounts: [{ id: 'a1', ...ROW_TEMPLATES.accounts.row, balance: '100000' }],
   liabilities: [],
+  deductions: { itemized: '' },
   spending: { debtPayments: '6000', otherExpenses: '0', retirementLifestyle: '1' },
   assumptions: {
     returnRate: '0.07',
@@ -300,6 +302,7 @@ export function cleanHouseholdValues(raw) {
     // The accounts list never starts empty (as version 1).
     accounts: accounts.length > 0 ? accounts : D.accounts.map((a) => ({ ...a })),
     liabilities: cleanRows(raw.liabilities, 'liabilities'),
+    deductions: cleanGroup(raw.deductions, D.deductions),
     spending: cleanGroup(raw.spending, D.spending),
     assumptions: cleanGroup(raw.assumptions, D.assumptions),
     calculators: Object.fromEntries(

@@ -30,6 +30,8 @@ describe('the version 2 inputs: section summaries', () => {
     expect(summary('contributions', D)).toBe('$10,000 a year · Pre-tax · 401(k)');
     expect(summary('accounts', D)).toBe('Pre-tax $100,000');
     expect(summary('liabilities', D)).toBe('None');
+    expect(summary('deductions', D)).toBe('The standard deduction');
+    expect(summary('deductions', setGroupField(D, 'deductions', 'itemized', '30000'))).toBe('Itemized $30,000 a year, when more than the standard deduction');
     expect(summary('spending', D)).toBe('$6,000 a year ends at retirement · retirement spending same as today');
     expect(summary('assumptions', D)).toBe('7% return after inflation · 2.5% inflation');
     expect(summary('projection', D)).toBe('To age 95 · heirs taxed at 24% · proportional (every account alike)');

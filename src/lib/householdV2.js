@@ -136,6 +136,7 @@ export function toHouseholdV2(values, year) {
       payment: blankAsZero(l.payment),
     })),
     futureContributions: { currentType, accountType, contributions },
+    deductions: { itemized: blankAsZero(values.deductions?.itemized) },
     spending: {
       debtPaymentsEnding: blankAsZero(values.spending.debtPayments),
       otherExpensesEnding: blankAsZero(values.spending.otherExpenses),
@@ -206,6 +207,7 @@ export function validateHouseholdV2(household) {
       errors.push(`For now, ${whose(p.id)} contributions need one type (Roth or Pre-tax) and one account type.`);
     }
   }
+  if (!isNum(household.deductions.itemized) || household.deductions.itemized < 0) errors.push("Itemized deductions can't be negative.");
   for (const l of household.liabilities) {
     if (![l.balance, l.rate, l.payment].every((n) => isNum(n) && n >= 0)) errors.push("Debts' balances, rates and payments can't be negative.");
   }

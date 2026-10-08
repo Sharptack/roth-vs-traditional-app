@@ -36,6 +36,7 @@ export function householdToYearTaxParams(household) {
     people: people.map((p) => ({ age: ageOf(p), wages: p.wages, selfEmploymentIncome: p.selfEmploymentIncome })),
     pretaxDeferrals,
     qbi: Boolean(household.assumptions?.qualifiedBusinessIncome), // QBI on 1099 earnings (qbi.js)
+    ...(household.deductions?.itemized > 0 && { itemizedDeductions: household.deductions.itemized }),
     income: {
       ordinaryIncome: tax.ordinaryIncome ?? 0,
       investmentOrdinaryIncome: tax.investmentOrdinaryIncome ?? 0,
