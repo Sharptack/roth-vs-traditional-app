@@ -13,7 +13,7 @@ import {
   RadioGroup,
   SelectInput,
   toOptions,
-} from '../components/InputForm.jsx';
+} from '../components/fields.jsx';
 import { FILING_STATUSES } from '../lib/constants.js';
 import {
   ACCOUNT_TYPE_LABELS,

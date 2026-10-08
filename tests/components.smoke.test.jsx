@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import App from '../src/App.jsx';
 import DocsPage from '../src/components/DocsPage.jsx';
 import articleMarkdown from '../articles/roth.md?raw';
-import InputForm from '../src/components/InputForm.jsx';
 import ResultsSummary from '../src/components/ResultsSummary.jsx';
 import ScenarioCompare from '../src/components/ScenarioCompare.jsx';
 import ScenariosPage from '../src/components/ScenariosPage.jsx';
@@ -806,11 +805,6 @@ describe('Round 2026-09-25b adjustments', () => {
     expect(table.slice(0, table.lastIndexOf('<tr'))).not.toContain('class="win"');
   });
 
-  it('offers 30% and 40% lower retirement lifestyles', () => {
-    const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
-    expect(html).toContain('30% lower than today');
-    expect(html).toContain('40% lower than today');
-  });
 
 });
 
@@ -831,12 +825,6 @@ describe('Future Contributions vs. Existing Accounts', () => {
     expect(html).toContain('Plus the taxable account (over the IRS limit)');
   });
 
-  it('labels the form sections Future Contributions and Existing Accounts', () => {
-    const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
-    expect(html).toMatch(/class="collapsible-title"[^>]*>Future Contributions</);
-    expect(html).toMatch(/class="collapsible-title"[^>]*>Existing Accounts</);
-    expect(html).not.toMatch(/this account|other retirement account/i);
-  });
 
   it('the article uses the same terms and no longer calls the at-limit case unmodeled', () => {
     expect(articleMarkdown).toContain('**Future Contributions**');
@@ -863,22 +851,7 @@ describe('Comparing a change: emphasis', () => {
 });
 
 describe('Existing taxable accounts: cost basis dropdown', () => {
-  it('appears only when there is a taxable balance, defaulting to 50%', () => {
-    const none = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
-    expect(none).not.toContain('Cost basis of those taxable accounts');
-    const some = renderToStaticMarkup(
-      <InputForm values={{ ...DEFAULT_FORM_VALUES, otherTaxableBalance: '50000' }} onChange={() => {}} />,
-    );
-    expect(some).toContain('Cost basis of those taxable accounts');
-    expect(some).toMatch(/<option value="0.5" selected="">50% \(default\)/);
-  });
 
-  it("sits in a collapsed dropdown whose summary shows the current basis", () => {
-    const html = renderToStaticMarkup(
-      <InputForm values={{ ...DEFAULT_FORM_VALUES, otherTaxableBalance: "50000", otherTaxableBasis: "0" }} onChange={() => {}} />,
-    );
-    expect(html).toMatch(/<details class="details basis-option"><summary>Cost basis of those taxable accounts: (<!-- -->)?0% \(all gains\)<\/summary>/);
-  });
 
   it('shows the gains part of the taxable withdrawal in the rate walk-through', () => {
     const html = render({ otherTaxableBalance: '100000' });
@@ -905,39 +878,7 @@ describe("Rate walk-through with large Existing Accounts", () => {
 });
 
 describe('Collapsible sections', () => {
-  it('lists every input section with a summary; only the first starts open, and closed ones stay rendered', () => {
-    const html = renderToStaticMarkup(<InputForm values={DEFAULT_FORM_VALUES} onChange={() => {}} />);
-    const titles = [...html.matchAll(/class="collapsible-title"[^>]*>([^<]+)</g)].map((m) => m[1]);
-    expect(titles).toEqual([
-      'About you',
-      'Costs that end before retirement',
-      'Future Contributions',
-      'Social Security',
-      'Existing Accounts',
-      'Assumptions',
-    ]);
-    expect(html).toContain('class="collapsible-summary">$100,000 W-2 · Single · age 35, retiring at 65<');
-    expect((html.match(/aria-expanded="true"/g) ?? []).length).toBe(1);
-    expect((html.match(/class="collapsible-body" hidden=""/g) ?? []).length).toBe(5);
-    // a closed section's inputs are still in the page (hidden), so nothing is lost by closing it
-    expect(html).toContain('Savings for retirement (annual)');
-    expect(html).toContain('Expand all');
-  });
 
-  it('opens the sections App passes in, and flags changed sections when comparing', () => {
-    const html = renderToStaticMarkup(
-      <InputForm
-        values={{ ...DEFAULT_FORM_VALUES, savings: '20000' }}
-        baseValues={DEFAULT_FORM_VALUES}
-        onChange={() => {}}
-        open={new Set(['about', 'costs', 'contributions', 'socialSecurity', 'existing', 'assumptions'])}
-        onOpenChange={() => {}}
-      />,
-    );
-    expect(html).not.toContain('aria-expanded="false"');
-    expect(html).toContain('Collapse all');
-    expect((html.match(/class="collapsible-flag">changed</g) ?? []).length).toBe(1);
-  });
 
   it('shows each results card with its headline, all open', () => {
     const html = renderToStaticMarkup(<ResultsSummary result={compareRothVsTraditional(toCompareInputs(DEFAULT_FORM_VALUES, 2026))} />);

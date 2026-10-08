@@ -1,7 +1,24 @@
 // Version 1 preview households (form values), one per kind of input, for round 2 phase 0:
 // tests/householdV1Pins.test.js pins every calculator's results for them today, and the version 2
 // conversion must reproduce those results. Between them they set every version 1 form field.
-import { CLEARED_FORM_VALUES } from '../../src/lib/formInputs.js';
+import { DEFAULT_FORM_VALUES } from '../../src/lib/formInputs.js';
+
+// What the old calculator's "Clear all" left: every dollar amount $0, the ages blank, the choices at
+// their defaults (a household saved that way must still open).
+const CLEARED_FORM_VALUES = {
+  ...DEFAULT_FORM_VALUES,
+  grossIncome: '0',
+  selfEmploymentIncome: '0',
+  currentAge: '',
+  retirementAge: '',
+  debtPayments: '0',
+  otherExpenses: '0',
+  savings: '0',
+  socialSecurityBenefit: '0',
+  otherPretaxBalance: '0',
+  otherRothBalance: '0',
+  otherTaxableBalance: '0',
+};
 import { PREVIEW_DEFAULT_VALUES } from '../../src/lib/household.js';
 import { householdValuesFromSearch } from '../../src/lib/householdLink.js';
 

@@ -71,14 +71,6 @@ export function cleanLabel(label) {
   return { label: trimmed, error: null };
 }
 
-// Whether the form values would store the same household as the saved values (the "Unsaved
-// changes" marker). Compares what would be stored, so a field that is never saved, or an
-// account row's id, doesn't count as a change. false when there is nothing saved to compare to.
-export function sameSavedHousehold(values, savedValues) {
-  if (!savedValues) return false;
-  return JSON.stringify(caseFromValues(values)) === JSON.stringify(caseFromValues(savedValues));
-}
-
 // ---- Version 2 (round 2 phase 0) ----
 
 // Version 2 values -> the object stored in saved_households.data (the cleaned values themselves).

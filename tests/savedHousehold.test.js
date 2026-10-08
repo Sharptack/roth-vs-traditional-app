@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { caseFromValues, cleanLabel, sameSavedHousehold, valuesFromCase, MAX_ACCOUNTS } from '../src/lib/savedHousehold.js';
+import { caseFromValues, cleanLabel, valuesFromCase, MAX_ACCOUNTS } from '../src/lib/savedHousehold.js';
 import { PREVIEW_DEFAULT_VALUES, toHousehold } from '../src/lib/household.js';
 
 const couple = {
@@ -69,18 +69,4 @@ describe('saved households: what is stored', () => {
     expect(cleanLabel('x'.repeat(81)).error).toBe('Keep the name under 80 characters.');
   });
 
-  it('unsaved changes: compares what would be stored, not the objects', () => {
-    const opened = valuesFromCase(caseFromValues(couple));
-    // the same values in a new object, and a different account id, are not a change
-    expect(sameSavedHousehold({ ...opened }, opened)).toBe(true);
-    expect(sameSavedHousehold({ ...opened, accounts: opened.accounts.map((a) => ({ ...a, id: 'x' + a.id })) }, opened)).toBe(true);
-    // a field outside the stored list (not saved, so not a change)
-    expect(sameSavedHousehold({ ...opened, somethingElse: '1' }, opened)).toBe(true);
-    // a typed field, an account balance, an account removed: changes
-    expect(sameSavedHousehold({ ...opened, spouseIncome: '61000' }, opened)).toBe(false);
-    expect(sameSavedHousehold({ ...opened, accounts: [{ ...opened.accounts[0], balance: '1' }, opened.accounts[1]] }, opened)).toBe(false);
-    expect(sameSavedHousehold({ ...opened, accounts: opened.accounts.slice(0, 1) }, opened)).toBe(false);
-    // nothing open: nothing to compare against
-    expect(sameSavedHousehold(opened, null)).toBe(false);
-  });
 });

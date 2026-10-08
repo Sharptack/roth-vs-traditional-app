@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_FORM_VALUES } from '../src/lib/formInputs.js';
-import { shareText, valuesFromSearch, valuesToSearch } from '../src/lib/shareInputs.js';
+import { valuesFromSearch, valuesToSearch } from '../src/lib/shareInputs.js';
 
 describe('valuesToSearch / valuesFromSearch', () => {
   it('round-trips every form value', () => {
@@ -27,26 +27,3 @@ describe('valuesToSearch / valuesFromSearch', () => {
   });
 });
 
-describe('shareText', () => {
-  it('lists the inputs, headline results and the link', () => {
-    const text = shareText({ values: DEFAULT_FORM_VALUES, year: 2025, url: 'https://example.test/?a=1' });
-    expect(text).toContain('Link: https://example.test/?a=1');
-    expect(text).toContain('- Gross income: $100,000');
-    expect(text).toContain('- Retirement age: 65');
-    expect(text).toContain('- Retirement income number: $');
-    expect(text).toContain('- Effective rate on the account withdrawal:');
-    expect(text).not.toContain('Compared with a change');
-  });
-
-  it('adds the changed inputs and their results when comparing', () => {
-    const text = shareText({
-      values: DEFAULT_FORM_VALUES,
-      compareValues: { ...DEFAULT_FORM_VALUES, retirementAge: '60' },
-      year: 2025,
-      url: 'u',
-    });
-    expect(text).toContain('Baseline inputs');
-    expect(text).toContain('- Retirement age: 65 -> 60');
-    expect(text).toContain('Results with the change');
-  });
-});
