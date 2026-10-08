@@ -16,15 +16,29 @@ const SOURCES = [
   { value: 'preferentialIncome', label: 'Capital gains', hint: 'a long-term gain: a house sale, a taxable account sold off' },
 ];
 
-// Geometry: the income scale on the left, set apart; the two buckets; room on the right for labels.
-const W = 760;
+// Geometry: the income scale on the left, set apart; the two buckets with the room left between
+// them; room on the right for labels.
+const W = 880;
 const Y0 = 64;
 const PLOT_H = 470;
 const SCALE_X = 132; // income labels end here
 const BW = 210; // bucket width
 const LX = 168; // marginal bucket
-const RX = 432; // effective bucket
+const RX = 548; // effective bucket
 const MAX_RATE = 0.6; // a full bucket width
+const LINE = 16; // the least gap between two labels in the right margin
+
+// Right-margin labels, most important first, each moved down (then up) just enough to clear the
+// ones already placed.
+function spread(items) {
+  const placed = [];
+  for (const it of items) {
+    let y = it.y;
+    for (let k = 1; placed.some((p) => Math.abs(p.y - y) < LINE) && k < 40; k++) y = it.y + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * LINE;
+    placed.push({ ...it, y });
+  }
+  return placed;
+}
 
 // Runs of rows with the same value of `key` (within half a basis point), each split at today.
 function runsOf(rows, step, today, key) {
@@ -74,10 +88,18 @@ export default function RateBuckets({ params, irmaa, ages }) {
     }
   });
 
+  // The right margin: the next dollar first, then each IRMAA cliff, then effective-rate labels that
+  // run past the bucket.
+  const margin = spread([
+    { key: 'next', y: y(today) - 6, text: `next dollar: ${pct(profile.now.nextRate)}`, className: 'rb-label rb-strong' },
+    ...cliffs.map((c) => ({ key: `c${c.income}`, y: y(c.income + step) + 4, text: `IRMAA +${$(c.irmaaJump)}/yr`, className: 'rb-label rb-cliff-text' })),
+    ...labels.filter((l) => l.x >= RX + BW).map((l) => ({ key: `el${l.y}`, y: l.y + 4, text: `${pct(l.value)}${l.value > MAX_RATE ? ' ›' : ''}`, className: 'rb-label rb-eff' })),
+  ]);
+  const inside = labels.filter((l) => l.x < RX + BW);
+
   // The room left in today's bracket: from today to where the bracket next changes, on the chart.
   const nextEdge = marginal.find((r) => r.from > today + step / 2 && r.value !== marginal.find((m) => m.from <= today && today < m.to + 1e-6)?.value);
   const yToday = y(today);
-  const nextRateLabel = 'next dollar';
   const room = now.nextBracket === null ? null : now.room;
 
   return (
@@ -126,17 +148,18 @@ export default function RateBuckets({ params, irmaa, ages }) {
           }
           return <rect key={`e${r.from}`} x={RX} y={y(r.to)} width={w(r.value)} height={y(r.from) - y(r.to)} className={r.below ? 'rb-effective' : 'rb-effective rb-above'} />;
         })}
-        {labels.map((l) => (
-          <text key={`el${l.y}`} x={Math.min(l.x, RX + BW + 6)} y={l.y + 4} className="rb-label rb-eff">
+        {inside.map((l) => (
+          <text key={`el${l.y}`} x={l.x} y={l.y + 4} className="rb-label rb-eff">
             {pct(l.value)}
-            {l.value > MAX_RATE ? ' ›' : ''}
           </text>
         ))}
         {cliffs.map((r) => (
-          <g key={`c${r.income}`}>
-            <line x1={RX} x2={RX + BW} y1={y(r.income + step)} y2={y(r.income + step)} className="rb-cliff" />
-            <text x={RX + BW + 8} y={y(r.income + step) + 4} className="rb-label rb-cliff-text">IRMAA +{$(r.irmaaJump)}/yr</text>
-          </g>
+          <line key={`c${r.income}`} x1={RX} x2={RX + BW} y1={y(r.income + step)} y2={y(r.income + step)} className="rb-cliff" />
+        ))}
+        {margin.map((m) => (
+          <text key={m.key} x={RX + BW + 8} y={m.y} className={m.className}>
+            {m.text}
+          </text>
         ))}
 
         {/* bucket walls, open at the top */}
@@ -160,12 +183,11 @@ export default function RateBuckets({ params, irmaa, ages }) {
         <line x1={SCALE_X + 14} x2={RX + BW + 10} y1={yToday} y2={yToday} className="rb-today" />
         {room !== null && nextEdge && (
           <g>
-            <path d={`M${LX + BW - 12} ${yToday} V${y(nextEdge.from)}`} className="rb-room" />
-            <text x={LX + BW - 18} y={(yToday + y(nextEdge.from)) / 2 - 2} textAnchor="end" className="rb-label rb-strong">{$(room)} of room</text>
-            <text x={LX + BW - 18} y={(yToday + y(nextEdge.from)) / 2 + 14} textAnchor="end" className="rb-label rb-dim">before {pct(now.nextBracket, 0)}</text>
+            <path d={`M${LX + BW + 10} ${yToday} V${y(nextEdge.from)}`} className="rb-room" />
+            <text x={LX + BW + 18} y={yToday - 22} className="rb-label rb-strong">{$(room)} of room</text>
+            <text x={LX + BW + 18} y={yToday - 7} className="rb-label rb-dim">before {pct(now.nextBracket, 0)}</text>
           </g>
         )}
-        <text x={RX + BW + 8} y={yToday - 6} className="rb-label rb-strong">{nextRateLabel}: {pct(now.nextRate)}</text>
         <text x={(LX + RX + BW) / 2} y={y(0) + 30} textAnchor="middle" className="rb-sub">
           Width = tax rate (a full bucket is {pct(MAX_RATE, 0)}). Below today&rsquo;s line: your income as it is; above it: more {source === 'preferentialIncome' ? 'capital gains' : 'ordinary income'}.
         </text>
