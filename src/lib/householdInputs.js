@@ -221,3 +221,26 @@ export const CALCULATOR_INPUTS = {
 export function inputSections(ids = ALL_SECTION_IDS) {
   return ids.map((id) => INPUT_SECTIONS.find((s) => s.id === id)).filter(Boolean);
 }
+
+// The values each section edits, to tell whether a section differs between two households (the
+// Roth page's "Compare a change" marks the sections the change touches).
+const SECTION_DATA = {
+  household: (v) => [v.filingStatus, v.includeSpouse],
+  people: (v) => v.people,
+  dependents: (v) => v.dependents ?? [],
+  income: (v) => v.incomes,
+  contributions: (v) => v.contributions,
+  accounts: (v) => v.accounts,
+  liabilities: (v) => v.liabilities,
+  deductions: (v) => v.deductions,
+  spending: (v) => v.spending,
+  assumptions: (v) => v.assumptions,
+  projection: (v) => v.calculators.projection,
+  conversion: (v) => v.calculators.conversion,
+  pension: (v) => v.calculators.pension,
+};
+
+export function sectionChanged(id, a, b) {
+  const pick = SECTION_DATA[id];
+  return Boolean(pick) && JSON.stringify(pick(a)) !== JSON.stringify(pick(b));
+}

@@ -107,3 +107,12 @@ describe('the inputs each calculator reads', () => {
     expect(inputSections().map((s) => s.id)).toEqual(ALL_SECTION_IDS);
   });
 });
+
+describe('sectionChanged', () => {
+  it('marks only the section whose values differ', async () => {
+    const { sectionChanged, ALL_SECTION_IDS } = await import('../src/lib/householdInputs.js');
+    const changed = updateRow(D, 'contributions', 'c1', 'tax', 'roth');
+    expect(ALL_SECTION_IDS.filter((id) => sectionChanged(id, D, changed))).toEqual(['contributions']);
+    expect(ALL_SECTION_IDS.filter((id) => sectionChanged(id, D, D))).toEqual([]);
+  });
+});

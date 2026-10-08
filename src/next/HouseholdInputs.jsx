@@ -29,6 +29,7 @@ import {
   OWNER_LABELS,
   PERSON_FIELDS,
   inputSections,
+  sectionChanged,
 } from '../lib/householdInputs.js';
 import {
   activePeople,
@@ -98,7 +99,8 @@ const percent = (t) => t.replace(/[^0-9.]/g, '').slice(0, 6);
 //   sections as rows (a calculator's inputs card).
 // title, headLink: the card's heading and a link beside it ('card' layout); footer: content at the
 //   bottom (the share link). locked: view only (a view-only link); onEditCopy unlocks.
-// defaultOpen: the sections open at first.
+// defaultOpen: the sections open at first. baseValues: another household to compare with (the Roth
+//   page's "Compare a change"): each section that differs from it is marked "changed".
 export default function HouseholdInputs({
   values,
   onUpdate,
@@ -111,6 +113,7 @@ export default function HouseholdInputs({
   locked = false,
   onEditCopy,
   defaultOpen = [],
+  baseValues,
 }) {
   const formId = useId();
   const [open, setOpen] = useState(() => new Set(defaultOpen));
@@ -637,6 +640,7 @@ export default function HouseholdInputs({
         className={`inputs-${sec.id}`}
         title={sec.title}
         summary={sec.summary(values)}
+        changed={Boolean(baseValues) && sectionChanged(sec.id, baseValues, values)}
         open={open.has(sec.id)}
         onToggle={() => setOpen(toggleId(open, sec.id))}
       >

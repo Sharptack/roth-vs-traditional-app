@@ -1058,6 +1058,7 @@ describe('NextApp (#/next preview)', () => {
     const firstTitle = (page) => page.match(/class="collapsible-title"[^>]*>([^<]+)</)[1];
     const roth = renderToStaticMarkup(<NextApp initialPage="roth" />);
     expect(roth).toContain('Roth vs. Pre-tax inputs');
+    expect(roth).toContain('Compare a change'); // ported from the public page (round 2 phase 1)
     expect(firstTitle(roth)).toBe('Future Contributions');
     expect(roth).toContain('href="#/next/inputs"');
     expect(roth).toContain('Claim at');

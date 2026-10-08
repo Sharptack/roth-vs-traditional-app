@@ -41,6 +41,7 @@ import { useCloud } from './useCloud.js';
 import AccountBar from './AccountBar.jsx';
 import SavedHouseholds from './SavedHouseholds.jsx';
 import ContributionNotes from './ContributionNotes.jsx';
+import ScenarioCompare from '../components/ScenarioCompare.jsx';
 import { contributionNotes } from '../lib/contributionRules.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -130,6 +131,8 @@ export default function NextApp({ initialPage, client }) {
   // "Start a new household" (decided 2026-10-08): back to the defaults, with an Undo that restores the
   // household on screen (and which saved household it was). A saved household is never touched.
   const [beforeNew, setBeforeNew] = useState(null);
+  // "Compare a change" on the Roth page (decided 2026-10-08): a second household, starting as a copy.
+  const [compareValues, setCompareValues] = useState(null);
   // Sign-in and the saved household on screen ({ id, label }), when a backend is configured.
   const cloud = useCloud(client);
   const [opened, setOpened] = useState(null);
@@ -155,6 +158,9 @@ export default function NextApp({ initialPage, client }) {
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
   // The lifetime Roth vs. Pre-tax comparison (phase 6): only on the Roth page (two projections and
   // two sustainable-spending searches), a beat behind the inputs like the projection.
+  const comparing = page === 'roth' && compareValues !== null;
+  const changed = useMemo(() => (comparing ? previewResult(compareValues, CURRENT_YEAR, { blend: false }) : null), [comparing, compareValues]);
+  const scenario = (r) => ({ inputs: householdToCompareInputs(r.household), result: r.result });
   // Who can contribute to what (the Roth page only).
   const notes = useMemo(() => (page === 'roth' ? contributionNotes(h) : []), [h, page]);
   const lifetime = useMemo(() => {
@@ -347,25 +353,43 @@ export default function NextApp({ initialPage, client }) {
               </p>
             )}
           </header>
-          <main className={`calc-layout with-bar${inputsHidden ? ' inputs-hidden' : ''}`}>
+          <main className={comparing ? 'calc-layout comparing' : `calc-layout with-bar${inputsHidden ? ' inputs-hidden' : ''}`}>
             {/* Hidden, not removed, so what is typed and which sections are open survive. */}
-            <div className="inputs-column" id="calc-inputs" hidden={inputsHidden}>
+            <div className="inputs-column" id="calc-inputs" hidden={inputsHidden && !comparing}>
               {saved(true)}
-              <HouseholdInputs
-                key={calculator.id}
-                {...formProps}
-                title={calculator.ownTitle}
-                sections={CALCULATOR_INPUTS[calculator.id].sections}
-                fields={CALCULATOR_INPUTS[calculator.id].fields}
-                defaultOpen={CALCULATOR_INPUTS[calculator.id].sections.slice(0, 1)}
-                headLink={
-                  <a className="link-button" href={NEXT_PAGES.inputs}>
-                    All inputs
-                  </a>
-                }
-                footer={share}
-              />
+              <div className={comparing ? 'input-columns' : undefined}>
+                <HouseholdInputs
+                  key={calculator.id}
+                  {...formProps}
+                  title={comparing ? 'Your inputs (baseline)' : calculator.ownTitle}
+                  sections={CALCULATOR_INPUTS[calculator.id].sections}
+                  fields={CALCULATOR_INPUTS[calculator.id].fields}
+                  defaultOpen={CALCULATOR_INPUTS[calculator.id].sections.slice(0, 1)}
+                  headLink={
+                    <a className="link-button" href={NEXT_PAGES.inputs}>
+                      All inputs
+                    </a>
+                  }
+                  footer={share}
+                />
+                {comparing && (
+                  <HouseholdInputs
+                    key={`${calculator.id}-compare`}
+                    values={compareValues}
+                    onUpdate={setCompareValues}
+                    baseValues={values}
+                    title="With a change"
+                    sections={CALCULATOR_INPUTS[calculator.id].sections}
+                    fields={CALCULATOR_INPUTS[calculator.id].fields}
+                    defaultOpen={CALCULATOR_INPUTS[calculator.id].sections.slice(0, 1)}
+                  />
+                )}
+              </div>
+              {calculator.id === 'roth' && !comparing && !locked && (
+                <ScenarioCompare baseline={scenario(roth)} current={null} onStart={() => setCompareValues(values)} />
+              )}
             </div>
+            {!comparing && (
             <button
               type="button"
               className="collapse-bar"
@@ -376,9 +400,22 @@ export default function NextApp({ initialPage, client }) {
               <span aria-hidden="true">{inputsHidden ? '›' : '‹'}</span>
               <span className="collapse-bar-label">{inputsHidden ? 'Show inputs' : 'Hide inputs'}</span>
             </button>
+            )}
             <div className="results-column">
               {calculator.id === 'roth' && (
                 <>
+                  {comparing && (
+                    <ScenarioCompare
+                      baseline={scenario(roth)}
+                      current={scenario(changed)}
+                      onReset={() => setCompareValues(values)}
+                      onAdopt={() => {
+                        setValues(compareValues);
+                        setCompareValues(null);
+                      }}
+                      onStop={() => setCompareValues(null)}
+                    />
+                  )}
                   <ContributionNotes notes={notes} />
                   <ResultsSummary result={roth.result} showBlend />
                   <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} />
