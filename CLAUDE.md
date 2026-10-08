@@ -19,6 +19,8 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   match actual behavior. It becomes the Roth article of the planned Docs section.
 
 ## Direction and roadmap
+- Rate terms (the user's, used everywhere in the preview): **marginal** = the tax bracket; **effective** = the real tax on the
+  next dollar, with everything it sets off; **average** = total tax ÷ total income.
 - Audience: internal advisor tool; advisor-level density is fine. Desktop-first (phone must not break, no polish goal).
 - **Round 2 plan (current):** https://claude.ai/artifact/DQyr9BcgMUKAkxpue1SmNU (same doc as
   https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095; a Claude Doc, edited only through the Claude
@@ -53,7 +55,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 754 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 764 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -85,7 +87,7 @@ npm run build     # static site -> dist/ (base './')
   `thresholdScale`, `rateShift`, `calendarYear`, `qbi`; `calculateYearTaxTotals` = without the marginal probes) built from
   `taxCalculations`, `capitalGainsTax`, `ficaTax`, `socialSecurityTax`, `qbi.js` (the QBI deduction, basic rule);
   `retirementTaxStack.js` (`calculateRetirementTax`, a thin wrapper over the engine since 2026-10-07); `yearTaxRows.js`
-  and `taxBreakdown.js` (the calculation as rows); `rateProfile.js` (the tax page's two buckets: bracket and next-dollar rate
+  and `taxBreakdown.js` (the calculation as rows); `childTaxCredit.js` and `dependents.js` (the credit, and who counts each year); `rateProfile.js` (the tax page's two buckets: bracket and next-dollar rate
   up the income scale); `iraRules.js` (Roth IRA limits, IRA deduction phase-out, Roth catch-up).
   The preview turns QBI on through `household.assumptions.qualifiedBusinessIncome` (version 2 households).
 - `src/lib/` Roth comparison (public + preview): `compare.js` (orchestrator, every number on the Roth page; optional
@@ -133,6 +135,7 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (h) — Rates named marginal (bracket) / effective (next dollar) / average; the child tax credit. 764 tests.
 - 2026-10-08 (g) — Phase 1 step (b): itemized deductions; tax rows rebuilt; the two buckets (rateProfile.js). 754 tests.
 - 2026-10-08 (f) — Phase 1 step (a): QBI deduction in the preview; Roth IRA / IRA-deduction / Roth catch-up rules. 740 tests.
 - 2026-10-08 (e) — Phase 0 done: the Docs section with the inputs article; Send feedback on every page. 724 tests.
