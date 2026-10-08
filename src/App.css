@@ -2201,3 +2201,8 @@ th.win .th-sub {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.tax-rate-link {
+  grid-column: 1 / -1;
+  margin: 0;
+}

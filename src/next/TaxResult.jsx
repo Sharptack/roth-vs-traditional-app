@@ -6,6 +6,7 @@ import { taxHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
 import Blocks from './Blocks.jsx';
 import RateBuckets from './RateBuckets.jsx';
+import { docsHash } from '../lib/docs.js';
 
 const pct = (r) => formatPercent(r, 1);
 
@@ -166,6 +167,9 @@ export default function TaxResult({ tax }) {
                   {hasPayroll && <>; {pct(r.effectiveRateWithPayroll)} with {$(r.payrollTax)} payroll tax</>}
                 </div>
               </div>
+              <p className="hint tax-rate-link">
+                <a href={docsHash('rates')}>What these three rates mean &rarr;</a>
+              </p>
             </div>
           ),
         },

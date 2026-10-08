@@ -15,6 +15,11 @@ export const DOCS_ARTICLES = [
     title: 'The household inputs',
     blurb: 'Every input on the inputs page: what it means, which calculators read it, and how saving and sharing work.',
   },
+  {
+    slug: 'rates',
+    title: 'Tax rates: marginal, effective and average',
+    blurb: 'The three rates the calculators use, and what each one means.',
+  },
 ];
 
 // Articles that live elsewhere until the switchover (ARTICLE.md is the Roth vs. Pre-tax article).
