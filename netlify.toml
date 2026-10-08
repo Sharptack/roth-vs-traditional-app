@@ -6,7 +6,7 @@
   # when nothing the site is built from changed since the last deploy (notes, plans, tests and
   # database scripts don't ship). Exit 0 = skip. If the last deployed commit is unknown, git diff
   # fails and the build runs. A new folder the site imports from must be added to this list.
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src index.html public package.json package-lock.json vite.config.js ARTICLE.md netlify.toml"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- src index.html public package.json package-lock.json vite.config.js ARTICLE.md articles netlify.toml"
 
 [build.environment]
   # Vite 8 needs Node 20.19+ or 22.12+.

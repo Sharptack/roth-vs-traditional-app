@@ -19,6 +19,7 @@ import { toHouseholdV2, validateHouseholdV2 } from '../lib/householdV2.js';
 import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 import { householdValuesV2FromSearch } from '../lib/householdLink.js';
 import { CALCULATOR_INPUTS, inputSections } from '../lib/householdInputs.js';
+import { DOCS_HASH, docsHash } from '../lib/docs.js';
 import { DEFAULT_HOUSEHOLD_VALUES, isoDate, refreshAges } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
 import { rmdStartAge } from '../lib/rmd.js';
@@ -217,6 +218,9 @@ export default function NextApp({ initialPage, client }) {
               Every input in one place. Each calculator reads the ones it needs, and its own inputs card
               edits the same household.
             </p>
+            <p className="header-links">
+              <a href={docsHash('inputs')}>How the inputs work &rarr;</a>
+            </p>
           </header>
           <main className="inputs-page">
             {saved(false)}
@@ -246,6 +250,9 @@ export default function NextApp({ initialPage, client }) {
           <header className="page-header">
             <h1>Client household (preview)</h1>
             <p>Set up the household once; every calculator reads the same inputs.</p>
+            <p className="header-links">
+              <a href={DOCS_HASH}>Docs &rarr;</a> How each calculator works and how to use it.
+            </p>
           </header>
           <main className="calc-layout">
             <div className="inputs-column">

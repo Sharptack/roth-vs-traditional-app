@@ -7,12 +7,14 @@ import { compareRothVsTraditional } from './lib/compare.js';
 import { CLEARED_FORM_VALUES, DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
 import { valuesFromSearch } from './lib/shareInputs.js';
 import { ARTICLE_HASH, SCENARIOS_HASH, articleSectionFromHash, routeFromHash } from './lib/route.js';
+import { docsLocation } from './lib/docs.js';
 import './App.css';
 
 // Pages other than the calculator load when first opened, so the calculator itself downloads less:
 // the article brings the markdown library, the preview brings the household calculators and sign-in.
 const ArticlePage = lazy(() => import('./components/ArticlePage.jsx'));
 const ScenariosPage = lazy(() => import('./components/ScenariosPage.jsx'));
+const DocsPage = lazy(() => import('./components/DocsPage.jsx'));
 const NextApp = lazy(() => import('./next/NextApp.jsx'));
 
 /*
@@ -58,7 +60,9 @@ const FROM_LINK =
 function useRoute() {
   const [hash, setHash] = useState(() => (typeof window === 'undefined' ? '' : window.location.hash));
   const route = routeFromHash(hash);
-  const section = route === 'article' ? articleSectionFromHash(hash) : null;
+  // A heading to scroll to: in the article, or in a Docs article ("#/docs/<article>/<heading>").
+  const section = route === 'article' ? articleSectionFromHash(hash) : route === 'docs' ? (docsLocation(hash)?.section ?? null) : null;
+  const docsArticle = route === 'docs' ? (docsLocation(hash)?.article ?? '') : '';
   const shown = useRef(route);
   const calculatorScroll = useRef(0);
   const firstRender = useRef(true);
@@ -92,9 +96,10 @@ function useRoute() {
     };
     scrollToHeading();
     return () => cancelAnimationFrame(frame);
-  }, [route, section]);
+    // docsArticle: a new Docs article starts at the top too (the route stays 'docs').
+  }, [route, section, docsArticle]);
 
-  return route;
+  return { route, hash };
 }
 
 export default function App() {
@@ -102,7 +107,7 @@ export default function App() {
   // "Compare a change": a second copy of the inputs to edit (null = not comparing). The main
   // inputs are the baseline. Kept in memory only, so a reload clears it.
   const [compareValues, setCompareValues] = useState(FROM_LINK.compareValues);
-  const route = useRoute();
+  const { route, hash } = useRoute();
   // Which input sections are open. Shared by both forms in "Compare a change", so opening a
   // section on one side opens it on the other and the two stay lined up.
   const [openInputs, setOpenInputs] = useState(() => new Set(DEFAULT_OPEN_INPUTS));
@@ -226,6 +231,7 @@ export default function App() {
       <Suspense fallback={<p className="hint">Loading&hellip;</p>}>
         {route === 'article' && <ArticlePage />}
         {route === 'scenarios' && <ScenariosPage />}
+        {route === 'docs' && <DocsPage hash={hash} />}
         {route === 'next' && <NextApp />}
       </Suspense>
     </div>

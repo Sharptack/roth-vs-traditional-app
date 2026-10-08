@@ -1292,3 +1292,21 @@ describe('preview pages: Medicare IRMAA', () => {
     expect(html).toContain('<th scope="col">Medicare IRMAA</th>');
   });
 });
+
+describe('Docs (#/docs)', () => {
+  it('the index lists the articles; an article renders with heading ids; an unknown one says so', async () => {
+    const { default: DocsPage } = await import('../src/components/DocsPage.jsx');
+    const index = renderToStaticMarkup(<DocsPage hash="#/docs" />);
+    expect(index).toContain('<h1>Docs</h1>');
+    expect(index).toContain('href="#/docs/inputs"');
+    expect(index).toContain('href="#/how-it-works"');
+    const inputs = renderToStaticMarkup(<DocsPage hash="#/docs/inputs/social-security" />);
+    expect(inputs).toContain('<h1 id="the-household-inputs">The household inputs</h1>');
+    expect(inputs).toContain('id="social-security"');
+    expect(inputs).toContain('href="#/docs"');
+    expect(renderToStaticMarkup(<DocsPage hash="#/docs/nothing-here" />)).toContain('There is no article at this address.');
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    expect(renderToStaticMarkup(<NextApp />)).toContain('href="#/docs"');
+    expect(renderToStaticMarkup(<NextApp initialPage="inputs" />)).toContain('href="#/docs/inputs"');
+  });
+});

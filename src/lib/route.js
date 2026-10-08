@@ -55,8 +55,13 @@ export function nextPageFromHash(hash) {
   return found ? found[0] : 'home';
 }
 
+// The Docs section (round 2, "throughout"): "#/docs" is its index, "#/docs/<article>" an article,
+// "#/docs/<article>/<heading>" an article at that heading (lib/docs.js).
+export const DOCS_HASH = '#/docs';
+
 export function routeFromHash(hash) {
   if (hash === ARTICLE_HASH || articleSectionFromHash(hash)) return 'article';
+  if (hash === DOCS_HASH || hash.startsWith(`${DOCS_HASH}/`)) return 'docs';
   if (hash === SCENARIOS_HASH) return 'scenarios';
   // "#next" (no slash) is accepted too, since it is easy to type that way.
   if (hash === NEXT_HASH || hash === '#next' || hash.startsWith(`${NEXT_HASH}/`)) return 'next';

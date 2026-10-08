@@ -2096,3 +2096,12 @@ th.win .th-sub {
     display: none;
   }
 }
+
+/* the Docs index (#/docs) */
+.docs-index {
+  padding-left: 18px;
+}
+
+.docs-index li {
+  margin-bottom: 8px;
+}
