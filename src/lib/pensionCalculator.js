@@ -9,6 +9,7 @@
 // age. Both options are taxed alike (the lump sum rolls into a Pre-tax account, the pension is
 // ordinary income), so tax is left out. Not modeled: the plan's own solvency, PBGC limits.
 import { parseNumber } from './formInputs.js';
+import { lifeExpectancy, survivalCurve } from './lifeTable.js';
 
 // The calculator's own form fields (stored in the household under calculators.pension).
 export const PENSION_DEFAULT_VALUES = {
@@ -78,6 +79,42 @@ export function pensionResult(inputs) {
     breakEvenAge: breakEvenMonth < 0 ? null : startAge + (breakEvenMonth + 1) / 12,
     presentValueAt,
     byEndAge,
+  };
+}
+
+// ---- On life expectancy (round 2 phase 1) ----
+//
+// Each payment weighted by the chance of being alive to receive it, from the start age on (the
+// owner is alive when the pension starts): the owner's monthly benefit by the owner's survival;
+// the survivor share by the chance the spouse is alive and the owner isn't (lives independent).
+// The expected return is the rate at which the lump sum equals those expected payments.
+//   qs, spouseQs: death rates by age (lifeTable.js deathRates); spouseAgeAtStart null = no spouse.
+// -> { irr (a year), expectedPayments (total), lifeExpectancy (owner, years from the start),
+//      spouseLifeExpectancy, flows (expected monthly payments), presentValueAt(rate a year) }
+export function pensionOnLifeTable({ lumpSum, monthly, startAge, cola = 0, survivorShare = 0, spouseAgeAtStart = null }, qs, spouseQs) {
+  const own = survivalCurve(qs, startAge);
+  const spouse = spouseAgeAtStart !== null && survivorShare > 0 ? survivalCurve(spouseQs, spouseAgeAtStart) : null;
+  const months = Math.max(own.length, spouse ? spouse.length : 0) - 1;
+  const at = (curve, k) => (k < curve.length ? curve[k] : 0);
+  const flows = [];
+  for (let k = 1; k <= months; k++) {
+    const base = monthly * (1 + cola) ** Math.floor((k - 1) / 12);
+    const ownAlive = at(own, k);
+    const survivor = spouse ? survivorShare * at(spouse, k) * (1 - ownAlive) : 0;
+    flows.push(base * (ownAlive + survivor));
+  }
+  const rate = annual(irr([-lumpSum, ...flows]));
+  const presentValueAt = (yearlyRate) => {
+    const m = (1 + yearlyRate) ** (1 / 12) - 1;
+    return flows.reduce((sum, f, i) => sum + f / (1 + m) ** (i + 1), 0);
+  };
+  return {
+    irr: rate,
+    expectedPayments: flows.reduce((a, f) => a + f, 0),
+    lifeExpectancy: lifeExpectancy(qs, startAge),
+    spouseLifeExpectancy: spouse ? lifeExpectancy(spouseQs, spouseAgeAtStart) : null,
+    flows,
+    presentValueAt,
   };
 }
 
