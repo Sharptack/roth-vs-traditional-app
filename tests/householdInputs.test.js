@@ -5,6 +5,7 @@ import {
   CALCULATOR_INPUTS,
   INPUT_SECTIONS,
   PERSON_FIELDS,
+  accountsSummary,
   inputSections,
 } from '../src/lib/householdInputs.js';
 import { DEFAULT_HOUSEHOLD_VALUES as D, addRow, setGroupField, setIncludeSpouse, updateRow } from '../src/lib/householdValues.js';
@@ -66,6 +67,18 @@ describe('the version 2 inputs: section summaries', () => {
 
     v = setGroupField(setGroupField(D, 'assumptions', 'retirementRateShift', '-0.02'), 'assumptions', 'medicareIrmaa', 'no');
     expect(summary('assumptions', v)).toBe('7% return after inflation · 2.5% inflation · rates −2 pts in retirement · no IRMAA');
+  });
+
+  it('adds up accounts by type (blank balances count as 0)', () => {
+    expect(
+      accountsSummary([
+        { type: 'roth', balance: '20000' },
+        { type: 'pretax', balance: '100,000' },
+        { type: 'pretax', balance: '' },
+        { type: 'roth', balance: '5000' },
+      ]),
+    ).toBe('Pre-tax $100,000 · Roth $25,000');
+    expect(accountsSummary([])).toBe('None');
   });
 
   it('shows one kind of taxable contribution without an account type', () => {
