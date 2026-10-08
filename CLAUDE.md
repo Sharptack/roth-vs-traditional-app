@@ -20,7 +20,8 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 
 ## Direction and roadmap
 - Rate terms (the user's, used everywhere in the preview): **marginal** = the tax bracket; **effective** = the real tax on the
-  next dollar, with everything it sets off; **average** = total tax ÷ total income.
+  next dollar, with everything it sets off; **average** = total tax ÷ total income. Public explanation: Docs article
+  `articles/rates.md`. The Roth comparison keeps its pairing: marginal today vs. the effective rate on the withdrawal.
 - Audience: internal advisor tool; advisor-level density is fine. Desktop-first (phone must not break, no polish goal).
 - **Round 2 plan (current):** https://claude.ai/artifact/DQyr9BcgMUKAkxpue1SmNU (same doc as
   https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095; a Claude Doc, edited only through the Claude
@@ -29,8 +30,8 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 1, step (c): the pension calculator on life tables. Steps (a) (QBI, IRA rules) and (b) (tax
-  rows, itemized deductions, the two-bucket chart) are done.
+- **Current step:** phase 1, step (d): the Roth page merge. Steps (a) QBI and IRA rules, (b) tax rows, itemized
+  deductions, the buckets, the child tax credit, and (c) the pension on SSA life tables are done.
 - **Docs** (`#/docs`, public): one markdown article per feature in `articles/` (listed in `src/lib/docs.js`); each
   phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
   `index.html`; Netlify's form detection must be on).
@@ -55,7 +56,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 764 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 771 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -135,6 +136,7 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (i) — Phase 1 step (c): pension on SSA period life table (src/data/lifeTable.js); Docs rates article. 771 tests.
 - 2026-10-08 (h) — Rates named marginal (bracket) / effective (next dollar) / average; the child tax credit. 764 tests.
 - 2026-10-08 (g) — Phase 1 step (b): itemized deductions; tax rows rebuilt; the two buckets (rateProfile.js). 754 tests.
 - 2026-10-08 (f) — Phase 1 step (a): QBI deduction in the preview; Roth IRA / IRA-deduction / Roth catch-up rules. 740 tests.

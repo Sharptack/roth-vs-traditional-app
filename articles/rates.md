@@ -4,7 +4,7 @@ The calculators use three rates, and keep to one meaning for each.
 
 The example: a single retiree, 67, with $36,000 of Social Security, $10,000 of qualified dividends and $40,000 of Pre-tax withdrawals, $86,000 of income in all. Federal income tax is $6,467 (2026 rules). The last dollar of ordinary income is in the 12% bracket, but the next dollar also makes more Social Security taxable and pushes dividends from the 0% rate into 15%, so it costs 28.6%.
 
-| Rate | What it is | For the example below |
+| Rate | What it is | For the example |
 | --- | --- | --- |
 | **Marginal rate** | The tax bracket: the rate on the last dollar of ordinary taxable income. | 12% |
 | **Effective rate** | The real federal income tax on the next dollar, with everything that dollar sets off. | 28.6% |
