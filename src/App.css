@@ -2138,3 +2138,19 @@ th.win .th-sub {
     display: none;
   }
 }
+
+/* the tax page's calculation rows: payroll tax beside its income, brackets folded */
+.calc-row.calc-tax {
+  color: var(--dim);
+  font-size: 0.88rem;
+}
+
+.calc-brackets {
+  margin: 2px 0 2px 16px;
+}
+
+.calc-brackets > summary {
+  font-size: 0.88rem;
+  color: var(--accent);
+  cursor: pointer;
+}

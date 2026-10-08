@@ -156,6 +156,8 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
       preferentialIncome,
       socialSecurity,
       taxableSocialSecurity,
+      // other income plus half of the benefits: what sets how much of them is taxable (Pub. 915)
+      provisionalIncome: incomeBeforeSocialSecurity + socialSecurity / 2,
       adjustments,
       selfEmploymentTaxDeduction: payroll.selfEmployment.deduction,
       pretaxDeferrals,

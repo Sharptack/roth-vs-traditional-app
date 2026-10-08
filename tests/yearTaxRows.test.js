@@ -57,6 +57,37 @@ describe('yearTaxRows (2026, HAND CALC)', () => {
     }
   });
 
+  it('Social Security: provisional income and the taxable part, then AGI and the deductions', () => {
+    // single, 67: pension 40,000, benefits 30,000
+    //   provisional 40,000 + 15,000 = 55,000; taxable SS min(25,500, 85% × 21,000 + 4,500 = 22,350) = 22,350 (74.5%)
+    //   AGI 62,350; deductions 16,100 + 2,050 + 6,000 = 24,150; taxable 38,200
+    const { rows, get } = rowsFor({ filingStatus: 'single', year: Y, people: [{ age: 67 }], income: { ordinaryIncome: 40000, socialSecurity: 30000 } });
+    expect(get('provisional').value).toBe(55000);
+    expect(get('taxableSocialSecurity').value).toBeCloseTo(22350, 6);
+    expect(get('taxableSocialSecurity').label).toContain('74.5% of the benefits');
+    expect(get('agi').value).toBeCloseTo(62350, 6);
+    expect(get('magi').value).toBeCloseTo(62350, 6);
+    expect(['standardDeduction', 'additional65', 'senior'].map((k) => get(k).value)).toEqual([16100, 2050, 6000]);
+    expect(get('taxableIncome').value).toBeCloseTo(38200, 6);
+    // rows that don't apply are left out
+    for (const k of ['wages', 'wagesPayroll', 'gainsHeading', 'nii', 'niit', 'itemized', 'qbi', 'payrollTax']) expect(rows.find((x) => x.key === k), k).toBeUndefined();
+  });
+
+  it('payroll tax sits beside the earned income; itemized and QBI deductions when taken', () => {
+    // wages 100,000: FICA 6,200 + 1,450 = 7,650
+    const w = rowsFor({ filingStatus: 'single', year: Y, people: [{ wages: 100000 }], itemizedDeductions: 30000 });
+    expect(w.get('wagesPayroll').value).toBeCloseTo(7650, 6);
+    expect(w.get('wagesPayroll').kind).toBe('tax');
+    expect(w.get('itemized').value).toBe(30000);
+    expect(w.get('standardDeduction')).toBeUndefined();
+    expect(w.rows.find((x) => x.key === 'ssHeading')).toBeUndefined();
+    // the $100,000 1099 case (qbi.test.js): SE tax 14,129.55, QBI deduction 15,367.045
+    const se = rowsFor({ filingStatus: 'single', year: Y, people: [{ selfEmploymentIncome: 100000 }], qbi: true });
+    expect(se.get('sePayroll').value).toBeCloseTo(14129.55, 6);
+    expect(se.get('qbi').value).toBeCloseTo(15367.045, 6);
+    expect(se.get('totalTax').value).toBeCloseTo(8235.0 + 14129.55, 2);
+  });
+
   it('bracketSlices splits a range across brackets', () => {
     const b = [{ rate: 0.1, upTo: 100 }, { rate: 0.2, upTo: 200 }, { rate: 0.3, upTo: Infinity }];
     expect(bracketSlices(50, 250, b).map((s) => [s.rate, s.from, s.to])).toEqual([[0.1, 50, 100], [0.2, 100, 200], [0.3, 200, 250]]);

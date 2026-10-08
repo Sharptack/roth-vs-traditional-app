@@ -7,12 +7,43 @@ import Blocks from './Blocks.jsx';
 
 const pct = (r) => formatPercent(r, 1);
 
+// The rows, with each run of bracket rows folded into a "By bracket" dropdown.
+function CalculationRows({ rows }) {
+  const out = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].kind !== 'bracket') {
+      out.push(<Row key={rows[i].key} row={rows[i]} />);
+      continue;
+    }
+    const run = [];
+    while (i < rows.length && rows[i].kind === 'bracket') run.push(rows[i++]);
+    i -= 1;
+    out.push(
+      <details key={`${run[0].key}-brackets`} className="details calc-brackets">
+        <summary>By bracket ({run.length})</summary>
+        {run.map((r) => (
+          <Row key={r.key} row={r} />
+        ))}
+      </details>,
+    );
+  }
+  return out;
+}
+
 function Row({ row }) {
   if (row.kind === 'heading') {
     return (
       <div className="calc-row heading">
         <span>{row.label}</span>
         <span />
+      </div>
+    );
+  }
+  if (row.kind === 'tax') {
+    return (
+      <div className="calc-row sub calc-tax">
+        <span>{row.label}</span>
+        <span>({$(row.value)})</span>
       </div>
     );
   }
@@ -183,9 +214,7 @@ export default function TaxResult({ tax }) {
           closed: true,
           content: (
             <div className="calc">
-              {rows.map((row) => (
-                <Row key={row.key} row={row} />
-              ))}
+              <CalculationRows rows={rows} />
             </div>
           ),
         },
