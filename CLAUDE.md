@@ -27,7 +27,8 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 0, step (c): blocks everywhere and the collapse bar.
+- **Current step:** phase 0's code steps (a)-(c) are done; still open for phase 0: the Docs section with its first
+  article (the inputs) and the feedback link. Then phase 1.
 - Round one's plan (finished): https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45.
 - Defaults decided: everything in TODAY's dollars (real return; brackets and limits indexed by law); fixed-dollar
   thresholds (SS taxability, NIIT, Additional Medicare, the senior deduction) shrink at the inflation input (2.5%) via
@@ -49,7 +50,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 709 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 714 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -99,7 +100,8 @@ npm run build     # static site -> dist/ (base './')
 - UI: `src/App.jsx` (public page; the article, Visualization and preview load lazily), `src/components/` (public
   components; `ResultsSummary.jsx` is large and gets split per block in phase 0; `charts/`), `src/next/` (preview pages;
   `NextApp.jsx` computes each calculator only on its own page or the homepage tiles; `HouseholdInputs.jsx` is the v2
-  form: the inputs page `#/next/inputs` and each calculator's inputs card), `src/services/` (Supabase).
+  form: the inputs page `#/next/inputs` and each calculator's inputs card; `Blocks.jsx` lays out results as blocks,
+  headlines from `src/lib/blockHeadlines.js`), `src/services/` (Supabase).
 - Backend: `supabase/migrations/` (saved households with forced RLS; an audit log; households open only through
   `open_saved_household`), `supabase/tests/` (self-check SQL the user runs), `docs/backend-setup.md`, `docs/security.md`.
 - Tests: `tests/` mirrors `src/lib`, plus `components.smoke.test.jsx`.
@@ -124,6 +126,7 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (d) — Phase 0 step (c): results as blocks with headlines on every calculator; the collapse bar. 714 tests.
 - 2026-10-08 (c) — Plan doc caught up (queue written, "How the plan fits together" added); this file trimmed to pointers.
 - 2026-10-08 (b) — Phase 0 step (b): inputs page, one inputs card per calculator, saves and links in v2. 709 tests.
 - 2026-10-08 (a) — Phase 0 step (a): the v2 household, conversion from v1, v1 results pinned. 704 tests.
