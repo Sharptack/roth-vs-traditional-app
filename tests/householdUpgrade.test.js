@@ -124,3 +124,14 @@ describe('Social Security worked out from earnings needs no PIA', () => {
     expect(validateHouseholdV2(h)).toEqual(['Enter your monthly Social Security benefit at full retirement age (PIA).']);
   });
 });
+
+describe('the preview runs on the version 2 household (step a, commit 8)', () => {
+  it('converts the form values and reads the version 2 household', async () => {
+    const { previewResult } = await import('../src/next/NextApp.jsx');
+    const { household, result } = previewResult(V1_HOUSEHOLDS.mfjMixedBenefits, YEAR, { blend: false });
+    expect(household.version).toBe(2);
+    // the decided change shows up in the preview (hand calc in the mfjMixedBenefits test above)
+    expect(result.socialSecurity.annualBenefit).toBeCloseTo(59062.5, 6);
+    expect(previewResult(V1_HOUSEHOLDS.cleared, YEAR, { blend: false }).result.errors).toEqual(pinsFor(V1_HOUSEHOLDS.cleared).roth.errors);
+  });
+});

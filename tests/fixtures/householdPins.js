@@ -1,7 +1,6 @@
 // Every calculator's results for one preview household, as NextApp works them out, reduced to
 // numbers that can be pinned in a snapshot (tests/householdV1Pins.test.js). Round 2 phase 0.
-import { previewResult } from '../../src/next/NextApp.jsx';
-import { householdToCompareInputs } from '../../src/lib/household.js';
+import { householdToCompareInputs, toHousehold, validateHousehold } from '../../src/lib/household.js';
 import { householdToYearTaxParams, taxCalculatorResult } from '../../src/lib/taxCalculator.js';
 import { conversionResult } from '../../src/lib/conversionCalculator.js';
 import { householdToPensionInputs, pensionResult } from '../../src/lib/pensionCalculator.js';
@@ -31,16 +30,21 @@ function scalars(obj, depth = 2) {
   return out;
 }
 
-// Each calculator's results for one version 1 household (form values), as NextApp works them out.
+// Each calculator's results for one version 1 household (form values), through version 1's own
+// household (household.js toHousehold), as the preview worked them out before it moved to
+// version 2 (round 2 phase 0, step a, commit 8). Kept so the pins stay version 1's.
 export function pinsFor(values) {
-  return pinsFromPreview(previewResult(values, YEAR, { blend: false }));
+  return pinsFromHousehold(toHousehold(values, YEAR), validateHousehold);
 }
 
-// The same for version 2 values: the household from toHouseholdV2, its errors merged the way
-// NextApp's previewResult merges them.
+// The same for version 2 values (householdV2.js), as the preview works them out now.
 export function pinsForV2(values) {
-  const household = toHouseholdV2(values, YEAR);
-  const householdErrors = validateHouseholdV2(household);
+  return pinsFromHousehold(toHouseholdV2(values, YEAR), validateHouseholdV2);
+}
+
+// The household's errors are merged after the comparison's, as NextApp's previewResult does.
+function pinsFromHousehold(household, validate) {
+  const householdErrors = validate(household);
   const result = compareRothVsTraditional({ ...householdToCompareInputs(household), skipBlend: true });
   if (householdErrors.length === 0) return pinsFromPreview({ household, result });
   return pinsFromPreview({ household, result: { valid: false, errors: [...(result.valid ? [] : result.errors), ...householdErrors] } });

@@ -12,7 +12,9 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import ResultsSummary from '../components/ResultsSummary.jsx';
 import { compareRothVsTraditional } from '../lib/compare.js';
-import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs, toHousehold, validateHousehold } from '../lib/household.js';
+import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs } from '../lib/household.js';
+import { toHouseholdV2, validateHouseholdV2 } from '../lib/householdV2.js';
+import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 import { householdValuesFromSearch } from '../lib/householdLink.js';
 import { DEFAULT_SECTION_IDS, SHARED_SECTION_IDS } from '../lib/householdForm.js';
 import { projectionView } from '../lib/projectionSummary.js';
@@ -41,10 +43,12 @@ const CURRENT_YEAR = new Date().getFullYear();
 const FROM_LINK = typeof window === 'undefined' ? null : householdValuesFromSearch(window.location.search);
 
 // The Roth calculator's whole calculation, outside React so it can be tested.
+//  values: the form's values. Version 1 values (the form until round 2 phase 0, step b) are
+//    converted to version 2 first; every calculator reads the version 2 household.
 //  blend: compute the blend explorer (only the Roth page shows it; it is most of the run time).
 export function previewResult(values, year, { blend = true } = {}) {
-  const household = toHousehold(values, year);
-  const householdErrors = validateHousehold(household);
+  const household = toHouseholdV2(upgradeHouseholdValues(values, year), year);
+  const householdErrors = validateHouseholdV2(household);
   const result = compareRothVsTraditional({ ...householdToCompareInputs(household), skipBlend: !blend });
   if (householdErrors.length === 0) return { household, result };
   const errors = [...(result.valid ? [] : result.errors), ...householdErrors];
