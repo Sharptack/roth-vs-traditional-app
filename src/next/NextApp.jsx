@@ -125,6 +125,9 @@ function usePreviewPage() {
 export default function NextApp({ initialPage, client }) {
   const [values, setValues] = useState(() => (FROM_LINK ? opening(FROM_LINK.values) : DEFAULT_HOUSEHOLD_VALUES));
   const [locked, setLocked] = useState(Boolean(FROM_LINK?.viewOnly));
+  // "Start a new household" (decided 2026-10-08): back to the defaults, with an Undo that restores the
+  // household on screen (and which saved household it was). A saved household is never touched.
+  const [beforeNew, setBeforeNew] = useState(null);
   // Sign-in and the saved household on screen ({ id, label }), when a backend is configured.
   const cloud = useCloud(client);
   const [opened, setOpened] = useState(null);
@@ -219,7 +222,37 @@ export default function NextApp({ initialPage, client }) {
               edits the same household.
             </p>
             <p className="header-links">
-              <a href={docsHash('inputs')}>How the inputs work &rarr;</a>
+              <a href={docsHash('inputs')}>How the inputs work &rarr;</a>{' '}
+              {beforeNew ? (
+                <>
+                  <span className="dim">Started a new household.</span>{' '}
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => {
+                      setValues(beforeNew.values);
+                      setOpened(beforeNew.opened);
+                      setLocked(beforeNew.locked);
+                      setBeforeNew(null);
+                    }}
+                  >
+                    Undo
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => {
+                    setBeforeNew({ values, opened, locked });
+                    setValues(DEFAULT_HOUSEHOLD_VALUES);
+                    setOpened(null);
+                    setLocked(false);
+                  }}
+                >
+                  Start a new household
+                </button>
+              )}
             </p>
           </header>
           <main className="inputs-page">

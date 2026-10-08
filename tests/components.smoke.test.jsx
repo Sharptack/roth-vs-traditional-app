@@ -1135,6 +1135,7 @@ describe('NextApp (#/next preview)', () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const page = renderToStaticMarkup(<NextApp initialPage="inputs" />);
     expect(page).toContain('Household inputs (preview)');
+    expect(page).toContain('>Start a new household</button>');
     for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add other income types', 'Lump sum offered', 'Project to age']) {
       expect(page, label).toContain(label);
     }

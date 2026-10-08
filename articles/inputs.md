@@ -115,6 +115,7 @@ Three calculators have inputs only they read, shown first on their own page:
 
 ## Saving and sharing
 
+- **Start a new household** (on the inputs page) puts every input back to its default. **Undo** brings the household back, as long as nothing else was started since. A saved household is never changed by it.
 - **Saved households:** signed-in advisors can save the household under a short name, open it later, save changes over it, or save it as a new one. An "Unsaved changes" marker shows when the household on screen differs from the saved one. During testing, name households with initials or a nickname rather than a client's name.
 - **Copy link to this household** puts every input into a link. Tick **View only** and the link opens locked, with an **Edit a copy** button.
 - **Copy summary** copies the inputs and every calculator's headline, with the link, as plain text for an email or a note.
