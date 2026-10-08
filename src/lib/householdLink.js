@@ -24,6 +24,8 @@ import { PROJECTION_DEFAULT_VALUES } from './household.js';
 import { CONVERSION_DEFAULT_VALUES } from './conversionCalculator.js';
 import { PENSION_DEFAULT_VALUES } from './pensionCalculator.js';
 import { valuesFromSearch } from './shareInputs.js';
+import { HOUSEHOLD_VALUES_VERSION, cleanHouseholdValues } from './householdValues.js';
+import { upgradeHouseholdValues } from './householdUpgrade.js';
 
 const PREFIX = 'h.';
 // The flat balances are carried by the accounts list instead.
@@ -87,4 +89,53 @@ export function householdValuesFromSearch(search) {
     viewOnly,
     fromOldLink: true,
   };
+}
+
+// ---- Version 2 links (round 2 phase 0) ----
+//
+//   ?hh=2&v=<base64url of the values' JSON>[&view=1]
+//
+// Version 2 values have rows and groups, so the whole (cleaned) values object travels as one
+// encoded parameter; what comes back goes through the same allow-list as a saved household
+// (cleanHouseholdValues), so a tampered link can't inject anything. hh=1 links and old
+// public-calculator links open converted (householdUpgrade.js). Written once the form edits
+// version 2 values (step b).
+
+function toBase64Url(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromBase64Url(text) {
+  const b64 = String(text).replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+}
+
+export function householdLinkSearchV2(values, { viewOnly = false } = {}) {
+  const params = new URLSearchParams();
+  params.set('hh', String(HOUSEHOLD_VALUES_VERSION));
+  params.set('v', toBase64Url(JSON.stringify(cleanHouseholdValues(values))));
+  if (viewOnly) params.set('view', '1');
+  return `?${params.toString()}`;
+}
+
+// -> { values (version 2), viewOnly, fromOldLink } or null when the link carries no household
+// (or a version 2 link that can't be read). year: the year it's opened in, for the conversion.
+export function householdValuesV2FromSearch(search, year) {
+  const params = new URLSearchParams(search ?? '');
+  const viewOnly = params.get('view') === '1';
+  if (params.get('hh') === String(HOUSEHOLD_VALUES_VERSION)) {
+    let values;
+    try {
+      values = cleanHouseholdValues(JSON.parse(fromBase64Url(params.get('v') ?? '')));
+    } catch {
+      values = null;
+    }
+    return values ? { values, viewOnly, fromOldLink: false } : null;
+  }
+  const v1 = householdValuesFromSearch(search);
+  return v1 ? { ...v1, values: upgradeHouseholdValues(v1.values, year) } : null;
 }
