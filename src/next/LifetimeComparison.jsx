@@ -1,8 +1,10 @@
-// "Over a lifetime" (roadmap phase 6), a block on the preview's Roth page below the existing results:
-// Roth vs. Pre-tax Future Contributions, each projected year by year to the end age, side by side.
-// Renders lib/lifetimeComparison.js; no math of its own.
+// "Over a lifetime" (roadmap phase 6), two blocks on the Roth page below the first-year results:
+// Roth vs. Pre-tax Future Contributions, each projected year by year to the end age, side by side;
+// then "Show full table", every year of either scenario. Renders lib/lifetimeComparison.js; no math
+// of its own.
 import { useState } from 'react';
 import Collapsible from '../components/Collapsible.jsx';
+import GroupedBarChart from '../components/charts/GroupedBarChart.jsx';
 import LineChart from '../components/charts/LineChart.jsx';
 import { lifetimeHeadline } from '../lib/blockHeadlines.js';
 import { formatCurrency as $ } from '../lib/format.js';
@@ -44,14 +46,15 @@ function BreakEven({ household, result, endAge, winner }) {
 }
 
 export default function LifetimeComparison({ lifetime, household, result }) {
-  const [tableFor, setTableFor] = useState(null);
+  const [tableFor, setTableFor] = useState('roth');
   const [open, setOpen] = useState(true);
+  const [tableOpen, setTableOpen] = useState(false);
   if (!lifetime) return null;
   const { roth, pretax, winner, difference: d, wealthGap, crossoverYear } = lifetime;
   const endAge = roth.endAge;
   const firstYearWinner = result.comparison.winner;
   const retiredYears = roth.rows.filter((r) => r.working.some((w) => !w)).map((r) => r.year);
-  const taxPoints = (rows) => rows.filter((r) => retiredYears.includes(r.year)).map((r) => ({ x: r.year, y: r.totalTax }));
+  const taxEachYear = (rows) => rows.filter((r) => retiredYears.includes(r.year)).map((r) => r.totalTax);
   const rows = [
     ['Sustainable spending, after tax, a year', roth.sustainable, pretax.sustainable, d.sustainable, true],
     ['Lifetime tax (income and payroll)', roth.summary.totalTax, pretax.summary.totalTax, d.totalTax],
@@ -59,6 +62,7 @@ export default function LifetimeComparison({ lifetime, household, result }) {
     [`Ending balance after tax for heirs`, roth.summary.endingAfterTax, pretax.summary.endingAfterTax, d.endingAfterTax],
   ];
   return (
+    <>
     <Collapsible
       headingId="lifetime"
       className="lifetime-card"
@@ -138,17 +142,15 @@ export default function LifetimeComparison({ lifetime, household, result }) {
       </p>
 
       <h3 className="subhead">Tax each year in retirement</h3>
-      <LineChart
+      <GroupedBarChart
+        x={retiredYears}
         series={[
-          { key: 'roth', label: 'Roth scenario', color: ROTH_COLOR, points: taxPoints(roth.rows) },
-          { key: 'pretax', label: 'Pre-tax scenario', color: PRETAX_COLOR, points: taxPoints(pretax.rows) },
+          { key: 'roth', label: 'Roth scenario', color: ROTH_COLOR, values: taxEachYear(roth.rows) },
+          { key: 'pretax', label: 'Pre-tax scenario', color: PRETAX_COLOR, values: taxEachYear(pretax.rows) },
         ]}
-        xTicks={retiredYears}
         formatX={(v) => `${v}`}
         formatY={(v) => $(v)}
         formatYTick={short}
-        markers={false}
-        yFloor={0}
         xLabel="Year"
         yLabel="Total tax (today's dollars)"
       />
@@ -159,16 +161,24 @@ export default function LifetimeComparison({ lifetime, household, result }) {
       ) : (
         <BreakEven household={household} result={result} endAge={endAge} winner={winner} />
       )}
-
-      <h3 className="subhead">Year by year</h3>
-      <div className="radio-options">
+    </Collapsible>
+    <Collapsible
+      headingId="lifetime-table"
+      className="lifetime-table-card"
+      title="Show full table"
+      summary={`Every year to age ${endAge}, Roth or Pre-tax scenario`}
+      open={tableOpen}
+      onToggle={() => setTableOpen(!tableOpen)}
+    >
+      <div className="segmented" role="group" aria-label="Scenario">
         {['roth', 'pretax'].map((k) => (
-          <button key={k} type="button" className="link-button" onClick={() => setTableFor(tableFor === k ? null : k)}>
-            {tableFor === k ? `Hide the ${VERDICT[k]} scenario` : `Show the ${VERDICT[k]} scenario`}
+          <button key={k} type="button" className={tableFor === k ? 'segment active' : 'segment'} aria-pressed={tableFor === k} onClick={() => setTableFor(k)}>
+            {VERDICT[k]} scenario
           </button>
         ))}
       </div>
-      {tableFor && <YearTable rows={(tableFor === 'roth' ? roth : pretax).rows} />}
+      {tableOpen && <YearTable rows={(tableFor === 'roth' ? roth : pretax).rows} />}
     </Collapsible>
+    </>
   );
 }

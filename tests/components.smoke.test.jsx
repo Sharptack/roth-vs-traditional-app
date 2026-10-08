@@ -1026,8 +1026,10 @@ describe('NextApp', () => {
     expect(blockCount(conv)).toBe(3);
     expect(blockCount(pen)).toBe(2);
     expect(pen).toMatch(/a year vs\. [\d.]+% assumed/);
-    // the Roth page: its five cards, the blend explorer and the lifetime comparison
-    expect(blockCount(roth)).toBe(7);
+    // the Roth page: its five cards, the blend explorer, the lifetime comparison and its full table
+    expect(blockCount(roth)).toBe(8);
+    expect(roth).toContain('>Show full table<');
+    expect(roth.indexOf('Estimates only')).toBeGreaterThan(roth.indexOf('>Show full table<'));
     for (const page of [tax, proj, conv, pen]) expect(page).toMatch(/(Expand|Collapse) all results/);
     // the collapse bar: on calculator pages only, inputs shown at first
     expect(roth).toContain('class="collapse-bar" aria-controls="calc-inputs" aria-expanded="true"');

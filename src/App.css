@@ -2225,3 +2225,28 @@ th.win .th-sub {
 .use-in-plan p {
   margin: 0 0 10px;
 }
+
+/* A choice of one, as joined buttons (the Roth page's full table: Roth or Pre-tax scenario). */
+.segmented {
+  display: inline-flex;
+  margin: 4px 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.segment {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.segment + .segment {
+  border-left: 1px solid var(--accent);
+}
+.segment.active {
+  background: var(--accent);
+  color: #fff;
+}
