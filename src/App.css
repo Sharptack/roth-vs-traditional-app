@@ -2216,3 +2216,12 @@ th.win .th-sub {
   margin: 0;
   padding-left: 18px;
 }
+
+.use-in-plan h2 {
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+
+.use-in-plan p {
+  margin: 0 0 10px;
+}

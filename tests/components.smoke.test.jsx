@@ -1059,6 +1059,7 @@ describe('NextApp (#/next preview)', () => {
     const roth = renderToStaticMarkup(<NextApp initialPage="roth" />);
     expect(roth).toContain('Roth vs. Pre-tax inputs');
     expect(roth).toContain('Compare a change'); // ported from the public page (round 2 phase 1)
+    expect(roth).toContain('Use Roth in the plan: $7,800 a year'); // the "Use in the plan" trial
     expect(firstTitle(roth)).toBe('Future Contributions');
     expect(roth).toContain('href="#/next/inputs"');
     expect(roth).toContain('Claim at');

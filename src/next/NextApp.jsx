@@ -41,6 +41,8 @@ import { useCloud } from './useCloud.js';
 import AccountBar from './AccountBar.jsx';
 import SavedHouseholds from './SavedHouseholds.jsx';
 import ContributionNotes from './ContributionNotes.jsx';
+import UseInPlan from './UseInPlan.jsx';
+import { applyContributionSwitch, contributionSwitch } from '../lib/useInPlan.js';
 import ScenarioCompare from '../components/ScenarioCompare.jsx';
 import { contributionNotes } from '../lib/contributionRules.js';
 
@@ -163,6 +165,8 @@ export default function NextApp({ initialPage, client }) {
   const scenario = (r) => ({ inputs: householdToCompareInputs(r.household), result: r.result });
   // Who can contribute to what (the Roth page only).
   const notes = useMemo(() => (page === 'roth' ? contributionNotes(h) : []), [h, page]);
+  // "Use in the plan" (the trial): switch the plan's Future Contributions to the other type.
+  const choice = useMemo(() => (page === 'roth' ? contributionSwitch(values, h, roth.result) : null), [page, values, h, roth.result]);
   const lifetime = useMemo(() => {
     if (page !== 'roth' || !deferredRoth.result.valid) return null;
     const own = deferredRoth.household.calculators?.projection ?? {};
@@ -417,6 +421,9 @@ export default function NextApp({ initialPage, client }) {
                     />
                   )}
                   <ContributionNotes notes={notes} />
+                  {!comparing && !locked && (
+                    <UseInPlan choice={choice} onUse={() => setValues((v) => applyContributionSwitch(v, contributionSwitch(v, h, roth.result)))} />
+                  )}
                   <ResultsSummary result={roth.result} showBlend />
                   <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} />
                 </>
