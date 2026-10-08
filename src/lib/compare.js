@@ -49,11 +49,15 @@
 //                                            explorer (result.blend = { available: false }). It is most
 //                                            of this function's run time and only the preview's Roth
 //                                            page shows it. Absent/false = computed, as before.
+//   qualifiedBusinessIncome                — OPTIONAL, boolean (the #/next preview): today's tax takes the
+//                                            QBI deduction on 1099 earnings (qbi.js, basic rule).
+//                                            Absent/false = no QBI deduction, as before.
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
 import { calculateTaxFromGross } from './taxCalculations.js';
+import { qbiDeduction } from './qbi.js';
 import { calculateEmploymentTaxes, calculateHouseholdEmploymentTaxes } from './ficaTax.js';
 import { estimateHouseholdSocialSecurity, estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
@@ -275,22 +279,27 @@ export function compareRothVsTraditional(inputs) {
     : currentType !== 'pretax'
       ? 0
       : splitAtContributionLimit(savings, accountType, year, currentAge).toAccount;
-  const withContribution = calculateTaxFromGross(
-    grossIncome,
-    filingStatus,
-    year,
-    fica.selfEmployment.deduction + pretaxDeduction,
-  );
+  // Today's income tax after these above-the-line adjustments. With the preview option
+  // qualifiedBusinessIncome, 1099 earnings (less half the self-employment tax) also get the QBI
+  // deduction (qbi.js, basic rule), and the marginal rate is measured on the next $100, since a
+  // deduction capped at 20% of taxable income shrinks the tax on each extra dollar.
+  const earnersSE = inputs.earners ? inputs.earners.reduce((acc, e) => acc + (e.selfEmploymentIncome ?? 0), 0) : selfEmploymentIncome;
+  const qbi = inputs.qualifiedBusinessIncome ? Math.max(0, earnersSE - fica.selfEmployment.deduction) : 0;
+  const taxAfter = (adjustments) => {
+    const plain = calculateTaxFromGross(grossIncome, filingStatus, year, adjustments);
+    if (!(qbi > 0)) return plain;
+    const deduction = (adj) => qbiDeduction({ qbi, taxableIncome: Math.max(0, grossIncome - adj - plain.standardDeduction), filingStatus, year }).deduction;
+    const taxOf = (adj) => calculateTaxFromGross(grossIncome, filingStatus, year, adj + deduction(adj)).tax;
+    const d = deduction(adjustments);
+    const withQbi = calculateTaxFromGross(grossIncome, filingStatus, year, adjustments + d);
+    return { ...withQbi, adjustments, qbiDeduction: d, marginalRate: (taxOf(adjustments - 100) - withQbi.tax) / 100 };
+  };
+  const withContribution = taxAfter(fica.selfEmployment.deduction + pretaxDeduction);
   // Income tax as if the savings were NOT deducted, i.e. the top of your pay
   // before any Pre-tax contribution comes off it. Its marginal rate is the rate
   // a Pre-tax contribution saves (and a Roth contribution pays), so it is the
   // "marginal rate while working" whichever way the savings are held today.
-  const withoutContribution = calculateTaxFromGross(
-    grossIncome,
-    filingStatus,
-    year,
-    fica.selfEmployment.deduction,
-  );
+  const withoutContribution = taxAfter(fica.selfEmployment.deduction);
   const marginalRateNow = withoutContribution.marginalRate;
   const current = { ...withContribution, marginalRate: marginalRateNow, pretaxDeduction };
   const afterTaxCurrentIncome = grossIncome - current.tax - fica.total;
@@ -355,7 +364,7 @@ export function compareRothVsTraditional(inputs) {
   // Tax a Pre-tax deduction of x saves this year (the whole deduction, across bracket edges).
   const savedByDeduction = (x) =>
     withoutContribution.tax -
-    calculateTaxFromGross(grossIncome, filingStatus, year, fica.selfEmployment.deduction + x).tax;
+    taxAfter(fica.selfEmployment.deduction + x).tax;
   // The rate the contribution saves: the marginal rate (today's rule), or averaged across the
   // whole contribution (preview option taxSavedAcrossContribution).
   const { rate: contributionRate, split: contributionSplit } = inputs.taxSavedAcrossContribution
@@ -647,6 +656,7 @@ export function compareRothVsTraditional(inputs) {
         pretaxDeduction,
         standardDeduction: current.standardDeduction,
         taxableIncome: current.taxableIncome,
+        ...(current.qbiDeduction > 0 && { qbiDeduction: current.qbiDeduction }),
         incomeTax: current.tax,
         // Income tax had the savings not been deducted (equal to incomeTax
         // when nothing is Pre-tax); the difference is the tax the deduction saves.

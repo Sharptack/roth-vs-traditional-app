@@ -1,6 +1,6 @@
 // Version 1 -> version 2 (round 2 phase 0): every version 1 example opens with the same results
-// (tests/householdV1Pins.test.js), except the decided change: a known benefit becomes a PIA, and
-// a PIA counts for the spousal top-up.
+// (tests/householdV1Pins.test.js), except two decided changes: a known benefit becomes a PIA, and
+// a PIA counts for the spousal top-up; and (round 2 phase 1) 1099 earnings get the QBI deduction.
 import { describe, it, expect } from 'vitest';
 import { piaFromKnownBenefit, upgradeHouseholdValues } from '../src/lib/householdUpgrade.js';
 import { DEFAULT_HOUSEHOLD_VALUES, newPerson } from '../src/lib/householdValues.js';
@@ -20,9 +20,23 @@ describe('version 1 households open in version 2 with the same results', () => {
   for (const [name, values] of Object.entries(V1_HOUSEHOLDS)) {
     if (name === 'mfjMixedBenefits') continue; // the decided change, below
     it(name, () => {
-      expect(withoutKnownBenefit(pinsForV2(upgradeHouseholdValues(values, YEAR)))).toEqual(withoutKnownBenefit(pinsFor(values)));
+      expect(withoutKnownBenefit(pinsForV2(upgradeHouseholdValues(values, YEAR), { qbi: false }))).toEqual(withoutKnownBenefit(pinsFor(values)));
     });
   }
+
+  it('the QBI deduction changes only households with 1099 income, and lowers their tax', () => {
+    for (const [name, values] of Object.entries(V1_HOUSEHOLDS)) {
+      const v2 = upgradeHouseholdValues(values, YEAR);
+      const on = pinsForV2(v2);
+      const off = pinsForV2(v2, { qbi: false });
+      const has1099 = v2.incomes.some((r) => r.type === '1099' && Number(r.amount) > 0) && (v2.includeSpouse === 'yes' || v2.incomes.some((r) => r.type === '1099' && r.owner === 'p1' && Number(r.amount) > 0));
+      if (!has1099) {
+        expect({ ...on, compareInputs: { ...on.compareInputs, qualifiedBusinessIncome: undefined } }, name).toEqual(off);
+      } else {
+        expect(on.tax.incomeTax, name).toBeLessThan(off.tax.incomeTax);
+      }
+    }
+  });
 
   it('mfjMixedBenefits: the spouse with no earnings gains a spousal top-up from the PIA (HAND CALC)', () => {
     // You: age 50 (born 1976, full retirement age 67), known $42,000 claimed at retirement, 64:

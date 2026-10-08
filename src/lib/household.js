@@ -338,6 +338,7 @@ export function householdToCompareInputs(household) {
     };
   }
   if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
+  if (assumptions.qualifiedBusinessIncome) inputs.qualifiedBusinessIncome = true;
   if (people.length > 1) {
     inputs.contributors = people.map((p, i) => {
       const c = fc.contributions.find((x) => x.owner === p.id) ?? {};

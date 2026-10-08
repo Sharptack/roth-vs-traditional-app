@@ -38,8 +38,11 @@ export function pinsFor(values) {
 }
 
 // The same for version 2 values (householdV2.js), as the preview works them out now.
-export function pinsForV2(values) {
-  return pinsFromHousehold(toHouseholdV2(values, YEAR), validateHouseholdV2);
+//  qbi: false leaves out the QBI deduction (added in round 2 phase 1), as version 1 did.
+export function pinsForV2(values, { qbi = true } = {}) {
+  const household = toHouseholdV2(values, YEAR);
+  if (!qbi) household.assumptions = { ...household.assumptions, qualifiedBusinessIncome: false };
+  return pinsFromHousehold(household, validateHouseholdV2);
 }
 
 // The household's errors are merged after the comparison's, as NextApp's previewResult does.

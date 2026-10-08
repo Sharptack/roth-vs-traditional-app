@@ -49,7 +49,7 @@ Either way, a married couple's spousal benefit is worked out from both people's 
 
 One row per source of income, with whose it is, the type and the amount a year.
 
-- **W-2 wages** and **1099 (self-employed)** income are earnings. Earnings are what payroll tax, the retirement income number and the Social Security estimate are based on. Enter 1099 income as net earnings, after business expenses; self-employment tax replaces FICA on it, and half of that tax is deductible.
+- **W-2 wages** and **1099 (self-employed)** income are earnings. Earnings are what payroll tax, the retirement income number and the Social Security estimate are based on. Enter 1099 income as net earnings, after business expenses; self-employment tax replaces FICA on it, and half of that tax is deductible. 1099 income also gets the qualified business income (QBI) deduction: 20% of it (less half the self-employment tax), up to 20% of taxable income. Above $201,750 of taxable income ($403,500 joint) in 2026 it shrinks, and the app assumes a business with no employees or property, where it reaches $0 by $276,750 ($553,500 joint); from 2026 it is at least $400.
 - **Other**, taxed as ordinary income (for example a pension already being paid, or Pre-tax withdrawals), or marked tax-exempt.
 - **Add other income types** offers three more for the tax and conversion calculators: interest and non-qualified dividends (ordinary rates, and investment income for the Net Investment Income Tax); qualified dividends and long-term gains (the 0%, 15% and 20% rates, stacked on top of ordinary income); and Social Security already being received (up to 85% of it is taxable, depending on other income).
 

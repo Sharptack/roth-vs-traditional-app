@@ -190,7 +190,7 @@ export default function TaxResult({ tax }) {
           ),
         },
       ]}
-      disclaimer="Estimates only — not tax or financial advice. Federal tax for this year under current law: the standard deduction (with the age 65+ deductions), no itemizing, credits, AMT, QBI deduction or state tax."
+      disclaimer="Estimates only — not tax or financial advice. Federal tax for this year under current law: the standard deduction (with the age 65+ deductions), no itemizing, credits, AMT or state tax. The QBI deduction on 1099 income uses the basic rule (above the income threshold, a business with no employees or property)."
     />
   );
 }

@@ -91,6 +91,7 @@ function RetirementNumberMath({ result }) {
             />
           )}
           <Row label="Standard deduction" value={minus(b.standardDeduction)} kind="sub" />
+          {b.qbiDeduction > 0 && <Row label="Qualified business income (QBI) deduction" value={minus(b.qbiDeduction)} kind="sub" />}
           <Row label="Taxable income" value={$(b.taxableIncome)} kind="total" />
           <Row label="Federal income tax on that" value={$(b.incomeTax)} kind="total" />
 

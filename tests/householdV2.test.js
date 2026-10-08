@@ -17,12 +17,13 @@ describe('toHouseholdV2', () => {
     const h2 = toHouseholdV2(D, Y);
     const h1 = toHousehold(PREVIEW_DEFAULT_VALUES, Y);
     expect(h2.version).toBe(2);
-    expect(householdToCompareInputs(h2)).toEqual(householdToCompareInputs(h1));
-    expect(householdToYearTaxParams(h2)).toEqual(householdToYearTaxParams(h1));
+    // version 2 adds the QBI deduction on 1099 earnings (round 2 phase 1); otherwise the same
+    expect(householdToCompareInputs(h2)).toEqual({ ...householdToCompareInputs(h1), qualifiedBusinessIncome: true });
+    expect(householdToYearTaxParams(h2)).toEqual({ ...householdToYearTaxParams(h1), qbi: true });
     expect(householdToPensionInputs(h2)).toEqual(householdToPensionInputs(h1));
     expect(h2.calculators.projection).toEqual(h1.calculators.projection);
     expect(h2.calculators.conversion).toEqual(h1.calculators.conversion);
-    expect(h2.assumptions).toEqual(h1.assumptions);
+    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true });
     expect(h2.spending).toEqual(h1.spending);
   });
 

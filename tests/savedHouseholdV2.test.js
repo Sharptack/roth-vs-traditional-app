@@ -120,7 +120,7 @@ describe('a version 1 save opens as version 2', () => {
       const opened = valuesV2FromCase(stored, YEAR);
       expect(opened.version).toBe(2);
       const v1 = pinsFor(V1_HOUSEHOLDS[name]);
-      const v2 = pinsForV2(opened);
+      const v2 = pinsForV2(opened, { qbi: false }); // QBI (round 2 phase 1) left out, as in version 1
       // version 1's known-benefit inputs are carried as a PIA instead (householdUpgrade.test.js)
       for (const p of [v1, v2]) {
         delete p.compareInputs.knowsSocialSecurity;

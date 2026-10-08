@@ -172,6 +172,9 @@ export function toHouseholdV2(values, year) {
       taxSavedAcrossContribution: a.taxSavedBasis === 'average',
       retirementRateShift: Number(a.retirementRateShift ?? 0) || 0,
       medicareIrmaa: a.medicareIrmaa === 'yes',
+      // The QBI deduction on 1099 earnings (qbi.js, basic rule): always, in version 2 (round 2
+      // phase 1). Version 1 households (household.js) leave it out, as the current calculator does.
+      qualifiedBusinessIncome: true,
     },
   };
 }

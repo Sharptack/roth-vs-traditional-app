@@ -73,3 +73,23 @@ describe('the tax engine with the qbi option', () => {
     expect(r.marginalRates.selfEmploymentIncome.incomeTax).toBeCloseTo(0.22 * 0.8 * seHalf, 4);
   });
 });
+
+describe('the Roth comparison takes QBI on 1099 earnings (version 2 households)', () => {
+  it('today: the same $8,235.00 as the engine, and a 17.6% rate on the next dollar', async () => {
+    const { DEFAULT_HOUSEHOLD_VALUES: D, updateRow } = await import('../src/lib/householdValues.js');
+    const { toHouseholdV2 } = await import('../src/lib/householdV2.js');
+    const { householdToCompareInputs } = await import('../src/lib/household.js');
+    const { compareRothVsTraditional } = await import('../src/lib/compare.js');
+    // single, $100,000 of 1099 income, saving Roth (so nothing is deducted Pre-tax)
+    let v = updateRow(D, 'incomes', 'i1', 'type', '1099');
+    v = updateRow(v, 'contributions', 'c1', 'tax', 'roth');
+    const r = compareRothVsTraditional(householdToCompareInputs(toHouseholdV2(v, 2026)));
+    // as worked above: QBI deduction 15,367.045, taxable income 61,468.18, tax 8,235.00
+    expect(r.retirementNeed.breakdown.qbiDeduction).toBeCloseTo(15367.045, 4);
+    expect(r.current.taxableIncome).toBeCloseTo(61468.18, 4);
+    expect(r.current.tax).toBeCloseTo(8235.0, 2);
+    // $100 more income before deductions: QBI grows by $20 (the 20%-of-taxable-income cap binds),
+    // so $80 more is taxed at 22%: 17.6%
+    expect(r.current.marginalRate).toBeCloseTo(0.176, 6);
+  });
+});
