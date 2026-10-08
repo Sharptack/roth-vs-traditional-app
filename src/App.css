@@ -2105,3 +2105,36 @@ th.win .th-sub {
 .docs-index li {
   margin-bottom: 8px;
 }
+
+/* "Send feedback", at the foot of every page (Feedback.jsx) */
+.site-footer {
+  margin-top: 24px;
+}
+
+.site-footer .feedback {
+  text-align: center;
+  margin: 0;
+}
+
+.feedback-form {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.feedback-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical;
+}
+
+@media print {
+  .site-footer {
+    display: none;
+  }
+}

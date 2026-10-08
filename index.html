@@ -11,6 +11,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- For Netlify Forms: Netlify finds this form when the site is built, so the app's "Send
+         feedback" form (src/components/Feedback.jsx) can post to it. Never shown. -->
+    <form name="feedback" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <textarea name="message"></textarea>
+      <input name="contact" />
+      <input name="page" />
+      <input name="bot-field" />
+    </form>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

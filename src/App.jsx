@@ -15,6 +15,7 @@ import './App.css';
 const ArticlePage = lazy(() => import('./components/ArticlePage.jsx'));
 const ScenariosPage = lazy(() => import('./components/ScenariosPage.jsx'));
 const DocsPage = lazy(() => import('./components/DocsPage.jsx'));
+import Feedback from './components/Feedback.jsx';
 const NextApp = lazy(() => import('./next/NextApp.jsx'));
 
 /*
@@ -234,6 +235,11 @@ export default function App() {
         {route === 'docs' && <DocsPage hash={hash} />}
         {route === 'next' && <NextApp />}
       </Suspense>
+
+      {/* On every page. */}
+      <footer className="site-footer">
+        <Feedback />
+      </footer>
     </div>
   );
 }

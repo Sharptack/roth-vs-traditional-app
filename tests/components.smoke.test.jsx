@@ -1310,3 +1310,12 @@ describe('Docs (#/docs)', () => {
     expect(renderToStaticMarkup(<NextApp initialPage="inputs" />)).toContain('href="#/docs/inputs"');
   });
 });
+
+describe('Send feedback', () => {
+  it('is on every page, closed until clicked', async () => {
+    const html = renderToStaticMarkup(<App />);
+    expect(html).toContain('<footer class="site-footer"><p class="feedback"><button type="button" class="link-button">Send feedback</button>');
+    const { default: Feedback } = await import('../src/components/Feedback.jsx');
+    expect(renderToStaticMarkup(<Feedback />)).not.toContain('<textarea');
+  });
+});
