@@ -17,6 +17,7 @@ The list lives in code, `src/data/yearlyTables.js`, so this checklist and the te
 | Contribution limits | `src/data/contributionLimits.js` | 401(k), IRA, catch-up amounts | IRS notice, Oct-Nov |
 | Age 65+ deductions | `src/data/ageDeductions.js` | additional standard deduction | same revenue procedure |
 | Medicare IRMAA | `src/data/irmaa.js` | Part B and D surcharges, thresholds | CMS fact sheet, Oct-Nov |
+| QBI deduction | `src/data/qbi.js` | threshold, phase-in end; the minimum from 2027 | same revenue procedure |
 
 Fixed by law, checked only when the law changes: Social Security taxability thresholds, NIIT
 thresholds, the RMD table and start ages, full retirement ages, the senior deduction (2025-2028).

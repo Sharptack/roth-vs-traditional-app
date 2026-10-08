@@ -24,13 +24,15 @@
 //                   higher). Capital-gains rates are not shifted.
 //   calendarYear    the calendar year being taxed, when `year` is the law's data year instead (a
 //                   future year taxed under today's law); only the senior deduction's end date uses it.
+//   qbi             true: take the qualified business income deduction on 1099 earnings (lib/qbi.js,
+//                   the basic rule). Off by default, so the current calculator's numbers don't change.
 //
 // Age deductions: for each person whose `age` is given and is 65 or older, the additional standard
 // deduction and (2025-2028) the senior deduction (data/ageDeductions.js). Callers that pass no
 // ages get today's standard deduction only, so every existing calculation is unchanged.
 //
-// Simplifications: standard deduction only (no itemizing), no AMT, credits, QBI deduction or
-// state tax. People with an age and no earnings (retirees) are fine: they owe no payroll tax.
+// Simplifications: standard deduction only (no itemizing), no AMT, credits or state tax; the QBI
+// deduction only with the qbi option, basic rule. People with an age and no earnings (retirees) are fine: they owe no payroll tax.
 import { calculateHouseholdEmploymentTaxes } from './ficaTax.js';
 import { calculateTaxableSocialSecurity } from './socialSecurityTax.js';
 import { calculateTax, getBrackets, getMarginalRate, getStandardDeduction } from './taxCalculations.js';
@@ -38,6 +40,7 @@ import { calculateCapitalGainsTax, calculateNiit } from './capitalGainsTax.js';
 import { CAPITAL_GAINS_BRACKETS } from '../data/capitalGainsBrackets.js';
 import { AGE_DEDUCTIONS } from '../data/ageDeductions.js';
 import { getYearData } from './yearLookup.js';
+import { qbiDeduction } from './qbi.js';
 
 // The 65+ additional standard deduction and the senior deduction for these people, at this MAGI.
 // calendarYear: the year being taxed, when it differs from `year` (the law's data year). The
@@ -75,7 +78,7 @@ export function calculateYearTaxTotals(params) {
   return core(params);
 }
 
-function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year }) {
+function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year, qbi = false }) {
   const ordinaryIncome = income.ordinaryIncome ?? 0;
   const investmentOrdinaryIncome = income.investmentOrdinaryIncome ?? 0;
   const preferentialIncome = Math.max(0, income.preferentialIncome ?? 0);
@@ -111,11 +114,22 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
   const age = ageDeductions(people, filingStatus, year, agi, { calendarYear, thresholdScale });
   // Everything subtracted from AGI; "standardDeduction" below is this total.
   const standardDeduction = baseStandardDeduction + age.additional65 + age.senior;
-  const ordinaryTaxableIncome = Math.max(0, ordinaryGross - standardDeduction);
-  const taxableIncome = Math.max(0, agi - standardDeduction);
+  // QBI: 1099 earnings less the deductible half of self-employment tax; the deduction comes off
+  // taxable income (not AGI), from the ordinary part first, so gains still stack on top.
+  const qualifiedBusinessIncome = qbi ? Math.max(0, selfEmploymentIncome - payroll.selfEmployment.deduction) : 0;
+  const qbiResult = qbiDeduction({
+    qbi: qualifiedBusinessIncome,
+    taxableIncome: Math.max(0, agi - standardDeduction),
+    netCapitalGain: preferentialIncome,
+    filingStatus,
+    year,
+  });
+  const deductions = standardDeduction + qbiResult.deduction;
+  const ordinaryTaxableIncome = Math.max(0, ordinaryGross - deductions);
+  const taxableIncome = Math.max(0, agi - deductions);
 
   const ordinaryTax = calculateTax(ordinaryTaxableIncome, filingStatus, year, rateShift);
-  const capitalGainsTax = calculateCapitalGainsTax(ordinaryGross, preferentialIncome, standardDeduction, filingStatus, year);
+  const capitalGainsTax = calculateCapitalGainsTax(ordinaryGross, preferentialIncome, deductions, filingStatus, year);
   const netInvestmentIncome = Math.max(0, investmentOrdinaryIncome) + preferentialIncome;
   const niit = calculateNiit(agi, netInvestmentIncome, filingStatus, year, thresholdScale);
   const incomeTax = ordinaryTax + capitalGainsTax + niit;
@@ -142,6 +156,9 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
       additional65Deduction: age.additional65,
       seniorDeduction: age.senior,
       standardDeduction, // the total of the three above
+      qualifiedBusinessIncome,
+      qbiDeduction: qbiResult.deduction,
+      deductions, // the standard deduction total plus the QBI deduction
       ordinaryGross, // ordinary income before the standard deduction
       ordinaryTaxableIncome,
       taxableIncome,
@@ -158,7 +175,7 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
     effectiveRateWithPayroll: grossIncome > 0 ? totalTax / grossIncome : 0,
     // The rate of the ordinary bracket the next taxable dollar falls in (0 while under the
     // standard deduction). The same figure calculateTaxFromGross reports as marginalRate.
-    ordinaryBracketRate: getMarginalRate(ordinaryGross - standardDeduction, filingStatus, year, rateShift),
+    ordinaryBracketRate: getMarginalRate(ordinaryGross - deductions, filingStatus, year, rateShift),
   };
 }
 
@@ -168,10 +185,10 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
 //  capitalGains: from the top of the whole stack (ordinary + gains), where the next dollar of
 //            gains would land.
 function bracketRoom(r, filingStatus, year, rateShift) {
-  const { ordinaryGross, standardDeduction, ordinaryTaxableIncome, taxableIncome } = r.lines;
+  const { ordinaryGross, deductions, ordinaryTaxableIncome, taxableIncome } = r.lines;
   let ordinary;
-  if (ordinaryGross < standardDeduction) {
-    ordinary = { rate: 0, room: standardDeduction - ordinaryGross, nextRate: getBrackets(filingStatus, year)[0].rate + rateShift };
+  if (ordinaryGross < deductions) {
+    ordinary = { rate: 0, room: deductions - ordinaryGross, nextRate: getBrackets(filingStatus, year)[0].rate + rateShift };
   } else {
     const brackets = getBrackets(filingStatus, year);
     const i = brackets.findIndex((b) => ordinaryTaxableIncome < b.upTo);

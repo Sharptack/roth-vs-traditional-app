@@ -13,6 +13,7 @@ import { SS_BEND_POINTS } from './ssBendPoints.js';
 import { CONTRIBUTION_LIMITS } from './contributionLimits.js';
 import { AGE_DEDUCTIONS } from './ageDeductions.js';
 import { IRMAA } from './irmaa.js';
+import { QBI } from './qbi.js';
 
 // file: where to edit; what: the figures to update; when: when they are usually published.
 export const YEARLY_TABLES = [
@@ -64,6 +65,13 @@ export const YEARLY_TABLES = [
     file: 'src/data/irmaa.js',
     what: 'Part B and Part D surcharges and the income thresholds',
     when: 'CMS fact sheet, October-November',
+  },
+  {
+    name: 'QBI deduction',
+    table: QBI,
+    file: 'src/data/qbi.js',
+    what: 'threshold and phase-in end, single and joint (the $400 / $1,000 minimum is indexed from 2027)',
+    when: 'same IRS revenue procedure',
   },
 ];
 
