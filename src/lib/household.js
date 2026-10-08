@@ -267,9 +267,11 @@ export function validateHousehold(household) {
 //  - Existing Accounts: summed by type, whoever owns them; the taxable cost basis is the
 //    balance-weighted share (the first taxable account's share when every balance is $0, the
 //    form default when there is no taxable account).
-//  - Snapshot timing (phase 1 decision): retirement = when the FIRST person retires. Future
-//    Contributions grow until then; currentAge is person 1's age and retirementAge = that age +
-//    years until the first retirement.
+//  - Snapshot timing: version 1 households, retirement = when the FIRST person retires (Future
+//    Contributions grow until then). Version 2 (assumptions.snapshotAtLastRetirement, round 2
+//    phase 1): retirement = when the LAST person retires; each person contributes until their own
+//    retirement (contributors[i].years) and their savings grow untouched from then. currentAge is
+//    person 1's age and retirementAge = that age + the years until the snapshot.
 //  - `earners` (per-person payroll tax and Social Security) is set when there are two people or
 //    anyone has a claiming age or an entered PIA of their own; `contributors` (per-person IRS limits) when there are
 //    two people. Otherwise both are left out, so a one-person household runs exactly today's path.
@@ -277,7 +279,9 @@ export function householdToCompareInputs(household) {
   const { year, people, accounts, futureContributions: fc, spending, assumptions } = household;
   const ageOf = (p) => year - p.birthYear;
   const p1 = people[0];
-  const yearsToRetirement = Math.min(...people.map((p) => p.retirementAge - ageOf(p)));
+  const yearsEach = people.map((p) => p.retirementAge - ageOf(p));
+  const atLast = Boolean(assumptions.snapshotAtLastRetirement);
+  const yearsToRetirement = atLast ? Math.max(...yearsEach) : Math.min(...yearsEach);
   const balanceOf = (type) =>
     accounts.filter((a) => a.type === type).reduce((acc, a) => acc + a.balance, 0);
   const taxable = accounts.filter((a) => a.type === 'taxable');
@@ -352,6 +356,7 @@ export function householdToCompareInputs(household) {
         amount: amountOf(p),
         age: ageOf(p),
         label: i === 0 ? 'For you' : 'For your spouse',
+        ...(atLast && { years: yearsEach[i] }),
         ...(c.currentType && { currentType: c.currentType }),
         ...(c.accountType && { accountType: c.accountType }),
       };

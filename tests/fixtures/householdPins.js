@@ -38,10 +38,12 @@ export function pinsFor(values) {
 }
 
 // The same for version 2 values (householdV2.js), as the preview works them out now.
-//  qbi: false leaves out the QBI deduction (added in round 2 phase 1), as version 1 did.
-export function pinsForV2(values, { qbi = true } = {}) {
+//  qbi: false leaves out the QBI deduction (added in round 2 phase 1), as version 1 did;
+//  lastRetirement: false takes the Roth comparison's snapshot at the first retirement, as version 1.
+export function pinsForV2(values, { qbi = true, lastRetirement = true } = {}) {
   const household = toHouseholdV2(values, YEAR);
   if (!qbi) household.assumptions = { ...household.assumptions, qualifiedBusinessIncome: false };
+  if (!lastRetirement) household.assumptions = { ...household.assumptions, snapshotAtLastRetirement: false };
   return pinsFromHousehold(household, validateHouseholdV2);
 }
 

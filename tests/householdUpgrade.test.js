@@ -20,7 +20,7 @@ describe('version 1 households open in version 2 with the same results', () => {
   for (const [name, values] of Object.entries(V1_HOUSEHOLDS)) {
     if (name === 'mfjMixedBenefits') continue; // the decided change, below
     it(name, () => {
-      expect(withoutKnownBenefit(pinsForV2(upgradeHouseholdValues(values, YEAR), { qbi: false }))).toEqual(withoutKnownBenefit(pinsFor(values)));
+      expect(withoutKnownBenefit(pinsForV2(upgradeHouseholdValues(values, YEAR), { qbi: false, lastRetirement: false }))).toEqual(withoutKnownBenefit(pinsFor(values)));
     });
   }
 

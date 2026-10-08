@@ -11,7 +11,7 @@
 // a blend can out-earn both pure strategies. Where it doesn't (the curve stays below or above
 // marginal-now the whole way), the optimum sits at one of the two ends — i.e. a pure strategy
 // already was optimal, and the blend curve just confirms it rather than finding something new.
-import { futureValueAnnuity } from './growthCalculations.js';
+import { futureValueAnnuity, futureValueContributions } from './growthCalculations.js';
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { WITHDRAWAL_RATE } from './constants.js';
 
@@ -46,7 +46,7 @@ export function splitBlended(takeHomeCost, marginalRate, limit, rothShare) {
 export function splitBlendedByPerson(contributors, marginalRate, rothShare) {
   const parts = contributors.map((c) => splitBlended(c.takeHomeCost, marginalRate, c.limit, rothShare));
   const sum = (key) => parts.reduce((acc, p) => acc + p[key], 0);
-  return { rothToAccount: sum('rothToAccount'), pretaxToAccount: sum('pretaxToAccount'), excessToTaxable: sum('excessToTaxable') };
+  return { rothToAccount: sum('rothToAccount'), pretaxToAccount: sum('pretaxToAccount'), excessToTaxable: sum('excessToTaxable'), parts };
 }
 
 // One point on the blend curve: split the budget at this Roth share, grow each piece to
@@ -62,7 +62,8 @@ export function evaluateBlend({
   takeHomeCost,
   marginalRate,
   limit,
-  contributors, // optional (household model): [{ takeHomeCost, limit }], each split at its own limit
+  contributors, // optional (household model): [{ takeHomeCost, limit, years? }], each split at its own limit;
+  //                years: that person's own years of saving (compare.js contributors[i].years)
   taxRules, // optional: retirement-year tax rules (see calculateRetirementTax); absent = today's
   savedByDeduction, // optional (preview): x -> tax saved by deducting x; then this mix's Pre-tax part
   //                   saves its own AVERAGE rate (fixed point), not marginalRate on every dollar
@@ -87,15 +88,20 @@ export function evaluateBlend({
       split = splitAt(rateNow);
     }
   }
-  const rothFV = futureValueAnnuity(split.rothToAccount, returnRate, years);
-  const pretaxFV = futureValueAnnuity(split.pretaxToAccount, returnRate, years);
-  const sideFV = futureValueAnnuity(split.excessToTaxable, returnRate, years);
+  const ownYears = split.parts && contributors.some((c) => c.years !== undefined) ? contributors.map((c) => c.years ?? years) : null;
+  const grow = (key) =>
+    ownYears
+      ? split.parts.reduce((acc, p, i) => acc + futureValueContributions(p[key], returnRate, ownYears[i], years), 0)
+      : futureValueAnnuity(split[key], returnRate, years);
+  const rothFV = grow('rothToAccount');
+  const pretaxFV = grow('pretaxToAccount');
+  const sideFV = grow('excessToTaxable');
   const rothWithdrawal = WITHDRAWAL_RATE * rothFV;
   const pretaxWithdrawal = WITHDRAWAL_RATE * pretaxFV;
   const sideWithdrawal = WITHDRAWAL_RATE * sideFV;
   // Every dollar that spills into the side account is cost basis, so only its growth is gain
   // (same convention as compare.js's side accounts).
-  const sideBasis = split.excessToTaxable * years;
+  const sideBasis = ownYears ? split.parts.reduce((acc, p, i) => acc + p.excessToTaxable * ownYears[i], 0) : split.excessToTaxable * years;
   const sideGainShare = sideFV > 0 ? Math.max(0, 1 - sideBasis / sideFV) : 1;
   const sideGains = sideWithdrawal * sideGainShare;
 

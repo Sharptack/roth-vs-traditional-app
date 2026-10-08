@@ -30,7 +30,7 @@ Enter either one. Typing a birthdate fills in the age; typing an age clears the 
 
 ### Retirement age and plan-to age
 
-**Retirement age:** when that person stops working. Each spouse's is set on its own. For now the Roth vs. Pre-tax comparison takes its retirement-year snapshot when the first of you retires.
+**Retirement age:** when that person stops working. Each spouse's is set on its own. The Roth vs. Pre-tax comparison takes its retirement-year snapshot when the last of you retires; each of you contributes until your own retirement, and those savings keep growing until then.
 
 **Plan-to age** (each person, 95 by default) and **biological sex** are used only for life expectancy. No calculator reads them yet; they come into use when the projection models each spouse's lifetime.
 

@@ -162,7 +162,7 @@ export default function HouseholdInputs({
             ]}
             hint={
               spouse
-                ? 'Payroll tax, Social Security and the IRS contribution limit are figured per person, with a spousal benefit when it is larger. The comparison retires when the first of you does.'
+                ? 'Payroll tax, Social Security and the IRS contribution limit are figured per person, with a spousal benefit when it is larger. The Roth comparison looks at the year the last of you retires; each of you saves until your own retirement.'
                 : 'With one combined income, payroll tax and Social Security treat the household as one earner.'
             }
           />

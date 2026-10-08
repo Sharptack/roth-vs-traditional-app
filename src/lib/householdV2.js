@@ -178,6 +178,9 @@ export function toHouseholdV2(values, year) {
       // The QBI deduction on 1099 earnings (qbi.js, basic rule): always, in version 2 (round 2
       // phase 1). Version 1 households (household.js) leave it out, as the current calculator does.
       qualifiedBusinessIncome: true,
+      // The Roth comparison's snapshot at the LAST person's retirement, each person contributing
+      // until their own (decided 2026-10-07/08; version 1 households: the first).
+      snapshotAtLastRetirement: true,
     },
   };
 }

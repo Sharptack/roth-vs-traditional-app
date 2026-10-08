@@ -12,3 +12,9 @@ export function futureValueAnnuity(payment, returnRate, years) {
   if (returnRate === 0) return payment * years;
   return payment * ((Math.pow(1 + returnRate, years) - 1) / returnRate);
 }
+
+// Yearly contributions for `contributeYears`, then left to grow untouched until `years` (a spouse
+// who retires earlier, in a household that retires when the last of them does).
+export function futureValueContributions(payment, returnRate, contributeYears, years) {
+  return futureValueAnnuity(payment, returnRate, contributeYears) * Math.pow(1 + returnRate, years - contributeYears);
+}

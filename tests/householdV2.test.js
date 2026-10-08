@@ -23,7 +23,7 @@ describe('toHouseholdV2', () => {
     expect(householdToPensionInputs(h2)).toEqual(householdToPensionInputs(h1));
     expect(h2.calculators.projection).toEqual(h1.calculators.projection);
     expect(h2.calculators.conversion).toEqual(h1.calculators.conversion);
-    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true });
+    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true });
     expect(h2.spending).toEqual(h1.spending);
   });
 

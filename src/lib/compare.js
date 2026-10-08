@@ -56,6 +56,11 @@
 //   childTaxCredit                         — OPTIONAL (the #/next preview): { children, otherDependents }
 //                                            this year: today's tax takes the credit
 //                                            (childTaxCredit.js). Absent = none, as before.
+//   contributors[i].years                  — OPTIONAL (the #/next preview): the years that person keeps
+//                                            contributing (to their own retirement), when the household
+//                                            retires later (retirementAge = when the last retires): their
+//                                            savings stop then and grow untouched to retirement. Absent =
+//                                            everyone contributes until retirementAge, as before.
 //   qualifiedBusinessIncome                — OPTIONAL, boolean (the #/next preview): today's tax takes the
 //                                            QBI deduction on 1099 earnings (qbi.js, basic rule).
 //                                            Absent/false = no QBI deduction, as before.
@@ -73,7 +78,7 @@ import { calculateSideAwareRates } from './sideAwareRates.js';
 import { findOptimalBlend } from './blend.js';
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { checkContributionLimit, combineLimitChecks, splitAtContributionLimit } from './contributionLimits.js';
-import { futureValueAnnuity, futureValueLumpSum } from './growthCalculations.js';
+import { futureValueAnnuity, futureValueContributions, futureValueLumpSum } from './growthCalculations.js';
 import {
   ACCOUNT_TYPES,
   CONTRIBUTION_TYPES,
@@ -408,27 +413,36 @@ export function compareRothVsTraditional(inputs) {
   // one stream per scenario, since a Roth-only saver and a Pre-tax-only saver spill over by
   // different amounts, R and P differing once converted at the same take-home cost), are
   // needed by the rate calculation below, so they're computed first.
-  const annuityRothFV = futureValueAnnuity(rothSplit.toAccount, returnRate, years);
-  const annuityPretaxFV = futureValueAnnuity(pretaxSplit.toAccount, returnRate, years);
+  // Each person's savings grow over their own years (contributors[i].years) when given; else all
+  // together until retirement.
+  const ownYears = contributionSplit.people && contributors?.some((c) => c.years !== undefined) ? contributors.map((c) => c.years ?? years) : null;
+  const grow = (side, key) =>
+    ownYears
+      ? contributionSplit.people.reduce((acc, p, i) => acc + futureValueContributions(p[side][key], returnRate, ownYears[i], years), 0)
+      : futureValueAnnuity(contributionSplit[side][key], returnRate, years);
+  const basisOf = (side) =>
+    ownYears ? contributionSplit.people.reduce((acc, p, i) => acc + p[side].excessToTaxable * ownYears[i], 0) : contributionSplit[side].excessToTaxable * years;
+  const annuityRothFV = grow('roth', 'toAccount');
+  const annuityPretaxFV = grow('pretax', 'toAccount');
   const accountRothAnnualWithdrawal = WITHDRAWAL_RATE * annuityRothFV;
   const accountPretaxAnnualWithdrawal = WITHDRAWAL_RATE * annuityPretaxFV;
-  const excessRothTaxableFV = futureValueAnnuity(rothSplit.excessToTaxable, returnRate, years);
-  const excessPretaxTaxableFV = futureValueAnnuity(pretaxSplit.excessToTaxable, returnRate, years);
+  const excessRothTaxableFV = grow('roth', 'excessToTaxable');
+  const excessPretaxTaxableFV = grow('pretax', 'excessToTaxable');
   // Every dollar contributed to a side account is cost basis, so only its growth is gain.
-  const sideRaw = (split, fv) => {
+  const sideRaw = (split, fv, basis) => {
     const annualWithdrawal = WITHDRAWAL_RATE * fv;
-    const gainShare = fv > 0 ? Math.max(0, 1 - (split.excessToTaxable * years) / fv) : 1;
+    const gainShare = fv > 0 ? Math.max(0, 1 - basis / fv) : 1;
     return {
       contribution: split.excessToTaxable,
-      basis: split.excessToTaxable * years,
+      basis,
       futureValue: fv,
       annualWithdrawal,
       gainShare,
       gains: annualWithdrawal * gainShare,
     };
   };
-  const rothSideRaw = sideRaw(rothSplit, excessRothTaxableFV);
-  const pretaxSideRaw = sideRaw(pretaxSplit, excessPretaxTaxableFV);
+  const rothSideRaw = sideRaw(rothSplit, excessRothTaxableFV, basisOf('roth'));
+  const pretaxSideRaw = sideRaw(pretaxSplit, excessPretaxTaxableFV, basisOf('pretax'));
 
   // 4. Other accounts: grow to retirement, then take 4% from each
   const grown = {
@@ -478,6 +492,7 @@ export function compareRothVsTraditional(inputs) {
         contributors: contributionSplit.people.map((p, i) => ({
           takeHomeCost: p.takeHomeCost,
           limit: contributors[i].limitCheck.limit,
+          ...(ownYears && { years: ownYears[i] }),
         })),
       }),
       returnRate,
