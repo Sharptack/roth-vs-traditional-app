@@ -68,7 +68,8 @@ export function solvePortfolioWithdrawal(
     return {
       withdrawals: w,
       tax,
-      afterTaxIncome: w.pretax + w.roth + w.taxable + ssBenefit - tax.totalTax,
+      // A pension (taxRules.otherOrdinaryIncome) is cash received too.
+      afterTaxIncome: w.pretax + w.roth + w.taxable + ssBenefit + (taxRules?.otherOrdinaryIncome ?? 0) - tax.totalTax,
     };
   };
 

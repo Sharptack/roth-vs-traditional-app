@@ -64,6 +64,11 @@
 //   qualifiedBusinessIncome                — OPTIONAL, boolean (the #/next preview): today's tax takes the
 //                                            QBI deduction on 1099 earnings (qbi.js, basic rule).
 //                                            Absent/false = no QBI deduction, as before.
+//   pensionIncome                          — OPTIONAL, number (the #/next preview): pension income in the
+//                                            retirement year, a year, today's dollars (pensionIncome.js).
+//                                            Ordinary income under every retirement withdrawal, like Social
+//                                            Security a floor the account's withdrawal stacks on, and cash
+//                                            toward the retirement income number. Absent/0 = none, as before.
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
@@ -362,6 +367,10 @@ export function compareRothVsTraditional(inputs) {
     };
   }
   const ssBenefit = socialSecurity.annualBenefit;
+  // The retirement year's tax rules, with any pension as other ordinary income (retirementTaxStack.js).
+  const pensionIncome = Math.max(0, inputs.pensionIncome ?? 0);
+  const retirementTaxRules =
+    pensionIncome > 0 ? { ...inputs.retirementTaxRules, otherOrdinaryIncome: pensionIncome } : inputs.retirementTaxRules;
 
   // 3. After-tax retirement income need (top-down budget). Floored at 0: if
   // current spending already exceeds income there is no need to model. The optional
@@ -479,7 +488,7 @@ export function compareRothVsTraditional(inputs) {
       ssBenefit,
       filingStatus,
       year,
-      taxRules: inputs.retirementTaxRules,
+      taxRules: retirementTaxRules,
     }).totalTax;
     const { points, best } = findOptimalBlend({
       takeHomeCost: contributionSplit.takeHomeCost,
@@ -502,7 +511,7 @@ export function compareRothVsTraditional(inputs) {
       ssBenefit,
       filingStatus,
       year,
-      taxRules: inputs.retirementTaxRules,
+      taxRules: retirementTaxRules,
     });
     blend = { available: true, points, best };
   }
@@ -522,7 +531,7 @@ export function compareRothVsTraditional(inputs) {
       rothAccountWithdrawal: accountRothAnnualWithdrawal,
       pretaxSide: { withdrawal: pretaxSideRaw.annualWithdrawal, gains: pretaxSideRaw.gains },
       rothSide: { withdrawal: rothSideRaw.annualWithdrawal, gains: rothSideRaw.gains },
-      taxRules: inputs.retirementTaxRules,
+      taxRules: retirementTaxRules,
     });
     if (!sideAware.available) {
       // $0 saved (or an equivalent edge case): there is nothing to measure, so every
@@ -578,6 +587,7 @@ export function compareRothVsTraditional(inputs) {
   // though untaxed: this is "share of everything you receive," not "share of taxable income").
   const retirementGrossIncome =
     ssBenefit +
+    pensionIncome +
     otherWithdrawals.pretaxGross +
     otherWithdrawals.roth +
     otherWithdrawals.taxableGross +
@@ -658,7 +668,7 @@ export function compareRothVsTraditional(inputs) {
       taxableGainShare,
       ...solvePortfolioWithdrawal(targetAfterTaxIncome, buckets, ssBenefit, filingStatus, year, {
         taxableGainShare,
-        taxRules: inputs.retirementTaxRules,
+        taxRules: retirementTaxRules,
       }),
     };
   }
@@ -687,6 +697,7 @@ export function compareRothVsTraditional(inputs) {
     years,
     current: { ...current, fica, afterTaxIncome: afterTaxCurrentIncome },
     socialSecurity,
+    pensionIncome,
     retirementNeed: {
       raw: rawNeed,
       target: targetAfterTaxIncome,

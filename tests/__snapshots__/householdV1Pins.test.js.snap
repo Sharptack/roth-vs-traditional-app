@@ -719,6 +719,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > defa
       "taxableGains": 0,
       "taxableGross": 0,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 65380,
@@ -1360,6 +1361,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjC
       "taxableGains": 0,
       "taxableGross": 0,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 143036,
@@ -2001,6 +2003,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjM
       "taxableGains": 0,
       "taxableGross": 0,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 166968,
@@ -2635,6 +2638,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjO
       "taxableGains": 6938.8,
       "taxableGross": 13738.8,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 102592.5,
@@ -3269,6 +3273,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjS
       "taxableGains": 0,
       "taxableGross": 0,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 123567.41015,
@@ -3903,6 +3908,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > oldP
       "taxableGains": 7012.255043,
       "taxableGross": 7612.255043,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 62692.5,
@@ -4544,6 +4550,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
       "taxableGains": 0,
       "taxableGross": 0,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 99782.3984,
@@ -5153,6 +5160,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
       "taxableGains": 4458.694209,
       "taxableGross": 7818.694209,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 96867.65568,
@@ -5774,6 +5782,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
       "taxableGains": 0,
       "taxableGross": 0,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 65380,
@@ -6415,6 +6424,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
       "taxableGains": 14824.510085,
       "taxableGross": 15224.510085,
     },
+    "pensionIncome": 0,
     "portfolio": {
       "pretax": {
         "achievedAfterTaxIncome": 69910,

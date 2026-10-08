@@ -14,14 +14,14 @@
 //      need. While everyone works there is no need to meet from the portfolio (the budget is the
 //      paycheck); only RMDs are taken. The engine enforces at least the RMD and at most the balance,
 //      whatever the strategy returns.
-//   5. Tax on the whole year (calculateYearTax): wages, Pre-tax deferrals, Pre-tax withdrawals and
-//      conversions as ordinary income, the gain part of taxable withdrawals, Social Security.
+//   5. Tax on the whole year (calculateYearTax): wages, Pre-tax deferrals, Pre-tax withdrawals,
+//      conversions and pensions as ordinary income, the gain part of taxable withdrawals, Social Security.
 //   6. Surplus (an RMD that leaves more than the need) is reinvested in a taxable account as basis.
 //      A shortfall (everything withdrawn and still short) is recorded, with the year money ran out.
 //   7. Cost basis falls pro-rata with withdrawals; what is left grows at the return; contributions
 //      and reinvested surplus are added at the end of the year (as futureValueAnnuity assumes).
 //
-// After-tax cash in a year = wages + Social Security + withdrawals − all tax (income and payroll)
+// After-tax cash in a year = wages + Social Security + pensions + withdrawals − all tax (income and payroll)
 // − the year's contributions (they are paid out of that cash) − any Medicare IRMAA surcharge.
 //
 // IRMAA (assumptions.medicareIrmaa; off when absent): each person 65 or older pays the Part B and
@@ -43,6 +43,7 @@ import { solveMonotonicIncreasing } from './solver.js';
 import { splitAtTakeHome } from './compare.js';
 import { irmaaCost, medicareEnrollees } from './irmaa.js';
 import { dependentsInYear } from './dependents.js';
+import { pensionIncomeInYear } from './pensionIncome.js';
 import { IRMAA_LOOKBACK_YEARS } from '../data/irmaa.js';
 
 export const DEFAULT_END_AGE = 95;
@@ -148,6 +149,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       (acc, s, i) => acc + (ages[i] >= s.ownStartAge ? s.own : 0) + (ages[i] >= s.topUpStartAge ? s.topUp : 0),
       0,
     );
+    const pension = pensionIncomeInYear(household, t); // today's dollars (pensionIncome.js)
 
     // 2. This year's contributions (paid in at the end of the year).
     const made = [];
@@ -189,7 +191,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       selfEmploymentIncome: working[i] ? p.selfEmploymentIncome : 0,
     }));
     const taxParams = (withdrawals, conversions = []) => {
-      let ordinaryIncome = conversions.reduce((s, c) => s + c.amount, 0);
+      let ordinaryIncome = pension + conversions.reduce((s, c) => s + c.amount, 0);
       let preferentialIncome = 0;
       for (const a of accounts) {
         const w = withdrawals[a.id] ?? 0;
@@ -217,7 +219,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       const tax = full ? calculateYearTax(params) : calculateYearTaxTotals(params);
       const withdrawn = Object.values(withdrawals).reduce((s, w) => s + w, 0);
       const earned = peopleThisYear.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0);
-      return { tax, cash: earned + socialSecurity + withdrawn - tax.totalTax - contributionCash - irmaaThisYear };
+      return { tax, cash: earned + socialSecurity + pension + withdrawn - tax.totalTax - contributionCash - irmaaThisYear };
     };
 
     const live = accounts.filter((a) => a.balance > 0);
@@ -311,6 +313,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       ages,
       working,
       socialSecurity,
+      pension,
       rmd: rmdTotal,
       startBalances: { ...startBalances, total: startBalances.pretax + startBalances.roth + startBalances.taxable },
       withdrawals: { ...withdrawn, total: withdrawn.pretax + withdrawn.roth + withdrawn.taxable },

@@ -22,9 +22,10 @@
 //     Social Security + gains (Roth withdrawals and cost basis are in neither).
 import { calculateYearTaxTotals } from './yearTax.js';
 
-// taxRules (optional; the #/next preview): { thresholdScale, rateShift, ages, calendarYear }:
-// fixed-dollar thresholds scaled for inflation, a rate what-if, and the age 65+ deductions for the
-// given ages. Without it, today's rules (the current calculator).
+// taxRules (optional; the #/next preview): { thresholdScale, rateShift, ages, calendarYear,
+// itemizedDeductions, otherOrdinaryIncome }: fixed-dollar thresholds scaled for inflation, a rate
+// what-if, the age 65+ deductions for the given ages, and other ordinary income received that year
+// (a pension: one more floor under every withdrawal). Without it, today's rules (the current calculator).
 //
 // One engine: this is the single-year engine (yearTax.js) with only retirement income. It used to
 // carry its own copy of the rules for the current calculator; the agreement grids in
@@ -44,7 +45,7 @@ export function calculateRetirementTax({
     filingStatus,
     year,
     people: (taxRules?.ages ?? []).map((age) => ({ age })),
-    income: { ordinaryIncome: pretaxWithdrawal, preferentialIncome: capitalGains, socialSecurity: ssBenefit },
+    income: { ordinaryIncome: pretaxWithdrawal + (taxRules?.otherOrdinaryIncome ?? 0), preferentialIncome: capitalGains, socialSecurity: ssBenefit },
     thresholdScale: taxRules?.thresholdScale ?? 1,
     rateShift: taxRules?.rateShift ?? 0,
     calendarYear: taxRules?.calendarYear ?? year,
