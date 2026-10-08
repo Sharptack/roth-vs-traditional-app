@@ -1,9 +1,11 @@
 // The signed-in advisor's saved households (Supabase, row-level security: only their own).
-// Save the household on screen as new or over the one that's open, open one, delete one.
-// The homepage shows the whole card; a calculator page shows it compact (compact): the household on
-// screen and Save changes, with saving as new and the list behind a closed section.
+// The homepage shows the whole card: every client in a dropdown (choosing one opens it), save the
+// household on screen as new or over the one that's open, delete it. Every other page shows it
+// compact (compact, decided 2026-10-08): only the household on screen, with Save changes, Re-open
+// saved (back to the saved version) and saving as new; no list of clients.
 import { useCallback, useEffect, useState } from 'react';
 import { deleteHousehold, listHouseholds, loadHousehold, saveHousehold } from '../services/cloud.js';
+import { HOME_HASH } from '../lib/route.js';
 import { sameSavedHouseholdV2 } from '../lib/savedHousehold.js';
 
 const when = (iso) => {
@@ -31,8 +33,8 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
     }
   }, [client]);
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (!compact) refresh();
+  }, [refresh, compact]);
 
   const act = async (fn, okMessage) => {
     setBusy(true);
@@ -40,7 +42,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
     try {
       await fn();
       if (okMessage) setStatus({ kind: 'ok', message: okMessage });
-      await refresh();
+      if (!compact) await refresh();
     } catch (err) {
       setStatus({ kind: 'error', message: err.message });
     } finally {
@@ -68,7 +70,19 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
       {changed ? <span className="saved-changed">Unsaved changes</span> : <span className="dim">Saved</span>}{' '}
       <button type="button" className="button secondary" disabled={busy || !changed} onClick={saveOver}>
         Save changes
-      </button>
+      </button>{' '}
+      {changed && (
+        <button
+          type="button"
+          className="link-button"
+          disabled={busy}
+          onClick={() => {
+            if (window.confirm(`Re-open the saved ${opened.label}? Unsaved changes will be lost.`)) onOpen(opened);
+          }}
+        >
+          Re-open saved
+        </button>
+      )}
     </p>
   );
 
@@ -103,46 +117,42 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
     </p>
   );
 
-  const list =
+  const openRow = (id) => {
+    const r = rows.find((x) => x.id === id);
+    if (!r || r.id === opened?.id) return;
+    if (changed && !window.confirm(`Open "${r.label}"? Unsaved changes to ${opened.label} will be lost.`)) return;
+    act(async () => onOpen(await loadHousehold(client, r.id)), `Opened ${r.label}.`);
+  };
+  const remove = () => {
+    if (window.confirm(`Delete "${opened.label}"? This can't be undone.`)) {
+      act(async () => {
+        await deleteHousehold(client, opened.id);
+        onSaved(null);
+      }, `Deleted ${opened.label}.`);
+    }
+  };
+  const picker =
     rows === null ? (
       <p className="hint">Loading&hellip;</p>
     ) : rows.length === 0 ? (
       <p className="hint">Nothing saved yet.</p>
     ) : (
-      <ul className="saved-list">
-        {rows.map((r) => (
-          <li key={r.id} className={opened?.id === r.id ? 'current' : undefined}>
-            <span className="saved-label">{r.label}</span>
-            <span className="dim">{when(r.updated_at)}</span>
-            <button
-              type="button"
-              className="link-button"
-              disabled={busy}
-              onClick={() => {
-                if (changed && !window.confirm(`Open "${r.label}"? Unsaved changes to ${opened.label} will be lost.`)) return;
-                act(async () => onOpen(await loadHousehold(client, r.id)), `Opened ${r.label}.`);
-              }}
-            >
-              Open
-            </button>
-            <button
-              type="button"
-              className="link-button"
-              disabled={busy}
-              onClick={() => {
-                if (window.confirm(`Delete "${r.label}"? This can't be undone.`)) {
-                  act(async () => {
-                    await deleteHousehold(client, r.id);
-                    if (opened?.id === r.id) onSaved(null);
-                  }, `Deleted ${r.label}.`);
-                }
-              }}
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="client-picker">
+        <label htmlFor="client-select">Client</label>
+        <select id="client-select" value={opened?.id ?? ''} disabled={busy} onChange={(e) => openRow(e.target.value)}>
+          {!opened && <option value="">Choose a saved household&hellip;</option>}
+          {rows.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label} ({when(r.updated_at)})
+            </option>
+          ))}
+        </select>
+        {opened && (
+          <button type="button" className="link-button" disabled={busy} onClick={remove}>
+            Delete
+          </button>
+        )}
+      </div>
     );
 
   if (compact) {
@@ -151,10 +161,12 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
         {onScreen ?? <p className="saved-on-screen dim">Not saved yet.</p>}
         {statusLine}
         <details className="details">
-          <summary>{opened ? 'Save as new or open another household' : 'Save or open a household'}</summary>
+          <summary>{opened ? 'Save as a new household' : 'Save this household'}</summary>
           <p className="hint">{NOTICE}</p>
           {saveForm}
-          {list}
+          <p className="hint">
+            Open another client on the <a href={HOME_HASH}>home page</a>.
+          </p>
         </details>
       </section>
     );
@@ -162,12 +174,12 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
 
   return (
     <section className="card saved-households" aria-labelledby="saved-title">
-      <h2 id="saved-title">Saved households</h2>
+      <h2 id="saved-title">Clients</h2>
       <p className="hint">{NOTICE}</p>
+      {picker}
       {onScreen}
       {saveForm}
       {statusLine}
-      {list}
     </section>
   );
 }

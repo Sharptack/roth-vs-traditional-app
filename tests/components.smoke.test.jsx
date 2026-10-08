@@ -1110,7 +1110,7 @@ describe('preview sign-in and saved households', () => {
     expect(renderToStaticMarkup(<AccountBar client={{}} cloud={{ configured: true, ready: false, session: null }} />)).toBe('');
   });
 
-  it('the saved households card: the testing-stage notice, save form, and the open household', async () => {
+  it('the clients card (homepage): the testing-stage notice, save form, and the open household', async () => {
     const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES } = await import('../src/lib/householdValues.js');
     const html = renderToStaticMarkup(
@@ -1122,8 +1122,9 @@ describe('preview sign-in and saved households', () => {
         onSaved={() => {}}
       />,
     );
-    expect(html).toContain('Saved households');
+    expect(html).toContain('>Clients</h2>');
     expect(html).toContain('Don’t store client names');
+    expect(html).not.toContain('Re-open saved');
     expect(html).toContain('On screen: <strong>J.M. 2026</strong>');
     expect(html).toContain('Or save as a new household');
     // the form matches what was saved: "Saved", and Save changes has nothing to do
@@ -1146,9 +1147,11 @@ describe('preview sign-in and saved households', () => {
     );
     expect(html).toContain('Unsaved changes');
     expect(html).toMatch(/<button type="button" class="button secondary">Save changes<\/button>/);
+    // the way back to the saved version
+    expect(html).toContain('>Re-open saved</button>');
   });
 
-  it('the compact card for calculator pages: the household on screen, the rest behind a closed section', async () => {
+  it('the compact card for other pages: only the household on screen, saving as new behind a closed section', async () => {
     const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES } = await import('../src/lib/householdValues.js');
     const props = { client: {}, values: DEFAULT_HOUSEHOLD_VALUES, onOpen: () => {}, onSaved: () => {}, compact: true };
@@ -1156,12 +1159,14 @@ describe('preview sign-in and saved households', () => {
       <SavedHouseholds {...props} opened={{ id: 'n1', label: 'J.M. 2026', values: DEFAULT_HOUSEHOLD_VALUES }} />,
     );
     expect(open).toContain('On screen: <strong>J.M. 2026</strong>');
-    expect(open).toContain('<summary>Save as new or open another household</summary>');
+    expect(open).toContain('<summary>Save as a new household</summary>');
     expect(open).not.toContain('<h2');
+    expect(open).not.toContain('client-select'); // no list of clients
+    expect(open).toContain('home page</a>');
     expect(open).not.toMatch(/<details[^>]* open/);
     const none = renderToStaticMarkup(<SavedHouseholds {...props} opened={null} />);
     expect(none).toContain('Not saved yet.');
-    expect(none).toContain('<summary>Save or open a household</summary>');
+    expect(none).toContain('<summary>Save this household</summary>');
     expect(none).toContain('Don’t store client names');
   });
 });

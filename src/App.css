@@ -2250,3 +2250,19 @@ th.win .th-sub {
   background: var(--accent);
   color: #fff;
 }
+
+/* The homepage's client dropdown. */
+.client-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0 12px;
+}
+.client-picker select {
+  font: inherit;
+  padding: 6px 8px;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 220px;
+}

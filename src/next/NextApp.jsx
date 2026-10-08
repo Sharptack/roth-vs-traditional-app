@@ -200,7 +200,8 @@ export default function NextApp({ initialPage, client }) {
   const formProps = { values, onUpdate: setValues, locked, onEditCopy: () => setLocked(false) };
   const share = !locked && <ShareHousehold values={values} household={h} getTiles={summaryTiles} />;
   const calculator = CALCULATORS.find((c) => c.id === page);
-  // Saved households: the whole card on the homepage, compact on a calculator page.
+  // Saved households: the whole card (every client) on the homepage, compact (the household on
+  // screen only) on the inputs page and each calculator.
   const saved = (compact) =>
     cloud.session && (
       <SavedHouseholds
@@ -267,7 +268,7 @@ export default function NextApp({ initialPage, client }) {
             </p>
           </header>
           <main className="inputs-page">
-            {saved(false)}
+            {saved(true)}
             <HouseholdInputs
               {...formProps}
               layout="page"
