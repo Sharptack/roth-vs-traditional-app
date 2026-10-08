@@ -31,8 +31,8 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 1, step (d): the Roth page merge. Steps (a) QBI and IRA rules, (b) tax rows, itemized
-  deductions, the buckets, the child tax credit, and (c) the pension on SSA life tables are done.
+- **Current step:** phase 1 steps (a)-(e) are done (2026-10-08); next is the switchover (the plan doc's checklist),
+  waiting on the user's go-ahead.
 - **Docs** (`#/docs`, public): one markdown article per feature in `articles/` (listed in `src/lib/docs.js`); each
   phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
   `index.html`; Netlify's form detection must be on).
@@ -57,7 +57,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 771 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 781 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -137,6 +137,8 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (j) — Phase 1 steps (d) and (e): Start a new household, who can contribute, Compare a change, Use in the plan
+  (trial), snapshot at the last retirement; EMTR terms; Docs articles (tax, pension, rates). 781 tests.
 - 2026-10-08 (i) — Phase 1 step (c): pension on SSA period life table (src/data/lifeTable.js); Docs rates article. 771 tests.
 - 2026-10-08 (h) — Rates named marginal (bracket) / effective (next dollar) / average; the child tax credit. 764 tests.
 - 2026-10-08 (g) — Phase 1 step (b): itemized deductions; tax rows rebuilt; the two buckets (rateProfile.js). 754 tests.
