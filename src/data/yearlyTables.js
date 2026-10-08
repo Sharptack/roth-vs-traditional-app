@@ -15,6 +15,7 @@ import { AGE_DEDUCTIONS } from './ageDeductions.js';
 import { IRMAA } from './irmaa.js';
 import { QBI } from './qbi.js';
 import { IRA_RULES } from './iraRules.js';
+import { CHILD_TAX_CREDIT } from './childTaxCredit.js';
 
 // file: where to edit; what: the figures to update; when: when they are usually published.
 export const YEARLY_TABLES = [
@@ -80,6 +81,13 @@ export const YEARLY_TABLES = [
     file: 'src/data/iraRules.js',
     what: 'Roth IRA and Traditional IRA deduction phase-out ranges; the Roth catch-up FICA-wage threshold',
     when: 'IRS notice and newsroom release (with the contribution limits), October-November',
+  },
+  {
+    name: 'Child tax credit',
+    table: CHILD_TAX_CREDIT,
+    file: 'src/data/childTaxCredit.js',
+    what: 'the credit per child (indexed from 2026) and the refundable amount; the $500 and the phase-out are fixed',
+    when: 'same IRS revenue procedure',
   },
 ];
 

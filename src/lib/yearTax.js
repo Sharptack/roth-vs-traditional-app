@@ -28,6 +28,8 @@
 //                   taxes, charitable gifts...). Taken instead of the standard deduction when larger;
 //                   an itemizer loses the extra standard deduction at 65 but keeps the senior
 //                   deduction. Default 0: the standard deduction, as before.
+//   children        qualifying children (under 17 at the end of the year) for the child tax credit;
+//   otherDependents other dependents (the $500 credit). Default 0 (lib/childTaxCredit.js).
 //   qbi             true: take the qualified business income deduction on 1099 earnings (lib/qbi.js,
 //                   the basic rule). Off by default, so the current calculator's numbers don't change.
 //
@@ -46,6 +48,7 @@ import { CAPITAL_GAINS_BRACKETS } from '../data/capitalGainsBrackets.js';
 import { AGE_DEDUCTIONS } from '../data/ageDeductions.js';
 import { getYearData } from './yearLookup.js';
 import { qbiDeduction } from './qbi.js';
+import { childTaxCredit } from './childTaxCredit.js';
 
 // The 65+ additional standard deduction and the senior deduction for these people, at this MAGI.
 // calendarYear: the year being taxed, when it differs from `year` (the law's data year). The
@@ -83,7 +86,7 @@ export function calculateYearTaxTotals(params) {
   return core(params);
 }
 
-function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year, qbi = false, itemizedDeductions = 0 }) {
+function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {}, thresholdScale = 1, rateShift = 0, calendarYear = year, qbi = false, itemizedDeductions = 0, children = 0, otherDependents = 0 }) {
   const ordinaryIncome = income.ordinaryIncome ?? 0;
   const investmentOrdinaryIncome = income.investmentOrdinaryIncome ?? 0;
   const preferentialIncome = Math.max(0, income.preferentialIncome ?? 0);
@@ -141,7 +144,17 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
   const capitalGainsTax = calculateCapitalGainsTax(ordinaryGross, preferentialIncome, deductions, filingStatus, year);
   const netInvestmentIncome = Math.max(0, investmentOrdinaryIncome) + preferentialIncome;
   const niit = calculateNiit(agi, netInvestmentIncome, filingStatus, year, thresholdScale);
-  const incomeTax = ordinaryTax + capitalGainsTax + niit;
+  // Credits: against the regular tax (not NIIT), with the children's unused part refundable.
+  const credit = childTaxCredit({
+    children,
+    otherDependents,
+    magi: agi,
+    regularTax: ordinaryTax + capitalGainsTax,
+    earnedIncome: wages + Math.max(0, selfEmploymentIncome - payroll.selfEmployment.deduction),
+    filingStatus,
+    year,
+  });
+  const incomeTax = ordinaryTax + capitalGainsTax + niit - credit.total;
   const payrollTax = payroll.total;
   const totalTax = incomeTax + payrollTax;
   const grossIncome = earned + ordinaryIncome + investmentOrdinaryIncome + preferentialIncome + socialSecurity;
@@ -176,6 +189,9 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
       ordinaryTaxableIncome,
       taxableIncome,
       netInvestmentIncome,
+      childTaxCredit: credit.total, // both parts: against the tax, and refundable (a negative tax is a refund)
+      childTaxCreditRefundable: credit.refundable,
+      childTaxCreditPhaseOut: credit.phaseOut,
     },
     ordinaryTax,
     capitalGainsTax,
