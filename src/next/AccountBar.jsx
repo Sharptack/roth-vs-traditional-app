@@ -2,7 +2,7 @@
 // backend is configured (src/services/supabaseClient.js).
 import { useState } from 'react';
 import { sendSignInLink, signOut } from '../services/cloud.js';
-import { NEXT_HASH } from '../lib/route.js';
+import { HOME_HASH } from '../lib/route.js';
 
 export default function AccountBar({ client, cloud, onSignedOut }) {
   const [open, setOpen] = useState(false);
@@ -33,7 +33,7 @@ export default function AccountBar({ client, cloud, onSignedOut }) {
     setStatus({ kind: 'sending' });
     try {
       const { origin, pathname } = window.location;
-      await sendSignInLink(client, email, `${origin}${pathname}${NEXT_HASH}`);
+      await sendSignInLink(client, email, `${origin}${pathname}${HOME_HASH}`);
       setStatus({ kind: 'sent' });
     } catch (err) {
       setStatus({ kind: 'error', message: err.message });

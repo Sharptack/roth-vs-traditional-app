@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { householdLinkSearchV2 } from '../lib/householdLink.js';
 import { householdShareText } from '../lib/householdText.js';
-import { NEXT_HASH } from '../lib/route.js';
+import { HOME_HASH } from '../lib/route.js';
 
 // household, getTiles: for the summary; getTiles() -> [{ title, headline, detail }] per calculator,
 // called only when the summary is copied (some calculators are worked out on demand).
@@ -17,7 +17,7 @@ export default function ShareHousehold({ values, household, getTiles }) {
 
   const link = () => {
     const { origin, pathname } = window.location;
-    return `${origin}${pathname}${householdLinkSearchV2(values, { viewOnly })}${NEXT_HASH}`;
+    return `${origin}${pathname}${householdLinkSearchV2(values, { viewOnly })}${HOME_HASH}`;
   };
   const copy = async (kind) => {
     const text = kind === 'link' ? link() : householdShareText({ household, tiles: getTiles(), url: link() });

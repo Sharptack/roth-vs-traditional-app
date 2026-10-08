@@ -1,4 +1,4 @@
-// Markdown -> HTML for the articles (ARTICLE.md and the Docs section's articles/*.md). Every
+// Markdown -> HTML for the Docs section's articles (articles/*.md). Every
 // heading gets an id (its slug, route.js headingSlug), so a page can link straight to a section.
 // The articles are our own trusted content from the repo, not user input.
 import { Marked } from 'marked';

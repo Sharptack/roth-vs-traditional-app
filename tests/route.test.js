@@ -1,48 +1,43 @@
 import { describe, it, expect } from 'vitest';
-import { ARTICLE_HASH, CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, SCENARIOS_HASH, articleHash, articleSectionFromHash, headingSlug, nextPageFromHash, routeFromHash } from '../src/lib/route.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ARTICLE_SECTIONS, HOME_HASH, PAGES, SCENARIOS_HASH, articleHash, canonicalHash, headingSlug, pageFromHash, routeFromHash } from '../src/lib/route.js';
+import { headingSlugs } from '../src/lib/markdown.js';
 
-describe('routeFromHash', () => {
-  it('shows the article only for the how-it-works hash', () => {
-    expect(routeFromHash(ARTICLE_HASH)).toBe('article');
-    expect(routeFromHash('#/how-it-works')).toBe('article');
+describe('routing', () => {
+  it('the calculators are the site: home, the inputs page and each calculator', () => {
+    for (const h of ['', '#', HOME_HASH, '#/nope', ...Object.values(PAGES)]) expect(routeFromHash(h), h).toBe('app');
+    expect(pageFromHash(HOME_HASH)).toBe('home');
+    expect(pageFromHash('#/roth')).toBe('roth');
+    expect(pageFromHash('#/inputs')).toBe('inputs');
+    expect(pageFromHash('#/nope')).toBe('home');
   });
-  it('shows the scenario charts only for the scenarios hash', () => {
+
+  it('the Docs and the Visualization page', () => {
+    expect(routeFromHash('#/docs')).toBe('docs');
+    expect(routeFromHash('#/docs/roth/why-maxing-out-changes-the-math')).toBe('docs');
     expect(routeFromHash(SCENARIOS_HASH)).toBe('scenarios');
-    expect(routeFromHash('#/scenarios')).toBe('scenarios');
+    expect(routeFromHash('#/scenarios/extra')).toBe('app');
   });
-  it('opens the article at a heading for "#/how-it-works/<slug>"', () => {
+
+  it('older links open where they belong now', () => {
+    // the preview's addresses, before the switchover
+    expect(canonicalHash('#/next')).toBe('#/');
+    expect(canonicalHash('#next')).toBe('#/');
+    expect(canonicalHash('#/next/tax')).toBe('#/tax');
+    expect(canonicalHash('#/next/inputs')).toBe('#/inputs');
+    // the old calculator's article, at its headings too
+    expect(canonicalHash('#/how-it-works')).toBe('#/docs/roth');
+    expect(canonicalHash('#/how-it-works/why-maxing-out-changes-the-math')).toBe('#/docs/roth/why-maxing-out-changes-the-math');
+    // current addresses stay as they are
+    for (const h of ['#/', '#/roth', '#/docs/rates', '#/scenarios', '']) expect(canonicalHash(h)).toBe(h);
+  });
+
+  it('links into the Roth article point at headings it really has', () => {
     expect(headingSlug('Why maxing out changes the math')).toBe('why-maxing-out-changes-the-math');
     expect(headingSlug("What this calculator doesn't capture")).toBe('what-this-calculator-doesnt-capture');
-    expect(articleHash('limit')).toBe('#/how-it-works/why-maxing-out-changes-the-math');
-    expect(routeFromHash(articleHash('limit'))).toBe('article');
-    expect(articleSectionFromHash(articleHash('limit'))).toBe('why-maxing-out-changes-the-math');
-    expect(articleSectionFromHash(ARTICLE_HASH)).toBe(null);
-    expect(articleSectionFromHash('#/how-it-works/')).toBe(null);
-    expect(articleSectionFromHash('#/how-it-works/Not A Slug')).toBe(null);
-    expect(routeFromHash('#/how-it-works/Not A Slug')).toBe('calculator');
-    // the removed test page's address is just the calculator now
-    expect(routeFromHash('#/old-vs-new')).toBe('calculator');
-  });
-  it('shows the preview for its hash and any page under it', () => {
-    expect(routeFromHash(NEXT_HASH)).toBe('next');
-    expect(routeFromHash('#/next')).toBe('next');
-    expect(routeFromHash('#/next/tax')).toBe('next');
-    expect(routeFromHash('#next')).toBe('next');
-    expect(routeFromHash('#/nextish')).toBe('calculator');
-  });
-  it('picks the preview page: home, or a calculator', () => {
-    expect(nextPageFromHash(NEXT_HASH)).toBe('home');
-    expect(nextPageFromHash('#next')).toBe('home');
-    expect(nextPageFromHash(NEXT_PAGES.roth)).toBe('roth');
-    expect(nextPageFromHash('#/next/tax')).toBe('tax');
-    expect(nextPageFromHash('#/next/nope')).toBe('home');
-    expect(routeFromHash(NEXT_PAGES.tax)).toBe('next');
-  });
-  it('shows the calculator for the empty hash, the home hash, and anything unknown', () => {
-    expect(routeFromHash('')).toBe('calculator');
-    expect(routeFromHash(CALCULATOR_HASH)).toBe('calculator');
-    expect(routeFromHash('#')).toBe('calculator');
-    expect(routeFromHash('#/nope')).toBe('calculator');
-    expect(routeFromHash('#/scenarios/extra')).toBe('calculator');
+    expect(articleHash('limit')).toBe('#/docs/roth/why-maxing-out-changes-the-math');
+    const slugs = headingSlugs(readFileSync(join(import.meta.dirname, '..', 'articles', 'roth.md'), 'utf8'));
+    for (const heading of Object.values(ARTICLE_SECTIONS)) expect(slugs).toContain(headingSlug(heading));
   });
 });

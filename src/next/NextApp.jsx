@@ -23,7 +23,7 @@ import { DOCS_HASH, docsHash } from '../lib/docs.js';
 import { DEFAULT_HOUSEHOLD_VALUES, isoDate, refreshAges } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
 import { rmdStartAge } from '../lib/rmd.js';
-import { CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, nextPageFromHash } from '../lib/route.js';
+import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, pensionTile, projectionTile, rothTile, taxTile } from '../lib/suiteTiles.js';
 import { conversionResult } from '../lib/conversionCalculator.js';
 import { householdToPensionInputs, pensionResult } from '../lib/pensionCalculator.js';
@@ -114,7 +114,7 @@ export const CALCULATORS = [
 ];
 
 function usePreviewPage() {
-  const read = () => (typeof window === 'undefined' ? 'home' : nextPageFromHash(window.location.hash));
+  const read = () => (typeof window === 'undefined' ? 'home' : pageFromHash(window.location.hash));
   const [page, setPage] = useState(read);
   useEffect(() => {
     const onHashChange = () => {
@@ -219,20 +219,15 @@ export default function NextApp({ initialPage, client }) {
 
   return (
     <div className="next-app">
-      <p className="alert preview-banner" role="status">
-        <strong>Preview, not finished.</strong> This is the next version of the calculator, built
-        alongside the current one. Numbers and layout may change.{' '}
-        <a href={CALCULATOR_HASH}>Back to the current calculator &rarr;</a>
-      </p>
       <AccountBar client={cloud.client} cloud={cloud} onSignedOut={() => setOpened(null)} />
 
       {page === 'inputs' && (
         <>
           <header className="page-header">
             <p className="header-links">
-              <a href={NEXT_HASH}>&larr; All calculators</a>
+              <a href={HOME_HASH}>&larr; All calculators</a>
             </p>
-            <h1>Household inputs (preview)</h1>
+            <h1>Household inputs</h1>
             <p>
               Every input in one place. Each calculator reads the ones it needs, and its own inputs card
               edits the same household.
@@ -285,7 +280,7 @@ export default function NextApp({ initialPage, client }) {
               <ul>
                 {CALCULATORS.map((c) => (
                   <li key={c.id}>
-                    <a href={NEXT_PAGES[c.id]}>{c.title}</a> <span className="dim">{c.blurb}</span>
+                    <a href={PAGES[c.id]}>{c.title}</a> <span className="dim">{c.blurb}</span>
                   </li>
                 ))}
               </ul>
@@ -297,7 +292,7 @@ export default function NextApp({ initialPage, client }) {
       {page === 'home' && (
         <>
           <header className="page-header">
-            <h1>Client household (preview)</h1>
+            <h1>Client household</h1>
             <p>Set up the household once; every calculator reads the same inputs.</p>
             <p className="header-links">
               <a href={DOCS_HASH}>Docs &rarr;</a> How each calculator works and how to use it.
@@ -311,7 +306,7 @@ export default function NextApp({ initialPage, client }) {
                     Household
                   </h2>
                   <div className="form-head-actions">
-                    <a className="link-button" href={NEXT_PAGES.inputs}>
+                    <a className="link-button" href={PAGES.inputs}>
                       Edit inputs &rarr;
                     </a>
                   </div>
@@ -330,7 +325,7 @@ export default function NextApp({ initialPage, client }) {
               {saved(false)}
               <div className="suite-tiles">
                 {CALCULATORS.map((c) => (
-                  <a key={c.id} className="card suite-tile" href={NEXT_PAGES[c.id]}>
+                  <a key={c.id} className="card suite-tile" href={PAGES[c.id]}>
                     <span className="suite-tile-title">{c.title}</span>
                     <span className="suite-tile-headline">{tiles[c.id].headline}</span>
                     <span className="suite-tile-detail">{tiles[c.id].detail}</span>
@@ -348,9 +343,9 @@ export default function NextApp({ initialPage, client }) {
         <>
           <header className="page-header">
             <p className="header-links">
-              <a href={NEXT_HASH}>&larr; All calculators</a>
+              <a href={HOME_HASH}>&larr; All calculators</a>
             </p>
-            <h1>{calculator.title} (preview)</h1>
+            <h1>{calculator.title}</h1>
             <p>{calculator.blurb}</p>
             {calculator.article && (
               <p className="header-links">
@@ -360,7 +355,7 @@ export default function NextApp({ initialPage, client }) {
             {calculator.id === 'roth' && Number.isFinite(roth.household.people[0].birthYear) && (
               <p className="header-links">
                 RMDs start at {rmdStartAge(roth.household.people[0].birthYear)}.{' '}
-                <a href={NEXT_PAGES.projection}>See year-by-year taxes &rarr;</a>
+                <a href={PAGES.projection}>See year-by-year taxes &rarr;</a>
               </p>
             )}
           </header>
@@ -377,7 +372,7 @@ export default function NextApp({ initialPage, client }) {
                   fields={CALCULATOR_INPUTS[calculator.id].fields}
                   defaultOpen={CALCULATOR_INPUTS[calculator.id].sections.slice(0, 1)}
                   headLink={
-                    <a className="link-button" href={NEXT_PAGES.inputs}>
+                    <a className="link-button" href={PAGES.inputs}>
                       All inputs
                     </a>
                   }

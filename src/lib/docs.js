@@ -1,11 +1,11 @@
 // The Docs section (round 2, "throughout"): one article per feature, explaining how the
 // calculation works and how to use it. Pure. Each article is a markdown file in articles/
-// (articles/<slug>.md), rendered like ARTICLE.md; this list sets their order and index text.
+// (articles/<slug>.md); this list sets their order and index text.
 //
 //   #/docs                      the index
 //   #/docs/<article>            an article
 //   #/docs/<article>/<heading>  an article at a heading (the heading's slug, route.js headingSlug)
-import { ARTICLE_HASH, DOCS_HASH, headingSlug } from './route.js';
+import { DOCS_HASH, SCENARIOS_HASH, headingSlug } from './route.js';
 
 export { DOCS_HASH };
 
@@ -14,6 +14,11 @@ export const DOCS_ARTICLES = [
     slug: 'inputs',
     title: 'The household inputs',
     blurb: 'Every input on the inputs page: what it means, which calculators read it, and how saving and sharing work.',
+  },
+  {
+    slug: 'roth',
+    title: 'Roth vs. Pre-tax: how to think about it, and how the calculator does',
+    blurb: 'The reasoning behind the Roth vs. Pre-tax comparison, in plain language.',
   },
   {
     slug: 'tax',
@@ -32,12 +37,12 @@ export const DOCS_ARTICLES = [
   },
 ];
 
-// Articles that live elsewhere until the switchover (ARTICLE.md is the Roth vs. Pre-tax article).
+// Pages the Docs index links to that aren't articles.
 export const OTHER_ARTICLES = [
   {
-    href: ARTICLE_HASH,
-    title: 'Roth vs. Pre-tax: how the current calculator works',
-    blurb: 'The reasoning behind the Roth vs. Pre-tax comparison, in plain language.',
+    href: SCENARIOS_HASH,
+    title: 'Visualization: the rate gap across scenarios',
+    blurb: 'Charts of the two rates and who comes out ahead, across ranges of income, savings, balances and ages.',
   },
 ];
 

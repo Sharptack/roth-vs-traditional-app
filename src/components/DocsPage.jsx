@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { DOCS_ARTICLES, DOCS_HASH, OTHER_ARTICLES, docsArticle, docsHash, docsLocation } from '../lib/docs.js';
 import { markdownToHtml } from '../lib/markdown.js';
-import { NEXT_HASH } from '../lib/route.js';
+import { HOME_HASH } from '../lib/route.js';
 
 // Every articles/*.md file, as text, by slug ("articles/inputs.md" -> "inputs").
 const FILES = import.meta.glob('../../articles/*.md', { query: '?raw', import: 'default', eager: true });
@@ -24,7 +24,7 @@ function DocsIndex() {
   useTitle('Docs — Roth vs. Pre-Tax Calculator');
   return (
     <>
-      <a className="back-link" href={NEXT_HASH}>
+      <a className="back-link" href={HOME_HASH}>
         &larr; Back to the calculators
       </a>
       <div className="article">

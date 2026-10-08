@@ -19,8 +19,8 @@ describe('the Docs section', () => {
     expect(routeFromHash('#/docs')).toBe('docs');
     expect(routeFromHash('#/docs/inputs')).toBe('docs');
     expect(routeFromHash('#/docs/inputs/people')).toBe('docs');
-    expect(routeFromHash('#/docsx')).toBe('calculator');
-    expect(routeFromHash('#/how-it-works')).toBe('article');
+    expect(routeFromHash('#/docsx')).toBe('app');
+    expect(routeFromHash('#/how-it-works')).toBe('app'); // rewritten to #/docs/roth on arrival (canonicalHash)
   });
 
   it('reads the article and heading from the address', () => {

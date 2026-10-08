@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import App from '../src/App.jsx';
-import ArticlePage from '../src/components/ArticlePage.jsx';
-import articleMarkdown from '../ARTICLE.md?raw';
+import DocsPage from '../src/components/DocsPage.jsx';
+import articleMarkdown from '../articles/roth.md?raw';
 import InputForm from '../src/components/InputForm.jsx';
 import ResultsSummary from '../src/components/ResultsSummary.jsx';
 import ScenarioCompare from '../src/components/ScenarioCompare.jsx';
@@ -146,7 +146,7 @@ describe('ResultsSummary', () => {
     expect(table).not.toContain('Tax on withdrawals');
     // the explanation is a link to the article, not a block of text
     expect(trade).not.toContain('Why is the Pre-tax side bigger?');
-    expect(trade).toContain('href="#/how-it-works/tax-saved-now-effective-rate-later"');
+    expect(trade).toContain('href="#/docs/roth/tax-saved-now-effective-rate-later"');
     expect(trade).toContain('Retirement years without Social Security');
     expect(sec3).not.toContain('Marginal rate while working');
   });
@@ -220,7 +220,7 @@ describe('ResultsSummary', () => {
     const roth = render({ savings: '10000', currentType: 'roth' });
     const rothSec1 = roth.slice(roth.indexOf('id="sec1"'), roth.indexOf('id="sec2"'));
     expect(rothSec1).not.toContain('Pre-tax savings for retirement (not taxed now)');
-    expect(rothSec1).toContain('href="#/how-it-works/how-the-calculator-estimates-your-retirement-tax-rate"');
+    expect(rothSec1).toContain('href="#/docs/roth/how-the-calculator-estimates-your-retirement-tax-rate"');
   });
 
   it('shows capital-gains tax bracket-by-bracket in the full tax calculation, and shows the withdrawal pushing gains up', () => {
@@ -272,8 +272,8 @@ describe('ResultsSummary', () => {
     const dropdown = html.slice(start, html.indexOf('id="sec-tradeoff"'));
     expect(html).not.toContain('How the rates fit together.');
     expect(dropdown).toContain('Step 1: income from Social Security and Existing Accounts');
-    expect(dropdown).toContain('href="#/how-it-works/how-the-calculator-estimates-your-retirement-tax-rate"');
-    expect(dropdown).toContain('href="#/how-it-works/the-social-security-phase-in"');
+    expect(dropdown).toContain('href="#/docs/roth/how-the-calculator-estimates-your-retirement-tax-rate"');
+    expect(dropdown).toContain('href="#/docs/roth/the-social-security-phase-in"');
     // the steps come first, the link after them
     expect(dropdown.indexOf('Step 1: income from Social Security')).toBeLessThan(dropdown.indexOf('Explained in How this works'));
   });
@@ -400,10 +400,10 @@ describe('ResultsSummary', () => {
     expect(html).not.toContain('Total income before tax');
   });
 
-  it('every article link on the results points at a heading the article really has', () => {
+  it('every article link on the results points at a heading the Roth article really has', () => {
     const html = render({ grossIncome: '150000', savings: '30000' });
-    const article = renderToStaticMarkup(<ArticlePage />);
-    const slugs = [...new Set([...html.matchAll(/href="#\/how-it-works\/([a-z0-9-]+)"/g)].map((m) => m[1]))];
+    const article = renderToStaticMarkup(<DocsPage hash="#/docs/roth" />);
+    const slugs = [...new Set([...html.matchAll(/href="#\/docs\/roth\/([a-z0-9-]+)"/g)].map((m) => m[1]))];
     expect(slugs.length).toBe(6);
     for (const slug of slugs) expect(article, slug).toContain(` id="${slug}"`);
   });
@@ -435,7 +435,7 @@ describe('ResultsSummary', () => {
     expect(html).toContain('Effective rate on the account withdrawal');
     // the defaults ($100,000, $10,000 saved) win Pre-tax without Social Security: 13.1% < 22.0%
     expect(html).toContain('is below the tax saved now');
-    expect(html).toContain('href="#/how-it-works/years-without-social-security"');
+    expect(html).toContain('href="#/docs/roth/years-without-social-security"');
     // the old marginal-vs-marginal headline and the "stricter rule of thumb" remark are gone
     expect(html).not.toContain('stricter rule of thumb');
     expect(html).not.toContain('Marginal rate in retirement (bracket of the last dollar)');
@@ -575,60 +575,34 @@ describe('ResultsSummary', () => {
   });
 });
 
-describe('App', () => {
-  it('renders end to end with the defaults', () => {
+describe('App: the calculators are the site', () => {
+  it('opens on the calculators homepage, with no preview banner, and the feedback link', () => {
     const html = renderToStaticMarkup(<App />);
-    expect(html).toContain('Roth vs. Pre-Tax Calculator');
-    expect(html).toContain('Total future portfolio comparison');
-  });
-
-  it('links to the "How this works" page from the header and the footer', () => {
-    const html = renderToStaticMarkup(<App />);
-    const links = html.match(/href="#\/how-it-works"/g) ?? [];
-    expect(links.length).toBe(2);
-    expect(html).toContain('How this works');
-    expect(html).toContain('class="page-footer"');
-  });
-
-  it('links to the "Visualization" scenarios page from the header and the footer', () => {
-    const html = renderToStaticMarkup(<App />);
-    const links = html.match(/href="#\/scenarios"/g) ?? [];
-    expect(links.length).toBe(2);
-    expect(html).toContain('Visualization');
-  });
-
-  it('shows the calculator (not the article or the scenarios page) by default', () => {
-    const html = renderToStaticMarkup(<App />);
-    expect(html).not.toContain('Back to the calculator');
-    expect(html).not.toContain('Visualization: who comes out ahead, and why');
-    expect(html).not.toMatch(/<div hidden/); // the calculator wrapper is visible
+    expect(html).toContain('Client household');
+    expect(html).not.toContain('Preview, not finished');
+    expect(html).not.toContain('(preview)');
+    expect(html).toContain('href="#/roth"');
+    expect(html).toContain('href="#/docs"');
+    expect(html).toContain('Send feedback');
   });
 });
 
-describe('ArticlePage', () => {
-  const html = renderToStaticMarkup(<ArticlePage />);
+describe('The Roth article (Docs)', () => {
+  const html = renderToStaticMarkup(<DocsPage hash="#/docs/roth" />);
 
   it('renders the article as real headings and paragraphs, not raw markdown', () => {
-    expect(html).toContain('>Roth or Traditional? How to Think About It, and How This Calculator Does</h1>');
     expect(html).toContain('<h2 id="years-without-social-security">Years without Social Security</h2>');
-    expect(html).toContain('<blockquote>');
     expect(html).toContain('<strong>');
     expect(html).not.toMatch(/(^|>)#{1,3} /); // no leaked "## " heading markers
     expect(html).not.toContain('**');
   });
 
-  it('renders every section of ARTICLE.md (the file is the single source)', () => {
+  it('renders every section of articles/roth.md (the file is the single source)', () => {
     const h2InMarkdown = articleMarkdown.split('\n').filter((l) => l.startsWith('## ')).length;
     const h2InHtml = (html.match(/<h2 id="[a-z0-9-]+">/g) ?? []).length;
     expect(h2InMarkdown).toBeGreaterThan(5);
     expect(h2InHtml).toBe(h2InMarkdown);
     expect(html).toContain('educational purposes only');
-  });
-
-  it('has a back link to the calculator at the top and bottom', () => {
-    const back = html.match(/href="#\/"/g) ?? [];
-    expect(back.length).toBe(2);
-    expect(html).toContain('Back to the calculator');
   });
 
   it('does not refer to UI sections that no longer exist', () => {
@@ -735,7 +709,7 @@ describe('ResultsSummary — excess contributions default to taxable', () => {
     const html = render({ grossIncome: '150000', savings: '30000', currentType: 'pretax', accountType: '401k' });
     expect(html).toContain('incl. $6,500 in a taxable account (over the IRS limit)');
     expect(html).toContain('incl. $860 in a taxable account (over the IRS limit)');
-    expect(html).toContain('href="#/how-it-works/why-maxing-out-changes-the-math"');
+    expect(html).toContain('href="#/docs/roth/why-maxing-out-changes-the-math"');
     expect(html).toContain('extra $');
     expect(html).toContain('taxable investment account');
   });
@@ -838,16 +812,6 @@ describe('Round 2026-09-25b adjustments', () => {
     expect(html).toContain('40% lower than today');
   });
 
-  it('App offers "Copy inputs to share" at the very bottom of the main inputs card, apart from Compare a change', () => {
-    const html = renderToStaticMarkup(<App />);
-    const header = html.slice(html.indexOf('class="page-header"'), html.indexOf('</header>'));
-    expect(header).not.toContain('Copy inputs to share');
-    const form = html.slice(html.indexOf('<form'), html.indexOf('</form>'));
-    expect(form).toContain('Copy inputs to share');
-    expect(form.indexOf('Copy inputs to share')).toBeGreaterThan(form.indexOf('Assumptions:'));
-    const compareCard = html.slice(html.indexOf('compare-start'), html.indexOf('</section>', html.indexOf('compare-start')));
-    expect(compareCard).not.toContain('Copy inputs to share');
-  });
 });
 
 describe('Future Contributions vs. Existing Accounts', () => {
@@ -863,7 +827,7 @@ describe('Future Contributions vs. Existing Accounts', () => {
     const html = render({ grossIncome: '150000', savings: '23500', currentType: 'roth' });
     // 23,500 x 24% = 5,640 a year of tax saved, invested
     expect(html).toContain('incl. $5,640 in a taxable account (over the IRS limit)');
-    expect(html).toContain('href="#/how-it-works/why-maxing-out-changes-the-math"');
+    expect(html).toContain('href="#/docs/roth/why-maxing-out-changes-the-math"');
     expect(html).toContain('Plus the taxable account (over the IRS limit)');
   });
 
@@ -1029,29 +993,24 @@ describe('Collapsible sections', () => {
     expect(over).not.toMatch(/NaN|Infinity/);
   });
 
-  it("offers Clear all in the main inputs card only", () => {
-    const app = renderToStaticMarkup(<App />);
-    expect((app.match(/>Clear all</g) ?? []).length).toBe(1);
-  });
 });
 
 
-// The #/next preview (build alongside, see CLAUDE.md).
-describe('NextApp (#/next preview)', () => {
-  it('renders the preview banner, a way back, and results; the current page does not link to it', async () => {
+// The calculators (NextApp: the site since the switchover).
+describe('NextApp', () => {
+  it('renders the homepage, every calculator page and its results', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const html = renderToStaticMarkup(<NextApp />);
-    expect(html).toContain('Preview, not finished.');
-    expect(html).toContain('href="#/"');
+    expect(html).not.toContain('Preview, not finished');
     // the homepage: the household and a tile per calculator, each with its headline
-    expect(html).toContain('Client household (preview)');
-    expect(html).toContain('href="#/next/roth"');
-    expect(html).toContain('href="#/next/tax"');
+    expect(html).toContain('Client household');
+    expect(html).toContain('href="#/roth"');
+    expect(html).toContain('href="#/tax"');
     expect(html).toContain('22% marginal · 22.0% EMTR');
     expect(html).toContain('11.0% average tax rate: $10,970 federal income tax this year');
     expect(html).not.toMatch(/NaN|Infinity/);
     // the homepage: the household in brief, with a link to the inputs page
-    expect(html).toContain('href="#/next/inputs"');
+    expect(html).toContain('href="#/inputs"');
     expect(html).toContain('<strong>Income:</strong> W-2 $100,000');
     // the calculator pages: one inputs card (its own section first, only what it reads), results,
     // a way home and to the inputs page
@@ -1061,7 +1020,7 @@ describe('NextApp (#/next preview)', () => {
     expect(roth).toContain('Compare a change'); // ported from the public page (round 2 phase 1)
     expect(roth).toContain('Use Roth in the plan: $7,800 a year'); // the "Use in the plan" trial
     expect(firstTitle(roth)).toBe('Future Contributions');
-    expect(roth).toContain('href="#/next/inputs"');
+    expect(roth).toContain('href="#/inputs"');
     expect(roth).toContain('Claim at');
     expect(roth).not.toContain('Biological sex');
     expect(roth).not.toContain('Lump sum offered');
@@ -1070,8 +1029,8 @@ describe('NextApp (#/next preview)', () => {
     expect(roth).toContain('Over a lifetime, year by year');
     expect(roth).toMatch(/Find the break-even tax change|there is no break-even to find/);
     expect(roth).toMatch(/(Roth|Pre-tax) supports \$[\d,]+ a year more|About even/);
-    expect(roth).toContain('href="#/next/projection"');
-    expect(roth).toContain('href="#/next"');
+    expect(roth).toContain('href="#/projection"');
+    expect(roth).toContain('href="#/"');
     expect(roth).not.toMatch(/NaN|Infinity/);
     const tax = renderToStaticMarkup(<NextApp initialPage="tax" />);
     expect(tax).toContain('Tax rates this year');
@@ -1096,7 +1055,7 @@ describe('NextApp (#/next preview)', () => {
     expect((proj.match(/<tr class="chosen-row"/g) ?? []).length).toBe(1);
     expect(proj).toContain(' most left');
     expect(proj).not.toMatch(/NaN|Infinity/);
-    expect(html).toContain('href="#/next/projection"');
+    expect(html).toContain('href="#/projection"');
     const conv = renderToStaticMarkup(<NextApp initialPage="conversion" />);
     expect(conv).toContain('Tax cost of the conversion');
     expect(conv).toContain('Converting to fill a bracket');
@@ -1112,9 +1071,8 @@ describe('NextApp (#/next preview)', () => {
     expect(firstTitle(pen)).toBe('Pension offer');
     expect(pen).not.toContain('Expected retirement lifestyle');
     expect(pen).not.toMatch(/NaN|Infinity/);
-    expect(html).toContain('href="#/next/conversion"');
-    expect(html).toContain('href="#/next/pension"');
-    expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
+    expect(html).toContain('href="#/conversion"');
+    expect(html).toContain('href="#/pension"');
     // every calculator's results are blocks: collapsible cards with a headline, one Expand/Collapse all
     const blockCount = (page) => (page.match(/class="collapsible card collapsible-card/g) ?? []).length;
     expect(blockCount(tax)).toBeGreaterThanOrEqual(3); // the rates sit in a fixed card above them
@@ -1138,14 +1096,14 @@ describe('NextApp (#/next preview)', () => {
   it('the inputs page: every section as its own card, and links to each calculator', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const page = renderToStaticMarkup(<NextApp initialPage="inputs" />);
-    expect(page).toContain('Household inputs (preview)');
+    expect(page).toContain('Household inputs');
     expect(page).toContain('>Start a new household</button>');
     for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add other income types', 'Lump sum offered', 'Project to age']) {
       expect(page, label).toContain(label);
     }
     expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(13);
     expect(page).toContain('Open a calculator');
-    expect(page).toContain('href="#/next/pension"');
+    expect(page).toContain('href="#/pension"');
     expect(page).not.toContain('suite-tile-headline');
     expect(page).not.toMatch(/NaN|Infinity/);
   });
@@ -1310,7 +1268,8 @@ describe('Docs (#/docs)', () => {
     const index = renderToStaticMarkup(<DocsPage hash="#/docs" />);
     expect(index).toContain('<h1>Docs</h1>');
     expect(index).toContain('href="#/docs/inputs"');
-    expect(index).toContain('href="#/how-it-works"');
+    expect(index).toContain('href="#/docs/roth"');
+    expect(index).toContain('href="#/scenarios"');
     const inputs = renderToStaticMarkup(<DocsPage hash="#/docs/inputs/social-security" />);
     expect(inputs).toContain('<h1 id="the-household-inputs">The household inputs</h1>');
     expect(inputs).toContain('id="social-security"');

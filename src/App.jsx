@@ -1,80 +1,39 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import InputForm, { DEFAULT_OPEN_INPUTS } from './components/InputForm.jsx';
-import ResultsSummary from './components/ResultsSummary.jsx';
-import ScenarioCompare from './components/ScenarioCompare.jsx';
-import ShareInputs from './components/ShareInputs.jsx';
-import { compareRothVsTraditional } from './lib/compare.js';
-import { CLEARED_FORM_VALUES, DEFAULT_FORM_VALUES, toCompareInputs } from './lib/formInputs.js';
-import { valuesFromSearch } from './lib/shareInputs.js';
-import { ARTICLE_HASH, SCENARIOS_HASH, articleSectionFromHash, routeFromHash } from './lib/route.js';
+// The site: the calculators (src/next/NextApp.jsx: the homepage, the inputs page and each
+// calculator), the Docs and the Visualization page, and "Send feedback" at the foot of every page.
+// Since the switchover at the end of round 2's phase 1, the calculators are the whole site; the
+// earlier single Roth vs. Pre-tax calculator is gone, and its links open here (lib/route.js
+// canonicalHash; its share links open as a one-person household, lib/householdLink.js).
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import NextApp from './next/NextApp.jsx';
+import Feedback from './components/Feedback.jsx';
+import { canonicalHash, routeFromHash } from './lib/route.js';
 import { docsLocation } from './lib/docs.js';
 import './App.css';
 
-// Pages other than the calculator load when first opened, so the calculator itself downloads less:
-// the article brings the markdown library, the preview brings the household calculators and sign-in.
-const ArticlePage = lazy(() => import('./components/ArticlePage.jsx'));
+// Pages other than the calculators load when first opened.
 const ScenariosPage = lazy(() => import('./components/ScenariosPage.jsx'));
 const DocsPage = lazy(() => import('./components/DocsPage.jsx'));
-import Feedback from './components/Feedback.jsx';
-const NextApp = lazy(() => import('./next/NextApp.jsx'));
 
-/*
- * Future enhancements (explicitly out of scope for this version)
- *
- * - Optimal split between Roth and Traditional ("straddling brackets"), rather
- *   than only comparing the pure extremes.
- * - Tax-efficient withdrawal sequencing across accounts (vs. the simplified
- *   proportional withdrawal used in the total portfolio comparison).
- * - State income tax.
- * - Full SSA benefit calculation (35-year indexed earnings history).
- * - RMD age rules.
- * - Employer match modeling: the match amount, and the match-optimization math
- *   when Roth contributions alone can't capture the full match.
- * - Contributions that change over time (e.g. raises).
- * - A wider range of pre-set scenarios on the "Visualization" page (#/scenarios) —
- *   it currently covers income, savings rate, existing balances, age, and
- *   retirement lifestyle, each swept one at a time; married filing jointly and
- *   1099 income aren't represented there yet.
- * - Taxable-account "tax drag": ongoing tax on dividends/interest and any
- *   turnover-driven gains during the GROWTH phase (distinct from the capital-
- *   gains tax already modeled at withdrawal), which lowers the account's
- *   effective compounding rate. Discussed with the user 2026-09-22 and
- *   explicitly deferred — highly holding-dependent (roughly 0.1-0.5%/year for
- *   a low-turnover index fund, 1%+ for higher-turnover or bond-heavy
- *   holdings), so if built, keep it as its own adjustable, clearly-labeled
- *   assumption on the taxable bucket only — never folded into returnRate.
- * - PDF client report export.
- * - A backend (saved scenarios, client database, user accounts).
- * - A Simple/Advanced mode split.
- * - Access control for any future internal-only features.
- */
-
-const CURRENT_YEAR = new Date().getFullYear();
-
-// A shared link ("Copy inputs to share") carries the inputs in its query string.
-const FROM_LINK =
-  typeof window === 'undefined' ? { values: null, compareValues: null } : valuesFromSearch(window.location.search);
-
-// Which page to show, from the URL hash ("#/how-it-works" = the article, "#/how-it-works/<heading>"
-// = the article at that heading). Remembers the calculator's scroll position so coming back
-// from the article puts you where you were.
+// The page from the URL hash; an older address is rewritten in place first. Opening a Docs
+// heading ("#/docs/<article>/<heading>") scrolls to it once the article has loaded; any other
+// change of page starts at the top.
 function useRoute() {
-  const [hash, setHash] = useState(() => (typeof window === 'undefined' ? '' : window.location.hash));
+  const read = () => {
+    if (typeof window === 'undefined') return '';
+    const now = window.location.hash;
+    const canonical = canonicalHash(now);
+    if (canonical !== now) window.history.replaceState(null, '', canonical || window.location.pathname + window.location.search);
+    return canonical;
+  };
+  const [hash, setHash] = useState(read);
   const route = routeFromHash(hash);
-  // A heading to scroll to: in the article, or in a Docs article ("#/docs/<article>/<heading>").
-  const section = route === 'article' ? articleSectionFromHash(hash) : route === 'docs' ? (docsLocation(hash)?.section ?? null) : null;
-  const docsArticle = route === 'docs' ? (docsLocation(hash)?.article ?? '') : '';
-  const shown = useRef(route);
-  const calculatorScroll = useRef(0);
+  const location = route === 'docs' ? docsLocation(hash) : null;
+  const section = location?.section ?? null;
+  const article = location?.article ?? '';
   const firstRender = useRef(true);
 
   useEffect(() => {
-    const onHashChange = () => {
-      const next = routeFromHash(window.location.hash);
-      if (shown.current === 'calculator' && next !== 'calculator') calculatorScroll.current = window.scrollY;
-      shown.current = next;
-      setHash(window.location.hash);
-    };
+    const onHashChange = () => setHash(read());
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
@@ -83,11 +42,10 @@ function useRoute() {
     const first = firstRender.current;
     firstRender.current = false;
     if (!section) {
-      if (!first) window.scrollTo(0, route === 'calculator' ? calculatorScroll.current : 0);
+      if (!first && route !== 'app') window.scrollTo(0, 0);
       return undefined;
     }
-    // A link to an article heading: the article loads on demand, so wait for the heading to exist
-    // (up to about two seconds of animation frames), then scroll to it.
+    // The article loads on demand: wait for the heading (about two seconds of frames), then scroll.
     let frame;
     let tries = 0;
     const scrollToHeading = () => {
@@ -97,143 +55,24 @@ function useRoute() {
     };
     scrollToHeading();
     return () => cancelAnimationFrame(frame);
-    // docsArticle: a new Docs article starts at the top too (the route stays 'docs').
-  }, [route, section, docsArticle]);
+  }, [route, section, article]);
 
   return { route, hash };
 }
 
 export default function App() {
-  const [values, setValues] = useState(FROM_LINK.values ?? DEFAULT_FORM_VALUES);
-  // "Compare a change": a second copy of the inputs to edit (null = not comparing). The main
-  // inputs are the baseline. Kept in memory only, so a reload clears it.
-  const [compareValues, setCompareValues] = useState(FROM_LINK.compareValues);
   const { route, hash } = useRoute();
-  // Which input sections are open. Shared by both forms in "Compare a change", so opening a
-  // section on one side opens it on the other and the two stay lined up.
-  const [openInputs, setOpenInputs] = useState(() => new Set(DEFAULT_OPEN_INPUTS));
-
-  // "Clear all" keeps the values it replaced until the next edit, so it can be undone.
-  const [beforeClear, setBeforeClear] = useState(null);
-
-  const handleChange = (name, value) => {
-    setBeforeClear(null);
-    setValues((prev) => ({ ...prev, [name]: value }));
-  };
-  const clearAll = () => {
-    setBeforeClear(values);
-    setValues(CLEARED_FORM_VALUES);
-  };
-  const undoClear = () => {
-    setValues(beforeClear);
-    setBeforeClear(null);
-  };
-  const handleCompareChange = (name, value) => setCompareValues((prev) => ({ ...prev, [name]: value }));
-
-  // Results update live: recomputed on every input change, no submit button.
-  const current = useMemo(() => {
-    const inputs = toCompareInputs(values, CURRENT_YEAR);
-    // skipBlend: the public page doesn't show the blend explorer (the preview's Roth page does).
-    return { inputs, result: compareRothVsTraditional({ ...inputs, skipBlend: true }) };
-  }, [values]);
-  const changed = useMemo(() => {
-    if (!compareValues) return null;
-    const inputs = toCompareInputs(compareValues, CURRENT_YEAR);
-    return { inputs, result: compareRothVsTraditional({ ...inputs, skipBlend: true }) };
-  }, [compareValues]);
-
   return (
-    // The calculator gets a wide desktop page; the article and the charts page keep the
-    // narrow reading width.
-    <div className={route === 'calculator' || route === 'next' ? 'page calc-page' : 'page'}>
-      {/* The calculator stays mounted (just hidden) while the article is open, so your
-          inputs, open dropdowns and scroll position are all still there when you return. */}
-      <div hidden={route !== 'calculator'}>
-        <header className="page-header">
-          <h1>Roth vs. Pre-Tax Calculator</h1>
-          <p>
-            Which retirement contribution leaves you with more after-tax wealth? Change any number
-            below and the results update right away.
-          </p>
-          <p className="header-links">
-            <a href={ARTICLE_HASH}>How this works &rarr;</a> The reasoning behind the numbers, in
-            plain language.
-          </p>
-          <p className="header-links">
-            <a href={SCENARIOS_HASH}>Visualization &rarr;</a> See the rate gap charted across a
-            range of income, savings, and balance scenarios.
-          </p>
-          <p className="disclaimer">Estimates only — not tax or financial advice.</p>
-        </header>
-
-        {/* Desktop: inputs on the left (sticky), results on the right. While comparing, the two
-            sets of inputs sit side by side across the page and the results go below them. */}
-        <main className={compareValues ? 'calc-layout comparing' : 'calc-layout'}>
-          <div className="inputs-column">
-            <div className={compareValues ? 'input-columns' : undefined}>
-              <InputForm
-                values={values}
-                onChange={handleChange}
-                title={compareValues ? 'Your inputs (baseline)' : 'Inputs'}
-                open={openInputs}
-                onOpenChange={setOpenInputs}
-                headActions={
-                  beforeClear ? (
-                    <button type="button" className="link-button" onClick={undoClear}>
-                      Undo clear
-                    </button>
-                  ) : (
-                    <button type="button" className="link-button" onClick={clearAll}>
-                      Clear all
-                    </button>
-                  )
-                }
-                footer={<ShareInputs values={values} compareValues={compareValues} year={CURRENT_YEAR} />}
-              />
-              {compareValues && (
-                <InputForm
-                  values={compareValues}
-                  onChange={handleCompareChange}
-                  title="With a change"
-                  baseValues={values}
-                  namePrefix="compare-"
-                  open={openInputs}
-                  onOpenChange={setOpenInputs}
-                />
-              )}
-            </div>
-            {!compareValues && <ScenarioCompare baseline={current} current={null} onStart={() => setCompareValues({ ...values })} />}
-          </div>
-          <div className="results-column">
-            {compareValues && (
-              <ScenarioCompare
-                baseline={current}
-                current={changed}
-                onReset={() => setCompareValues({ ...values })}
-                onAdopt={() => {
-                  setValues(compareValues);
-                  setCompareValues(null);
-                  setBeforeClear(null);
-                }}
-                onStop={() => setCompareValues(null)}
-              />
-            )}
-            <ResultsSummary result={current.result} />
-          </div>
-        </main>
-
-        <footer className="page-footer">
-          <a href={ARTICLE_HASH}>How this works</a>
-          {' · '}
-          <a href={SCENARIOS_HASH}>Visualization</a>
-        </footer>
+    <div className={route === 'app' ? 'page calc-page' : 'page'}>
+      {/* The calculators stay mounted (just hidden) while the Docs or the Visualization page is
+          open, so the household on screen and the open sections are all still there on return. */}
+      <div hidden={route !== 'app'}>
+        <NextApp />
       </div>
 
       <Suspense fallback={<p className="hint">Loading&hellip;</p>}>
-        {route === 'article' && <ArticlePage />}
         {route === 'scenarios' && <ScenariosPage />}
         {route === 'docs' && <DocsPage hash={hash} />}
-        {route === 'next' && <NextApp />}
       </Suspense>
 
       {/* On every page. */}

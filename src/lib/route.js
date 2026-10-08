@@ -1,25 +1,31 @@
-// Tiny hash-based routing. The site is static (no server rules), so pages live behind
-// the URL hash: "#/how-it-works" is the article ("#/how-it-works/<heading>" opens it at
-// that heading), "#/scenarios" is the scenario charts, anything else is the calculator.
-// Hash routes work from any URL or sub-path with no host configuration.
-export const ARTICLE_HASH = '#/how-it-works';
+// Tiny hash-based routing. The site is static (no server rules), so pages live behind the URL
+// hash, which works from any URL or sub-path with no host configuration.
+//
+//   #/                 the homepage: the household in brief and a tile per calculator
+//   #/inputs           the inputs page
+//   #/roth, #/tax, #/projection, #/conversion, #/pension   the calculators
+//   #/docs[/<article>[/<heading>]]   the Docs section (lib/docs.js)
+//   #/scenarios        the Visualization page
+//
+// Older addresses still open (canonicalHash): the preview's "#/next/..." pages (round 2 until the
+// switchover), and the old calculator's article, "#/how-it-works[/<heading>]", now the Roth article
+// in the Docs.
+export const HOME_HASH = '#/';
 export const SCENARIOS_HASH = '#/scenarios';
-export const CALCULATOR_HASH = '#/';
-// The preview of the next version, built alongside the current calculator until switchover
-// (CLAUDE.md, "Build alongside, then switch over"). Its own pages live under it: "#/next/...".
-// Rename it here only.
-export const NEXT_HASH = '#/next';
-// The preview's pages: its homepage (the household in brief and a tile per calculator), the inputs
-// page, and one page per calculator. Unknown sub-pages show the homepage.
-export const NEXT_PAGES = {
-  inputs: `${NEXT_HASH}/inputs`,
-  roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax`, projection: `${NEXT_HASH}/projection`,
-  conversion: `${NEXT_HASH}/conversion`,
-  pension: `${NEXT_HASH}/pension`,
+export const DOCS_HASH = '#/docs';
+
+export const PAGES = {
+  inputs: '#/inputs',
+  roth: '#/roth',
+  tax: '#/tax',
+  projection: '#/projection',
+  conversion: '#/conversion',
+  pension: '#/pension',
 };
 
-// The article sections the calculator links to, by their heading in ARTICLE.md (a test checks
-// each one is still a heading there). A link to one is "#/how-it-works/<slug of the heading>".
+// The Roth article's sections the Roth page links to, by their heading in articles/roth.md (a test
+// checks each one is still a heading there).
+export const ROTH_ARTICLE = 'roth';
 export const ARTICLE_SECTIONS = {
   rates: 'Tax saved now, effective rate later',
   estimate: 'How the calculator estimates your retirement tax rate',
@@ -29,41 +35,42 @@ export const ARTICLE_SECTIONS = {
   existing: 'Why your Existing Accounts matter',
 };
 
-// "Why maxing out changes the math" -> "why-maxing-out-changes-the-math": the id the article
-// page gives each heading.
+// "Why maxing out changes the math" -> "why-maxing-out-changes-the-math": the id an article page
+// gives each heading.
 export function headingSlug(text) {
   return text
     .toLowerCase()
-    .replace(/[\u2019'"]/g, '')
+    .replace(/[’'"]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 }
 
+// A link to one of the Roth article's sections: "#/docs/roth/<slug of the heading>".
 export function articleHash(section) {
-  return `${ARTICLE_HASH}/${headingSlug(ARTICLE_SECTIONS[section])}`;
+  return `${DOCS_HASH}/${ROTH_ARTICLE}/${headingSlug(ARTICLE_SECTIONS[section])}`;
 }
 
-// The heading id a "#/how-it-works/<slug>" link points at, or null.
-export function articleSectionFromHash(hash) {
-  const prefix = `${ARTICLE_HASH}/`;
-  const slug = hash.startsWith(prefix) ? hash.slice(prefix.length) : '';
-  return /^[a-z0-9-]+$/.test(slug) ? slug : null;
+// The address an older link should open at, or the same hash when it's current.
+//   #/next, #next          -> #/
+//   #/next/<page>          -> #/<page>
+//   #/how-it-works[/<h>]   -> #/docs/roth[/<h>]
+export function canonicalHash(hash) {
+  if (hash === '#/next' || hash === '#next' || hash === '#/next/') return HOME_HASH;
+  if (hash.startsWith('#/next/')) return `#/${hash.slice('#/next/'.length)}`;
+  if (hash === '#/how-it-works' || hash === '#/how-it-works/') return `${DOCS_HASH}/${ROTH_ARTICLE}`;
+  if (hash.startsWith('#/how-it-works/')) return `${DOCS_HASH}/${ROTH_ARTICLE}/${hash.slice('#/how-it-works/'.length)}`;
+  return hash;
 }
 
-export function nextPageFromHash(hash) {
-  const found = Object.entries(NEXT_PAGES).find(([, h]) => h === hash);
-  return found ? found[0] : 'home';
-}
-
-// The Docs section (round 2, "throughout"): "#/docs" is its index, "#/docs/<article>" an article,
-// "#/docs/<article>/<heading>" an article at that heading (lib/docs.js).
-export const DOCS_HASH = '#/docs';
-
+// 'docs', 'scenarios', or 'app' (the calculators: the homepage, the inputs page, a calculator).
 export function routeFromHash(hash) {
-  if (hash === ARTICLE_HASH || articleSectionFromHash(hash)) return 'article';
   if (hash === DOCS_HASH || hash.startsWith(`${DOCS_HASH}/`)) return 'docs';
   if (hash === SCENARIOS_HASH) return 'scenarios';
-  // "#next" (no slash) is accepted too, since it is easy to type that way.
-  if (hash === NEXT_HASH || hash === '#next' || hash.startsWith(`${NEXT_HASH}/`)) return 'next';
-  return 'calculator';
+  return 'app';
+}
+
+// Which app page: 'inputs', a calculator id, or 'home' (anything else).
+export function pageFromHash(hash) {
+  const found = Object.entries(PAGES).find(([, h]) => h === hash);
+  return found ? found[0] : 'home';
 }

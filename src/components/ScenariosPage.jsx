@@ -3,7 +3,7 @@ import Heatmap from './charts/Heatmap.jsx';
 import LineChart from './charts/LineChart.jsx';
 import { runAllBatches, runHeatmap } from '../lib/scenarios.js';
 import { HEATMAPS, SCENARIO_BATCHES } from '../data/scenarioBatches.js';
-import { CALCULATOR_HASH } from '../lib/route.js';
+import { HOME_HASH } from '../lib/route.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -43,8 +43,8 @@ function formatX(batch, x) {
 
 function BackLink() {
   return (
-    <a className="back-link" href={CALCULATOR_HASH}>
-      &larr; Back to the calculator
+    <a className="back-link" href={HOME_HASH}>
+      &larr; Back to the calculators
     </a>
   );
 }
