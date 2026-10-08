@@ -1,4 +1,5 @@
-// The tax calculator's results (roadmap phase 2), as blocks: marginal and effective rates, the other
+// The tax calculator's results (roadmap phase 2), as blocks: the marginal rate, the effective marginal
+// rate (EMTR) and the average tax rate, the other
 // sources' marginal rates, the "fill up the bracket" bar, IRMAA, and the full calculation. Renders
 // lib/taxCalculator.js's taxCalculatorResult; no math of its own.
 import { useMemo } from 'react';
@@ -152,7 +153,7 @@ export default function TaxResult({ tax }) {
                 </div>
               </div>
               <div className="rate-pair-item highlight">
-                <div className="stat-label">Effective rate</div>
+                <div className="stat-label">Effective marginal rate (EMTR)</div>
                 <div className="stat-value">{pct(marginal.incomeTax)}</div>
                 <div className="stat-sub">
                   The real federal income tax on the next {probe} of {marginal.phrase}, with everything it sets off
@@ -160,7 +161,7 @@ export default function TaxResult({ tax }) {
                 </div>
               </div>
               <div className="rate-pair-item">
-                <div className="stat-label">Average rate</div>
+                <div className="stat-label">Average tax rate</div>
                 <div className="stat-value">{pct(r.effectiveRate)}</div>
                 <div className="stat-sub">
                   {$(r.incomeTax)} income tax ÷ {$(r.lines.grossIncome)} total income

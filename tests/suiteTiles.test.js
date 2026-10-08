@@ -24,6 +24,6 @@ describe('homepage tiles', () => {
 
   it('Tax: the marginal (bracket), effective (next dollar) and average rates (default household: 22%, 22%, 10,970 / 100,000)', () => {
     const t = taxCalculatorResult(householdToYearTaxParams(household()));
-    expect(taxTile(t)).toEqual({ headline: '22% marginal · 22.0% effective', detail: '11.0% average: $10,970 federal income tax this year' });
+    expect(taxTile(t)).toEqual({ headline: '22% marginal · 22.0% EMTR', detail: '11.0% average tax rate: $10,970 federal income tax this year' });
   });
 });

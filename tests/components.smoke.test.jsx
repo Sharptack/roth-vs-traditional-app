@@ -1047,8 +1047,8 @@ describe('NextApp (#/next preview)', () => {
     expect(html).toContain('Client household (preview)');
     expect(html).toContain('href="#/next/roth"');
     expect(html).toContain('href="#/next/tax"');
-    expect(html).toContain('22% marginal · 22.0% effective');
-    expect(html).toContain('11.0% average: $10,970 federal income tax this year');
+    expect(html).toContain('22% marginal · 22.0% EMTR');
+    expect(html).toContain('11.0% average tax rate: $10,970 federal income tax this year');
     expect(html).not.toMatch(/NaN|Infinity/);
     // the homepage: the household in brief, with a link to the inputs page
     expect(html).toContain('href="#/next/inputs"');
@@ -1075,7 +1075,7 @@ describe('NextApp (#/next preview)', () => {
     expect(tax).toContain('Tax rates this year');
     expect(tax).toContain('Rates as income rises');
     expect(tax).toContain('class="rate-buckets"');
-    expect(tax).toContain('Effective rate');
+    expect(tax).toContain('Effective marginal rate');
     expect(tax).toContain('>The calculation<');
     expect(firstTitle(tax)).toBe('Income');
     expect(tax).toContain('+ Add other income types');
@@ -1116,8 +1116,8 @@ describe('NextApp (#/next preview)', () => {
     expect(blockCount(tax)).toBeGreaterThanOrEqual(3); // the rates sit in a fixed card above them
     expect(tax).toContain('<h2 id="block-rates">Tax rates this year</h2>');
     expect(tax).toContain('>Marginal rate<');
-    expect(tax).toContain('>Effective rate<');
-    expect(tax).toContain('>Average rate<');
+    expect(tax).toContain('>Effective marginal rate (EMTR)<');
+    expect(tax).toContain('>Average tax rate<');
     expect(blockCount(proj)).toBe(6);
     expect(proj).toMatch(/Peak \$[\d,]+ in \d{4}/);
     expect(blockCount(conv)).toBe(3);

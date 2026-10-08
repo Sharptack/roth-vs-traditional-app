@@ -91,7 +91,7 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
         { id: 'irr', title: 'The pension’s rate of return', summary: h.irr, className: 'key-card', content: rate },
         p.byEndAge.length > 0 && { id: 'ages', title: 'How long you live decides it', summary: h.ages, content: ages },
       ]}
-      disclaimer="Estimates only — not tax or financial advice. Tax is left out: both are taxed alike (the lump sum rolled into a Pre-tax account, the pension as ordinary income). Life expectancy from SSA’s period life table. Not modeled: the plan’s own solvency and PBGC limits."
+      disclaimer="Estimates only — not tax or financial advice. Tax is left out: both are taxed alike (the lump sum rolled into a Pre-tax account, the pension as ordinary income). Life expectancy from SSA’s Period Life Table, 2023 (2026 Trustees Report). Not modeled: the plan’s own solvency and PBGC limits."
     />
   );
 }

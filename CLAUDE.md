@@ -19,8 +19,9 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   match actual behavior. It becomes the Roth article of the planned Docs section.
 
 ## Direction and roadmap
-- Rate terms (the user's, used everywhere in the preview): **marginal** = the tax bracket; **effective** = the real tax on the
-  next dollar, with everything it sets off; **average** = total tax ÷ total income. Public explanation: Docs article
+- Rate terms (the user's, standard usage, everywhere in the preview): **marginal rate** = the tax bracket; **average tax
+  rate** = total tax ÷ total income (what most sources call "effective tax rate", so never write "effective rate" alone for
+  it); **effective marginal rate (EMTR)** = the real tax on the next dollar, with everything it sets off. Public explanation: Docs article
   `articles/rates.md`. The Roth comparison keeps its pairing: marginal today vs. the effective rate on the withdrawal.
 - Audience: internal advisor tool; advisor-level density is fine. Desktop-first (phone must not break, no polish goal).
 - **Round 2 plan (current):** https://claude.ai/artifact/DQyr9BcgMUKAkxpue1SmNU (same doc as

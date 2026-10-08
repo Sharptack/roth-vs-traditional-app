@@ -1,10 +1,10 @@
 // SSA's period life table ("Actuarial Life Table", ssa.gov/oact/STATS/table4c6.html): the chance of
 // dying within the year at each exact age, 0 to 119, by sex. Used for the pension on life
 // expectancy (lib/lifeTable.js, pensionCalculator.js) and later the Social Security calculator.
-// Copied from the page by Michael on 2026-10-08 (SSA's site refuses the build machine).
-// Period table year: TO CONFIRM from the page's title (asked 2026-10-08).
+// "Period Life Table, 2023, as used in the 2026 Trustees Report". Copied from the page by Michael on
+// 2026-10-08 (SSA's site refuses the build machine).
 // SSA's life expectancy columns, kept below, check the copy (tests/lifeTable.test.js).
-export const LIFE_TABLE_SOURCE = 'SSA period life table (Actuarial Life Table, table4c6), copied 2026-10-08';
+export const LIFE_TABLE_SOURCE = "SSA's Period Life Table, 2023, as used in the 2026 Trustees Report";
 
 export const LIFE_TABLE = {
   male: [

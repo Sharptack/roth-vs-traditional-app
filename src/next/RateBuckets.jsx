@@ -1,7 +1,8 @@
 // The tax page's two buckets (round 2 phase 1; design in the plan doc's decision tables): one
 // vertical income scale, and beside it two buckets filled to today's income and drawn on through
 // the next two brackets. Left, the marginal rate bucket: the tax bracket at each income level, the
-// sheltered part grey, the room left in today's bracket marked. Right, the effective rate bucket:
+// sheltered part grey, the room left in today's bracket marked. Right, the effective marginal rate
+// (EMTR) bucket:
 // the real tax on the next dollar at each level, labelled where it changes, with IRMAA cliffs as
 // lines. A switch shows the next dollar as ordinary income or as capital gains. Renders
 // lib/rateProfile.js; no math of its own.
@@ -93,8 +94,8 @@ export default function RateBuckets({ params, irmaa, ages }) {
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Today's income ${$(today)}: ${pct(now.bracket, 0)} bracket, ${pct(now.nextRate)} on the next dollar`}>
         <text x={LX + BW / 2} y={22} textAnchor="middle" className="rb-head">Marginal rate</text>
         <text x={LX + BW / 2} y={40} textAnchor="middle" className="rb-sub">{source === 'preferentialIncome' ? 'the capital-gains bracket' : 'the tax bracket'}</text>
-        <text x={RX + BW / 2} y={22} textAnchor="middle" className="rb-head rb-eff">Effective rate</text>
-        <text x={RX + BW / 2} y={40} textAnchor="middle" className="rb-sub">the real tax on the next dollar</text>
+        <text x={RX + BW / 2} y={22} textAnchor="middle" className="rb-head rb-eff">Effective marginal rate</text>
+        <text x={RX + BW / 2} y={40} textAnchor="middle" className="rb-sub">EMTR: the real tax on the next dollar</text>
 
         {/* the marginal bucket */}
         {marginal.map((r) => {
@@ -170,7 +171,8 @@ export default function RateBuckets({ params, irmaa, ages }) {
         </text>
       </svg>
       <figcaption className="hint">
-        The left bucket is the bracket. The right one is what the next dollar really costs in federal income tax, counting
+        The left bucket is the bracket (the marginal rate). The right one is the effective marginal rate: what the next dollar
+        really costs in federal income tax, counting
         everything it sets off: Social Security made taxable, gains pushed out of the 0% rate, deductions phasing out, the Net
         Investment Income Tax. Red lines are Medicare IRMAA cliffs: one dollar over raises the premium two years later by the
         amount shown. Payroll tax is in the calculation below.

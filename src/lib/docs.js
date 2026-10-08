@@ -17,8 +17,8 @@ export const DOCS_ARTICLES = [
   },
   {
     slug: 'rates',
-    title: 'Tax rates: marginal, effective and average',
-    blurb: 'The three rates the calculators use, and what each one means.',
+    title: 'Tax rates: marginal, average and effective marginal',
+    blurb: 'The marginal rate, the average tax rate and the effective marginal rate (EMTR): what each one means.',
   },
 ];
 

@@ -16,13 +16,13 @@ export function rothTile(result) {
   };
 }
 
-// Tax calculator, in the preview's terms (decided 2026-10-08): the marginal rate is the bracket, the
-// effective rate the real tax on the next dollar of the leading source, the average rate total
-// income tax ÷ total income.
+// Tax calculator, in the preview's terms (decided 2026-10-08): the marginal rate is the bracket; the
+// effective marginal rate (EMTR) the real tax on the next dollar of the leading source; the average
+// tax rate total income tax ÷ total income.
 export function taxTile(t) {
   return {
-    headline: `${formatPercent(t.result.bracketRoom.ordinary.rate, 0)} marginal · ${formatPercent(t.marginal.incomeTax)} effective`,
-    detail: `${formatPercent(t.result.effectiveRate)} average: ${formatCurrency(t.result.incomeTax)} federal income tax this year`,
+    headline: `${formatPercent(t.result.bracketRoom.ordinary.rate, 0)} marginal · ${formatPercent(t.marginal.incomeTax)} EMTR`,
+    detail: `${formatPercent(t.result.effectiveRate)} average tax rate: ${formatCurrency(t.result.incomeTax)} federal income tax this year`,
   };
 }
 
