@@ -27,8 +27,10 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 0's code steps (a)-(c) are done; still open for phase 0: the Docs section with its first
-  article (the inputs) and the feedback link. Then phase 1.
+- **Current step:** phase 0 is done (2026-10-08); next, phase 1 (calculator updates).
+- **Docs** (`#/docs`, public): one markdown article per feature in `articles/` (listed in `src/lib/docs.js`); each
+  phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
+  `index.html`; Netlify's form detection must be on).
 - Round one's plan (finished): https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45.
 - Defaults decided: everything in TODAY's dollars (real return; brackets and limits indexed by law); fixed-dollar
   thresholds (SS taxability, NIIT, Additional Medicare, the senior deduction) shrink at the inflation input (2.5%) via
@@ -50,7 +52,7 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 714 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 724 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -60,7 +62,7 @@ npm run build     # static site -> dist/ (base './')
   https://astonishing-sprite-b5d581.netlify.app/ (Netlify builds on push to `main`).
 - **Netlify credits: keep production deploys down.** A build costs 15 credits (free plan 300/month, about 20). Commit
   locally and push in BATCHES, only when the user asks. `netlify.toml`'s `ignore` rule skips builds when no site file
-  changed (src, index.html, public, package files, vite.config.js, ARTICLE.md, netlify.toml); add any new folder the site
+  changed (src, index.html, public, package files, vite.config.js, ARTICLE.md, articles, netlify.toml); add any new folder the site
   imports from. Skipped builds, branch deploys and form submissions are free.
 - Pushing: on the Windows laptop Claude can push (`gh` signed in); on the home Mac the user pushes (VS Code Sync
   Changes). Always say when commits are unpushed.
@@ -97,8 +99,9 @@ npm run build     # static site -> dist/ (base './')
   (share links), `householdText.js`, `savedHousehold.js`, `taxCalculator.js`, `conversionCalculator.js`,
   `pensionCalculator.js`, `irmaa.js`, `rmd.js`, `projection.js` (`runProjection`: the year loop, strategy seam),
   `strategies.js`, `projectionSummary.js` (sustainable spending, `projectionView`), `lifetimeComparison.js`, `suiteTiles.js`.
-- UI: `src/App.jsx` (public page; the article, Visualization and preview load lazily), `src/components/` (public
-  components; `ResultsSummary.jsx` is large and gets split per block in phase 0; `charts/`), `src/next/` (preview pages;
+- UI: `src/App.jsx` (public page; the article, Docs, Visualization and preview load lazily; the feedback footer),
+  `src/components/` (public components, `DocsPage.jsx`, `Feedback.jsx`; `ResultsSummary.jsx` is the Roth page's blocks,
+  shared with the public page until the switchover; `charts/`), `src/next/` (preview pages;
   `NextApp.jsx` computes each calculator only on its own page or the homepage tiles; `HouseholdInputs.jsx` is the v2
   form: the inputs page `#/next/inputs` and each calculator's inputs card; `Blocks.jsx` lays out results as blocks,
   headlines from `src/lib/blockHeadlines.js`), `src/services/` (Supabase).
@@ -126,6 +129,7 @@ Application/chrome.exe`. The public calculator stays mounted (hidden) behind oth
 `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-08 (e) — Phase 0 done: the Docs section with the inputs article; Send feedback on every page. 724 tests.
 - 2026-10-08 (d) — Phase 0 step (c): results as blocks with headlines on every calculator; the collapse bar. 714 tests.
 - 2026-10-08 (c) — Plan doc caught up (queue written, "How the plan fits together" added); this file trimmed to pointers.
 - 2026-10-08 (b) — Phase 0 step (b): inputs page, one inputs card per calculator, saves and links in v2. 709 tests.
