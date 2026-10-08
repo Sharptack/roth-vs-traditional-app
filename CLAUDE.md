@@ -19,7 +19,11 @@ Client-side React (Vite) app for financial advisors (owner: Michael Sharpnack). 
 
 ## Direction and roadmap
 - Audience: internal advisor tool; advisor-level density is fine. Desktop-first (phone must not break, no polish goal).
-- **Round 2 plan (current):** https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095. Phases: 0 inputs,
+- **Round 2 plan (current):** https://claude.ai/artifact/DQyr9BcgMUKAkxpue1SmNU (same doc as
+  https://claude.ai/code/artifact/6486cdd2-db58-4f96-96ff-b3e06515a095; a Claude Doc, edited only through the Claude
+  Docs connector). **Keep it updated:** at the end of each step, and whenever the user decides something, write the
+  status and decisions into it. If the connector is unavailable, say so and queue the text in
+  `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Phases: 0 inputs,
   calculators and blocks (inputs page in blocks with people side by side, income/contribution/liability rows, linked
   age/birthdate, biological sex for life tables, PIA input, one inputs card per calculator, collapse bar, blocks
   everywhere, version 2 household); 1 calculator updates (tax page vs. TaxClarity, pension on life tables, Roth merge);
