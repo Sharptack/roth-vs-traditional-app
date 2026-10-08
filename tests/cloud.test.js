@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { deleteHousehold, friendlyError, listHouseholds, loadHousehold, saveHousehold, sendSignInLink } from '../src/services/cloud.js';
-import { caseFromValues } from '../src/lib/savedHousehold.js';
+import { caseFromValues, caseFromValuesV2 } from '../src/lib/savedHousehold.js';
 import { PREVIEW_DEFAULT_VALUES } from '../src/lib/household.js';
+import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
 
 // A fake Supabase client: records every call, answers with `reply`.
 function fakeClient(reply = { data: null, error: null }) {
@@ -60,14 +61,21 @@ describe('cloud: saved households', () => {
     expect(r.seen()[0]).toEqual([['from', 'saved_households'], ['select', 'id, label, updated_at'], ['order', 'updated_at', { ascending: false }]]);
   });
 
-  it('saves new with a cleaned label and the cleaned form values; no owner sent (the database sets it)', async () => {
+  it('saves new in version 2 with a cleaned label and the cleaned values; no owner sent (the database sets it)', async () => {
     const r = recording({ id: 'n1', label: 'The J. household', updated_at: 't' });
-    await saveHousehold(r.client, { label: '  The   J. household ', values: { ...PREVIEW_DEFAULT_VALUES, sneaky: 'x' } });
+    await saveHousehold(r.client, { label: '  The   J. household ', values: { ...DEFAULT_HOUSEHOLD_VALUES, sneaky: 'x' } });
     const [path] = r.seen();
     expect(path[1][0]).toBe('insert');
-    expect(path[1][1]).toEqual({ label: 'The J. household', data: caseFromValues(PREVIEW_DEFAULT_VALUES), schema_version: 1 });
+    expect(path[1][1]).toEqual({ label: 'The J. household', data: caseFromValuesV2(DEFAULT_HOUSEHOLD_VALUES), schema_version: 2 });
+    expect(path[1][1].data.sneaky).toBeUndefined();
     expect(path[1][1].owner_id).toBeUndefined();
     expect(path.slice(2)).toEqual([['select', 'id, label, updated_at'], ['single']]);
+  });
+
+  it('saves version 1 values converted to version 2', async () => {
+    const r = recording({ id: 'n1', label: 'J', updated_at: 't' });
+    await saveHousehold(r.client, { label: 'J', values: PREVIEW_DEFAULT_VALUES });
+    expect(r.seen()[0][1][1].data).toEqual(caseFromValuesV2(DEFAULT_HOUSEHOLD_VALUES));
   });
 
   it('saves over an existing one by id', async () => {
@@ -82,9 +90,13 @@ describe('cloud: saved households', () => {
     await expect(saveHousehold(fakeClient(), { label: ' ', values: PREVIEW_DEFAULT_VALUES })).rejects.toThrow('Give the household a short name.');
   });
 
-  it('loads and cleans; a row that is not ours is refused', async () => {
+  it('loads and cleans (a version 1 save opens converted); a row that is not ours is refused', async () => {
     const good = recording({ id: 'n1', label: 'J', data: caseFromValues({ ...PREVIEW_DEFAULT_VALUES, grossIncome: '80000' }) });
-    expect((await loadHousehold(good.client, 'n1')).values.grossIncome).toBe('80000');
+    const opened = (await loadHousehold(good.client, 'n1', 2026)).values;
+    expect(opened.version).toBe(2);
+    expect(opened.incomes[0]).toMatchObject({ type: 'w2', amount: '80000' });
+    const v2 = recording({ id: 'n3', label: 'K', data: { ...caseFromValuesV2(DEFAULT_HOUSEHOLD_VALUES), sneaky: 'x' } });
+    expect((await loadHousehold(v2.client, 'n3', 2026)).values).toEqual(DEFAULT_HOUSEHOLD_VALUES);
     // Through the logged database function, never a direct read of the contents.
     expect(good.seen()[0]).toEqual([['rpc', 'open_saved_household', { target_id: 'n1' }], ['single']]);
     const bad = recording({ id: 'n2', label: 'X', data: ['not', 'ours'] });

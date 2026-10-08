@@ -4,7 +4,7 @@
 // screen and Save changes, with saving as new and the list behind a closed section.
 import { useCallback, useEffect, useState } from 'react';
 import { deleteHousehold, listHouseholds, loadHousehold, saveHousehold } from '../services/cloud.js';
-import { sameSavedHousehold } from '../lib/savedHousehold.js';
+import { sameSavedHouseholdV2 } from '../lib/savedHousehold.js';
 
 const when = (iso) => {
   const d = new Date(iso);
@@ -60,7 +60,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
       onSaved({ id: saved.id, label: saved.label, values });
     }, 'Changes saved.');
 
-  const changed = Boolean(opened) && !sameSavedHousehold(values, opened.values);
+  const changed = Boolean(opened) && !sameSavedHouseholdV2(values, opened.values);
 
   const onScreen = opened && (
     <p className="saved-on-screen">

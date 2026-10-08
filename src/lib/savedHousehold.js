@@ -14,7 +14,7 @@ import { upgradeHouseholdValues } from './householdUpgrade.js';
 
 export const SAVED_SCHEMA_VERSION = 1;
 // Version 2 households (round 2 phase 0) are stored as their cleaned values, with this
-// schema_version. Saving in version 2 starts when the form edits version 2 values (step b).
+// schema_version; every save is version 2 since step b. Version 1 saves still open, converted.
 export const SAVED_SCHEMA_VERSION_V2 = HOUSEHOLD_VALUES_VERSION;
 export const MAX_LABEL_LENGTH = 80;
 export const MAX_ACCOUNTS = 50;

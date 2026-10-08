@@ -2,7 +2,8 @@
 // Every function takes the client, so tests pass a fake one. Errors are thrown as Error with a
 // plain message; the UI shows it. Access control is NOT done here: the database's row-level
 // security limits every query to the signed-in advisor's own rows (supabase/migrations).
-import { SAVED_SCHEMA_VERSION, caseFromValues, cleanLabel, valuesFromCase } from '../lib/savedHousehold.js';
+import { SAVED_SCHEMA_VERSION_V2, caseFromValuesV2, cleanLabel, valuesV2FromCase } from '../lib/savedHousehold.js';
+import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 
 const TABLE = 'saved_households';
 
@@ -40,20 +41,23 @@ export async function listHouseholds(client) {
   return check(await client.from(TABLE).select('id, label, updated_at').order('updated_at', { ascending: false }));
 }
 
-// -> { id, label, values } (form values, cleaned), or throws. The contents can only be read through
+// -> { id, label, values } (version 2 form values, cleaned; a version 1 save opens converted, year =
+// the year it's opened in), or throws. The contents can only be read through
 // this database function, which logs the open in the audit log (supabase/migrations, household_audit).
-export async function loadHousehold(client, id) {
+export async function loadHousehold(client, id, year = new Date().getFullYear()) {
   const row = check(await client.rpc('open_saved_household', { target_id: id }).single());
-  const values = valuesFromCase(row.data);
+  const values = valuesV2FromCase(row.data, year);
   if (!values) throw new Error('That saved household could not be read.');
   return { id: row.id, label: row.label, values };
 }
 
-// Save as new (no id) or over an existing one (id). -> { id, label, updated_at }.
+// Save as new (no id) or over an existing one (id), in version 2 (version 1 values are converted
+// first). -> { id, label, updated_at }.
 export async function saveHousehold(client, { id, label, values }) {
   const clean = cleanLabel(label);
   if (clean.error) throw new Error(clean.error);
-  const row = { label: clean.label, data: caseFromValues(values), schema_version: SAVED_SCHEMA_VERSION };
+  const data = caseFromValuesV2(upgradeHouseholdValues(values, new Date().getFullYear()));
+  const row = { label: clean.label, data, schema_version: SAVED_SCHEMA_VERSION_V2 };
   const query = id ? client.from(TABLE).update(row).eq('id', id) : client.from(TABLE).insert(row);
   return check(await query.select('id, label, updated_at').single());
 }

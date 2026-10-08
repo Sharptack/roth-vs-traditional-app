@@ -98,8 +98,7 @@ export function householdValuesFromSearch(search) {
 // Version 2 values have rows and groups, so the whole (cleaned) values object travels as one
 // encoded parameter; what comes back goes through the same allow-list as a saved household
 // (cleanHouseholdValues), so a tampered link can't inject anything. hh=1 links and old
-// public-calculator links open converted (householdUpgrade.js). Written once the form edits
-// version 2 values (step b).
+// public-calculator links open converted (householdUpgrade.js). Every new link is version 2.
 
 function toBase64Url(text) {
   const bytes = new TextEncoder().encode(text);

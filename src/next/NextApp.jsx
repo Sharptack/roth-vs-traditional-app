@@ -1,22 +1,25 @@
 // The #/next preview: the new version, built alongside the current calculator (see CLAUDE.md,
 // "Build alongside, then switch over"). Not linked from the current pages.
 // The suite shell (roadmap phase 2): one household, shared by every page —
-//   #/next       the homepage: the shared household inputs and a tile per calculator
+//   #/next       the homepage: the household in brief and a tile per calculator
+//   #/next/inputs      the inputs page: every input, each section its own card (round 2 phase 0)
 //   #/next/roth  the Roth vs. Pre-tax calculator (household model, phase 1)
 //   #/next/tax   the tax calculator (single-year engine, phase 2)
 //   #/next/projection  the year-by-year projection (phases 4-5)
 //   #/next/conversion  the single-year Roth conversion calculator
 //   #/next/pension     the pension calculator (lump sum vs. monthly benefit)
-// Each calculator page shows its own inputs first, then the shared ones, and links back home.
+// Each calculator page has one inputs card with only the inputs it reads (householdInputs.js
+// CALCULATOR_INPUTS), editing the same household, and a link to the inputs page.
 // State is its own; the current calculator's inputs are not shared or touched.
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import ResultsSummary from '../components/ResultsSummary.jsx';
 import { compareRothVsTraditional } from '../lib/compare.js';
-import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs } from '../lib/household.js';
+import { householdToCompareInputs } from '../lib/household.js';
 import { toHouseholdV2, validateHouseholdV2 } from '../lib/householdV2.js';
 import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
-import { householdValuesFromSearch } from '../lib/householdLink.js';
-import { DEFAULT_SECTION_IDS, SHARED_SECTION_IDS } from '../lib/householdForm.js';
+import { householdValuesV2FromSearch } from '../lib/householdLink.js';
+import { CALCULATOR_INPUTS, inputSections } from '../lib/householdInputs.js';
+import { DEFAULT_HOUSEHOLD_VALUES, isoDate, refreshAges } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { CALCULATOR_HASH, NEXT_HASH, NEXT_PAGES, nextPageFromHash } from '../lib/route.js';
@@ -24,7 +27,7 @@ import { conversionTile, pensionTile, projectionTile, rothTile, taxTile } from '
 import { conversionResult } from '../lib/conversionCalculator.js';
 import { householdToPensionInputs, pensionResult } from '../lib/pensionCalculator.js';
 import { householdToYearTaxParams, taxCalculatorResult } from '../lib/taxCalculator.js';
-import HouseholdForm from './HouseholdForm.jsx';
+import HouseholdInputs from './HouseholdInputs.jsx';
 import ShareHousehold from './ShareHousehold.jsx';
 import TaxResult from './TaxResult.jsx';
 import ProjectionResult from './ProjectionResult.jsx';
@@ -39,12 +42,15 @@ import SavedHouseholds from './SavedHouseholds.jsx';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-// A shared link (household or old-style) is read once, on load.
-const FROM_LINK = typeof window === 'undefined' ? null : householdValuesFromSearch(window.location.search);
+// A shared link (version 2, version 1 or an old public-calculator link, the last two converted) is
+// read once, on load.
+const FROM_LINK = typeof window === 'undefined' ? null : householdValuesV2FromSearch(window.location.search, CURRENT_YEAR);
+// A household opened from a link or a save: birthdate-entered ages brought up to date.
+const opening = (values) => refreshAges(values, isoDate(new Date()));
 
 // The Roth calculator's whole calculation, outside React so it can be tested.
-//  values: the form's values. Version 1 values (the form until round 2 phase 0, step b) are
-//    converted to version 2 first; every calculator reads the version 2 household.
+//  values: the form's values (version 2; version 1 values, as older tests pass, are converted
+//    first); every calculator reads the version 2 household.
 //  blend: compute the blend explorer (only the Roth page shows it; it is most of the run time).
 export function previewResult(values, year, { blend = true } = {}) {
   const household = toHouseholdV2(upgradeHouseholdValues(values, year), year);
@@ -61,9 +67,9 @@ const taxOf = (household) => taxCalculatorResult(householdToYearTaxParams(househ
 const conversionOf = (household) =>
   conversionResult(householdToYearTaxParams(household), household.calculators.conversion.amount, irmaaOf(household));
 const projectionOf = (r) => (r.result.valid ? projectionView(r.household, r.result.retirementNeed.target) : null);
-// The homepage (any page that isn't a calculator) shows every calculator's tile; a calculator
-// page shows only its own result.
-const isHome = (page) => !CALCULATORS.some((c) => c.id === page);
+// The homepage shows every calculator's tile; a calculator page shows only its own result; the
+// inputs page shows none.
+const isHome = (page) => page === 'home';
 const shownOn = (page, id) => isHome(page) || page === id;
 
 export const CALCULATORS = [
@@ -71,43 +77,31 @@ export const CALCULATORS = [
     id: 'roth',
     title: 'Roth vs. Pre-tax',
     blurb: 'Which leaves more after tax: saving Future Contributions Roth or Pre-tax?',
-    ownSections: ['contributions'],
     ownTitle: 'Roth vs. Pre-tax inputs',
-    sharedSections: SHARED_SECTION_IDS,
   },
   {
     id: 'tax',
     title: 'Tax calculator',
     blurb: 'This year’s federal tax: marginal and effective rates, and the room left in each bracket.',
-    ownSections: ['thisYear'],
     ownTitle: 'Tax calculator inputs',
-    // This year's Pre-tax savings are deducted, so Future Contributions are listed here too.
-    sharedSections: [...SHARED_SECTION_IDS.slice(0, 4), 'contributions', ...SHARED_SECTION_IDS.slice(4)],
   },
   {
     id: 'projection',
     title: 'Year-by-year projection',
     blurb: 'From today to the end age: income, taxes, RMDs and balances every year, and whether the money lasts.',
-    ownSections: ['projection'],
     ownTitle: 'Projection inputs',
-    sharedSections: DEFAULT_SECTION_IDS,
   },
   {
     id: 'conversion',
     title: 'Roth conversion',
     blurb: 'This year’s tax cost of converting Pre-tax money to Roth, and the conversion that fills each bracket.',
-    // The year's other income sits under the conversion, so it is listed with it.
-    ownSections: ['conversion', 'thisYear'],
     ownTitle: 'Roth conversion inputs',
-    sharedSections: [...SHARED_SECTION_IDS.slice(0, 4), 'contributions', ...SHARED_SECTION_IDS.slice(4)],
   },
   {
     id: 'pension',
     title: 'Pension: lump sum or monthly',
     blurb: 'The return the lump sum would have to earn to match the monthly benefit.',
-    ownSections: ['pension'],
     ownTitle: 'Pension inputs',
-    sharedSections: ['household', 'you', 'spouse', 'assumptions'],
   },
 ];
 
@@ -128,14 +122,13 @@ function usePreviewPage() {
 // client: a Supabase client for tests (null = no backend); omitted = the configured backend,
 // loaded on demand (services/supabaseClient.js).
 export default function NextApp({ initialPage, client }) {
-  const [values, setValues] = useState(FROM_LINK?.values ?? PREVIEW_DEFAULT_VALUES);
+  const [values, setValues] = useState(() => (FROM_LINK ? opening(FROM_LINK.values) : DEFAULT_HOUSEHOLD_VALUES));
   const [locked, setLocked] = useState(Boolean(FROM_LINK?.viewOnly));
   // Sign-in and the saved household on screen ({ id, label }), when a backend is configured.
   const cloud = useCloud(client);
   const [opened, setOpened] = useState(null);
   const hashPage = usePreviewPage();
   const page = initialPage ?? hashPage; // initialPage: for tests (no browser hash)
-  const handleChange = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
 
   // Each calculator is worked out only where it is shown: its own page, or the homepage's tiles
   // (the blend explorer only on the Roth page). Copy summary works out the rest when pressed.
@@ -182,7 +175,7 @@ export default function NextApp({ initialPage, client }) {
     return CALCULATORS.map((c) => ({ title: c.title, ...all[c.id] }));
   };
 
-  const formProps = { values, onChange: handleChange, locked, onEditCopy: () => setLocked(false) };
+  const formProps = { values, onUpdate: setValues, locked, onEditCopy: () => setLocked(false) };
   const share = !locked && <ShareHousehold values={values} household={h} getTiles={summaryTiles} />;
   const calculator = CALCULATORS.find((c) => c.id === page);
   // Saved households: the whole card on the homepage, compact on a calculator page.
@@ -194,7 +187,7 @@ export default function NextApp({ initialPage, client }) {
         opened={opened}
         compact={compact}
         onOpen={({ id, label, values: stored }) => {
-          setValues(stored);
+          setValues(opening(stored));
           setLocked(false);
           setOpened({ id, label, values: stored });
         }}
@@ -211,7 +204,42 @@ export default function NextApp({ initialPage, client }) {
       </p>
       <AccountBar client={cloud.client} cloud={cloud} onSignedOut={() => setOpened(null)} />
 
-      {!calculator && (
+      {page === 'inputs' && (
+        <>
+          <header className="page-header">
+            <p className="header-links">
+              <a href={NEXT_HASH}>&larr; All calculators</a>
+            </p>
+            <h1>Household inputs (preview)</h1>
+            <p>
+              Every input in one place. Each calculator reads the ones it needs, and its own inputs card
+              edits the same household.
+            </p>
+          </header>
+          <main className="inputs-page">
+            {saved(false)}
+            <HouseholdInputs
+              {...formProps}
+              layout="page"
+              title="Household"
+              defaultOpen={['household', 'people', 'income', 'contributions']}
+              footer={share}
+            />
+            <nav className="card inputs-next" aria-label="Calculators">
+              <h2>Open a calculator</h2>
+              <ul>
+                {CALCULATORS.map((c) => (
+                  <li key={c.id}>
+                    <a href={NEXT_PAGES[c.id]}>{c.title}</a> <span className="dim">{c.blurb}</span>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </main>
+        </>
+      )}
+
+      {page === 'home' && (
         <>
           <header className="page-header">
             <h1>Client household (preview)</h1>
@@ -219,7 +247,26 @@ export default function NextApp({ initialPage, client }) {
           </header>
           <main className="calc-layout">
             <div className="inputs-column">
-              <HouseholdForm {...formProps} title="Household" footer={share} />
+              <section className="card home-household" aria-labelledby="home-household-title">
+                <div className="form-head">
+                  <h2 id="home-household-title" className="form-title">
+                    Household
+                  </h2>
+                  <div className="form-head-actions">
+                    <a className="link-button" href={NEXT_PAGES.inputs}>
+                      Edit inputs &rarr;
+                    </a>
+                  </div>
+                </div>
+                <ul>
+                  {inputSections().map((sec) => (
+                    <li key={sec.id}>
+                      <strong>{sec.title}:</strong> {sec.summary(values)}
+                    </li>
+                  ))}
+                </ul>
+                {share}
+              </section>
             </div>
             <div className="results-column">
               {saved(false)}
@@ -257,19 +304,18 @@ export default function NextApp({ initialPage, client }) {
           <main className="calc-layout">
             <div className="inputs-column">
               {saved(true)}
-              <HouseholdForm
-                key={`${calculator.id}-own`}
+              <HouseholdInputs
+                key={calculator.id}
                 {...formProps}
                 title={calculator.ownTitle}
-                only={calculator.ownSections}
-                defaultOpen={calculator.ownSections}
-              />
-              <HouseholdForm
-                key={`${calculator.id}-shared`}
-                {...formProps}
-                title="Household"
-                only={calculator.sharedSections}
-                defaultOpen={[]}
+                sections={CALCULATOR_INPUTS[calculator.id].sections}
+                fields={CALCULATOR_INPUTS[calculator.id].fields}
+                defaultOpen={CALCULATOR_INPUTS[calculator.id].sections.slice(0, 1)}
+                headLink={
+                  <a className="link-button" href={NEXT_PAGES.inputs}>
+                    All inputs
+                  </a>
+                }
                 footer={share}
               />
             </div>

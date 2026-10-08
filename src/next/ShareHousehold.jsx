@@ -3,7 +3,7 @@
 // and a plain-text summary of the inputs and every calculator's headline, with the link
 // (lib/householdText.js), for pasting into a conversation or an email.
 import { useState } from 'react';
-import { householdLinkSearch } from '../lib/householdLink.js';
+import { householdLinkSearchV2 } from '../lib/householdLink.js';
 import { householdShareText } from '../lib/householdText.js';
 import { NEXT_HASH } from '../lib/route.js';
 
@@ -17,7 +17,7 @@ export default function ShareHousehold({ values, household, getTiles }) {
 
   const link = () => {
     const { origin, pathname } = window.location;
-    return `${origin}${pathname}${householdLinkSearch(values, { viewOnly })}${NEXT_HASH}`;
+    return `${origin}${pathname}${householdLinkSearchV2(values, { viewOnly })}${NEXT_HASH}`;
   };
   const copy = async (kind) => {
     const text = kind === 'link' ? link() : householdShareText({ household, tiles: getTiles(), url: link() });

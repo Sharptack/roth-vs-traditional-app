@@ -9,9 +9,11 @@ export const CALCULATOR_HASH = '#/';
 // (CLAUDE.md, "Build alongside, then switch over"). Its own pages live under it: "#/next/...".
 // Rename it here only.
 export const NEXT_HASH = '#/next';
-// The preview's pages: its homepage (the shared inputs and a tile per calculator) and one page per
-// calculator. Unknown sub-pages show the homepage.
-export const NEXT_PAGES = { roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax`, projection: `${NEXT_HASH}/projection`,
+// The preview's pages: its homepage (the household in brief and a tile per calculator), the inputs
+// page, and one page per calculator. Unknown sub-pages show the homepage.
+export const NEXT_PAGES = {
+  inputs: `${NEXT_HASH}/inputs`,
+  roth: `${NEXT_HASH}/roth`, tax: `${NEXT_HASH}/tax`, projection: `${NEXT_HASH}/projection`,
   conversion: `${NEXT_HASH}/conversion`,
   pension: `${NEXT_HASH}/pension`,
 };

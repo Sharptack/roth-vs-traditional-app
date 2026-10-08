@@ -341,6 +341,7 @@ legend {
 }
 
 input[type='text'],
+input[type='date'],
 select {
   width: 100%;
   padding: 10px 12px;
@@ -353,6 +354,7 @@ select {
 }
 
 input[type='text']:focus,
+input[type='date']:focus,
 select:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -1597,6 +1599,83 @@ th.win .th-sub {
   flex-direction: column;
 }
 
+/* version 2 inputs (HouseholdInputs.jsx): people side by side, row actions, the inputs page */
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.person-column {
+  min-width: 0;
+  max-width: 480px;
+  margin: 0;
+  padding: 8px 12px 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.person-column legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+/* a row of a list (income, contributions, accounts, debts): its fields flow across the width */
+.next-app .account-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0 12px;
+  align-items: end;
+}
+
+.next-app .account-row .field-row {
+  display: contents;
+}
+
+.next-app .account-row > .link-button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.row-actions .add-other select {
+  width: auto;
+  font-size: 0.85rem;
+}
+
+.inputs-page .household-inputs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputs-blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.inputs-blocks .inputs-people,
+.inputs-blocks .inputs-income {
+  grid-column: 1 / -1;
+}
+
+.home-household ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.home-household li {
+  margin-bottom: 4px;
+}
+
 /* #/next suite homepage tiles */
 .suite-tiles {
   display: grid;
@@ -1941,4 +2020,8 @@ th.win .th-sub {
   .next-app .saved-households {
     display: none;
   }
+}
+
+.next-app .field input[type='date'] {
+  min-width: 0;
 }

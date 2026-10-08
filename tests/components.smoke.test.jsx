@@ -1049,9 +1049,19 @@ describe('NextApp (#/next preview)', () => {
     expect(html).toContain('href="#/next/tax"');
     expect(html).toContain('22.0% marginal · 11.0% effective');
     expect(html).not.toMatch(/NaN|Infinity/);
-    // the calculator pages: own inputs first, the shared household, results, a way home
+    // the homepage: the household in brief, with a link to the inputs page
+    expect(html).toContain('href="#/next/inputs"');
+    expect(html).toContain('<strong>Income:</strong> W-2 $100,000');
+    // the calculator pages: one inputs card (its own section first, only what it reads), results,
+    // a way home and to the inputs page
+    const firstTitle = (page) => page.match(/class="collapsible-title"[^>]*>([^<]+)</)[1];
     const roth = renderToStaticMarkup(<NextApp initialPage="roth" />);
     expect(roth).toContain('Roth vs. Pre-tax inputs');
+    expect(firstTitle(roth)).toBe('Future Contributions');
+    expect(roth).toContain('href="#/next/inputs"');
+    expect(roth).toContain('Claim at');
+    expect(roth).not.toContain('Biological sex');
+    expect(roth).not.toContain('Lump sum offered');
     expect(roth).toContain('Retirement income number');
     expect(roth).toContain('RMDs start at 75.');
     expect(roth).toContain('Over a lifetime, year by year');
@@ -1059,13 +1069,15 @@ describe('NextApp (#/next preview)', () => {
     expect(roth).toMatch(/(Roth|Pre-tax) supports \$[\d,]+ a year more|About even/);
     expect(roth).toContain('href="#/next/projection"');
     expect(roth).toContain('href="#/next"');
-    expect(roth.indexOf('Roth vs. Pre-tax inputs')).toBeLessThan(roth.indexOf('>Household<'));
     expect(roth).not.toMatch(/NaN|Infinity/);
     const tax = renderToStaticMarkup(<NextApp initialPage="tax" />);
     expect(tax).toContain('Tax rates this year');
     expect(tax).toContain('Filling up the brackets');
     expect(tax).toContain('Show the calculation');
-    expect(tax).toContain("This year&#x27;s other income");
+    expect(firstTitle(tax)).toBe('Income');
+    expect(tax).toContain('+ Add other income types');
+    expect(tax).not.toContain('Claim at');
+    expect(tax).not.toContain('Retirement age');
     expect(tax).not.toMatch(/NaN|Infinity/);
     const proj = renderToStaticMarkup(<NextApp initialPage="projection" />);
     expect(proj).toContain('Funded status');
@@ -1090,40 +1102,56 @@ describe('NextApp (#/next preview)', () => {
     expect(pen).toContain('rate of return');
     expect(pen).toContain('How long you live decides it');
     expect(pen).toContain('Lump sum offered');
+    expect(firstTitle(pen)).toBe('Pension offer');
+    expect(pen).not.toContain('Expected retirement lifestyle');
     expect(pen).not.toMatch(/NaN|Infinity/);
     expect(html).toContain('href="#/next/conversion"');
     expect(html).toContain('href="#/next/pension"');
     expect(renderToStaticMarkup(<App />)).not.toContain('#/next');
   });
 
-  it('shows the spouse fields only when filing jointly, and renders a two-earner result', async () => {
-    const { default: HouseholdForm } = await import('../src/next/HouseholdForm.jsx');
+  it('the inputs page: every section as its own card, and links to each calculator', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const page = renderToStaticMarkup(<NextApp initialPage="inputs" />);
+    expect(page).toContain('Household inputs (preview)');
+    for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add other income types', 'Lump sum offered', 'Project to age']) {
+      expect(page, label).toContain(label);
+    }
+    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(11);
+    expect(page).toContain('Open a calculator');
+    expect(page).toContain('href="#/next/pension"');
+    expect(page).not.toContain('suite-tile-headline');
+    expect(page).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('shows the spouse only when filing jointly, side by side, and renders a two-earner result', async () => {
+    const { default: HouseholdInputs } = await import('../src/next/HouseholdInputs.jsx');
     const { previewResult } = await import('../src/next/NextApp.jsx');
-    const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
+    const { DEFAULT_HOUSEHOLD_VALUES: D, addRow, setIncludeSpouse, setPersonField } = await import('../src/lib/householdValues.js');
     const noop = () => {};
-    const singleForm = renderToStaticMarkup(<HouseholdForm values={PREVIEW_DEFAULT_VALUES} onChange={noop} />);
-    expect(singleForm).not.toContain('Enter your spouse separately?');
-    expect(singleForm).not.toContain("Spouse&#x27;s gross income");
-    expect(singleForm).toContain('+ Add an account');
-    const values = { ...PREVIEW_DEFAULT_VALUES, filingStatus: 'mfj', includeSpouse: 'yes', spouseIncome: '60000' };
-    const form = renderToStaticMarkup(<HouseholdForm values={values} onChange={noop} />);
+    const single = renderToStaticMarkup(<HouseholdInputs values={D} onUpdate={noop} />);
+    expect(single).not.toContain('Enter your spouse separately?');
+    expect(single).not.toContain('<legend>Spouse</legend>');
+    expect(single).toContain('+ Add an account');
+    const values = addRow(setIncludeSpouse({ ...D, filingStatus: 'mfj' }, true), 'incomes', { owner: 'p2', amount: '60000' });
+    const form = renderToStaticMarkup(<HouseholdInputs values={values} onUpdate={noop} />);
     expect(form).toContain('Enter your spouse separately?');
-    expect(form).toContain("Spouse&#x27;s gross income");
-    expect(form).toContain("Your spouse&#x27;s savings for retirement");
-    expect(form).toContain('>Owner<');
+    expect(form).toContain('<legend>You</legend>');
+    expect(form).toContain('<legend>Spouse</legend>');
+    expect(form).toContain('>Whose<');
     const { result } = previewResult(values, 2026);
     expect(result.valid).toBe(true);
     expect(result.current.fica.people).toHaveLength(2);
     expect(renderToStaticMarkup(<ResultsSummary result={result} />)).not.toMatch(/NaN|Infinity/);
-    const bad = previewResult({ ...values, spouseAge: '70', spouseRetirementAge: '65' }, 2026).result;
-    expect(bad.errors).toContain("Your spouse's retirement age must be after their current age.");
+    const older = setPersonField(setPersonField(values, 'p2', 'age', '70'), 'p2', 'retirementAge', '65');
+    expect(previewResult(older, 2026).result.errors).toContain("Your spouse's retirement age must be after their current age.");
   });
 
   it("a view-only household opens locked, with Edit a copy and no share button", async () => {
-    const { default: HouseholdForm } = await import("../src/next/HouseholdForm.jsx");
-    const { PREVIEW_DEFAULT_VALUES } = await import("../src/lib/household.js");
+    const { default: HouseholdInputs } = await import("../src/next/HouseholdInputs.jsx");
+    const { DEFAULT_HOUSEHOLD_VALUES } = await import("../src/lib/householdValues.js");
     const noop = () => {};
-    const locked = renderToStaticMarkup(<HouseholdForm values={PREVIEW_DEFAULT_VALUES} onChange={noop} locked onEditCopy={noop} />);
+    const locked = renderToStaticMarkup(<HouseholdInputs values={DEFAULT_HOUSEHOLD_VALUES} onUpdate={noop} locked onEditCopy={noop} />);
     expect(locked).toContain("View only.");
     expect(locked).toContain("Edit a copy");
     expect(locked).toMatch(/<fieldset class="locked-fieldset" disabled/);
@@ -1157,12 +1185,12 @@ describe('preview sign-in and saved households', () => {
 
   it('the saved households card: the testing-stage notice, save form, and the open household', async () => {
     const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
-    const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
+    const { DEFAULT_HOUSEHOLD_VALUES } = await import('../src/lib/householdValues.js');
     const html = renderToStaticMarkup(
       <SavedHouseholds
         client={{}}
-        values={PREVIEW_DEFAULT_VALUES}
-        opened={{ id: 'n1', label: 'J.M. 2026', values: PREVIEW_DEFAULT_VALUES }}
+        values={DEFAULT_HOUSEHOLD_VALUES}
+        opened={{ id: 'n1', label: 'J.M. 2026', values: DEFAULT_HOUSEHOLD_VALUES }}
         onOpen={() => {}}
         onSaved={() => {}}
       />,
@@ -1179,12 +1207,12 @@ describe('preview sign-in and saved households', () => {
 
   it('the saved households card marks unsaved changes', async () => {
     const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
-    const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
+    const { DEFAULT_HOUSEHOLD_VALUES: D, updateRow } = await import('../src/lib/householdValues.js');
     const html = renderToStaticMarkup(
       <SavedHouseholds
         client={{}}
-        values={{ ...PREVIEW_DEFAULT_VALUES, grossIncome: '123456' }}
-        opened={{ id: 'n1', label: 'J.M. 2026', values: PREVIEW_DEFAULT_VALUES }}
+        values={updateRow(D, 'incomes', 'i1', 'amount', '123456')}
+        opened={{ id: 'n1', label: 'J.M. 2026', values: D }}
         onOpen={() => {}}
         onSaved={() => {}}
       />,
@@ -1195,10 +1223,10 @@ describe('preview sign-in and saved households', () => {
 
   it('the compact card for calculator pages: the household on screen, the rest behind a closed section', async () => {
     const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
-    const { PREVIEW_DEFAULT_VALUES } = await import('../src/lib/household.js');
-    const props = { client: {}, values: PREVIEW_DEFAULT_VALUES, onOpen: () => {}, onSaved: () => {}, compact: true };
+    const { DEFAULT_HOUSEHOLD_VALUES } = await import('../src/lib/householdValues.js');
+    const props = { client: {}, values: DEFAULT_HOUSEHOLD_VALUES, onOpen: () => {}, onSaved: () => {}, compact: true };
     const open = renderToStaticMarkup(
-      <SavedHouseholds {...props} opened={{ id: 'n1', label: 'J.M. 2026', values: PREVIEW_DEFAULT_VALUES }} />,
+      <SavedHouseholds {...props} opened={{ id: 'n1', label: 'J.M. 2026', values: DEFAULT_HOUSEHOLD_VALUES }} />,
     );
     expect(open).toContain('On screen: <strong>J.M. 2026</strong>');
     expect(open).toContain('<summary>Save as new or open another household</summary>');
