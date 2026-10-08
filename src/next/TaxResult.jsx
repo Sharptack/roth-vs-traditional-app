@@ -127,6 +127,8 @@ export default function TaxResult({ tax }) {
   const { result: r, marginal, others, rows, irmaa: i } = tax;
   const ages = useMemo(() => (tax.params.people ?? []).map((p) => p.age).filter(Number.isFinite), [tax.params]);
   const hasPayroll = r.payrollTax > 0;
+  // The rates are measured over $1,000 when the child tax credit applies (yearTax.js MARGINAL_PROBE).
+  const probe = tax.params.children > 0 || tax.params.otherDependents > 0 ? '$1,000' : '$100';
   const h = taxHeadlines(tax);
   return (
     <Blocks
@@ -152,7 +154,7 @@ export default function TaxResult({ tax }) {
                 <div className="stat-label">Effective rate</div>
                 <div className="stat-value">{pct(marginal.incomeTax)}</div>
                 <div className="stat-sub">
-                  The real federal income tax on the next $100 of {marginal.phrase}, with everything it sets off
+                  The real federal income tax on the next {probe} of {marginal.phrase}, with everything it sets off
                   {Math.abs(marginal.total - marginal.incomeTax) > 1e-9 && <>; {pct(marginal.total)} with payroll tax</>}
                 </div>
               </div>
@@ -175,7 +177,7 @@ export default function TaxResult({ tax }) {
         },
         others.length > 0 && {
           id: 'others',
-          title: 'The next $100 of other income',
+          title: `The next ${probe} of other income`,
           summary: h.others,
           content: (
             <>
