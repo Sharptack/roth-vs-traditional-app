@@ -14,6 +14,7 @@ import { CONTRIBUTION_LIMITS } from './contributionLimits.js';
 import { AGE_DEDUCTIONS } from './ageDeductions.js';
 import { IRMAA } from './irmaa.js';
 import { QBI } from './qbi.js';
+import { IRA_RULES } from './iraRules.js';
 
 // file: where to edit; what: the figures to update; when: when they are usually published.
 export const YEARLY_TABLES = [
@@ -72,6 +73,13 @@ export const YEARLY_TABLES = [
     file: 'src/data/qbi.js',
     what: 'threshold and phase-in end, single and joint (the $400 / $1,000 minimum is indexed from 2027)',
     when: 'same IRS revenue procedure',
+  },
+  {
+    name: 'IRA income limits and the Roth catch-up wage threshold',
+    table: IRA_RULES,
+    file: 'src/data/iraRules.js',
+    what: 'Roth IRA and Traditional IRA deduction phase-out ranges; the Roth catch-up FICA-wage threshold',
+    when: 'IRS notice and newsroom release (with the contribution limits), October-November',
   },
 ];
 
