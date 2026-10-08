@@ -181,7 +181,7 @@ function GapComponents({ batch }) {
 export default function ScenariosPage() {
   useEffect(() => {
     const previous = document.title;
-    document.title = 'Visualization — Roth vs. Pre-Tax Calculator';
+    document.title = 'Visualization — Retirement Tax Calculators';
     return () => {
       document.title = previous;
     };

@@ -21,7 +21,7 @@ function useTitle(title) {
 }
 
 function DocsIndex() {
-  useTitle('Docs — Roth vs. Pre-Tax Calculator');
+  useTitle('Docs — Retirement Tax Calculators');
   return (
     <>
       <a className="back-link" href={HOME_HASH}>
