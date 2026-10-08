@@ -414,6 +414,37 @@ export default function HouseholdInputs({
       </>
     ),
 
+    dependents: () => (
+      <>
+        <p className="hint">
+          For the child tax credit: $2,200 for each child under 17 in 2026 (up to $1,700 of it paid out
+          even with no tax owed), and $500 for each other dependent, reduced above $200,000 of income
+          ($400,000 joint). Children count each year of the projection until they turn 17; other
+          dependents count this year only.
+        </p>
+        <ul className="account-list">
+          {(values.dependents ?? []).map((d, i) => (
+            <li key={d.id} className="account-row">
+              <SelectInput
+                label="Who"
+                value={d.kind}
+                onChange={setRow('dependents', d.id, 'kind')}
+                options={[
+                  { value: 'child', label: 'Child' },
+                  { value: 'other', label: 'Other dependent' },
+                ]}
+              />
+              {d.kind === 'child' && <AgeInput label="Age this year" value={d.age} onChange={setRow('dependents', d.id, 'age')} />}
+              {removeButton('dependents', d, i, 'dependent')}
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="link-button" onClick={() => add('dependents')}>
+          + Add a child or dependent
+        </button>
+      </>
+    ),
+
     deductions: () => (
       <CurrencyInput
         label="Itemized deductions (total a year)"

@@ -41,6 +41,7 @@
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from './formInputs.js';
 import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
 import { CONVERSION_DEFAULT_VALUES } from './conversionCalculator.js';
+import { dependentsInYear } from './dependents.js';
 import { PENSION_DEFAULT_VALUES, pensionFromValues } from './pensionCalculator.js';
 
 // The projection page's own inputs (stored under calculators.projection).
@@ -342,6 +343,8 @@ export function householdToCompareInputs(household) {
   if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
   if (assumptions.qualifiedBusinessIncome) inputs.qualifiedBusinessIncome = true;
   if (itemized > 0) inputs.itemizedDeductions = itemized;
+  const { children, otherDependents } = dependentsInYear(household, 0);
+  if (children > 0 || otherDependents > 0) inputs.childTaxCredit = { children, otherDependents };
   if (people.length > 1) {
     inputs.contributors = people.map((p, i) => {
       const c = fc.contributions.find((x) => x.owner === p.id) ?? {};

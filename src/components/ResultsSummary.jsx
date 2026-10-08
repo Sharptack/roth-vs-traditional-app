@@ -97,7 +97,11 @@ function RetirementNumberMath({ result }) {
           )}
           {b.qbiDeduction > 0 && <Row label="Qualified business income (QBI) deduction" value={minus(b.qbiDeduction)} kind="sub" />}
           <Row label="Taxable income" value={$(b.taxableIncome)} kind="total" />
-          <Row label="Federal income tax on that" value={$(b.incomeTax)} kind="total" />
+          <Row
+            label={b.childTaxCredit > 0 ? `Federal income tax on that, less the ${$(b.childTaxCredit)} child tax credit` : 'Federal income tax on that'}
+            value={$(b.incomeTax)}
+            kind="total"
+          />
 
           <Row label="Step 2: what you live on" kind="heading" />
           <Row label="Gross income" value={$(b.grossIncome)} />

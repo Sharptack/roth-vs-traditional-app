@@ -79,6 +79,20 @@ export const INPUT_SECTIONS = [
   },
   { id: 'people', title: 'People', summary: (v) => activePeople(v).map(personLine).join(' · ') },
   {
+    id: 'dependents',
+    title: 'Children and dependents',
+    summary: (v) => {
+      const rows = v.dependents ?? [];
+      const kids = rows.filter((d) => d.kind === 'child');
+      const others = rows.length - kids.length;
+      const parts = [
+        kids.length > 0 && `${kids.length} ${kids.length === 1 ? 'child' : 'children'} (${kids.length === 1 ? 'age' : 'ages'} ${kids.map((k) => k.age || '—').join(', ')})`,
+        others > 0 && `${others} other ${others === 1 ? 'dependent' : 'dependents'}`,
+      ].filter(Boolean);
+      return parts.length > 0 ? parts.join(' · ') : 'None';
+    },
+  },
+  {
     id: 'income',
     title: 'Income',
     summary: (v) => totalsBy(countedRows(v, 'incomes'), (r) => r.type, (r) => r.amount, INCOME_SHORT, INCOME_TYPES),
@@ -182,19 +196,19 @@ export const ASSUMPTION_FIELDS = ['returnRate', 'inflationRate', 'ageDeductions'
 const FOR_ROTH = ['age', 'retirementAge', 'socialSecurity'];
 export const CALCULATOR_INPUTS = {
   roth: {
-    sections: ['contributions', 'household', 'people', 'income', 'deductions', 'accounts', 'spending', 'assumptions', 'projection'],
+    sections: ['contributions', 'household', 'people', 'dependents', 'income', 'deductions', 'accounts', 'spending', 'assumptions', 'projection'],
     fields: { people: FOR_ROTH },
   },
   tax: {
-    sections: ['income', 'household', 'people', 'contributions', 'deductions', 'assumptions'],
+    sections: ['income', 'household', 'people', 'dependents', 'contributions', 'deductions', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   projection: {
-    sections: ['projection', 'household', 'people', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
+    sections: ['projection', 'household', 'people', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
     fields: { people: FOR_ROTH },
   },
   conversion: {
-    sections: ['conversion', 'household', 'people', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
+    sections: ['conversion', 'household', 'people', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   pension: {

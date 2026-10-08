@@ -108,6 +108,7 @@ export function upgradeHouseholdValues(values, year) {
     contributions,
     accounts: Array.isArray(values?.accounts) ? values.accounts.map((a) => ({ ...a })) : accountRowsFromFlat(v),
     liabilities: [],
+    dependents: [],
     deductions: { itemized: '' },
     spending: { debtPayments: v.debtPayments, otherExpenses: v.otherExpenses, retirementLifestyle: v.retirementLifestyle },
     assumptions: {

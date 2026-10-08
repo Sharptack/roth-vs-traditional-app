@@ -137,6 +137,8 @@ export function toHouseholdV2(values, year) {
     })),
     futureContributions: { currentType, accountType, contributions },
     deductions: { itemized: blankAsZero(values.deductions?.itemized) },
+    // Children with their age this year (the age reached this calendar year); other dependents.
+    dependents: (values.dependents ?? []).map((d) => ({ kind: d.kind, age: d.kind === 'child' ? blankAsNull(d.age) : null })),
     spending: {
       debtPaymentsEnding: blankAsZero(values.spending.debtPayments),
       otherExpensesEnding: blankAsZero(values.spending.otherExpenses),
@@ -208,8 +210,12 @@ export function validateHouseholdV2(household) {
     }
   }
   if (!isNum(household.deductions.itemized) || household.deductions.itemized < 0) errors.push("Itemized deductions can't be negative.");
+  for (const d of household.dependents) {
+    if (d.kind === 'child' && !(isNum(d.age) && d.age >= 0 && d.age <= 30)) errors.push("Enter each child's age (0 to 30).");
+  }
   for (const l of household.liabilities) {
     if (![l.balance, l.rate, l.payment].every((n) => isNum(n) && n >= 0)) errors.push("Debts' balances, rates and payments can't be negative.");
   }
   return [...new Set(errors)];
 }
+

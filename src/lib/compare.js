@@ -53,6 +53,9 @@
 //                                            deductions, taken instead of the standard deduction when
 //                                            larger. Absent/0 = the standard deduction, as before.
 //                                            (Retirement years: retirementTaxRules.itemizedDeductions.)
+//   childTaxCredit                         — OPTIONAL (the #/next preview): { children, otherDependents }
+//                                            this year: today's tax takes the credit
+//                                            (childTaxCredit.js). Absent = none, as before.
 //   qualifiedBusinessIncome                — OPTIONAL, boolean (the #/next preview): today's tax takes the
 //                                            QBI deduction on 1099 earnings (qbi.js, basic rule).
 //                                            Absent/false = no QBI deduction, as before.
@@ -62,6 +65,7 @@
 // (real) return and every dollar figure as today's dollars.
 import { calculateTaxFromGross, getStandardDeduction } from './taxCalculations.js';
 import { qbiDeduction } from './qbi.js';
+import { childTaxCredit } from './childTaxCredit.js';
 import { calculateEmploymentTaxes, calculateHouseholdEmploymentTaxes } from './ficaTax.js';
 import { estimateHouseholdSocialSecurity, estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
@@ -291,15 +295,37 @@ export function compareRothVsTraditional(inputs) {
   const qbi = inputs.qualifiedBusinessIncome ? Math.max(0, earnersSE - fica.selfEmployment.deduction) : 0;
   // Itemized deductions beyond the standard deduction come off like an adjustment.
   const itemizedExtra = Math.max(0, (inputs.itemizedDeductions ?? 0) - getStandardDeduction(filingStatus, year));
+  // The child tax credit (preview option childTaxCredit) comes off the tax; MAGI is gross income
+  // less the above-the-line adjustments (`shown`), earned income less half the SE tax.
+  const credits = inputs.childTaxCredit ?? { children: 0, otherDependents: 0 };
+  const hasCredits = credits.children > 0 || credits.otherDependents > 0;
+  const creditOn = (shown, regularTax) =>
+    hasCredits
+      ? childTaxCredit({ ...credits, magi: grossIncome - shown, regularTax, earnedIncome: grossIncome - fica.selfEmployment.deduction, filingStatus, year }).total
+      : 0;
+  const probe = hasCredits ? 1000 : 100;
   const taxAfter = (shown) => {
     const adjustments = shown + itemizedExtra;
     const plain = { ...calculateTaxFromGross(grossIncome, filingStatus, year, adjustments), adjustments: shown };
-    if (!(qbi > 0)) return plain;
-    const deduction = (adj) => qbiDeduction({ qbi, taxableIncome: Math.max(0, grossIncome - adj - plain.standardDeduction), filingStatus, year }).deduction;
-    const taxOf = (adj) => calculateTaxFromGross(grossIncome, filingStatus, year, adj + deduction(adj)).tax;
+    if (!(qbi > 0) && !hasCredits) return plain;
+    const deduction = (adj) =>
+      qbi > 0 ? qbiDeduction({ qbi, taxableIncome: Math.max(0, grossIncome - adj - plain.standardDeduction), filingStatus, year }).deduction : 0;
+    const taxOf = (s) => {
+      const t = calculateTaxFromGross(grossIncome, filingStatus, year, s + itemizedExtra + deduction(s + itemizedExtra)).tax;
+      return t - creditOn(s, t);
+    };
     const d = deduction(adjustments);
-    const withQbi = calculateTaxFromGross(grossIncome, filingStatus, year, adjustments + d);
-    return { ...withQbi, adjustments: shown, qbiDeduction: d, marginalRate: (taxOf(adjustments - 100) - withQbi.tax) / 100 };
+    const before = calculateTaxFromGross(grossIncome, filingStatus, year, adjustments + d);
+    const credit = creditOn(shown, before.tax);
+    return {
+      ...before,
+      tax: before.tax - credit,
+      adjustments: shown,
+      qbiDeduction: d,
+      childTaxCredit: credit,
+      // measured over $1,000 with the credit (it phases out in $50 steps per $1,000), else $100
+      marginalRate: (taxOf(shown - probe) - (before.tax - credit)) / probe,
+    };
   };
   const withContribution = taxAfter(fica.selfEmployment.deduction + pretaxDeduction);
   // Income tax as if the savings were NOT deducted, i.e. the top of your pay
@@ -665,6 +691,7 @@ export function compareRothVsTraditional(inputs) {
         taxableIncome: current.taxableIncome,
         ...(current.qbiDeduction > 0 && { qbiDeduction: current.qbiDeduction }),
         ...(itemizedExtra > 0 && { itemizedDeductions: inputs.itemizedDeductions }),
+        ...(current.childTaxCredit > 0 && { childTaxCredit: current.childTaxCredit }),
         incomeTax: current.tax,
         // Income tax had the savings not been deducted (equal to incomeTax
         // when nothing is Pre-tax); the difference is the tax the deduction saves.

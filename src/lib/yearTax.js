@@ -69,8 +69,11 @@ export function ageDeductions(people, filingStatus, year, magi, { calendarYear =
   return { additional65, senior: seniors * perPerson, seniors };
 }
 
-// The probe for marginal rates: the extra tax from $100 more of one source, ÷ 100.
+// The probe for marginal rates: the extra tax from $100 more of one source, ÷ 100. With children
+// or other dependents, $1,000: the child tax credit phases out $50 for each $1,000 "or part of
+// $1,000", so the next $100 can cost a whole $50 step, where the rate over $1,000 is 5 points.
 export const MARGINAL_PROBE = 100;
+export const MARGINAL_PROBE_WITH_CREDITS = 1000;
 
 const NO_PAYROLL = {
   w2: { socialSecurity: 0, medicare: 0 },
@@ -262,12 +265,13 @@ function addToFirstPerson(people = [], key, d) {
 // `incomeTax` leaves payroll tax out; `total` includes it (only wages and 1099 income pay it).
 export function calculateYearTax(params) {
   const r = core(params);
+  const probe = params.children > 0 || params.otherDependents > 0 ? MARGINAL_PROBE_WITH_CREDITS : MARGINAL_PROBE;
   const marginalRates = {};
   for (const [source, add] of Object.entries(SOURCES)) {
-    const more = core(add(params, MARGINAL_PROBE));
+    const more = core(add(params, probe));
     marginalRates[source] = {
-      incomeTax: (more.incomeTax - r.incomeTax) / MARGINAL_PROBE,
-      total: (more.totalTax - r.totalTax) / MARGINAL_PROBE,
+      incomeTax: (more.incomeTax - r.incomeTax) / probe,
+      total: (more.totalTax - r.totalTax) / probe,
     };
   }
   return {

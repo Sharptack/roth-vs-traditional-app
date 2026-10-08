@@ -22,6 +22,8 @@
 //                                          // fromAge = from now, blank toAge = until the owner retires
 //   contributions: [ { id, owner, tax: 'pretax' | 'roth' | 'taxable', account: '401k' | 'ira', amount } ],
 //   accounts: [ { id, owner, type: 'pretax' | 'roth' | 'taxable', balance, basisShare } ],   // as version 1
+//   dependents: [ { id, kind: 'child' | 'other', age } ],   // a child counts for the child tax
+//                                          // credit while under 17; an other dependent ($500) this year
 //   liabilities: [ { id, kind, balance, rate, payment } ],   // kind: LIABILITY_KINDS; rate: the annual
 //                                          // interest rate in percent, as typed (6.5); payment monthly
 //   deductions: { itemized },               // itemized deductions, one yearly total ('' = the standard deduction)
@@ -45,6 +47,7 @@ export const CONTRIBUTION_ACCOUNTS = ['401k', 'ira'];
 export const ACCOUNT_TYPES = ['pretax', 'roth', 'taxable'];
 export const LIABILITY_KINDS = ['mortgage', 'car', 'student', 'creditCard', 'other'];
 export const SS_MODES = ['estimate', 'pia'];
+export const DEPENDENT_KINDS = ['child', 'other'];
 
 export function newPerson(id, overrides = {}) {
   return {
@@ -66,6 +69,7 @@ const ROW_TEMPLATES = {
   contributions: { prefix: 'c', row: { owner: 'p1', tax: 'pretax', account: '401k', amount: '' } },
   accounts: { prefix: 'a', row: { owner: 'p1', type: 'pretax', balance: '', basisShare: '0.5' } },
   liabilities: { prefix: 'l', row: { kind: 'mortgage', balance: '', rate: '', payment: '' } },
+  dependents: { prefix: 'd', row: { kind: 'child', age: '' } },
 };
 export const ROW_LISTS = Object.keys(ROW_TEMPLATES);
 
@@ -78,6 +82,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
   contributions: [{ id: 'c1', ...ROW_TEMPLATES.contributions.row, amount: '10000' }],
   accounts: [{ id: 'a1', ...ROW_TEMPLATES.accounts.row, balance: '100000' }],
   liabilities: [],
+  dependents: [],
   deductions: { itemized: '' },
   spending: { debtPayments: '6000', otherExpenses: '0', retirementLifestyle: '1' },
   assumptions: {
@@ -264,6 +269,7 @@ const ROW_RULES = {
   contributions: { choices: { owner: OWNERS, tax: CONTRIBUTION_TAX_TYPES, account: CONTRIBUTION_ACCOUNTS }, text: ['amount'] },
   accounts: { choices: { owner: OWNERS, type: ACCOUNT_TYPES }, text: ['balance', 'basisShare'] },
   liabilities: { choices: { kind: LIABILITY_KINDS }, text: ['balance', 'rate', 'payment'] },
+  dependents: { choices: { kind: DEPENDENT_KINDS }, text: ['age'] },
 };
 
 function cleanRows(raw, list) {
@@ -302,6 +308,7 @@ export function cleanHouseholdValues(raw) {
     // The accounts list never starts empty (as version 1).
     accounts: accounts.length > 0 ? accounts : D.accounts.map((a) => ({ ...a })),
     liabilities: cleanRows(raw.liabilities, 'liabilities'),
+    dependents: cleanRows(raw.dependents, 'dependents'),
     deductions: cleanGroup(raw.deductions, D.deductions),
     spending: cleanGroup(raw.spending, D.spending),
     assumptions: cleanGroup(raw.assumptions, D.assumptions),

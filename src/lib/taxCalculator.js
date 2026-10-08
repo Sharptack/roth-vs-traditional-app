@@ -4,6 +4,7 @@
 import { calculateYearTax } from './yearTax.js';
 import { yearTaxRows } from './yearTaxRows.js';
 import { checkContributionLimit } from './contributionLimits.js';
+import { dependentsInYear } from './dependents.js';
 import { irmaaFromThisYear } from './irmaa.js';
 import { getBrackets } from './taxCalculations.js';
 
@@ -37,6 +38,7 @@ export function householdToYearTaxParams(household) {
     pretaxDeferrals,
     qbi: Boolean(household.assumptions?.qualifiedBusinessIncome), // QBI on 1099 earnings (qbi.js)
     ...(household.deductions?.itemized > 0 && { itemizedDeductions: household.deductions.itemized }),
+    ...creditCounts(household),
     income: {
       ordinaryIncome: tax.ordinaryIncome ?? 0,
       investmentOrdinaryIncome: tax.investmentOrdinaryIncome ?? 0,
@@ -124,4 +126,11 @@ export function bracketFill(params, r) {
     currentRate: r.bracketRoom.ordinary.rate,
     room: r.bracketRoom.ordinary.room,
   };
+}
+
+// This year's child tax credit counts, only when there are any (so a household without children
+// gives the same parameters as before).
+function creditCounts(household) {
+  const { children, otherDependents } = dependentsInYear(household, 0);
+  return { ...(children > 0 && { children }), ...(otherDependents > 0 && { otherDependents }) };
 }

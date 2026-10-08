@@ -42,6 +42,7 @@ import { requiredMinimumDistribution } from './rmd.js';
 import { solveMonotonicIncreasing } from './solver.js';
 import { splitAtTakeHome } from './compare.js';
 import { irmaaCost, medicareEnrollees } from './irmaa.js';
+import { dependentsInYear } from './dependents.js';
 import { IRMAA_LOOKBACK_YEARS } from '../data/irmaa.js';
 
 export const DEFAULT_END_AGE = 95;
@@ -207,6 +208,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         rateShift: anyRetired ? rateShiftInRetirement : 0,
         qbi: Boolean(assumptions.qualifiedBusinessIncome), // QBI on 1099 earnings while working (qbi.js)
         itemizedDeductions: household.deductions?.itemized ?? 0, // every year, in today's dollars
+        ...dependentsInYear(household, t), // children while under 17; other dependents this year
       };
     };
     // Totals only while solving; the row below runs the full engine once (marginal rates, room).

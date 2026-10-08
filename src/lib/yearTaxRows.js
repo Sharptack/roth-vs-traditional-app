@@ -100,7 +100,11 @@ export function yearTaxRows(params, r) {
     const threshold = data.threshold[filingStatus] * thresholdScale;
     add('niit', `Net Investment Income Tax: ${pct(data.rate)} × the lesser of investment income and MAGI over ${Math.round(threshold).toLocaleString('en-US')}`, r.niit, 'line', { rate: data.rate, threshold });
   }
-  add('incomeTax', 'Federal income tax', r.incomeTax, 'total');
+  if (nonZero(L.childTaxCredit)) {
+    add('childTaxCredit', 'Child tax credit and credit for other dependents', L.childTaxCredit, 'sub');
+    if (nonZero(L.childTaxCreditRefundable)) add('ctcRefundable', 'of it paid out beyond the tax owed (refundable)', L.childTaxCreditRefundable, 'tax');
+  }
+  add('incomeTax', L.childTaxCredit > 0 && r.incomeTax < 0 ? 'Federal income tax (negative: a refund)' : 'Federal income tax', r.incomeTax, 'total');
 
   if (r.payrollTax > 0) {
     add('payrollTax', 'Payroll tax (with each earned income above)', r.payrollTax, 'line');

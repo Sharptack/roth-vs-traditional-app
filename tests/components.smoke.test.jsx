@@ -1138,7 +1138,7 @@ describe('NextApp (#/next preview)', () => {
     for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add other income types', 'Lump sum offered', 'Project to age']) {
       expect(page, label).toContain(label);
     }
-    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(12);
+    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(13);
     expect(page).toContain('Open a calculator');
     expect(page).toContain('href="#/next/pension"');
     expect(page).not.toContain('suite-tile-headline');

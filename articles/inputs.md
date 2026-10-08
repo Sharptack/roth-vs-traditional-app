@@ -45,6 +45,10 @@ Either way, a married couple's spousal benefit is worked out from both people's 
 
 **Claim at:** the age benefits start, 62 to 70. Left at "At retirement", benefits start at the retirement age (held within 62 to 70).
 
+## Children and dependents
+
+For the child tax credit. Enter each child with their age this year: a child under 17 brings $2,200 off the tax in 2026, and up to $1,700 of it is paid out even when no tax is owed (15% of earned income over $2,500). Each other dependent brings $500, never paid out. The credit shrinks by $50 for each $1,000 of income over $200,000 ($400,000 joint), which adds 5 points to the rate on the next dollar in that range. Children count in every year of the projection until they turn 17; other dependents count this year only.
+
 ## Income
 
 One row per source of income, with whose it is, the type and the amount a year.
