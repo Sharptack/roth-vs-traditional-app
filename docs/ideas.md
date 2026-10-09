@@ -11,7 +11,7 @@ Ideas not in the current roadmap. Read it when adding an idea or choosing what t
 - **The simplified Roth calculator (Michael's vision, 2026-10-09):** standalone, not tied to households, one vertical column of collapsible blocks: the inputs (one block, a dropdown per category), the rates, the breakdown, then the charts and the year-by-year table.
 - **Launch checklist** (docs/security.md): invitation links without tokens in the address, MFA, firm-domain sign-in, custom email sending, the compliance check, a private GitHub repo.
 - **A designed PDF report** for the signed-in version.
-- **A bottom-up budget calculator** feeding base spending.
+- **A bottom-up budget calculator** feeding base spending: itemized lines (mortgage, utilities, groceries…) that fill the "Baseline expenses per year" input from phase 3, and the top-down figure (take-home minus savings) beside the budget with the gap and where it likely comes from (irregular costs: travel, car replacement, home repairs, gifts). Michael, 2026-10-09.
 - **Optional:** TypeScript for new files.
 - **An advanced options page** (its own round, later): see Advanced features below.
 

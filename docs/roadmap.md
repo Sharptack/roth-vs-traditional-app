@@ -8,9 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, phase 2 (survivor years and engine additions) the "Before phase 2" list and all three "Before phase 3" lists. 855 tests. Last closed: "Before phase 3: adjustments (2) and (3)" (tag `phase-before-3b-done`): the EMTR worked out on the tax page, the bracket visual in total and taxable income, Social Security "Currently receiving" and estimated by default, already-retired households, life expectancy, collapsing accounts, "per year".
 
-**In progress:** nothing.
-
-**Next: phase 3, retirement spending.** Steps not yet set (set them here first). It must start with a spending input for a household already retired: the projection, the Roth comparison and the conversion page's lifetime view all need it.
+**In progress: phase 3, retirement spending** (started 2026-10-09; steps set in the phase 3 section below). Now on step (a), the spending need: one baseline-expenses input and one shared `spendingNeed(household)`.
 
 **Known gaps and open items:**
 - No lifetime view or retirement income number for a household already retired (with no earnings the Roth page says there is nothing to compare); phase 3's spending input fixes it.
@@ -115,6 +113,19 @@ The question is less "how much do I spend?" than "how much do my resources allow
 **A charitable legacy.** The legacy goal can be split between heirs and charity. A charity owes no tax on Pre-tax money it inherits, so Pre-tax money is worth its full balance there, while heirs pay tax on it. The larger the charitable share, the more Pre-tax is favored, both in the Roth vs. Pre-tax comparison and in deciding which accounts to spend first. The page shows that effect in a sentence and in the wealth figures.
 
 **Tests:** a hand-worked case with no tax and only Roth money, where spending with a legacy goal follows the annuity formula with a final balance.
+
+**The spending need, top-down or bottom-up (decided 2026-10-09, Michael).** Both methods estimate what the household spends today, after tax. Top-down (today's method): take-home pay minus savings. Bottom-up: a budget, for now one number, "Baseline expenses per year" (later an itemized budget calculator fills it). Retirement spending follows from either the same way: today's spending, minus the costs that end by retirement, times the lifestyle factor; for a household already retired it is the budget as is. A select, "Base retirement spending on: Today's income / My budget", picks the method: today's income by default (so no results change); fixed to the budget, which is then required, when everyone is retired. Explicit rather than "a budget, if entered, wins", so a budget can be entered without changing the plan. One pure function, `spendingNeed(household)`, returns the need, its method and both estimates where they can be worked out; every calculator reads it (the projection, the conversion lifetime view, the Roth comparison's retirement income number, the Retirement spending page) instead of working it out itself. Reason: a household already retired has no top-down figure, and some households only have a budget number. The Retirement spending page compares the spending need with what the assets can generate as income; the gap between the top-down figure and the budget belongs to the budget calculator (Michael, 2026-10-09; in `docs/ideas.md`). "Use in the plan" on the page writes the sustainable figure into the plan's spending (Michael, 2026-10-09).
+
+**Steps (set 2026-10-09):**
+- (a) The spending need: the baseline-expenses input and the method select; `spendingNeed(household)` read by every calculator; a household already retired gets its projection and conversion lifetime view.
+- (b) The legacy goal in the engine: a dollar amount, a share of today's portfolio, or none; the balance measure, then after tax (Pre-tax at the heirs' rate). The hand-worked annuity test.
+- (c) The Retirement spending page (an Evaluation): what the resources allow beside the spending need, and the difference; "Use in the plan".
+- (d) The trade-off chart: spending against legacy ("each $100,000 more for heirs costs $X per year").
+- (e) A charitable legacy: the goal split between heirs and charity, Pre-tax at full value to charity; the effect in a sentence and in the wealth figures.
+- (f) The staged-spending design write-up, agreed with Michael before anything is built.
+- (g) The Docs article.
+
+**Status:** started 2026-10-09.
 
 ## Phase 4: Pre-retirement funding
 
