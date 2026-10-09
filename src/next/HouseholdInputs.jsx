@@ -574,10 +574,22 @@ export default function HouseholdInputs({
           {shown('returnRate') && (
             <SelectInput
               label="Expected annual investment return"
-              hint="A return after inflation: everything is in today's dollars."
+              hint="A return after inflation: everything is in today's dollars. Used until retirement, and after it unless set below."
               value={a.returnRate}
               onChange={set('returnRate')}
               options={RETURN_OPTIONS}
+            />
+          )}
+          {shown('retirementReturnRate') && (
+            <SelectInput
+              label="Return in retirement"
+              hint="After inflation, once no one in the household works (for a couple, from the year the last retires), for example a more conservative mix. Used by the projection and the pension calculator; the Roth comparison grows savings only until then."
+              value={a.retirementReturnRate ?? 'same'}
+              onChange={set('retirementReturnRate')}
+              options={[
+                { value: 'same', label: 'Same as before retirement' },
+                ...['0.03', '0.04', '0.05', '0.06', '0.07', '0.08', '0.09'].map((x) => ({ value: x, label: `${Math.round(Number(x) * 100)}%` })),
+              ]}
             />
           )}
           {shown('inflationRate') && (

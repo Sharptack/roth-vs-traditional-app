@@ -34,6 +34,7 @@ describe('the version 2 inputs: section summaries', () => {
     expect(summary('deductions', setGroupField(D, 'deductions', 'itemized', '30000'))).toBe('Itemized $30,000 a year, when more than the standard deduction');
     expect(summary('spending', D)).toBe('$6,000 a year ends at retirement · retirement spending same as today');
     expect(summary('assumptions', D)).toBe('7% return after inflation · 2.5% inflation · proportional (every account alike) in retirement · heirs taxed at 24%');
+    expect(summary('assumptions', { ...D, assumptions: { ...D.assumptions, retirementReturnRate: '0.05' } })).toMatch(/^7% return after inflation, 5% in retirement · /);
     expect(summary('projection', D)).toBe('Proportional (every account alike) · heirs taxed at 24%');
     expect(summary('conversion', D)).toBe('Convert $50,000 this year');
     expect(summary('pension', D)).toBe('No pension yet');

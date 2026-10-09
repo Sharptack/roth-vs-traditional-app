@@ -48,7 +48,7 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
         </p>
         <div className="calc">
           <div className="calc-row">
-            <span>Assumed return ({formatPercent(realReturn, 0)} after {formatPercent(inflation, 1)} inflation)</span>
+            <span>Assumed return in retirement ({formatPercent(realReturn, 0)} after {formatPercent(inflation, 1)} inflation)</span>
             <span>{pct(nominalReturn)}</span>
           </div>
           <div className="calc-row"><span>The payments&rsquo; expected value today at that return</span><span>{$(worth)}</span></div>

@@ -51,6 +51,9 @@ export function describeHousehold(household) {
     bullet('Costs ending before retirement', `${formatCurrency(spending.debtPaymentsEnding)} debt, ${formatCurrency(spending.otherExpensesEnding)} other, a year`),
     bullet('Retirement lifestyle', `${formatPercent(spending.retirementLifestyle, 0)} of today's spending`),
     bullet('Return after inflation', formatPercent(assumptions.returnRate, 0)),
+    ...(assumptions.retirementReturnRate !== undefined && assumptions.retirementReturnRate !== assumptions.returnRate
+      ? [bullet('Return in retirement', formatPercent(assumptions.retirementReturnRate, 0))]
+      : []),
     bullet('Inflation (fixed-dollar thresholds)', formatPercent(assumptions.inflationRate ?? 0, 1)),
     bullet('Age 65+ deductions in retirement', assumptions.ageDeductions ? 'included' : 'left out'),
     bullet('Medicare IRMAA surcharges', assumptions.medicareIrmaa ? 'included' : 'left out'),

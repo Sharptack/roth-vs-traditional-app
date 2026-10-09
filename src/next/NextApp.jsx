@@ -155,7 +155,8 @@ export default function NextApp({ initialPage, client }) {
   const pensionInputs = useMemo(() => (h.calculators.pension ? householdToPensionInputs(h) : null), [h]);
   const pension = useMemo(() => (shownOn(page, 'pension') && pensionInputs ? pensionResult(pensionInputs) : null), [pensionInputs, page]);
   const pretaxBalance = h.accounts.filter((a) => a.type === 'pretax').reduce((sum, a) => sum + (a.balance || 0), 0);
-  const realReturn = h.assumptions.returnRate;
+  // A lump sum is invested in retirement: the return after retirement (version 1: the one return).
+  const realReturn = h.assumptions.retirementReturnRate ?? h.assumptions.returnRate;
   const inflation = h.assumptions.inflationRate ?? 0;
   // The projection runs many whole projections (sustainable spending), so it follows the inputs a
   // beat behind while typing (useDeferredValue) instead of blocking each keystroke.

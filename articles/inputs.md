@@ -121,6 +121,7 @@ Together they set the **retirement income number**, the after-tax income the hou
 ## Assumptions
 
 - **Expected annual investment return,** after inflation, the same for every account.
+- **Return in retirement:** the return once no one in the household works (for a couple, from the year the last one retires), for example for a more conservative mix; by default the same as before. The projection uses each return in its own years, and the pension calculator compares the pension with the return in retirement, since a lump sum is invested then. The Roth comparison grows savings only up to that point, so it uses the return before retirement.
 - **Inflation** (2.5% by default). Brackets and limits rise with inflation by law, so in today's dollars they stay put. Some thresholds are fixed dollar amounts in the law and don't rise: Social Security taxability, the Net Investment Income Tax, the Additional Medicare Tax and the senior deduction's phase-out. At this rate they shrink, in today's dollars, the further ahead the year.
 - **Age 65+ deductions in retirement:** the additional standard deduction at 65, and the senior deduction ($6,000 each, phased out above $75,000 of income, $150,000 joint), which is law for 2025 to 2028 only.
 - **Medicare IRMAA surcharges:** from 65, Medicare Part B and Part D premiums carry a surcharge when income two years earlier was above a threshold. The projection charges it each year; the tax and conversion calculators show the effect of this year's income.

@@ -181,7 +181,9 @@ export const INPUT_SECTIONS = [
       const a = v.assumptions;
       const shift = Number(a.retirementRateShift);
       return [
-        `${Math.round(Number(a.returnRate) * 100)}% return after inflation`,
+        a.retirementReturnRate === 'same' || a.retirementReturnRate === undefined || Number(a.retirementReturnRate) === Number(a.returnRate)
+          ? `${Math.round(Number(a.returnRate) * 100)}% return after inflation`
+          : `${Math.round(Number(a.returnRate) * 100)}% return after inflation, ${Math.round(Number(a.retirementReturnRate) * 100)}% in retirement`,
         `${pct(a.inflationRate)} inflation`,
         shift ? `rates ${shift > 0 ? '+' : '−'}${Math.abs(Math.round(shift * 100))} pts in retirement` : null,
         a.medicareIrmaa === 'no' ? 'no IRMAA' : null,
@@ -231,7 +233,7 @@ export const ALL_SECTION_IDS = INPUT_GROUPS.flatMap((g) => g.sections);
 // A person's fields, and the assumptions (a calculator's card can show some of them). The
 // withdrawal strategy and heirs' tax rate are the projection's (calculators.projection).
 export const PERSON_FIELDS = ['age', 'sex', 'retirementAge', 'planToAge'];
-export const ASSUMPTION_FIELDS = ['returnRate', 'inflationRate', 'ageDeductions', 'medicareIrmaa', 'retirementRateShift', 'taxSavedBasis', 'survivorSpending', 'dividendYield', 'strategy', 'heirTaxRate'];
+export const ASSUMPTION_FIELDS = ['returnRate', 'retirementReturnRate', 'inflationRate', 'ageDeductions', 'medicareIrmaa', 'retirementRateShift', 'taxSavedBasis', 'survivorSpending', 'dividendYield', 'strategy', 'heirTaxRate'];
 const WITHOUT_PROJECTION = ASSUMPTION_FIELDS.filter((f) => f !== 'strategy' && f !== 'heirTaxRate');
 
 // The inputs each calculator reads: its sections (its own first), for the household and the
@@ -259,7 +261,7 @@ export const CALCULATOR_INPUTS = {
   },
   pension: {
     sections: ['pension', 'household', 'assumptions'],
-    fields: { people: ['age', 'sex'], assumptions: ['returnRate', 'inflationRate'] },
+    fields: { people: ['age', 'sex'], assumptions: ['retirementReturnRate', 'returnRate', 'inflationRate'] },
   },
 };
 
