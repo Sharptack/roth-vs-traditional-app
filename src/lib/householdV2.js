@@ -198,6 +198,7 @@ export function toHouseholdV2(input, year) {
       taxSavedAcrossContribution: a.taxSavedBasis === 'average',
       retirementRateShift: Number(a.retirementRateShift ?? 0) || 0,
       medicareIrmaa: a.medicareIrmaa === 'yes',
+      survivorSpending: Number.isFinite(Number(a.survivorSpending)) && String(a.survivorSpending).trim() !== '' ? Number(a.survivorSpending) : 0.8,
       // The QBI deduction on 1099 earnings (qbi.js, basic rule): always, in version 2 (round 2
       // phase 1). Version 1 households (household.js) leave it out, as the current calculator does.
       qualifiedBusinessIncome: true,

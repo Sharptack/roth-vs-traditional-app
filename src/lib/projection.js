@@ -32,8 +32,21 @@
 // recorded but, like tax, comes out of the paycheck. In the first retirement year of a
 // one-person household this is exactly what the total portfolio section computes (tested).
 //
-// Simplifications (v1): spending is flat in today's dollars; earnings are flat (no raises); no
-// survivor years (filing status and both benefits continue to the end age); returns are constant.
+// Survivor years (phase 2, decided 2026-10-09): a couple filing jointly where each person has a
+// plan-to age. Each person lives through the year they reach it; only the first death is modeled
+// (the survivor lives to the end age). The year of death stays joint; from the next year:
+//   - filing status single (brackets, deductions, SS taxability, NIIT, IRMAA all follow it);
+//     qualifying surviving spouse status (needs a dependent child) is not modeled
+//   - Social Security: the larger of the survivor's own benefit (with any spousal top-up) and the
+//     deceased's own, the deceased's from the survivor's age 60 (phase 5 refines the survivor rules)
+//   - the deceased's pensions continue at their survivor share; their wages and contributions stop
+//   - spending: the need x assumptions.survivorSpending (default 80%)
+//   - at the end of the year of death the deceased's accounts become the survivor's (a spousal
+//     rollover: RMDs follow the survivor's age), and taxable accounts get a step-up in basis
+// Without plan-to ages (version 1 households), or with both past the end age, nothing changes.
+//
+// Simplifications: spending is flat in today's dollars; earnings are flat (no raises); returns are
+// constant.
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
 import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateHouseholdSocialSecurity } from './socialSecurity.js';
@@ -47,6 +60,10 @@ import { pensionIncomeInYear } from './pensionIncome.js';
 import { IRMAA_LOOKBACK_YEARS } from '../data/irmaa.js';
 
 export const DEFAULT_END_AGE = 95;
+// Spending in survivor years, as a share of the couple's (assumptions.survivorSpending).
+export const DEFAULT_SURVIVOR_SPENDING = 0.8;
+// The earliest age a survivor benefit is paid.
+const SURVIVOR_BENEFIT_AGE = 60;
 
 // v1 strategy: proportional. The same fraction k of every account's start-of-year balance, with
 // each Pre-tax account's RMD as a floor, k solved so after-tax cash meets the need.
@@ -125,6 +142,11 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   const lastAge = endAge ?? assumptions.endAge ?? DEFAULT_END_AGE;
   const age0 = people.map((p) => year - p.birthYear);
   const ss = socialSecuritySchedule(household);
+  // Survivor years: only a couple filing jointly; a person with no plan-to age never dies.
+  const survivorRules = people.length === 2 && filingStatus === 'mfj';
+  const lastYearAlive = people.map((p) => (Number.isFinite(p.planToAge) ? p.planToAge : Infinity));
+  const survivorSpending = assumptions.survivorSpending ?? DEFAULT_SURVIVOR_SPENDING;
+  let deceased = -1; // the index of the person who has died, from the year after their death
   const plan =
     contributions ??
     fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount, type: c.currentType ?? fc.currentType }));
@@ -154,14 +176,20 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   for (let t = 0; age0[0] + t <= lastAge; t++) {
     const calendarYear = year + t;
     const ages = age0.map((a) => a + t);
-    const working = people.map((p, i) => ages[i] < p.retirementAge);
-    const anyRetired = working.some((w) => !w);
+    const alive = people.map((_, i) => i !== deceased);
+    const survivorYear = deceased >= 0;
+    const filingStatusThisYear = survivorYear ? 'single' : filingStatus;
+    const working = people.map((p, i) => alive[i] && ages[i] < p.retirementAge);
+    const anyRetired = people.some((_, i) => alive[i] && !working[i]);
     const thresholdScale = 1 / (1 + inflation) ** t;
-    const socialSecurity = ss.reduce(
-      (acc, s, i) => acc + (ages[i] >= s.ownStartAge ? s.own : 0) + (ages[i] >= s.topUpStartAge ? s.topUp : 0),
-      0,
-    );
-    const pension = pensionIncomeInYear(household, t); // today's dollars (pensionIncome.js)
+    const ssOf = (i) => (ages[i] >= ss[i].ownStartAge ? ss[i].own : 0) + (ages[i] >= ss[i].topUpStartAge ? ss[i].topUp : 0);
+    let socialSecurity;
+    if (survivorYear) {
+      const s = 1 - deceased;
+      socialSecurity = Math.max(ssOf(s), ages[s] >= SURVIVOR_BENEFIT_AGE ? ss[deceased].own : 0);
+    } else socialSecurity = people.reduce((acc, _, i) => acc + ssOf(i), 0);
+    // today's dollars (pensionIncome.js)
+    const pension = pensionIncomeInYear(household, t, { deceased: survivorYear ? people[deceased].id : null });
 
     // 2. This year's contributions (paid in at the end of the year).
     const made = [];
@@ -193,15 +221,17 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     });
 
     // Medicare IRMAA this year (set by MAGI two years back; see the header). evaluate() subtracts it.
-    const enrolled = assumptions.medicareIrmaa ? medicareEnrollees(ages) : 0;
+    const enrolled = assumptions.medicareIrmaa ? medicareEnrollees(ages.filter((_, i) => alive[i])) : 0;
     let irmaa = null;
     let irmaaThisYear = 0;
 
-    const peopleThisYear = people.map((p, i) => ({
-      age: assumptions.ageDeductions ? ages[i] : undefined,
-      wages: working[i] ? p.wages : 0,
-      selfEmploymentIncome: working[i] ? p.selfEmploymentIncome : 0,
-    }));
+    const peopleThisYear = people
+      .map((p, i) => ({
+        age: assumptions.ageDeductions ? ages[i] : undefined,
+        wages: working[i] ? p.wages : 0,
+        selfEmploymentIncome: working[i] ? p.selfEmploymentIncome : 0,
+      }))
+      .filter((_, i) => alive[i]);
     const taxParams = (withdrawals, conversions = []) => {
       let ordinaryIncome = pension + conversions.reduce((s, c) => s + c.amount, 0);
       let preferentialIncome = 0;
@@ -212,7 +242,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         if (a.type === 'taxable') preferentialIncome += w * (a.balance > 0 ? Math.max(0, 1 - a.basis / a.balance) : 0);
       }
       return {
-        filingStatus,
+        filingStatus: filingStatusThisYear,
         year, // today's law, in today's dollars
         calendarYear,
         people: peopleThisYear,
@@ -235,7 +265,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     };
 
     const live = accounts.filter((a) => a.balance > 0);
-    const needThisYear = anyRetired ? need : 0;
+    const needThisYear = anyRetired ? need * (survivorYear ? survivorSpending : 1) : 0;
     const solveYear = () => {
       // 4. Withdrawals: the strategy once anyone has retired; RMDs only while everyone works.
       const proposed = anyRetired
@@ -243,6 +273,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
             year: calendarYear,
             ages,
             working,
+            alive,
             household,
             taxYear: year,
             rateShift: rateShiftInRetirement,
@@ -250,7 +281,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
             rmdByAccount,
             need: needThisYear,
             socialSecurity,
-            filingStatus,
+            filingStatus: filingStatusThisYear,
             evaluate,
           })
         : { withdrawals: { ...rmdByAccount }, conversions: [] };
@@ -274,7 +305,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     if (enrolled > 0) {
       const back = t - IRMAA_LOOKBACK_YEARS;
       const lookbackMagi = back >= 0 ? rows[back].magi : rows.length > 0 ? rows[0].magi : solveYear().tax.lines.magi;
-      irmaa = irmaaCost({ magi: lookbackMagi, filingStatus, year, enrolled });
+      irmaa = irmaaCost({ magi: lookbackMagi, filingStatus: filingStatusThisYear, year, enrolled });
       irmaaThisYear = irmaa.total;
     }
     const { withdrawals, conversions, tax, cash } = solveYear();
@@ -314,15 +345,30 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       }
     }
     if (surplus > 0.005) {
-      const side = accountFor(people[0].id, 'taxable');
+      const side = accountFor(people[survivorYear ? 1 - deceased : 0].id, 'taxable');
       side.balance += surplus;
       side.basis += surplus;
+    }
+    // A death this year (only the first, and not both at once): from the year end the deceased's
+    // accounts are the survivor's, taxable ones with a step-up in basis.
+    if (survivorRules && !survivorYear) {
+      const dying = people.map((_, i) => ages[i] >= lastYearAlive[i]);
+      if (dying.filter(Boolean).length === 1) {
+        deceased = dying.indexOf(true);
+        for (const a of accounts) {
+          if (a.owner !== people[deceased].id) continue;
+          a.owner = people[1 - deceased].id;
+          if (a.type === 'taxable') a.basis = a.balance;
+        }
+      }
     }
     const endBalances = byType(Object.fromEntries(accounts.map((a) => [a.id, a.balance])));
 
     rows.push({
       year: calendarYear,
       ages,
+      alive,
+      filingStatus: filingStatusThisYear,
       working,
       socialSecurity,
       pension,

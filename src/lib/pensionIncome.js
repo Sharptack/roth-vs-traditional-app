@@ -19,14 +19,17 @@ export function pensionIncomeAt({ monthly, startAge, cola = 0 }, { ageNow, age, 
 }
 
 // The household's pensions at year t of the projection (t = 0 is this year), each owner at their
-// own age then. household.pensions: [{ owner, monthly, startAge, cola }]; absent = none.
-export function pensionIncomeInYear(household, t) {
+// own age then. household.pensions: [{ owner, monthly, startAge, cola, survivorShare }]; absent =
+// none. deceased: the id of a person who has died (survivor years, projection.js): their pensions
+// continue at their survivor share (0 when none was entered), on the same schedule.
+export function pensionIncomeInYear(household, t, { deceased = null } = {}) {
   const { year, people, pensions = [], assumptions } = household;
   const inflation = assumptions?.inflationRate ?? 0;
   return pensions.reduce((sum, p) => {
     const owner = people.find((x) => x.id === p.owner);
     if (!owner) return sum;
     const ageNow = year - owner.birthYear;
-    return sum + pensionIncomeAt(p, { ageNow, age: ageNow + t, inflation });
+    const share = p.owner === deceased ? (p.survivorShare ?? 0) : 1;
+    return sum + share * pensionIncomeAt(p, { ageNow, age: ageNow + t, inflation });
   }, 0);
 }

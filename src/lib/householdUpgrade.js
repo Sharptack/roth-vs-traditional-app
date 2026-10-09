@@ -119,6 +119,7 @@ export function upgradeHouseholdValues(values, year) {
       taxSavedBasis: pick(v, 'taxSavedBasis'),
       retirementRateShift: pick(v, 'retirementRateShift'),
       medicareIrmaa: pick(v, 'medicareIrmaa'),
+      survivorSpending: '0.8', // new in version 2 (survivor years, phase 2)
     },
     calculators: {
       projection: { endAge: v.projEndAge, heirTaxRate: v.projHeirTaxRate, strategy: v.projStrategy },

@@ -33,7 +33,8 @@
 //                                          // interest rate in percent, as typed (6.5); payment monthly
 //   deductions: { itemized },               // itemized deductions, one yearly total ('' = the standard deduction)
 //   spending: { debtPayments, otherExpenses, retirementLifestyle },   // the costs that end at retirement
-//   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedBasis, retirementRateShift, medicareIrmaa },
+//   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedBasis, retirementRateShift, medicareIrmaa,
+//                  survivorSpending },     // survivorSpending: a couple's spending after the first death, '0.8' = 80%
 //   calculators: { projection: { heirTaxRate, strategy }, conversion: { amount },
 //                  pension: { lumpSum } },   // the lump-sum offer for the household's first pension
 // }
@@ -111,6 +112,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
     taxSavedBasis: 'average',
     retirementRateShift: '0',
     medicareIrmaa: 'yes',
+    survivorSpending: '0.8',
   },
   calculators: {
     projection: { heirTaxRate: '0.24', strategy: 'proportional' },

@@ -1,5 +1,5 @@
 // Withdrawal strategies (roadmap phase 7). Pure. Each has the projection's strategy signature
-//   ({ accounts, rmdByAccount, need, evaluate, ages, working, household, taxYear, rateShift, filingStatus })
+//   ({ accounts, rmdByAccount, need, evaluate, ages, working, alive, household, taxYear, rateShift, filingStatus })
 //     -> { withdrawals: { [accountId]: amount }, conversions: [{ from, amount }] }
 // so the loop, the summary and the pages don't change. evaluate(withdrawals, conversions) is the
 // engine's after-tax cash (and tax lines) for a choice; the engine still enforces at least the RMD
@@ -102,11 +102,13 @@ export function fillBracketStrategy(rate) {
 // the conversion's tax included (twice, since paying the tax can move the bracket).
 export function rothConversionStrategy(rate) {
   const strategy = (args) => {
-    const { accounts, rmdByAccount, need, evaluate, filingStatus, taxYear, household, ages, working } = args;
+    const { accounts, rmdByAccount, need, evaluate, filingStatus, taxYear, household, ages, working, alive } = args;
     const at = sequentialAt(accounts, rmdByAccount, ['taxable', 'pretax', 'roth']);
     let withdrawals = solveDraw(at, accounts, rmdByAccount, need, evaluate);
-    // Owners who are retired and below their RMD start age convert.
-    const eligible = household.people.filter((p, i) => !working[i] && ages[i] < rmdStartAge(p.birthYear)).map((p) => p.id);
+    // Owners living, retired and below their RMD start age convert.
+    const eligible = household.people
+      .filter((p, i) => alive?.[i] !== false && !working[i] && ages[i] < rmdStartAge(p.birthYear))
+      .map((p) => p.id);
     const sources = accounts.filter((a) => a.type === 'pretax' && eligible.includes(a.owner));
     if (sources.length === 0) return { withdrawals, conversions: [] };
     const asConversions = (amount) => {

@@ -42,7 +42,10 @@ describe('version 2 household values: defaults', () => {
     expect(D.accounts).toEqual(v1.accounts);
     expect(D.liabilities).toEqual([]);
     expect(D.spending).toEqual({ debtPayments: v1.debtPayments, otherExpenses: v1.otherExpenses, retirementLifestyle: v1.retirementLifestyle });
-    for (const k of Object.keys(D.assumptions)) expect(D.assumptions[k]).toBe(v1[k]);
+    // survivor years' spending is new in version 2 (phase 2)
+    const { survivorSpending, ...shared } = D.assumptions;
+    expect(survivorSpending).toBe('0.8');
+    for (const k of Object.keys(shared)) expect(D.assumptions[k]).toBe(v1[k]);
     expect(D.calculators.projection).toEqual({
       heirTaxRate: PROJECTION_DEFAULT_VALUES.projHeirTaxRate,
       strategy: PROJECTION_DEFAULT_VALUES.projStrategy,

@@ -206,3 +206,115 @@ describe('runProjection: Medicare IRMAA (2026, HAND CALC)', () => {
     expect(rows[1].irmaa).toBeGreaterThan(0);
   });
 });
+
+// Survivor years (phase 2, step a). A retired couple filing jointly, built directly; each person
+// lives through the year they reach their plan-to age, and the survivor files single from the next.
+function couple({ age1 = 80, age2 = 66, planTo1 = 80, planTo2 = 95, ss1 = 0, ss2 = 0, accounts = [], pensions, survivorSpending, returnRate = 0 } = {}) {
+  const person = (id, age, planToAge, benefit) => ({
+    id,
+    birthYear: Y - age,
+    retirementAge: age - 1,
+    planToAge,
+    wages: 0,
+    selfEmploymentIncome: 0,
+    socialSecurity: { known: true, benefit, claimAge: null },
+  });
+  return {
+    version: 1,
+    year: Y,
+    filingStatus: 'mfj',
+    people: [person('p1', age1, planTo1, ss1), person('p2', age2, planTo2, ss2)],
+    accounts,
+    ...(pensions && { pensions }),
+    futureContributions: { currentType: 'pretax', accountType: '401k', contributions: [{ owner: 'p1', amount: 0 }, { owner: 'p2', amount: 0 }] },
+    spending: { debtPaymentsEnding: 0, otherExpensesEnding: 0, retirementLifestyle: 1 },
+    calculators: {},
+    assumptions: { returnRate, inflationRate: 0, ageDeductions: false, ...(survivorSpending !== undefined && { survivorSpending }) },
+  };
+}
+
+describe('runProjection: survivor years (2026, HAND CALC)', () => {
+  it('the year after the first death: single brackets, 80% spending, the survivor’s RMD age', () => {
+    // p1 80 (born 1946, plan to 80: dies at the end of this year), p2 66 (born 1960, RMDs from 75).
+    // One Pre-tax account of p1's, $1,000,000, return 0, need $60,000.
+    // Year 0 (joint, the year of death): RMD 1,000,000 / 20.2 = 49,504.95, less than the need's W.
+    //   W - tax = 60,000, tax = 2,480 + 12% x (W - 32,200 - 24,800) = 0.12 W - 4,360
+    //   -> 0.88 W = 55,640 -> W = 63,227.2727; tax 3,227.2727; end balance 936,772.7273
+    // Year 1 (p2 67, single; the account is now p2's: no RMD before 75), need 80% = 48,000:
+    //   tax = 1,240 + 12% x (W - 16,100 - 12,400) = 0.12 W - 2,180 -> 0.88 W = 45,820
+    //   -> W = 52,068.1818; tax 4,068.1818 (taxable 35,968.18, inside the 12% bracket)
+    //   end balance 884,704.5455. Year 2 (p2 68): the same; end 832,636.3636.
+    const h = couple({ accounts: [{ id: 'a1', owner: 'p1', type: 'pretax', balance: 1000000 }] });
+    const { rows } = runProjection(h, { need: 60000, endAge: 82 });
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.filingStatus)).toEqual(['mfj', 'single', 'single']);
+    expect(rows.map((r) => r.alive)).toEqual([[true, true], [false, true], [false, true]]);
+    expect(rows[0].rmd).toBeCloseTo(49504.95, 2);
+    expect(rows[0].withdrawals.pretax).toBeCloseTo(55640 / 0.88, 4);
+    expect(rows[0].totalTax).toBeCloseTo(3227.2727, 3);
+    for (const r of rows.slice(1)) {
+      expect(r.rmd).toBe(0);
+      expect(r.need).toBe(48000);
+      expect(r.withdrawals.pretax).toBeCloseTo(45820 / 0.88, 4);
+      expect(r.totalTax).toBeCloseTo(4068.1818, 3);
+      expect(r.afterTaxIncome).toBeCloseTo(48000, 4);
+    }
+    expect(rows.map((r) => r.endBalances.pretax)).toEqual([
+      expect.closeTo(936772.7273, 3),
+      expect.closeTo(884704.5455, 3),
+      expect.closeTo(832636.3636, 3),
+    ]);
+  });
+
+  it('survivor spending is an input: 70% of $60,000', () => {
+    // Year 1, single, need 42,000: 0.88 W = 42,000 - 2,180 = 39,820 -> W = 45,250; tax 5,430 - 2,180 = 3,250
+    const h = couple({ accounts: [{ id: 'a1', owner: 'p1', type: 'pretax', balance: 1000000 }], survivorSpending: 0.7 });
+    const r = runProjection(h, { need: 60000, endAge: 81 }).rows[1];
+    expect(r.need).toBe(42000);
+    expect(r.withdrawals.pretax).toBeCloseTo(45250, 6);
+    expect(r.totalTax).toBeCloseTo(3250, 6);
+  });
+
+  it('Social Security: the survivor keeps the larger of the two benefits', () => {
+    // known benefits (no spousal top-up): 30,000 + 12,000 while both live; then the larger, 30,000
+    const larger = runProjection(couple({ ss1: 30000, ss2: 12000 }), { need: 0, endAge: 82 }).rows;
+    expect(larger.map((r) => r.socialSecurity)).toEqual([42000, 30000, 30000]);
+    // the survivor's own is larger: they keep it (12,000)
+    const own = runProjection(couple({ ss1: 10000, ss2: 12000 }), { need: 0, endAge: 81 }).rows;
+    expect(own.map((r) => r.socialSecurity)).toEqual([22000, 12000]);
+  });
+
+  it("pensions: the deceased's continues at its survivor share, the survivor's in full", () => {
+    // p1: $2,000 a month from 65, 50% to the survivor; p2: $1,000 a month from 65, no survivor share.
+    // Both started, no COLA, inflation 0: 24,000 + 12,000 = 36,000; then 12,000 + 12,000 = 24,000
+    const pensions = [
+      { owner: 'p1', monthly: 2000, startAge: 65, cola: 0, survivorShare: 0.5 },
+      { owner: 'p2', monthly: 1000, startAge: 65, cola: 0, survivorShare: 0 },
+    ];
+    const { rows } = runProjection(couple({ pensions }), { need: 0, endAge: 81 });
+    expect(rows.map((r) => r.pension)).toEqual([36000, 24000]);
+  });
+
+  it("the deceased's taxable account gets a step-up in basis at the end of the year of death", () => {
+    // $100,000 taxable of p1's, 20% basis, 10% return, nothing withdrawn: 110,000 at year end, its
+    // basis stepped up from 20,000 to 110,000 (without a death it stays 20,000)
+    const accounts = [{ id: 'a1', owner: 'p1', type: 'taxable', balance: 100000, basisShare: 0.2 }];
+    const died = runProjection(couple({ accounts, returnRate: 0.1 }), { need: 0, endAge: 80 }).rows[0];
+    expect(died.endBalances.taxable).toBeCloseTo(110000, 6);
+    expect(died.taxableBasis).toBeCloseTo(110000, 6);
+    const lived = runProjection(couple({ accounts, returnRate: 0.1, planTo1: 95 }), { need: 0, endAge: 80 }).rows[0];
+    expect(lived.taxableBasis).toBeCloseTo(20000, 6);
+  });
+
+  it('no death before the end age (or no plan-to ages): the results are unchanged', () => {
+    const accounts = [
+      { id: 'a1', owner: 'p1', type: 'pretax', balance: 800000 },
+      { id: 'a2', owner: 'p2', type: 'taxable', balance: 200000, basisShare: 0.5 },
+    ];
+    const run = (planTo1, planTo2) =>
+      runProjection(couple({ accounts, planTo1, planTo2, ss1: 30000, ss2: 15000, returnRate: 0.05 }), { need: 70000, endAge: 90 }).rows;
+    const without = run(null, null);
+    expect(run(95, 95)).toEqual(without);
+    expect(without.every((r) => r.filingStatus === 'mfj')).toBe(true);
+  });
+});
