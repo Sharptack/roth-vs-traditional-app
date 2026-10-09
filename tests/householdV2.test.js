@@ -17,16 +17,23 @@ describe('toHouseholdV2', () => {
     const h2 = toHouseholdV2(D, Y);
     const h1 = toHousehold(PREVIEW_DEFAULT_VALUES, Y);
     expect(h2.version).toBe(2);
-    // version 2 adds the QBI deduction on 1099 earnings (round 2 phase 1); otherwise the same
-    expect(householdToCompareInputs(h2)).toEqual({ ...householdToCompareInputs(h1), qualifiedBusinessIncome: true });
+    // version 2 adds the QBI deduction on 1099 earnings (round 2 phase 1) and tax drag on taxable money
+    // (phase 2: 1.3% dividends, taxed at 15%: single, $100,000 of wages is in the 15% capital-gains
+    // bracket); otherwise the same
+    expect(householdToCompareInputs(h2)).toEqual({
+      ...householdToCompareInputs(h1),
+      qualifiedBusinessIncome: true,
+      taxableDividends: { yield: 0.013, taxRate: 0.15 },
+    });
     expect(householdToYearTaxParams(h2)).toEqual({ ...householdToYearTaxParams(h1), qbi: true });
     // no pension row: nothing for the pension calculator (version 1 always had its example offer)
     expect(h2.calculators.pension).toBeNull();
     expect(h2.pensions).toEqual([]);
     expect(h2.calculators.projection).toEqual(h1.calculators.projection);
     expect(h2.calculators.conversion).toEqual(h1.calculators.conversion);
-    // and survivor years' spending (phase 2), which version 1 never reaches (no plan-to ages)
-    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true, survivorSpending: 0.8 });
+    // and survivor years' spending (phase 2), which version 1 never reaches (no plan-to ages), and the
+    // dividends on taxable accounts (tax drag, phase 2)
+    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true, survivorSpending: 0.8, dividendYield: 0.013 });
     expect(h2.spending).toEqual(h1.spending);
   });
 

@@ -1092,3 +1092,52 @@ describe('result.blend — the Roth/Pre-tax split explorer (blend.js), wired int
     );
   });
 });
+
+describe('tax drag on taxable money (taxableDividends, HAND CALC)', () => {
+  // Single, 2026, 40 -> 42 (2 years) at 5%; dividends 2% a year taxed at 15% while saving.
+  const base = {
+    ...baseInputs,
+    year: 2026,
+    currentAge: 40,
+    retirementAge: 42,
+    returnRate: 0.05,
+    savings: 30000,
+    currentType: 'roth',
+    otherTaxableBalance: 100000,
+    otherTaxableBasis: 1,
+    taxableDividends: { yield: 0.02, taxRate: 0.15 },
+  };
+
+  it('Existing Accounts: the taxable balance grows less, its basis more; dividends taxed whole in retirement', () => {
+    // year 1: 100,000 x 1.05 - 300 = 104,700 (basis 101,700); year 2: 104,700 x 1.05 - 314.10
+    //   = 109,620.90 (basis 103,479.90); gain 6,141
+    // 4% withdrawal 4,384.836: dividends 2% x 109,620.90 = 2,192.418 taxed whole, the 2,192.418 sold
+    //   taxed on its gain share 6,141 / 109,620.90 -> 2% x 6,141 = 122.82; taxed 2,315.238
+    const r = compareRothVsTraditional(base);
+    expect(r.portfolio.roth.buckets.taxable - r.annuity.roth.side.futureValue).toBeCloseTo(109620.9, 6);
+    expect(r.otherWithdrawals.taxableGross).toBeCloseTo(4384.836, 6);
+    expect(r.otherWithdrawals.taxableGains).toBeCloseTo(2315.238, 6);
+  });
+
+  it('the side account over the IRS limit: Roth puts $5,500 a year in it', () => {
+    // 30,000 Roth, limit 24,500: 5,500 a year to the side account.
+    // year 1: 5,500 (basis 5,500). year 2: dividends 110, tax 16.50 -> 5,500 x 1.05 - 16.50 + 5,500
+    //   = 11,258.50; basis 5,500 + 93.50 + 5,500 = 11,093.50
+    // One year's contribution (the lump sum): 5,500 x 1.05 - 16.50 = 5,758.50; then dividends 115.17,
+    //   tax 17.2755 -> 5,758.50 x 1.05 - 17.2755 = 6,029.1495
+    const r = compareRothVsTraditional(base);
+    expect(r.contributionSplit.roth.excessToTaxable).toBeCloseTo(5500, 6);
+    expect(r.annuity.roth.side.futureValue).toBeCloseTo(11258.5, 6);
+    expect(r.annuity.roth.side.basis).toBeCloseTo(11093.5, 6);
+    expect(r.lumpSum.roth.side.futureValue).toBeCloseTo(6029.1495, 6);
+    // The blend explorer's all-Roth end grows the same side account.
+    const allRoth = r.blend.points[r.blend.points.length - 1];
+    expect(allRoth.sideFV).toBeCloseTo(11258.5, 6);
+  });
+
+  it('absent: exactly the result without dividends', () => {
+    const { taxableDividends, ...without } = base;
+    expect(taxableDividends.yield).toBe(0.02);
+    expect(compareRothVsTraditional({ ...without, taxableDividends: { yield: 0, taxRate: 0.15 } })).toEqual(compareRothVsTraditional(without));
+  });
+});

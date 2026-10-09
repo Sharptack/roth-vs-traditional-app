@@ -199,6 +199,8 @@ export function toHouseholdV2(input, year) {
       retirementRateShift: Number(a.retirementRateShift ?? 0) || 0,
       medicareIrmaa: a.medicareIrmaa === 'yes',
       survivorSpending: Number.isFinite(Number(a.survivorSpending)) && String(a.survivorSpending).trim() !== '' ? Number(a.survivorSpending) : 0.8,
+      // Tax drag (phase 2): the qualified dividends a taxable account pays a year (projection.js, compare.js).
+      dividendYield: Number(a.dividendYield) >= 0 && String(a.dividendYield ?? '').trim() !== '' ? Number(a.dividendYield) : 0.013,
       // The QBI deduction on 1099 earnings (qbi.js, basic rule): always, in version 2 (round 2
       // phase 1). Version 1 households (household.js) leave it out, as the current calculator does.
       qualifiedBusinessIncome: true,

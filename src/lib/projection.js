@@ -45,6 +45,16 @@
 //     rollover: RMDs follow the survivor's age), and taxable accounts get a step-up in basis
 // Without plan-to ages (version 1 households), or with both past the end age, nothing changes.
 //
+// Tax drag (phase 2 step c, decided 2026-10-09): assumptions.dividendYield, the qualified dividends a
+// taxable account pays each year as a share of what stays invested (its balance less this year's
+// withdrawal). Part of the return, not added to it. The dividends are taxed in the year (capital-gains
+// rates and NIIT, through calculateYearTax, so they count in Social Security taxability, MAGI and
+// IRMAA) and reinvested, adding to cost basis. Who pays the tax:
+//   - once anyone has retired, the year's cash (the strategy withdraws enough to cover it)
+//   - while everyone works, the account itself: the paycheck is the budget, so less of the dividend
+//     is reinvested (tax = the year's tax with the dividends − without them; basis rises by the rest)
+// Absent (version 1 households) = no dividends, as before.
+//
 // Simplifications: spending is flat in today's dollars; earnings are flat (no raises); returns are
 // constant.
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
@@ -146,6 +156,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   const survivorRules = people.length === 2 && filingStatus === 'mfj';
   const lastYearAlive = people.map((p) => (Number.isFinite(p.planToAge) ? p.planToAge : Infinity));
   const survivorSpending = assumptions.survivorSpending ?? DEFAULT_SURVIVOR_SPENDING;
+  const dividendYield = assumptions.dividendYield ?? 0;
   let deceased = -1; // the index of the person who has died, from the year after their death
   const plan =
     contributions ??
@@ -232,9 +243,17 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         selfEmploymentIncome: working[i] ? p.selfEmploymentIncome : 0,
       }))
       .filter((_, i) => alive[i]);
-    const taxParams = (withdrawals, conversions = []) => {
+    // Each taxable account's qualified dividends this year, on what stays invested.
+    const dividendsOf = (withdrawals) =>
+      dividendYield > 0
+        ? Object.fromEntries(
+            accounts.filter((a) => a.type === 'taxable').map((a) => [a.id, Math.max(0, a.balance - (withdrawals[a.id] ?? 0)) * dividendYield]),
+          )
+        : {};
+    const sum = (o) => Object.values(o).reduce((s, x) => s + x, 0);
+    const taxParams = (withdrawals, conversions = [], withDividends = true) => {
       let ordinaryIncome = pension + conversions.reduce((s, c) => s + c.amount, 0);
-      let preferentialIncome = 0;
+      let preferentialIncome = withDividends ? sum(dividendsOf(withdrawals)) : 0;
       for (const a of accounts) {
         const w = withdrawals[a.id] ?? 0;
         if (!(w > 0)) continue;
@@ -256,8 +275,9 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       };
     };
     // Totals only while solving; the row below runs the full engine once (marginal rates, room).
-    const evaluate = (withdrawals, conversions = [], full = false) => {
-      const params = taxParams(withdrawals, conversions);
+    // withDividends false: the cash without the dividends' tax (while everyone works, the account pays it).
+    const evaluate = (withdrawals, conversions = [], full = false, withDividends = true) => {
+      const params = taxParams(withdrawals, conversions, withDividends);
       const tax = full ? calculateYearTax(params) : calculateYearTaxTotals(params);
       const withdrawn = Object.values(withdrawals).reduce((s, w) => s + w, 0);
       const earned = peopleThisYear.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0);
@@ -308,10 +328,22 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       irmaa = irmaaCost({ magi: lookbackMagi, filingStatus: filingStatusThisYear, year, enrolled });
       irmaaThisYear = irmaa.total;
     }
-    const { withdrawals, conversions, tax, cash } = solveYear();
+    const solved = solveYear();
+    const { withdrawals, conversions, tax } = solved;
+    const dividendsByAccount = dividendsOf(withdrawals);
+    const dividends = sum(dividendsByAccount);
+    // While everyone works the dividends' tax comes out of the dividends (reinvested less), not the
+    // paycheck: the year's cash leaves it out.
+    const accountPaysDividendTax = !anyRetired && dividends > 0;
+    const cash = accountPaysDividendTax ? evaluate(withdrawals, conversions, false, false).cash : solved.cash;
+    const dividendTax = accountPaysDividendTax ? cash - solved.cash : 0;
     // Surplus to reinvest: once retired, cash above the need; while everyone works, the after-tax
     // money from any RMD (cash with it minus cash without it), since the paycheck covers spending.
-    const surplus = anyRetired ? Math.max(0, cash - needThisYear) : rmdTotal > 0 ? Math.max(0, cash - evaluate({}).cash) : 0;
+    const surplus = anyRetired
+      ? Math.max(0, cash - needThisYear)
+      : rmdTotal > 0
+        ? Math.max(0, cash - evaluate({}, [], false, !accountPaysDividendTax).cash)
+        : 0;
     const shortfall = anyRetired && needThisYear - cash > 0.01 ? needThisYear - cash : 0;
     if (shortfall > 0 && runOutYear === null) runOutYear = calendarYear;
 
@@ -332,6 +364,13 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       const w = withdrawals[a.id] ?? 0;
       if (a.type === 'taxable' && a.balance > 0) a.basis *= 1 - w / a.balance;
       a.balance = (a.balance - w) * (1 + returnRate);
+      // Dividends are reinvested (cost basis); any tax the account pays comes off, by its dividends.
+      const d = dividendsByAccount[a.id] ?? 0;
+      if (d > 0) {
+        const taxPaid = (dividendTax * d) / dividends;
+        a.balance -= taxPaid;
+        a.basis += d - taxPaid;
+      }
     }
     const contributed = { pretax: 0, roth: 0, taxable: 0 };
     for (const m of made) {
@@ -397,6 +436,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       afterTaxIncome: cash, // after all tax and this year's contributions
       surplus,
       shortfall,
+      dividends, // qualified dividends from the taxable accounts this year (in grossIncome and the tax)
+      dividendTaxFromAccounts: dividendTax, // their tax when the accounts paid it (while everyone works)
       endBalances: { ...endBalances, total: endBalances.pretax + endBalances.roth + endBalances.taxable },
       taxableBasis: accounts.filter((a) => a.type === 'taxable').reduce((s, a) => s + a.basis, 0),
     });

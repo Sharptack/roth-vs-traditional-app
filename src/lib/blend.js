@@ -11,7 +11,7 @@
 // a blend can out-earn both pure strategies. Where it doesn't (the curve stays below or above
 // marginal-now the whole way), the optimum sits at one of the two ends — i.e. a pure strategy
 // already was optimal, and the blend curve just confirms it rather than finding something new.
-import { futureValueAnnuity, futureValueContributions } from './growthCalculations.js';
+import { futureValueAnnuity, futureValueContributions, growTaxable, taxedShareOfWithdrawal } from './growthCalculations.js';
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { WITHDRAWAL_RATE } from './constants.js';
 
@@ -68,6 +68,8 @@ export function evaluateBlend({
   savedByDeduction, // optional (preview): x -> tax saved by deducting x; then this mix's Pre-tax part
   //                   saves its own AVERAGE rate (fixed point), not marginalRate on every dollar
   returnRate,
+  dividendYield = 0, // optional: tax drag on the side account (compare.js taxableDividends)
+  dividendTaxRate = 0,
   years,
   other, // { pretaxGross, taxableGross, taxableGains } — Existing Accounts' 4% withdrawals
   existingTax, // tax on Social Security + Existing Accounts alone
@@ -95,15 +97,21 @@ export function evaluateBlend({
       : futureValueAnnuity(split[key], returnRate, years);
   const rothFV = grow('rothToAccount');
   const pretaxFV = grow('pretaxToAccount');
-  const sideFV = grow('excessToTaxable');
+  // The taxable side account, with any tax drag (same as compare.js's side accounts): every dollar
+  // that spills into it is cost basis (and reinvested dividends after their tax), so only its growth
+  // is gain; its withdrawal's taxed part counts the dividends whole.
+  const sideParts = ownYears
+    ? split.parts.map((p, i) => ({ payment: p.excessToTaxable, contributeYears: ownYears[i] }))
+    : [{ payment: split.excessToTaxable, contributeYears: years }];
+  const side = sideParts
+    .map((part) => growTaxable({ ...part, years, returnRate, dividendYield, taxRate: dividendTaxRate }))
+    .reduce((acc, g) => ({ value: acc.value + g.value, basis: acc.basis + g.basis }), { value: 0, basis: 0 });
+  const sideFV = side.value;
   const rothWithdrawal = WITHDRAWAL_RATE * rothFV;
   const pretaxWithdrawal = WITHDRAWAL_RATE * pretaxFV;
   const sideWithdrawal = WITHDRAWAL_RATE * sideFV;
-  // Every dollar that spills into the side account is cost basis, so only its growth is gain
-  // (same convention as compare.js's side accounts).
-  const sideBasis = ownYears ? split.parts.reduce((acc, p, i) => acc + p.excessToTaxable * ownYears[i], 0) : split.excessToTaxable * years;
-  const sideGainShare = sideFV > 0 ? Math.max(0, 1 - sideBasis / sideFV) : 1;
-  const sideGains = sideWithdrawal * sideGainShare;
+  const sideGainShare = sideFV > 0 ? Math.max(0, 1 - side.basis / sideFV) : 1;
+  const sideGains = sideWithdrawal * taxedShareOfWithdrawal(sideGainShare, dividendYield, WITHDRAWAL_RATE);
 
   const taxable = other.taxableGross + sideWithdrawal;
   const stack = calculateRetirementTax({

@@ -39,7 +39,8 @@
 // CLAUDE.md); only the #/next preview goes through here. For one person, the round trip
 // form -> household -> compare inputs gives exactly the inputs toCompareInputs gives (tested).
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from './formInputs.js';
-import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
+import { TAX_CALCULATOR_DEFAULT_VALUES, householdToYearTaxParams } from './taxCalculator.js';
+import { calculateYearTax } from './yearTax.js';
 import { CONVERSION_DEFAULT_VALUES } from './conversionCalculator.js';
 import { dependentsInYear } from './dependents.js';
 import { PENSION_DEFAULT_VALUES, pensionFromValues } from './pensionCalculator.js';
@@ -358,6 +359,12 @@ export function householdToCompareInputs(household) {
   if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
   if (assumptions.qualifiedBusinessIncome) inputs.qualifiedBusinessIncome = true;
   if (itemized > 0) inputs.itemizedDeductions = itemized;
+  // Tax drag (version 2 households, phase 2): taxable money pays qualified dividends, taxed while
+  // saving at today's rate on the next dollar of them (capital-gains rate and NIIT).
+  if (assumptions.dividendYield > 0) {
+    const today = calculateYearTax(householdToYearTaxParams(household));
+    inputs.taxableDividends = { yield: assumptions.dividendYield, taxRate: today.marginalRates.preferentialIncome.incomeTax };
+  }
   const { children, otherDependents } = dependentsInYear(household, 0);
   if (children > 0 || otherDependents > 0) inputs.childTaxCredit = { children, otherDependents };
   if (people.length > 1) {

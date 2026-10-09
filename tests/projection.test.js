@@ -318,3 +318,74 @@ describe('runProjection: survivor years (2026, HAND CALC)', () => {
     expect(without.every((r) => r.filingStatus === 'mfj')).toBe(true);
   });
 });
+
+describe('runProjection: tax drag on taxable accounts (2026, HAND CALC)', () => {
+  // A worker, 40, single, wages $100,000, retiring at 65; one taxable account of $100,000, all basis.
+  function worker({ dividendYield }) {
+    const h = retiree({ age: 40, taxable: 100000, basisShare: 1, returnRate: 0.05 });
+    h.people[0] = { ...h.people[0], retirementAge: 65, wages: 100000 };
+    h.assumptions = { ...h.assumptions, dividendYield };
+    return h;
+  }
+
+  it('while working, the account pays the dividends’ tax and reinvests the rest', () => {
+    // Taxable ordinary income 100,000 - 16,100 = 83,900, above the 0% capital-gains bracket ($49,450),
+    // so qualified dividends pay 15%; MAGI far below the NIIT threshold.
+    // Year 1: dividends 100,000 x 2% = 2,000; tax 300.
+    //   balance 100,000 x 1.05 - 300 = 104,700; basis 100,000 + 2,000 - 300 = 101,700
+    // Year 2: dividends 104,700 x 2% = 2,094; tax 314.10.
+    //   balance 104,700 x 1.05 - 314.10 = 109,620.90; basis 101,700 + 2,094 - 314.10 = 103,479.90
+    const { rows } = runProjection(worker({ dividendYield: 0.02 }), { endAge: 41 });
+    const plain = runProjection(worker({ dividendYield: 0 }), { endAge: 41 }).rows;
+    expect(rows.map((r) => r.dividends)).toEqual([expect.closeTo(2000, 6), expect.closeTo(2094, 6)]);
+    expect(rows.map((r) => r.dividendTaxFromAccounts)).toEqual([expect.closeTo(300, 6), expect.closeTo(314.1, 6)]);
+    expect(rows[0].capitalGainsTax).toBeCloseTo(300, 6);
+    expect(rows[0].totalTax - plain[0].totalTax).toBeCloseTo(300, 6);
+    expect(rows.map((r) => r.endBalances.taxable)).toEqual([expect.closeTo(104700, 6), expect.closeTo(109620.9, 6)]);
+    expect(rows.map((r) => r.taxableBasis)).toEqual([expect.closeTo(101700, 6), expect.closeTo(103479.9, 6)]);
+    // The paycheck is untouched: after-tax income is what it is without dividends.
+    rows.forEach((r, i) => expect(r.afterTaxIncome).toBeCloseTo(plain[i].afterTaxIncome, 6));
+  });
+
+  it('no yield (version 1 households) changes nothing', () => {
+    const h = worker({ dividendYield: 0 });
+    delete h.assumptions.dividendYield;
+    const { rows } = runProjection(h, { endAge: 41 });
+    expect(rows[0].dividends).toBe(0);
+    expect(rows[0].endBalances.taxable).toBeCloseTo(105000, 6);
+    expect(rows[0].taxableBasis).toBeCloseTo(100000, 6);
+  });
+
+  it('retired, under the 0% bracket: dividends on what stays invested, all reinvested as basis', () => {
+    // 70, $100,000 taxable all basis, need $10,000, return 5%, yield 2%. No gain, and the dividends
+    // are under the standard deduction: no tax, so W = 10,000.
+    // dividends (100,000 - 10,000) x 2% = 1,800; balance 90,000 x 1.05 = 94,500;
+    // basis 100,000 x (1 - 10,000 / 100,000) + 1,800 = 91,800
+    const h = retiree({ age: 70, taxable: 100000, basisShare: 1, returnRate: 0.05 });
+    h.assumptions.dividendYield = 0.02;
+    const r = runProjection(h, { need: 10000, endAge: 70 }).rows[0];
+    expect(r.withdrawals.taxable).toBeCloseTo(10000, 4);
+    expect(r.dividends).toBeCloseTo(1800, 4);
+    expect(r.totalTax).toBe(0);
+    expect(r.dividendTaxFromAccounts).toBe(0);
+    expect(r.endBalances.taxable).toBeCloseTo(94500, 4);
+    expect(r.taxableBasis).toBeCloseTo(91800, 4);
+  });
+
+  it('retired, in the 15% bracket: the withdrawal covers the dividends’ tax', () => {
+    // 70, $2,000,000 taxable all basis (no gain on a sale), need $100,000, yield 5%, return 5%.
+    // tax = 15% x ((2,000,000 - W) x 5% - 16,100 - 49,450) = 5,167.5 - 0.0075 W; W - tax = 100,000
+    //   -> 1.0075 W = 105,167.5 -> W = 104,384.6154; tax 4,384.6154
+    //   dividends (2,000,000 - W) x 5% = 94,780.7692 (taxable 78,680.77: inside the 15% bracket)
+    // balance (2,000,000 - W) x 1.05 = 1,990,396.1538 = basis 1,895,615.3846 + 94,780.7692
+    const h = retiree({ age: 70, taxable: 2000000, basisShare: 1, returnRate: 0.05 });
+    h.assumptions.dividendYield = 0.05;
+    const r = runProjection(h, { need: 100000, endAge: 70 }).rows[0];
+    expect(r.withdrawals.taxable).toBeCloseTo(105167.5 / 1.0075, 3);
+    expect(r.totalTax).toBeCloseTo(4384.6154, 3);
+    expect(r.dividends).toBeCloseTo(94780.7692, 3);
+    expect(r.afterTaxIncome).toBeCloseTo(100000, 3);
+    expect(r.endBalances.taxable).toBeCloseTo(1990396.1538, 3);
+    expect(r.taxableBasis).toBeCloseTo(1990396.1538, 3);
+  });
+});

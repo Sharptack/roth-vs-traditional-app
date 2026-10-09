@@ -40,7 +40,7 @@ describe('version 1 households open in version 2 with the same results', () => {
     it(name, () => {
       const v2 = upgradeHouseholdValues(values, YEAR);
       const before = withoutKnownBenefit(pinsFor(values));
-      const after = withoutKnownBenefit(pinsForV2(v2, { qbi: false, lastRetirement: false }));
+      const after = withoutKnownBenefit(pinsForV2(v2, { qbi: false, lastRetirement: false, dividends: false }));
       const hasPension = v2.incomes.some((r) => r.type === 'pension');
       expect(hasPension, name).toBe(PENSION_COUNTED.includes(name));
       if (hasPension) expect(withoutEndAges(after.pension)).toEqual(withoutEndAges(before.pension));

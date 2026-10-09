@@ -83,7 +83,7 @@ import { calculateSideAwareRates } from './sideAwareRates.js';
 import { findOptimalBlend } from './blend.js';
 import { calculateRetirementTax } from './retirementTaxStack.js';
 import { checkContributionLimit, combineLimitChecks, splitAtContributionLimit } from './contributionLimits.js';
-import { futureValueAnnuity, futureValueContributions, futureValueLumpSum } from './growthCalculations.js';
+import { futureValueAnnuity, futureValueContributions, futureValueLumpSum, growTaxable, taxedShareOfWithdrawal } from './growthCalculations.js';
 import {
   ACCOUNT_TYPES,
   CONTRIBUTION_TYPES,
@@ -425,19 +425,34 @@ export function compareRothVsTraditional(inputs) {
   // Each person's savings grow over their own years (contributors[i].years) when given; else all
   // together until retirement.
   const ownYears = contributionSplit.people && contributors?.some((c) => c.years !== undefined) ? contributors.map((c) => c.years ?? years) : null;
+  // Tax drag (taxableDividends): how taxable money grows until retirement, and the taxed share of
+  // its withdrawals in retirement (the dividends taxed whole). Absent = no dividends, as before.
+  const dividendYield = inputs.taxableDividends?.yield ?? 0;
+  const taxableGrowth = { returnRate, dividendYield, taxRate: inputs.taxableDividends?.taxRate ?? 0 };
+  const taxedShare = (gainShare) => taxedShareOfWithdrawal(gainShare, dividendYield, WITHDRAWAL_RATE);
   const grow = (side, key) =>
     ownYears
       ? contributionSplit.people.reduce((acc, p, i) => acc + futureValueContributions(p[side][key], returnRate, ownYears[i], years), 0)
       : futureValueAnnuity(contributionSplit[side][key], returnRate, years);
-  const basisOf = (side) =>
-    ownYears ? contributionSplit.people.reduce((acc, p, i) => acc + p[side].excessToTaxable * ownYears[i], 0) : contributionSplit[side].excessToTaxable * years;
+  // A taxable side account, with any tax drag (taxableDividends): { value, basis }.
+  const growSide = (side) => {
+    const parts = ownYears
+      ? contributionSplit.people.map((p, i) => ({ payment: p[side].excessToTaxable, contributeYears: ownYears[i] }))
+      : [{ payment: contributionSplit[side].excessToTaxable, contributeYears: years }];
+    return parts
+      .map((part) => growTaxable({ ...part, years, ...taxableGrowth }))
+      .reduce((acc, g) => ({ value: acc.value + g.value, basis: acc.basis + g.basis }), { value: 0, basis: 0 });
+  };
   const annuityRothFV = grow('roth', 'toAccount');
   const annuityPretaxFV = grow('pretax', 'toAccount');
   const accountRothAnnualWithdrawal = WITHDRAWAL_RATE * annuityRothFV;
   const accountPretaxAnnualWithdrawal = WITHDRAWAL_RATE * annuityPretaxFV;
-  const excessRothTaxableFV = grow('roth', 'excessToTaxable');
-  const excessPretaxTaxableFV = grow('pretax', 'excessToTaxable');
-  // Every dollar contributed to a side account is cost basis, so only its growth is gain.
+  const rothSideGrown = growSide('roth');
+  const pretaxSideGrown = growSide('pretax');
+  const excessRothTaxableFV = rothSideGrown.value;
+  const excessPretaxTaxableFV = pretaxSideGrown.value;
+  // Every dollar contributed to a side account is cost basis (and reinvested dividends after their
+  // tax), so only its growth is gain. gains = the taxed part of the withdrawal (dividends included).
   const sideRaw = (split, fv, basis) => {
     const annualWithdrawal = WITHDRAWAL_RATE * fv;
     const gainShare = fv > 0 ? Math.max(0, 1 - basis / fv) : 1;
@@ -447,29 +462,35 @@ export function compareRothVsTraditional(inputs) {
       futureValue: fv,
       annualWithdrawal,
       gainShare,
-      gains: annualWithdrawal * gainShare,
+      gains: annualWithdrawal * taxedShare(gainShare),
     };
   };
-  const rothSideRaw = sideRaw(rothSplit, excessRothTaxableFV, basisOf('roth'));
-  const pretaxSideRaw = sideRaw(pretaxSplit, excessPretaxTaxableFV, basisOf('pretax'));
+  const rothSideRaw = sideRaw(rothSplit, excessRothTaxableFV, rothSideGrown.basis);
+  const pretaxSideRaw = sideRaw(pretaxSplit, excessPretaxTaxableFV, pretaxSideGrown.basis);
 
   // 4. Other accounts: grow to retirement, then take 4% from each
+  // Cost basis of the taxable Existing Accounts: a share of TODAY's balance (plus reinvested
+  // dividends after their tax); the rest of the growth is gain. Withdrawals are split pro-rata
+  // between basis (untaxed) and gain (capital gain), so gain share = 1 − basis / grown balance.
+  const existingTaxable = growTaxable({
+    start: inputs.otherTaxableBalance,
+    basis: inputs.otherTaxableBalance * (inputs.otherTaxableBasis ?? 0),
+    years,
+    ...taxableGrowth,
+  });
   const grown = {
     pretax: futureValueLumpSum(inputs.otherPretaxBalance, returnRate, years),
     roth: futureValueLumpSum(inputs.otherRothBalance, returnRate, years),
-    taxable: futureValueLumpSum(inputs.otherTaxableBalance, returnRate, years),
+    taxable: existingTaxable.value,
   };
-  // Cost basis of the taxable Existing Accounts: a share of TODAY's balance; all
-  // growth from here on is gain. Withdrawals are split pro-rata between basis
-  // (untaxed) and gain (capital gain), so gain share = 1 − basis / grown balance.
-  const existingTaxableBasis = inputs.otherTaxableBalance * (inputs.otherTaxableBasis ?? 0);
+  const existingTaxableBasis = existingTaxable.basis;
   const existingGainShare = grown.taxable > 0 ? Math.max(0, 1 - existingTaxableBasis / grown.taxable) : 1;
   const otherWithdrawals = {
     pretaxGross: WITHDRAWAL_RATE * grown.pretax, // fully taxable, stacks as ordinary income
     roth: WITHDRAWAL_RATE * grown.roth, // tax-free
     taxableGross: WITHDRAWAL_RATE * grown.taxable, // gain part taxed via real LTCG brackets
-    taxableGains: WITHDRAWAL_RATE * grown.taxable * existingGainShare,
-    taxableGainShare: existingGainShare,
+    taxableGains: WITHDRAWAL_RATE * grown.taxable * taxedShare(existingGainShare),
+    taxableGainShare: taxedShare(existingGainShare),
   };
   // NOTE: no RMD sequencing or tax-efficient withdrawal ordering is modeled —
   // all accounts are treated as drawn simultaneously.
@@ -505,6 +526,8 @@ export function compareRothVsTraditional(inputs) {
         })),
       }),
       returnRate,
+      dividendYield,
+      dividendTaxRate: taxableGrowth.taxRate,
       years,
       other: otherWithdrawals,
       existingTax: existingOnlyTax,
@@ -634,7 +657,7 @@ export function compareRothVsTraditional(inputs) {
   ]) {
     const a = annuity[scenario];
     const l = lumpSum[scenario];
-    const lumpSideFV = futureValueLumpSum(split.excessToTaxable, returnRate, years);
+    const lumpSideFV = growTaxable({ start: split.excessToTaxable, years, ...taxableGrowth }).value;
     l.side = { futureValue: lumpSideFV, afterTaxValue: lumpSideFV * (1 - a.side.taxRate) };
     l.totalFutureValue = (l.futureValue ?? l.futureValueGross) + lumpSideFV;
     l.totalAfterTaxValue = l.afterTaxValue + l.side.afterTaxValue;
@@ -658,7 +681,7 @@ export function compareRothVsTraditional(inputs) {
   for (const scenario of ['roth', 'pretax']) {
     const buckets = scenarioBuckets[scenario];
     // Cost basis in the taxable bucket: the Existing Accounts' basis plus every
-    // dollar of Future Contributions that spilled over the limit.
+    // dollar of Future Contributions that spilled over the limit (and reinvested dividends).
     const taxableBasis = existingTaxableBasis + annuity[scenario].side.basis;
     const taxableGainShare = buckets.taxable > 0 ? Math.max(0, 1 - taxableBasis / buckets.taxable) : 1;
     portfolio[scenario] = {
@@ -666,8 +689,9 @@ export function compareRothVsTraditional(inputs) {
       totalValue: buckets.pretax + buckets.roth + buckets.taxable,
       taxableBasis,
       taxableGainShare,
+      // With dividends, the taxed share at the 4% baseline (held as the withdrawal scales).
       ...solvePortfolioWithdrawal(targetAfterTaxIncome, buckets, ssBenefit, filingStatus, year, {
-        taxableGainShare,
+        taxableGainShare: taxedShare(taxableGainShare),
         taxRules: retirementTaxRules,
       }),
     };
