@@ -62,7 +62,38 @@ function Explained({ sections }) {
 /* Section 1 — Retirement income number (its own section)              */
 /* ------------------------------------------------------------------ */
 
+// The budget method (phase 3, spendingNeed.js): the budget less the costs that end, then the lifestyle.
+function BudgetNumberMath({ need }) {
+  const { lifestyleFactor, beforeLifestyleAdjustment, target, breakdown: b } = need;
+  const adjusted = lifestyleFactor !== 1;
+  return (
+    <details className="details">
+      <summary>How is this calculated?</summary>
+      <div className="details-body">
+        <div className="calc">
+          <Row label="Baseline expenses (the budget)" value={$(need.baselineExpenses)} />
+          <Row label="Debt payments that will end" value={minus(b.debtPayments)} kind="sub" />
+          <Row label="Other expenses that will end" value={minus(b.otherExpenses)} kind="sub" />
+          <Row label={adjusted ? 'Spending once they end' : 'Retirement income number'} value={$(beforeLifestyleAdjustment)} kind="total" />
+          {adjusted && (
+            <>
+              <Row
+                label={`Adjustment for your expected retirement lifestyle (${signedPercent(lifestyleFactor)})`}
+                value={`${target >= beforeLifestyleAdjustment ? '+' : '−'}${$(Math.abs(target - beforeLifestyleAdjustment))}`}
+                kind="sub"
+              />
+              <Row label="Retirement income number" value={$(target)} kind="total" />
+            </>
+          )}
+        </div>
+        <p className="hint">Retirement spending is based on the budget (Spending, on the inputs page), not on today&rsquo;s take-home pay.</p>
+      </div>
+    </details>
+  );
+}
+
 function RetirementNumberMath({ result }) {
+  if (result.retirementNeed.method === 'budget') return <BudgetNumberMath need={result.retirementNeed} />;
   const b = result.retirementNeed.breakdown;
   const { lifestyleFactor, beforeLifestyleAdjustment, target } = result.retirementNeed;
   const adjusted = lifestyleFactor !== 1;
@@ -196,7 +227,7 @@ function RetirementNumberSection({ result }) {
       <p className="note">
         <strong>What this number is:</strong> the after-tax amount you need each year in retirement
         to keep the same lifestyle you have while working. It&rsquo;s the amount you actually
-        spend.
+        spend{retirementNeed.method === 'budget' ? ', from the household’s budget' : ''}.
         {adjusted && (
           <>
             {' '}
@@ -208,8 +239,9 @@ function RetirementNumberSection({ result }) {
 
       {retirementNeed.raw <= 0 && (
         <p className="alert">
-          Your debt, other expenses and savings already use up your take-home pay, so the
-          retirement income number is $0. Check those inputs.
+          {retirementNeed.method === 'budget'
+            ? 'The debt payments and other expenses that end are more than the budget, so the retirement income number is $0. Check those inputs.'
+            : 'Your debt, other expenses and savings already use up your take-home pay, so the retirement income number is $0. Check those inputs.'}
         </p>
       )}
 

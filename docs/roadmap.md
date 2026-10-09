@@ -8,10 +8,9 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, phase 2 (survivor years and engine additions) the "Before phase 2" list and all three "Before phase 3" lists. 855 tests. Last closed: "Before phase 3: adjustments (2) and (3)" (tag `phase-before-3b-done`): the EMTR worked out on the tax page, the bracket visual in total and taxable income, Social Security "Currently receiving" and estimated by default, already-retired households, life expectancy, collapsing accounts, "per year".
 
-**In progress: phase 3, retirement spending** (started 2026-10-09; steps set in the phase 3 section below). Now on step (a), the spending need: one baseline-expenses input and one shared `spendingNeed(household)`.
+**In progress: phase 3, retirement spending** (started 2026-10-09; steps set in the phase 3 section below). Step (a), the spending need, done (local, unpushed); next is step (b), the legacy goal in the engine.
 
 **Known gaps and open items:**
-- No lifetime view or retirement income number for a household already retired (with no earnings the Roth page says there is nothing to compare); phase 3's spending input fixes it.
 - The Roth comparison's retirement snapshot leaves out other income rows such as rent (the pension is in).
 - Tax-exempt income isn't yet in Social Security taxability or IRMAA.
 - One contribution type per person (see Open questions). The Roth catch-up rule is stated on the Roth page but not applied to the numbers.
@@ -125,7 +124,7 @@ The question is less "how much do I spend?" than "how much do my resources allow
 - (f) The staged-spending design write-up, agreed with Michael before anything is built.
 - (g) The Docs article.
 
-**Status:** started 2026-10-09.
+**Status:** started 2026-10-09. Step (a) done 2026-10-09 (868 tests, local, unpushed). Spending in the inputs: "Base retirement spending on" Today's income / The budget, and "Baseline expenses per year (after tax)" shown for the budget. With everyone retired, the method choice, the costs that end and the lifestyle are hidden, and the budget is the spending as entered. `src/lib/spendingNeed.js` (`spendingNeed`, `budgetNeed`); the Roth comparison takes `baselineExpenses` in place of take-home minus savings and returns `retirementNeed.method` and `.topDown` (v1 pins: those two keys added, nothing else changed). The projection and the conversion lifetime view read the spending need, not the Roth result, so a household already retired gets both once its budget is entered; until then they ask for it. The Roth page's "How is this calculated?" walks from the budget under that method. Articles updated: inputs (Spending), roth, conversion.
 
 ## Phase 4: Pre-retirement funding
 

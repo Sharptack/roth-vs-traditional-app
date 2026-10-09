@@ -314,6 +314,8 @@ export function householdToCompareInputs(household) {
     retirementAge: people.length === 1 ? (Number.isFinite(ageOf(p1)) ? Math.max(p1.retirementAge, ageOf(p1)) : p1.retirementAge) : ageOf(p1) + yearsToRetirement,
     debtPayments: spending.debtPaymentsEnding,
     otherExpenses: spending.otherExpensesEnding,
+    // The budget method (version 2, phase 3): the budget in place of take-home minus savings.
+    ...(spending.method === 'budget' && { baselineExpenses: spending.baselineExpenses }),
     savings: fc.contributions.reduce((acc, c) => acc + c.amount, 0),
     currentType: fc.currentType,
     accountType: fc.accountType,

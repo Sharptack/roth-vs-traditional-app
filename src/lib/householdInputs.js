@@ -4,7 +4,7 @@
 // Pure; the component is src/next/HouseholdInputs.jsx; the values are householdValues.js's.
 import { formatCurrency } from './format.js';
 import { parseNumber } from './formInputs.js';
-import { activePeople, hasSpouseV2 } from './householdValues.js';
+import { activePeople, everyoneRetiredV2, hasSpouseV2, personRetired } from './householdValues.js';
 import { STRATEGIES } from './strategies.js';
 
 export const ACCOUNT_TYPE_LABELS = { pretax: 'Pre-tax', roth: 'Roth', taxable: 'Taxable' };
@@ -69,8 +69,7 @@ export function accountsSummary(accounts) {
 }
 
 function personLine(p) {
-  // A retirement age at or below the age now: already retired (decided 2026-10-09).
-  const retired = Number(p.age) > 0 && Number(p.retirementAge) > 0 && Number(p.retirementAge) <= Number(p.age);
+  const retired = personRetired(p);
   return `${OWNER_LABELS[p.id]} ${p.age || '—'}, ${retired ? 'retired' : 'retires'} at ${p.retirementAge || '—'}, life expectancy ${p.planToAge || '—'}`;
 }
 
@@ -194,10 +193,14 @@ export const INPUT_SECTIONS = [
     id: 'spending',
     title: 'Spending',
     summary: (v) => {
+      // Everyone retired: the budget is the retirement spending (phase 3).
+      const baseline = String(v.spending.baseline ?? '').trim() === '' ? null : blankIsZero(v.spending.baseline);
+      if (everyoneRetiredV2(v)) return baseline === null ? 'Enter the baseline expenses' : `Spending ${formatCurrency(baseline)} per year`;
       const ending = (blankIsZero(v.spending.debtPayments) || 0) + (blankIsZero(v.spending.otherExpenses) || 0);
       const change = Math.round((Number(v.spending.retirementLifestyle) - 1) * 100);
       const retired = change === 0 ? 'same as today' : `${Math.abs(change)}% ${change > 0 ? 'higher' : 'lower'}`;
-      return [ending > 0 && `${formatCurrency(ending)} per year ends at retirement`, `retirement spending ${retired}`]
+      const base = v.spending.method === 'budget' ? (baseline === null ? 'Budget: enter the baseline expenses' : `Budget ${formatCurrency(baseline)} per year`) : null;
+      return [base, ending > 0 && `${formatCurrency(ending)} per year ends at retirement`, `retirement spending ${retired}`]
         .filter(Boolean)
         .join(' · ')
         .replace(/^r/, 'R');

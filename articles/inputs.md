@@ -118,10 +118,14 @@ No calculator reads these yet. A debt pay-off calculator, and each debt's paymen
 
 ## Spending
 
+- **Base retirement spending on:** **today's income** (the default) or **the budget**. Both estimate what the household spends today, after tax. Today's income works it out top-down: take-home pay minus what is being saved. The budget takes the household's own figure.
+- **Baseline expenses per year (after tax)**, shown for the budget: everything the household spends in a year today, after tax and not counting savings, including the costs below that end by retirement.
 - **Debt payments that will end by retirement** and **other expenses that will end by retirement** (for example private school or college), each a year.
 - **Expected retirement lifestyle:** spending in retirement compared with today, from 40% lower to twice as much.
 
-Together they set the **retirement income number**, the after-tax income the household is planning to live on: today's take-home pay, minus the costs that end, minus what is being saved, times the lifestyle setting.
+Together they set the **retirement income number**, the after-tax income the household is planning to live on: today's spending (take-home pay minus savings, or the budget), minus the costs that end, times the lifestyle setting. Every calculator uses this one number: the Roth comparison, the projection and the conversion's lifetime view.
+
+With everyone already retired there is no take-home pay to start from, so the budget is the retirement income number as entered; the costs that end and the lifestyle setting no longer apply and are hidden. Until it is entered, the projection and the conversion's lifetime view ask for it.
 
 ## Assumptions
 

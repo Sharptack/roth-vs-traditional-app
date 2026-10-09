@@ -45,7 +45,8 @@ describe('version 2 household values: defaults', () => {
     // a taxable account's own dividend yield is new in version 2 (blank: the assumption)
     expect(D.accounts).toEqual(v1.accounts.map((a) => ({ ...a, dividendYield: '' })));
     expect(D.liabilities).toEqual([]);
-    expect(D.spending).toEqual({ debtPayments: v1.debtPayments, otherExpenses: v1.otherExpenses, retirementLifestyle: v1.retirementLifestyle });
+    // (the budget method is new in phase 3, off by default)
+    expect(D.spending).toEqual({ debtPayments: v1.debtPayments, otherExpenses: v1.otherExpenses, retirementLifestyle: v1.retirementLifestyle, method: 'income', baseline: '' });
     // survivor years' spending, the dividend yield, the return in retirement and the surplus setting are new in version 2 (phase 2)
     const { survivorSpending, dividendYield, retirementReturnRate, surplus, ...shared } = D.assumptions;
     expect(survivorSpending).toBe('0.8');

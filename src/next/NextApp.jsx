@@ -22,6 +22,7 @@ import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/household
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
 import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, isoDate, refreshAges, updateRow } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
+import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, pensionTile, projectionTile, rothTile, taxTile } from '../lib/suiteTiles.js';
@@ -62,19 +63,25 @@ export const RETIRED_MESSAGE =
 //  values: the form's values (version 2; version 1 values, as older tests pass, are converted
 //    first); every calculator reads the version 2 household.
 //  blend: compute the blend explorer (only the Roth page shows it; it is most of the run time).
+// -> { household, result, spending }: spending = the spending need every calculator reads
+//    (spendingNeed.js; phase 3), worked out even when there is nothing to compare.
 export function previewResult(values, year, { blend = true } = {}) {
   const household = toHouseholdV2(upgradeHouseholdValues(values, year), year);
   const householdErrors = validateHouseholdV2(household);
   const inputs = householdToCompareInputs(household);
+  const withSpending = (result) => ({
+    household,
+    result,
+    spending: householdErrors.length === 0 ? spendingNeed(household, result) : { need: null, error: householdErrors[0] },
+  });
   // Already retired, with no earnings this year: nothing is saved from a paycheck to compare.
-  const retired = household.people.every((p) => household.year - p.birthYear >= p.retirementAge);
-  if (householdErrors.length === 0 && retired && !(inputs.grossIncome > 0)) {
-    return { household, result: { valid: false, errors: [RETIRED_MESSAGE] } };
+  if (householdErrors.length === 0 && everyoneRetired(household) && !(inputs.grossIncome > 0)) {
+    return withSpending({ valid: false, errors: [RETIRED_MESSAGE] });
   }
   const result = compareRothVsTraditional({ ...inputs, skipBlend: !blend });
-  if (householdErrors.length === 0) return { household, result };
+  if (householdErrors.length === 0) return withSpending(result);
   const errors = [...(result.valid ? [] : result.errors), ...householdErrors];
-  return { household, result: { valid: false, errors } };
+  return withSpending({ valid: false, errors });
 }
 
 // Each calculator's result from the household (shared by its page, its tile and Copy summary).
@@ -82,7 +89,7 @@ const irmaaOf = (household) => ({ irmaa: Boolean(household.assumptions.medicareI
 const taxOf = (household) => taxCalculatorResult(householdToYearTaxParams(household), irmaaOf(household));
 const conversionOf = (household) =>
   conversionResult(householdToYearTaxParams(household), household.calculators.conversion.amount, irmaaOf(household));
-const projectionOf = (r) => (r.result.valid ? projectionView(r.household, r.result.retirementNeed.target) : null);
+const projectionOf = (r) => (r.spending.need !== null ? projectionView(r.household, r.spending.need) : null);
 // The homepage shows every calculator's tile; a calculator page shows only its own result; the
 // inputs page shows none.
 const isHome = (page) => page === 'home';
@@ -189,9 +196,9 @@ export default function NextApp({ initialPage, initialValues, client }) {
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
   // The conversion over a lifetime (two projections, with and without it): its own page only.
   const conversionOverLife = useMemo(() => {
-    if (page !== 'conversion' || !deferredRoth.result.valid) return null;
+    if (page !== 'conversion' || deferredRoth.spending.need === null) return null;
     const hh = deferredRoth.household;
-    return conversionLifetime(hh, deferredRoth.result.retirementNeed.target, hh.calculators.conversion.amount);
+    return conversionLifetime(hh, deferredRoth.spending.need, hh.calculators.conversion.amount);
   }, [deferredRoth, page]);
   // The lifetime Roth vs. Pre-tax comparison (phase 6): only on the Roth page (two projections and
   // two sustainable-spending searches), a beat behind the inputs like the projection.
@@ -487,12 +494,12 @@ export default function NextApp({ initialPage, initialValues, client }) {
                 </>
               )}
               {calculator.id === 'tax' && <TaxResult tax={tax} />}
-              {calculator.id === 'projection' && <ProjectionResult view={projection} />}
+              {calculator.id === 'projection' && <ProjectionResult view={projection} error={roth.spending.error} />}
               {calculator.id === 'conversion' && <ConversionResult
                   conversion={conversion}
                   pretaxBalance={pretaxBalance}
                   lifetime={conversionOverLife}
-                  lifetimeError={roth.result.valid ? null : roth.result.errors[0]}
+                  lifetimeError={roth.spending.error}
                 />}
               {calculator.id === 'pension' && (
                 <PensionResult

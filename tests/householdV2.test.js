@@ -34,7 +34,8 @@ describe('toHouseholdV2', () => {
     // and survivor years' spending (phase 2), which version 1 never reaches (no plan-to ages), and the
     // dividends on taxable accounts (tax drag, phase 2), and the return in retirement ('same': the one return)
     expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true, survivorSpending: 0.8, dividendYield: 0.013, retirementReturnRate: 0.07, surplus: 'save' });
-    expect(h2.spending).toEqual(h1.spending);
+    // and the budget method (phase 3; off by default)
+    expect(h2.spending).toEqual({ ...h1.spending, method: 'income', baselineExpenses: null });
   });
 
   it("counts each earnings row received at the person's age this year (HAND CALC)", () => {

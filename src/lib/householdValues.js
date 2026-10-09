@@ -42,7 +42,9 @@
 //   liabilities: [ { id, kind, balance, rate, payment } ],   // kind: LIABILITY_KINDS; rate: the annual
 //                                          // interest rate in percent, as typed (6.5); payment monthly
 //   deductions: { itemized },               // itemized deductions, one yearly total ('' = the standard deduction)
-//   spending: { debtPayments, otherExpenses, retirementLifestyle },   // the costs that end at retirement
+//   spending: { debtPayments, otherExpenses, retirementLifestyle,   // the costs that end at retirement
+//               method, baseline },        // phase 3: retirement spending from 'income' (take-home minus
+//                                          // savings) or 'budget' (baseline: today's spending, after tax)
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedBasis, retirementRateShift, medicareIrmaa,
 //                  survivorSpending,       // survivorSpending: a couple's spending after the first death, '0.8' = 80%
 //                  dividendYield,          // qualified dividends a taxable account pays a year, '0.013' = 1.3%
@@ -128,7 +130,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
   liabilities: [],
   dependents: [],
   deductions: { itemized: '' },
-  spending: { debtPayments: '6000', otherExpenses: '0', retirementLifestyle: '1' },
+  spending: { debtPayments: '6000', otherExpenses: '0', retirementLifestyle: '1', method: 'income', baseline: '' },
   assumptions: {
     returnRate: '0.07',
     inflationRate: '0.025',
@@ -157,7 +159,7 @@ export const BLANK_HOUSEHOLD_VALUES = {
   incomes: [],
   contributions: [],
   accounts: [{ id: 'a1', ...ROW_TEMPLATES.accounts.row }],
-  spending: { debtPayments: '', otherExpenses: '', retirementLifestyle: '1' },
+  spending: { debtPayments: '', otherExpenses: '', retirementLifestyle: '1', method: 'income', baseline: '' },
   calculators: { ...DEFAULT_HOUSEHOLD_VALUES.calculators, conversion: { amount: '' }, pension: { lumpSum: '' } },
 };
 
@@ -183,6 +185,11 @@ export function hasSpouseV2(values) {
 export function activePeople(values) {
   return values.people.filter((p) => p.id === 'p1' || (p.id === 'p2' && hasSpouseV2(values)));
 }
+
+// A retirement age at or below the age now = already retired (decided 2026-10-09).
+export const personRetired = (p) => Number(p.age) > 0 && Number(p.retirementAge) > 0 && Number(p.retirementAge) <= Number(p.age);
+// Everyone who counts already retired: retirement spending is then the budget (spendingNeed.js).
+export const everyoneRetiredV2 = (values) => activePeople(values).every(personRetired);
 
 // ---- Age and birthdate, one linked pair ----
 

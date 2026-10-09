@@ -36,6 +36,7 @@ import {
 import {
   NEW_PENSION,
   activePeople,
+  everyoneRetiredV2,
   addRow,
   hasSpouseV2,
   isoDate,
@@ -687,28 +688,63 @@ export default function HouseholdInputs({
       />
     ),
 
-    spending: () => (
-      <>
-        <CurrencyInput
-          label="Debt payments that will end by retirement (annual)"
-          value={values.spending.debtPayments}
-          onChange={setGroup('spending', 'debtPayments')}
-        />
-        <CurrencyInput
-          label="Other expenses that will end by retirement (annual)"
-          hint="For example private school or kids' college."
-          value={values.spending.otherExpenses}
-          onChange={setGroup('spending', 'otherExpenses')}
-        />
-        <SelectInput
-          label="Expected retirement lifestyle"
-          hint="Spending each year in retirement compared with today."
-          value={values.spending.retirementLifestyle}
-          onChange={setGroup('spending', 'retirementLifestyle')}
-          options={LIFESTYLE_OPTIONS}
-        />
-      </>
-    ),
+    // Retirement spending from today's income (top-down) or the budget (phase 3, spendingNeed.js);
+    // with everyone retired, only the budget applies.
+    spending: () => {
+      const retired = everyoneRetiredV2(values);
+      const budget = retired || values.spending.method === 'budget';
+      return (
+        <>
+          {!retired && (
+            <RadioGroup
+              legend="Base retirement spending on"
+              name={`${formId}-spending-method`}
+              value={values.spending.method ?? 'income'}
+              onChange={setGroup('spending', 'method')}
+              options={[
+                { value: 'income', label: "Today's income" },
+                { value: 'budget', label: 'The budget' },
+              ]}
+              hint="Today's income: take-home pay minus savings, what the paycheck leaves to spend. The budget: what the household says it spends."
+            />
+          )}
+          {budget && (
+            <CurrencyInput
+              label="Baseline expenses per year (after tax)"
+              hint={
+                retired
+                  ? 'Everything the household spends in a year, after tax. Everyone has retired, so this is the retirement spending every calculator uses.'
+                  : 'Everything the household spends in a year today, after tax and not counting savings, including the costs below that end by retirement.'
+              }
+              value={values.spending.baseline ?? ''}
+              onChange={setGroup('spending', 'baseline')}
+            />
+          )}
+          {!retired && (
+            <>
+              <CurrencyInput
+                label="Debt payments that will end by retirement (annual)"
+                value={values.spending.debtPayments}
+                onChange={setGroup('spending', 'debtPayments')}
+              />
+              <CurrencyInput
+                label="Other expenses that will end by retirement (annual)"
+                hint="For example private school or kids' college."
+                value={values.spending.otherExpenses}
+                onChange={setGroup('spending', 'otherExpenses')}
+              />
+              <SelectInput
+                label="Expected retirement lifestyle"
+                hint="Spending each year in retirement compared with today."
+                value={values.spending.retirementLifestyle}
+                onChange={setGroup('spending', 'retirementLifestyle')}
+                options={LIFESTYLE_OPTIONS}
+              />
+            </>
+          )}
+        </>
+      );
+    },
 
     assumptions: () => {
       const a = values.assumptions;

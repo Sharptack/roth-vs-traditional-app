@@ -236,6 +236,9 @@ export function toHouseholdV2(input, year) {
       debtPaymentsEnding: blankAsZero(values.spending.debtPayments),
       otherExpensesEnding: blankAsZero(values.spending.otherExpenses),
       retirementLifestyle: Number(values.spending.retirementLifestyle),
+      // Phase 3 (spendingNeed.js): retirement spending from take-home pay or from the budget.
+      method: values.spending.method === 'budget' ? 'budget' : 'income',
+      baselineExpenses: blankAsNull(values.spending.baseline),
     },
     calculators: {
       tax: {
@@ -330,6 +333,8 @@ export function validateHouseholdV2(household) {
     }
   }
   if (!isNum(household.deductions.itemized) || household.deductions.itemized < 0) errors.push("Itemized deductions can't be negative.");
+  const baseline = household.spending.baselineExpenses;
+  if (baseline != null && !(isNum(baseline) && baseline >= 0)) errors.push("Baseline expenses can't be negative.");
   for (const d of household.dependents) {
     if (d.kind === 'child' && !(isNum(d.age) && d.age >= 0 && d.age <= 30)) errors.push("Enter each child's age (0 to 30).");
   }

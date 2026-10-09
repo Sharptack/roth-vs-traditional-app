@@ -1428,6 +1428,46 @@ describe('Already retired (2026-10-09)', () => {
     }
     const inputs = renderToStaticMarkup(<NextApp initialPage="inputs" initialValues={values} client={null} />);
     expect(inputs).toContain('You 75, retired at 65');
+    // No budget yet (phase 3): the projection and the lifetime view say what to enter.
+    expect(inputs).toContain('Enter the baseline expenses');
+    expect(renderToStaticMarkup(<NextApp initialPage="projection" initialValues={values} client={null} />)).toContain('Enter the baseline expenses per year');
+  });
+
+  it('phase 3: with a budget, a retired household gets its projection and the conversion lifetime view', async () => {
+    const { default: NextApp, previewResult } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D, newPerson } = await import('../src/lib/householdValues.js');
+    const values = {
+      ...D,
+      people: [newPerson('p1', { age: '75', retirementAge: '65' })],
+      incomes: [D.incomes[0], { ...D.incomes[1], ssMode: 'receiving', amount: '2500' }],
+      contributions: [],
+      accounts: [{ ...D.accounts[0], balance: '800000' }],
+      spending: { ...D.spending, baseline: '60000' },
+    };
+    expect(previewResult(values, 2026).spending).toMatchObject({ method: 'budget', need: 60000 });
+    const projection = renderToStaticMarkup(<NextApp initialPage="projection" initialValues={values} client={null} />);
+    expect(projection).toContain('$60,000');
+    expect(projection).not.toMatch(/NaN|Infinity|Fill in the household/);
+    const conversion = renderToStaticMarkup(<NextApp initialPage="conversion" initialValues={values} client={null} />);
+    expect(conversion).toContain('Over a lifetime, with and without it');
+    expect(conversion).not.toContain('Needs the inputs below');
+    const inputs = renderToStaticMarkup(<NextApp initialPage="inputs" initialValues={values} client={null} />);
+    expect(inputs).toContain('Baseline expenses per year (after tax)');
+    expect(inputs).not.toContain('Base retirement spending on');
+    expect(inputs).toContain('Spending $60,000 per year');
+  });
+
+  it('phase 3: the budget method on the Roth page walks from the budget', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const values = { ...D, spending: { ...D.spending, method: 'budget', baseline: '70000' } };
+    const roth = renderToStaticMarkup(<NextApp initialPage="roth" initialValues={values} client={null} />);
+    // 70,000 − 6,000 of debt payments that end = 64,000
+    expect(roth).toContain('Baseline expenses (the budget)');
+    expect(roth).toContain('$64,000');
+    const inputs = renderToStaticMarkup(<NextApp initialPage="inputs" initialValues={values} client={null} />);
+    expect(inputs).toContain('Base retirement spending on');
+    expect(inputs).toContain('Budget $70,000 per year');
   });
 });
 

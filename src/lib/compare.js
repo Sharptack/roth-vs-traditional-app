@@ -8,6 +8,11 @@
 //   retirementLifestyle                    — retirement spending vs. today, as a multiplier
 //                                            (1 = same, 1.25 = 25% higher). Optional, default 1.
 //   debtPayments, otherExpenses            — costs that end by retirement
+//   baselineExpenses                       — OPTIONAL (phase 3, spendingNeed.js): the budget, what the
+//                                            household spends today after tax. When the key is
+//                                            present, it replaces take-home minus savings in the
+//                                            retirement income number (null = not entered: an error).
+//                                            Absent = the top-down number, unchanged.
 //   savings                                — annual retirement savings, also the
 //                                            contribution amount compared
 //   currentType ('pretax' | 'roth')        — what `savings` currently is
@@ -89,6 +94,7 @@ import { childTaxCredit } from './childTaxCredit.js';
 import { calculateEmploymentTaxes, calculateHouseholdEmploymentTaxes } from './ficaTax.js';
 import { estimateHouseholdSocialSecurity, estimateSocialSecurityBenefit } from './socialSecurity.js';
 import { solvePortfolioWithdrawal } from './portfolioTax.js';
+import { BUDGET_MISSING_MESSAGE, budgetNeed } from './spendingNeed.js';
 import { calculateSideAwareRates } from './sideAwareRates.js';
 import { findOptimalBlend } from './blend.js';
 import { calculateRetirementTax } from './retirementTaxStack.js';
@@ -193,6 +199,9 @@ export function validateInputs(inputs) {
     errors.push('Enter your 1099 income.');
   } else if (isNum(inputs.grossIncome) && se > inputs.grossIncome) {
     errors.push("Your 1099 income can't be more than your total gross income.");
+  }
+  if ('baselineExpenses' in inputs && !(isNum(inputs.baselineExpenses) && inputs.baselineExpenses >= 0)) {
+    errors.push(BUDGET_MISSING_MESSAGE);
   }
   const lifestyle = inputs.retirementLifestyle ?? 1;
   if (!isNum(lifestyle) || lifestyle < 0.5 || lifestyle > 3) {
@@ -389,7 +398,18 @@ export function compareRothVsTraditional(inputs) {
   // current spending already exceeds income there is no need to model. The optional
   // lifestyle factor scales it for people who expect to spend more (or less) in
   // retirement than they do today, e.g. because their earnings will rise.
-  const rawNeed = afterTaxCurrentIncome - debtPayments - otherExpenses - savings;
+  // The budget method (phase 3, spendingNeed.js): the budget in place of take-home minus savings.
+  const topDownRaw = afterTaxCurrentIncome - debtPayments - otherExpenses - savings;
+  const fromBudget =
+    'baselineExpenses' in inputs
+      ? budgetNeed({
+          baselineExpenses: inputs.baselineExpenses,
+          debtPaymentsEnding: debtPayments,
+          otherExpensesEnding: otherExpenses,
+          retirementLifestyle: lifestyleFactor,
+        })
+      : null;
+  const rawNeed = fromBudget ? fromBudget.raw : topDownRaw;
   const needBeforeLifestyle = Math.max(0, rawNeed);
   const targetAfterTaxIncome = needBeforeLifestyle * lifestyleFactor;
 
@@ -749,6 +769,11 @@ export function compareRothVsTraditional(inputs) {
       target: targetAfterTaxIncome,
       beforeLifestyleAdjustment: needBeforeLifestyle,
       lifestyleFactor,
+      // Which method the target comes from ('income' = top-down, 'budget'), and the top-down
+      // figure either way (spendingNeed.js).
+      method: fromBudget ? 'budget' : 'income',
+      topDown: Math.max(0, topDownRaw) * lifestyleFactor,
+      ...(fromBudget && { baselineExpenses: inputs.baselineExpenses }),
       // The budget walk from gross income to the retirement income number.
       breakdown: {
         grossIncome,

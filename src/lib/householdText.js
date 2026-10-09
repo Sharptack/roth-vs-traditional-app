@@ -3,6 +3,7 @@
 // The current calculator's own version is shareInputs.js's shareText (flat inputs).
 import { ACCOUNT_TYPES, FILING_STATUSES } from './constants.js';
 import { formatCurrency, formatPercent } from './format.js';
+import { everyoneRetired } from './spendingNeed.js';
 
 const TYPE = { pretax: 'Pre-tax', roth: 'Roth', taxable: 'Taxable' };
 const bullet = (label, value) => `- ${label}: ${value}`;
@@ -52,6 +53,10 @@ export function describeHousehold(household) {
     const who = people.length > 1 ? `${names[people.findIndex((p) => p.id === a.owner)].toLowerCase()}, ` : '';
     const basis = a.type === 'taxable' ? `, ${formatPercent(a.basisShare ?? 0, 0)} cost basis` : '';
     lines.push(bullet('Existing Account', `${who}${TYPE[a.type]} ${formatCurrency(a.balance)}${basis}`));
+  }
+  // The budget method (phase 3, spendingNeed.js); retired households always use it.
+  if (spending.method === 'budget' || everyoneRetired(household)) {
+    lines.push(bullet('Retirement spending based on', spending.baselineExpenses == null ? 'the budget (not entered)' : `the budget, ${formatCurrency(spending.baselineExpenses)} per year`));
   }
   lines.push(
     bullet('Costs ending before retirement', `${formatCurrency(spending.debtPaymentsEnding)} debt, ${formatCurrency(spending.otherExpensesEnding)} other, per year`),

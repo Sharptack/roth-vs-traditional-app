@@ -112,7 +112,7 @@ export function upgradeHouseholdValues(values, year) {
     liabilities: [],
     dependents: [],
     deductions: { itemized: '' },
-    spending: { debtPayments: v.debtPayments, otherExpenses: v.otherExpenses, retirementLifestyle: v.retirementLifestyle },
+    spending: { debtPayments: v.debtPayments, otherExpenses: v.otherExpenses, retirementLifestyle: v.retirementLifestyle, method: 'income', baseline: '' },
     assumptions: {
       returnRate: v.returnRate,
       inflationRate: pick(v, 'inflationRate'),

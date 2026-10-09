@@ -205,8 +205,7 @@ export default function ConversionResult({ conversion: c, pretaxBalance, lifetim
             content: (
               <p className="hint">
                 {lifetimeError} The lifetime view runs the year-by-year projection, which needs the household&rsquo;s spending in
-                retirement; for now that is worked out from today&rsquo;s pay before retirement. A spending input for a household
-                already retired comes with the retirement spending phase.
+                retirement (Spending, on the inputs page).
               </p>
             ),
           },

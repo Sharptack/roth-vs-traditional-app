@@ -14,7 +14,7 @@ At the bottom of the page, the **Charts** block shows the tax paid each year as 
 
 **Who pays the conversion's tax.** Once anyone in the household has retired, the year's withdrawals cover it, as for any other tax. While everyone still works there is no withdrawal to pay it from, so the tax is held back from the conversion and less reaches Roth; the page says how much. When the money runs out in either run, the page says so: after that year spending goes unmet and less tax is paid, so the figures compare two plans that both fall short.
 
-The lifetime view needs the household's spending in retirement, which for now is worked out from today's pay before retirement. A household already past its retirement age doesn't have one yet; the page says so (a spending input comes with the retirement spending phase).
+The lifetime view needs the household's spending in retirement, the retirement income number from **Spending** on the inputs page. For a household already retired that is its budget; until the budget is entered, the page asks for it.
 
 ## This year's tax on the conversion
 

@@ -105,12 +105,13 @@ export function YearTable({ rows }) {
   );
 }
 
-export default function ProjectionResult({ view }) {
+// error: why there is no projection (the spending need's reason, spendingNeed.js), when there is none.
+export default function ProjectionResult({ view, error }) {
   if (!view) {
     return (
       <section className="card">
         <h2>Projection</h2>
-        <p>Fill in the household inputs to project it.</p>
+        <p>{error ?? 'Fill in the household inputs to project it.'}</p>
       </section>
     );
   }

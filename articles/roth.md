@@ -44,6 +44,8 @@ Many tools ask you to guess your retirement tax bracket. Guessing is hard, and s
 3. Subtract what you save for retirement.
 4. What's left is your **retirement income number**, the after-tax lifestyle you're already living without those costs. The page's **"How is this calculated?"** dropdown shows the arithmetic; its "Federal income tax on that" line opens to the tax bracket by bracket.
 
+If you know what you spend, choose **the budget** under **Spending** and enter it as **Baseline expenses per year**. Your budget then takes the place of steps 1 and 3 (take-home pay minus savings), and the costs that end still come off it. The dropdown then walks from the budget.
+
 For a couple, "retirement" is the year the **last** of you retires. Each of you contributes until your own retirement; the savings of whoever retires first keep growing, untouched, until then.
 
 Then it works out your retirement tax rate in three steps, always on the withdrawal that will actually happen — never on a hypothetical amount sized to hit some target:
