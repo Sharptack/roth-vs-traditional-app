@@ -6,55 +6,28 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 *Rewritten (not appended to) at each `/closeout`. Last: 2026-10-09.*
 
-**Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, phase 2 (survivor years and engine additions) and both "Before phase" lists. 837 tests. Last closed: "Before phase 3: adjustments" (tag `phase-before-3-done`).
+**Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, phase 2 (survivor years and engine additions) the "Before phase 2" list and all three "Before phase 3" lists. 855 tests. Last closed: "Before phase 3: adjustments (2) and (3)" (tag `phase-before-3b-done`): the EMTR worked out on the tax page, the bracket visual in total and taxable income, Social Security "Currently receiving" and estimated by default, already-retired households, life expectancy, collapsing accounts, "per year".
 
-**In progress:** "Before phase 3: adjustments (2)" and "(3)", Michael's lists of 2026-10-09 (below), all built; to close with `/closeout` once reviewed. Then phase 3.
-
-### Before phase 3: adjustments (2) (2026-10-09)
-
-Tax calculator:
-- [x] The calculation block moves below the tax bracket visual (reverses the 2026-10-09 "above the chart").
-- [x] The "next $100" block becomes a short worked calculation of the effective marginal rate for the headline source (the $100, what it sets off, the extra tax, ÷ 100); the other sources' one-line rates stay below it (decided 2026-10-09).
-- [x] The bracket visual's "Total income" header larger, in line with the marginal and average rate headers.
-- [x] Social Security "Currently receiving": a third choice beside the PIA and the estimate. The monthly check as received today, in today's dollars, with no claiming adjustment, from this year on (decided 2026-10-09). Its PIA isn't known, so it gives the spouse no spousal top-up. Why: a PIA entered for someone already receiving was adjusted for a claiming age, inflating the benefit.
-
-Inputs:
-- [x] The clients card starts collapsed and is renamed "Households".
-- [x] Accounts collapse to one line like income rows.
-- [x] The cost basis field lines up on the calculators' input cards (one hint under both taxable fields).
-- [x] No "Retirement age must be after your current age" error: a retirement age at or below the current age means already retired (no earnings or contributions from this year, the retirement return, the Roth snapshot today); the age stays as entered (decided 2026-10-09). Follow-ons: this year's earnings and contributions follow the same rule (a 75-year-old's W-2 row with no end age no longer counts in the tax calculator); for someone retired, an Other income row with no ages counts for life; with everyone retired and no earnings, the Roth page says there is nothing to compare.
-- [x] "a year" in labels becomes "per year" (and "a month" "per month", to match; 38 places in the app, comments and the Visualization prose left).
-
-Roth vs. Pre-tax:
-- [x] The start/end ages link closes again after opening ("Hide start/end ages").
-- [x] "Federal income tax on that" opens to show its calculation (bracket by bracket, then any child tax credit).
-
-Pension: [x] "In the plan" lines up (the lump-sum hint moved under the row). Roth conversion: [x] the "Tax paid each year" chart moves to its own block at the bottom (more charts may join it).
-
-### Before phase 3: adjustments (3) (2026-10-09)
-
-- [x] Tax bracket visual (decided 2026-10-09): each bracket edge shows total income with the taxable-income figure beside it; a line under the chart bridges today's total income to taxable income (each deduction); the room label in total-income dollars, with the taxable room beside it. Why: the 22% edge at $177,065 of total income read as wrong next to the $100,800 + $32,200 a joint filer knows. The caption's "calculation above" fixed (it is below now).
-- [x] "Plan to age" renamed "Life expectancy" (decided 2026-10-09); retirement age gets a one-line hint.
-- [x] Social Security estimated from earnings when a person has no Social Security row, in every calculator (decided 2026-10-09; reverses "no row = no benefit"). A PIA of $0 means no benefit. Changes results for saved households without a row.
-- [x] Copy summary: a blank retirement age said "retires at NaN" (now "retirement age not entered"; it also says retired at, and the life expectancy).
-- Charitable donations: an itemized deductions calculator, in docs/ideas.md (Later release).
+**In progress:** nothing.
 
 **Next: phase 3, retirement spending.** Steps not yet set (set them here first). It must start with a spending input for a household already retired: the projection, the Roth comparison and the conversion page's lifetime view all need it.
 
 **Known gaps and open items:**
-- No lifetime view for a household past its retirement age (no retirement income number); phase 3's spending input fixes it.
+- No lifetime view or retirement income number for a household already retired (with no earnings the Roth page says there is nothing to compare); phase 3's spending input fixes it.
 - The Roth comparison's retirement snapshot leaves out other income rows such as rent (the pension is in).
 - Tax-exempt income isn't yet in Social Security taxability or IRMAA.
 - One contribution type per person (see Open questions). The Roth catch-up rule is stated on the Roth page but not applied to the numbers.
-- Only the first death is modeled; the survivor lives to the end age.
+- Only the first death is modeled; the survivor lives to their life expectancy. Social Security "Currently receiving" has no known PIA, so it gives a spouse no spousal top-up.
 
 **Decisions later phases build on** (details in the archive):
 - Today's dollars everywhere; fixed thresholds shrink at the inflation input (2.5%) via `thresholdScale`. Results change only by a decided change; the v1 pins change by additions only.
-- Rate terms: marginal = the bracket, average tax rate = tax ÷ income, effective marginal rate = the tax on the next dollar. The Roth comparison pairs marginal today with the effective rate on the withdrawal.
+- Rate terms: marginal = the bracket, average tax rate = tax ÷ income, effective marginal rate = the tax on the next dollar. The Roth comparison pairs marginal today with the effective rate on the withdrawal. Bracket charts show total income with the taxable figure beside it.
 - Decision calculators vs. plan evaluators (below); "Use in the plan" writes a choice back (Roth/Pre-tax trial, pension lump sum). The Dashboard groups them as Decisions and Evaluations.
 - Survivor years: single from the year after the first death, the larger Social Security benefit, accounts roll to the survivor, spending 80% (an input).
+- A retirement age at or below the age now = already retired: no earnings or contributions from this year; a retiree's income row with no ages counts for life (earnings excepted). Each person's "plan to age" is now called life expectancy.
+- Social Security: no row = estimated from earnings (a PIA of $0 = none); "Currently receiving" = the monthly check, as is, from now.
 - Income above the need: save it (default) or spend it. Each taxable account is the only source of its dividends (1.3% qualified by default); an "Other: qualified dividends" row is outside money.
-- Employer money is always Pre-tax, held to the 415(c) limit. The return in retirement applies once no one works; the Roth comparison's snapshot is at the last retirement.
+- Employer money is always Pre-tax, held to the 415(c) limit. The return in retirement applies once no one works; the Roth comparison's snapshot is at the last retirement (no earlier than today).
 - A pension lump sum rolls to the owner's Pre-tax IRA at the pension's start age. A conversion's tax while anyone works comes out of the conversion; once retired, from withdrawals. Lifetime tax = federal income tax + IRMAA.
 - Each phase ends with its Docs article (`articles/`, listed in `src/lib/docs.js`).
 
@@ -72,7 +45,7 @@ Pension: [x] "In the plan" lines up (the lump-sum hint moved under the row). Rot
 | 10. Household plans | One household's facts with several saved plans, switching between them and comparing them in every calculator. | Two plans of one household open side by side with every difference marked. |
 | 11. Liabilities and debt pay-off | A debt pay-off calculator for every debt (the mortgage included): pay off early or invest, the order to pay debts off, and payoff dates flowing into the retirement income number and the projection. | A hand-worked amortization matches, and the payoff year changes the spending need from that year on. |
 
-The finished phases (0, 1, 2, the switchover and the two "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
+The finished phases (0, 1, 2, the switchover and the "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
 
 ## How the plan fits together
 

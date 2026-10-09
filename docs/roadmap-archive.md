@@ -6,6 +6,7 @@ Finished phases and settled decisions from the round 2 plan, moved here word for
 
 | Date | Phase | Tests |
 | --- | --- | --- |
+| 2026-10-09 | Before phase 3: adjustments (2) and (3) | 855 |
 | 2026-10-09 | Before phase 3: adjustments | 837 |
 | 2026-10-09 | Phase 2: survivor years and engine additions | 821 |
 | 2026-10-09 | Before phase 2: inputs and page fixes | 774 |
@@ -358,3 +359,36 @@ Michael's list after phase 2, sorted 2026-10-09: the items below are built befor
 | The tax page's rate chart (phase 1) | Two buckets side by side on one vertical income scale (the income figures larger, set off from the buckets), running up through the next two brackets. Marginal rate bucket: the brackets as steps, the sheltered part grey at the bottom, the room left in today's bracket marked. Effective rate bucket: the real tax on the next dollar at every income level from the tax engine (the Social Security torpedo, gains pushed out of 0%, deduction phase-outs, NIIT), labelled at the big change points; IRMAA cliffs as lines with the yearly premium jump. Today's income is a line across both, with the rate on the next dollar. The next dollar is ordinary income by default, with a switch for other income types, capital gains first (a house sale, a taxable account sell-off). Payroll tax left out of the chart for now (it is in the calculation rows). The average rate is not in the chart; the page shows it elsewhere. Drawn options: https://claude.ai/artifact/S7qSZyoyAKDTUT7RhqVoEE |
 | What the rates are called | Standard terms (Michael, 2026-10-08): marginal rate = the tax bracket; average tax rate = total tax ÷ total income (what most sources call the "effective tax rate", so "effective rate" is never used alone for it); effective marginal rate (EMTR) = the real tax on the next dollar, with everything it sets off. Used across the preview and in the Docs article on rates. The Roth comparison keeps its pairing and its wording: the marginal rate today against the effective rate on the withdrawal. |
 | Child tax credit (asked 2026-10-08) | Added to phase 1: $2,200 per child under 17 in 2026 (up to $1,700 refundable, 15% of earned income over $2,500), phased out by $50 per $1,000 of MAGI over $200,000 ($400,000 joint); $500 for other dependents. Children entered with their ages, so they age out in the projection. Rev. Proc. 2025-32 §3.05. |
+
+## Before phase 3: adjustments (2) and (3) (2026-10-09)
+
+*Done 2026-10-09, 855 tests (tag `phase-before-3b-done`). Michael's two lists after the first adjustments, archived as written.*
+
+### Adjustments (2)
+
+Tax calculator:
+- [x] The calculation block moves below the tax bracket visual (reverses the 2026-10-09 "above the chart").
+- [x] The "next $100" block becomes a short worked calculation of the effective marginal rate for the headline source (the $100, what it sets off, the extra tax, ÷ 100); the other sources' one-line rates stay below it (decided 2026-10-09).
+- [x] The bracket visual's "Total income" header larger, in line with the marginal and average rate headers.
+- [x] Social Security "Currently receiving": a third choice beside the PIA and the estimate. The monthly check as received today, in today's dollars, with no claiming adjustment, from this year on (decided 2026-10-09). Its PIA isn't known, so it gives the spouse no spousal top-up. Why: a PIA entered for someone already receiving was adjusted for a claiming age, inflating the benefit.
+
+Inputs:
+- [x] The clients card starts collapsed and is renamed "Households".
+- [x] Accounts collapse to one line like income rows.
+- [x] The cost basis field lines up on the calculators' input cards (one hint under both taxable fields).
+- [x] No "Retirement age must be after your current age" error: a retirement age at or below the current age means already retired (no earnings or contributions from this year, the retirement return, the Roth snapshot today); the age stays as entered (decided 2026-10-09). Follow-ons: this year's earnings and contributions follow the same rule (a 75-year-old's W-2 row with no end age no longer counts in the tax calculator); for someone retired, an Other income row with no ages counts for life; with everyone retired and no earnings, the Roth page says there is nothing to compare.
+- [x] "a year" in labels becomes "per year" (and "a month" "per month", to match; 38 places in the app, comments and the Visualization prose left).
+
+Roth vs. Pre-tax:
+- [x] The start/end ages link closes again after opening ("Hide start/end ages").
+- [x] "Federal income tax on that" opens to show its calculation (bracket by bracket, then any child tax credit).
+
+Pension: [x] "In the plan" lines up (the lump-sum hint moved under the row). Roth conversion: [x] the "Tax paid each year" chart moves to its own block at the bottom (more charts may join it).
+
+### Adjustments (3)
+
+- [x] Tax bracket visual (decided 2026-10-09): each bracket edge shows total income with the taxable-income figure beside it; a line under the chart bridges today's total income to taxable income (each deduction); the room label in total-income dollars, with the taxable room beside it. Why: the 22% edge at $177,065 of total income read as wrong next to the $100,800 + $32,200 a joint filer knows. The caption's "calculation above" fixed (it is below now).
+- [x] "Plan to age" renamed "Life expectancy" (decided 2026-10-09); retirement age gets a one-line hint.
+- [x] Social Security estimated from earnings when a person has no Social Security row, in every calculator (decided 2026-10-09; reverses "no row = no benefit"). A PIA of $0 means no benefit. Changes results for saved households without a row.
+- [x] Copy summary: a blank retirement age said "retires at NaN" (now "retirement age not entered"; it also says retired at, and the life expectancy).
+- Charitable donations: an itemized deductions calculator, in docs/ideas.md (Later release).
