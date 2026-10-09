@@ -26,7 +26,7 @@ Inputs:
 - [ ] "a year" in labels becomes "per year".
 
 Roth vs. Pre-tax:
-- [ ] The start/end ages link closes again after opening.
+- [x] The start/end ages link closes again after opening ("Hide start/end ages").
 - [ ] "Federal income tax on that" opens to show its calculation.
 
 Pension: "In the plan" lines up. Roth conversion: the "Tax paid each year" chart moves to its own block at the bottom (more charts may join it).

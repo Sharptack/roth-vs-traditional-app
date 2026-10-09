@@ -135,8 +135,9 @@ export default function HouseholdInputs({
   const [open, setOpen] = useState(() => new Set(defaultOpen));
   // Income rows open (closed: one line, type and amount; decided 2026-10-09): a new row opens.
   const [openRows, setOpenRows] = useState(() => new Set());
-  // Income rows whose start/end ages are shown (always when one is filled in).
-  const [agesShown, setAgesShown] = useState(() => new Set());
+  // Income rows whose start/end ages were toggled: shown at first when one is filled in, else
+  // hidden; the link opens and closes them (decided 2026-10-09).
+  const [agesToggled, setAgesToggled] = useState(() => new Set());
   const sections = inputSections(sectionIds);
   const spouse = hasSpouseV2(values);
   const people = activePeople(values);
@@ -289,6 +290,7 @@ export default function HouseholdInputs({
 
     income: () => {
       const rows = values.incomes.filter((r) => people.some((p) => p.id === r.owner));
+      const agesOpen = (r) => Boolean(String(r.fromAge).trim() || String(r.toAge).trim()) !== agesToggled.has(r.id);
       const fieldsFor = (r) => {
         if (r.type === 'socialSecurity') {
           return (
@@ -375,16 +377,20 @@ export default function HouseholdInputs({
                 ]}
               />
             )}
-            {agesShown.has(r.id) || String(r.fromAge).trim() || String(r.toAge).trim() ? (
+            {agesOpen(r) && (
               <div className="field-row">
                 <AgeInput label="Starts at age" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} />
                 <AgeInput label="Ends after age" value={r.toAge} onChange={setRow('incomes', r.id, 'toAge')} />
               </div>
-            ) : (
-              <button type="button" className="link-button row-ages-link" onClick={() => setAgesShown((o) => new Set(o).add(r.id))}>
-                Set start/end ages
-              </button>
             )}
+            <button
+              type="button"
+              className="link-button row-ages-link"
+              aria-expanded={agesOpen(r)}
+              onClick={() => setAgesToggled((o) => toggleId(o, r.id))}
+            >
+              {agesOpen(r) ? 'Hide start/end ages' : 'Set start/end ages'}
+            </button>
           </>
         );
       };
