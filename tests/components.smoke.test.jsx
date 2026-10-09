@@ -1169,7 +1169,7 @@ describe('preview sign-in and saved households', () => {
     expect(renderToStaticMarkup(<AccountBar client={{}} cloud={{ configured: true, ready: false, session: null }} />)).toBe('');
   });
 
-  it('the clients card (dashboard, inputs page): a block, the testing-stage notice, save form, the open household', async () => {
+  it('the households card (dashboard, inputs page): a block, the testing-stage notice, save form, the open household', async () => {
     const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES } = await import('../src/lib/householdValues.js');
     const html = renderToStaticMarkup(
@@ -1181,8 +1181,8 @@ describe('preview sign-in and saved households', () => {
         onSaved={() => {}}
       />,
     );
-    expect(html).toContain('<span class="collapsible-title" id="saved-title">Clients</span>');
-    expect(html).toContain('aria-expanded="true"'); // open at first
+    expect(html).toContain('<span class="collapsible-title" id="saved-title">Households</span>');
+    expect(html).toContain('aria-expanded="false"'); // closed at first (2026-10-09)
     expect(html).toContain('On screen: J.M. 2026</span>'); // the summary, seen when closed
     expect(html).toContain('Don’t store client names');
     expect(html).not.toContain('Re-open saved');

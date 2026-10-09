@@ -6,7 +6,7 @@ All dollar amounts are in today's dollars. The expected return is a return after
 
 ## Two ways to work
 
-- **Fill in everything first.** The inputs page (**Edit inputs** on the dashboard's Inputs card) holds every input in four blocks: **Household** (the people and dependents), **Income and expenses** (income, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Closed, each block shows a line per section, so the whole household reads at a glance; open one and each section inside it is a smaller block of its own. Signed in, the **Clients** card sits at the top, to switch households. Fill it in, then open any calculator.
+- **Fill in everything first.** The inputs page (**Edit inputs** on the dashboard's Inputs card) holds every input in four blocks: **Household** (the people and dependents), **Income and expenses** (income, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Closed, each block shows a line per section, so the whole household reads at a glance; open one and each section inside it is a smaller block of its own. Signed in, the **Households** card sits at the top, closed, to switch households. Fill it in, then open any calculator.
 - **Start from one calculator.** Each calculator page has one inputs card on the left with only the inputs that calculator reads, its own section first. It edits the same household, so a change made there shows on the inputs page and in every other calculator. The **All inputs** link at the top of the card opens the full inputs page.
 
 A closed section still shows a one-line summary of what's in it, so you can check the household at a glance. On a calculator page, the bar between the inputs and the results tucks the inputs away to the left and widens the results; click it again to bring them back.
@@ -148,7 +148,7 @@ Two calculators have an input only they read, shown first on their own page:
 
 ## Saving and sharing
 
-- **Clear inputs** (on the Clients card when signed in, else on the dashboard's Inputs card and the inputs page) empties the form for a new client: no people's ages, income, savings or spending; the assumptions keep their defaults. **Undo** brings the household back. A saved household is never changed by it until it is saved over.
+- **Clear inputs** (on the Households card when signed in, else on the dashboard's Inputs card and the inputs page) empties the form for a new client: no people's ages, income, savings or spending; the assumptions keep their defaults. **Undo** brings the household back. A saved household is never changed by it until it is saved over.
 - **Saved households:** signed-in advisors can save the household under a short name, open it later, save changes over it, or save it as a new one. An "Unsaved changes" marker shows when the household on screen differs from the saved one. During testing, name households with initials or a nickname rather than a client's name.
 - **Copy link to this household** puts every input into a link. Tick **View only** and the link opens locked, with an **Edit a copy** button.
 - **Copy summary** copies the inputs and every calculator's headline, with the link, as plain text for an email or a note.

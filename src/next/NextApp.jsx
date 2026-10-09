@@ -231,7 +231,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
   };
 
   const formProps = { values, onUpdate: setValues, locked, onEditCopy: () => setLocked(false) };
-  // Clear inputs, or Undo right after: on the clients card when signed in, else beside the inputs.
+  // Clear inputs, or Undo right after: on the Households card when signed in, else beside the inputs.
   const clearControl = beforeClear ? (
     <span className="clear-inputs">
       <span className="dim">Inputs cleared.</span>{' '}

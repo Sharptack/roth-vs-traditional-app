@@ -25,7 +25,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
   const [label, setLabel] = useState('');
   const [status, setStatus] = useState(null); // { kind: 'ok' | 'error', message }
   const [busy, setBusy] = useState(false);
-  const [cardOpen, setCardOpen] = useState(true);
+  const [cardOpen, setCardOpen] = useState(false); // closed at first (decided 2026-10-09)
 
   const refresh = useCallback(async () => {
     try {
@@ -140,7 +140,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
       <p className="hint">Nothing saved yet.</p>
     ) : (
       <div className="client-picker">
-        <label htmlFor="client-select">Client</label>
+        <label htmlFor="client-select">Household</label>
         <select id="client-select" value={opened?.id ?? ''} disabled={busy} onChange={(e) => openRow(e.target.value)}>
           {!opened && <option value="">Choose a saved household&hellip;</option>}
           {rows.map((r) => (
@@ -168,19 +168,20 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
           <p className="hint">{NOTICE}</p>
           {saveForm}
           <p className="hint">
-            Open another client on the <a href={HOME_HASH}>dashboard</a>.
+            Open another household on the <a href={HOME_HASH}>dashboard</a>.
           </p>
         </details>
       </section>
     );
   }
 
-  // The whole card (the dashboard and the inputs page): a block like the others (decided 2026-10-09).
+  // The whole card (the dashboard and the inputs page): a block like the others, named Households
+  // and closed at first (decided 2026-10-09).
   return (
     <Collapsible
       className="saved-households"
       headingId="saved-title"
-      title="Clients"
+      title="Households"
       summary={opened ? `On screen: ${opened.label}${changed ? ' (unsaved changes)' : ''}` : 'Household on screen not saved'}
       open={cardOpen}
       onToggle={() => setCardOpen(!cardOpen)}

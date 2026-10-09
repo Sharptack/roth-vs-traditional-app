@@ -19,7 +19,7 @@ Tax calculator:
 - [x] Social Security "Currently receiving": a third choice beside the PIA and the estimate. The monthly check as received today, in today's dollars, with no claiming adjustment, from this year on (decided 2026-10-09). Its PIA isn't known, so it gives the spouse no spousal top-up. Why: a PIA entered for someone already receiving was adjusted for a claiming age, inflating the benefit.
 
 Inputs:
-- [ ] The clients card starts collapsed and is renamed "Households".
+- [x] The clients card starts collapsed and is renamed "Households".
 - [ ] Accounts collapse to one line like income rows.
 - [ ] The cost basis field lines up on the calculators' input cards.
 - [x] No "Retirement age must be after your current age" error: a retirement age at or below the current age means already retired (no earnings or contributions from this year, the retirement return, the Roth snapshot today); the age stays as entered (decided 2026-10-09). Follow-ons: this year's earnings and contributions follow the same rule (a 75-year-old's W-2 row with no end age no longer counts in the tax calculator); for someone retired, an Other income row with no ages counts for life; with everyone retired and no earnings, the Roth page says there is nothing to compare.
