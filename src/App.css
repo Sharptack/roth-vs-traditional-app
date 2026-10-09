@@ -270,6 +270,7 @@ main {
 .form-head-actions {
   display: flex;
   gap: 16px;
+  margin-left: auto; /* right-aligned, also without a title */
 }
 
 .form-head .form-title {
@@ -1632,6 +1633,7 @@ th.win .th-sub {
   display: contents;
 }
 
+.next-app .account-row > .hint,
 .next-app .account-row > .link-button {
   grid-column: 1 / -1;
   justify-self: start;

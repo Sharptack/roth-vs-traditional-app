@@ -273,7 +273,7 @@ export default function NextApp({ initialPage, client }) {
             <HouseholdInputs
               {...formProps}
               layout="page"
-              title="Household inputs"
+              title={null}
               groups={INPUT_GROUPS}
               defaultOpen={['household', 'income', 'contributions']}
               footer={share}

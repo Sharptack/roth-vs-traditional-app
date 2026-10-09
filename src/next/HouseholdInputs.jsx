@@ -56,7 +56,7 @@ const SURVIVOR_OPTIONS = [
 ];
 
 const CLAIM_AGE_OPTIONS = [
-  { value: '', label: 'At retirement (62–70)' },
+  { value: '', label: 'At retirement' },
   ...[62, 63, 64, 65, 66, 67, 68, 69, 70].map((age) => ({ value: String(age), label: String(age) })),
 ];
 
@@ -75,8 +75,8 @@ const SEX_OPTIONS = [
 ];
 
 const SS_MODE_OPTIONS = [
-  { value: 'estimate', label: 'Estimate from earnings' },
-  { value: 'pia', label: 'Enter the benefit at full retirement age (PIA)' },
+  { value: 'estimate', label: 'From earnings' },
+  { value: 'pia', label: 'Enter the PIA' },
 ];
 
 // A labelled text input for what InputForm.jsx has no field for (a date, a percent).
@@ -108,7 +108,7 @@ const percent = (t) => t.replace(/[^0-9.]/g, '').slice(0, 6);
 //   own card, in groups (the inputs page; groups: [{ id, title, sections }]); 'card': one card,
 //   sections as rows (a calculator's inputs card).
 // title, headLink: the card's heading and a link beside it ('card' layout); footer: content at the
-//   bottom (the share link). locked: view only (a view-only link); onEditCopy unlocks.
+//   bottom (the share link); title null: no heading (the page has its own). locked: view only (a view-only link); onEditCopy unlocks.
 // defaultOpen: the sections open at first. baseValues: another household to compare with (the Roth
 //   page's "Compare a change"): each section that differs from it is marked "changed".
 export default function HouseholdInputs({
@@ -257,16 +257,29 @@ export default function HouseholdInputs({
         if (r.type === 'socialSecurity') {
           return (
             <>
-              <SelectInput label="Benefit" value={r.ssMode} onChange={setRow('incomes', r.id, 'ssMode')} options={SS_MODE_OPTIONS} />
+              <SelectInput
+                label="Benefit"
+                value={r.ssMode}
+                onChange={setRow('incomes', r.id, 'ssMode')}
+                options={SS_MODE_OPTIONS}
+              />
               {r.ssMode === 'pia' && (
                 <CurrencyInput
-                  label="Monthly benefit at full retirement age (PIA)"
-                  hint="From the SSA statement, in today's dollars. The benefit at the claiming age, and any spousal benefit, are worked out from it."
+                  label="PIA (monthly)"
                   value={r.amount}
                   onChange={setRow('incomes', r.id, 'amount')}
                 />
               )}
-              <SelectInput label="Claim at" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} options={CLAIM_AGE_OPTIONS} />
+              <SelectInput
+                label="Claim at"
+                value={r.fromAge}
+                onChange={setRow('incomes', r.id, 'fromAge')}
+                options={CLAIM_AGE_OPTIONS}
+              />
+              <p className="hint">
+                {r.ssMode === 'pia' ? "PIA: the monthly benefit at full retirement age, from the SSA statement, in today's dollars; the benefit at the claiming age, and any spousal benefit, are worked out from it." : "Estimated from this year's earnings; the PIA on the SSA statement is more precise."}{' '}
+                Claimed at retirement means at the retirement age, held within 62 to 70.
+              </p>
             </>
           );
         }
@@ -678,7 +691,7 @@ export default function HouseholdInputs({
 
   const head = (
     <div className="form-head">
-      <h2 className="form-title">{title}</h2>
+      {title && <h2 className="form-title">{title}</h2>}
       <div className="form-head-actions">
         {headLink}
         <button type="button" className="link-button" onClick={() => setOpen(new Set(allOpen ? [] : sections.map((s) => s.id)))}>
