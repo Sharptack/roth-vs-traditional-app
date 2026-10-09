@@ -31,7 +31,7 @@ Close out a finished phase. Phase: $ARGUMENTS (if blank, the phase "In progress"
 
 6. **Commit and tag.** Run `git status` and make sure only the doc files from steps 3 to 5 are staged. Commit them
    with the message `Closeout: <phase name>` and a body of two or three lines (what was done, the test count), ending
-   with the Co-Authored-By line. Then create the tag `phase-<short-name>-done` (e.g. `phase-3-done`) on that commit.
+   with the Co-Authored-By line. Then create the annotated tag `phase-<short-name>-done` (`git tag -a <name> -m "<phase name>"`) (e.g. `phase-3-done`) on that commit.
 
 7. **Report and ask.** Show: the test result, the check table from step 2, what changed in the Current status, and
    the number of unpushed commits (`git log --oneline origin/main..HEAD`). Ask whether to push. Mention that a push to
