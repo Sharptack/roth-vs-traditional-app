@@ -187,7 +187,6 @@ export default function HouseholdInputs({
       <div className="field-row">
         <CurrencyInput
           label="Lump sum offered"
-          hint="Blank: none offered."
           value={row.lumpSum ?? ''}
           onChange={setRow('incomes', row.id, 'lumpSum')}
         />
@@ -201,12 +200,12 @@ export default function HouseholdInputs({
           ]}
         />
       </div>
-      {row.election === 'lumpSum' && (
-        <p className="hint">
-          Every calculator leaves the monthly benefit out; the lump sum is rolled over to a Pre-tax IRA at the start age (today,
-          if that has passed).
-        </p>
-      )}
+      {/* the hint under the row, not under one field, so the two line up (decided 2026-10-09) */}
+      <p className="hint">
+        {row.election === 'lumpSum'
+          ? 'Every calculator leaves the monthly benefit out; the lump sum is rolled over to a Pre-tax IRA at the start age (today, if that has passed).'
+          : 'Leave the lump sum blank when none is offered.'}
+      </p>
     </>
   );
 
