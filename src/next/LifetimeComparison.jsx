@@ -1,6 +1,7 @@
 // "Over a lifetime" (roadmap phase 6), two blocks on the Roth page below the first-year results:
-// Roth vs. Pre-tax Future Contributions, each projected year by year to the end age, side by side;
-// then "Show full table", every year of either scenario. Renders lib/lifetimeComparison.js; no math
+// Roth vs. Pre-tax Future Contributions, each projected year by year to the end age, side by side,
+// with income and tax rates year by year and the tax each year over the whole lifetime (decided
+// 2026-10-09: from today, not just retirement); then "Show full table", every year of either scenario. Renders lib/lifetimeComparison.js; no math
 // of its own.
 import { useState } from 'react';
 import Collapsible from '../components/Collapsible.jsx';
@@ -11,6 +12,7 @@ import { formatCurrency as $ } from '../lib/format.js';
 import { breakEvenRateShift } from '../lib/lifetimeComparison.js';
 import { STRATEGIES, strategyById } from '../lib/strategies.js';
 import { YearTable } from './ProjectionResult.jsx';
+import IncomeAndRates from './IncomeAndRates.jsx';
 
 // Roth = blue, Pre-tax = orange, as everywhere the app shows a winner.
 const ROTH_COLOR = 'var(--series-1)';
@@ -47,6 +49,7 @@ function BreakEven({ household, result, endAge, winner }) {
 
 export default function LifetimeComparison({ lifetime, household, result }) {
   const [tableFor, setTableFor] = useState('roth');
+  const [ratesFor, setRatesFor] = useState('roth');
   const [open, setOpen] = useState(true);
   const [tableOpen, setTableOpen] = useState(false);
   if (!lifetime) return null;
@@ -54,8 +57,9 @@ export default function LifetimeComparison({ lifetime, household, result }) {
   const endAge = roth.endAge; // person 1's age in the last year (the engine's option)
   const end = roth.summary.endLabel; // the same year in words: "age 95", or "2071 (your spouse 95)"
   const firstYearWinner = result.comparison.winner;
-  const retiredYears = roth.rows.filter((r) => r.working.some((w) => !w)).map((r) => r.year);
-  const taxEachYear = (rows) => rows.filter((r) => retiredYears.includes(r.year)).map((r) => r.totalTax);
+  const years = roth.rows.map((r) => r.year);
+  const taxEachYear = (rows) => rows.map((r) => r.totalTax);
+  const firstRetired = roth.rows.find((r) => r.working.some((w) => !w))?.year;
   const rows = [
     ['Sustainable spending, after tax, a year', roth.sustainable, pretax.sustainable, d.sustainable, true],
     ['Lifetime tax (income and payroll)', roth.summary.totalTax, pretax.summary.totalTax, d.totalTax],
@@ -142,9 +146,24 @@ export default function LifetimeComparison({ lifetime, household, result }) {
         {crossoverYear ? `The leader changes in ${crossoverYear}.` : 'The leader never changes.'}
       </p>
 
-      <h3 className="subhead">Tax each year in retirement</h3>
+      <h3 className="subhead">Income and tax rates, year by year</h3>
+      <div className="segmented" role="group" aria-label="Scenario for the income and rates charts">
+        {['roth', 'pretax'].map((k) => (
+          <button key={k} type="button" className={ratesFor === k ? 'segment active' : 'segment'} aria-pressed={ratesFor === k} onClick={() => setRatesFor(k)}>
+            {VERDICT[k]} scenario
+          </button>
+        ))}
+      </div>
+      <IncomeAndRates rows={(ratesFor === 'roth' ? roth : pretax).rows} />
+      <p className="hint">
+        Every year from today to {end}{firstRetired ? `; retirement starts in ${firstRetired}` : ''}. The marginal rate is the
+        bracket of the last dollar of ordinary income; the effective marginal rate is the real tax on one more Pre-tax dollar
+        (a withdrawal or a conversion), with everything it sets off; the average rate is income tax ÷ total income.
+      </p>
+
+      <h3 className="subhead">Tax each year</h3>
       <GroupedBarChart
-        x={retiredYears}
+        x={years}
         series={[
           { key: 'roth', label: 'Roth scenario', color: ROTH_COLOR, values: taxEachYear(roth.rows) },
           { key: 'pretax', label: 'Pre-tax scenario', color: PRETAX_COLOR, values: taxEachYear(pretax.rows) },

@@ -1051,6 +1051,10 @@ describe('NextApp', () => {
     // the Roth page: its five cards, the blend explorer, the lifetime comparison and its full table
     expect(blockCount(roth)).toBe(8);
     expect(roth).toContain('>Show full table<');
+    // income and tax rates year by year, and the tax each year over the whole lifetime (2026-10-09)
+    expect(roth).toContain('>Income and tax rates, year by year</h3>');
+    expect(roth).toContain('>Tax each year</h3>');
+    expect(roth).not.toContain('Tax each year in retirement');
     expect(roth.indexOf('Estimates only')).toBeGreaterThan(roth.indexOf('>Show full table<'));
     for (const page of [tax, proj, conv]) expect(page).toMatch(/(Expand|Collapse) all results/);
     // the collapse bar: on calculator pages only, inputs shown at first

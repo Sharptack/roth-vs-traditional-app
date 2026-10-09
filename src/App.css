@@ -18,6 +18,8 @@
   --series-3: #1baf7a;
   --series-4: #eda100;
   --series-5: #e87ba4;
+  --series-6: #6b7a8f; /* earnings (Roth page income chart) */
+  --series-7: #7c4dbd;
   color-scheme: light dark;
 }
 
@@ -39,6 +41,8 @@
     --series-3: #199e70;
     --series-4: #c98500;
     --series-5: #d55181;
+    --series-6: #8a97a8;
+    --series-7: #9c75d6;
   }
 }
 
