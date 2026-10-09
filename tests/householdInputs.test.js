@@ -27,7 +27,7 @@ function couple() {
 
 describe('the version 2 inputs: section summaries', () => {
   it('summarizes the default household', () => {
-    expect(summary('household', D)).toBe('Single · You 35, retires at 65, plans to 95');
+    expect(summary('household', D)).toBe('Single · You 35, retires at 65, life expectancy 95');
     expect(summary('income', D)).toBe('W-2 $100,000 · Social Security estimated');
     expect(summary('contributions', D)).toBe('$10,000 per year · Pre-tax · 401(k)');
     expect(summary('accounts', D)).toBe('Pre-tax $100,000');
@@ -51,13 +51,13 @@ describe('the version 2 inputs: section summaries', () => {
 
   it('adds up a couple by type, and leaves the spouse out when not included', () => {
     const v = couple();
-    expect(summary('household', v)).toBe('Married filing jointly · You 35, retires at 65, plans to 95 · Spouse 35, retires at 65, plans to 95');
+    expect(summary('household', v)).toBe('Married filing jointly · You 35, retires at 65, life expectancy 95 · Spouse 35, retires at 65, life expectancy 95');
     // W-2: 100,000 + 50,000 = 150,000
     expect(summary('income', v)).toBe("W-2 $150,000 · 1099 $20,000 · Your Social Security estimated · Spouse's Social Security estimated");
     // two kinds (Pre-tax 401(k), Roth 401(k)) -> totals by type
     expect(summary('contributions', v)).toBe('Pre-tax $10,000 · Roth $5,000 per year');
     const without = setIncludeSpouse(v, false);
-    expect(summary('household', without)).toBe('Married filing jointly, one combined income · You 35, retires at 65, plans to 95');
+    expect(summary('household', without)).toBe('Married filing jointly, one combined income · You 35, retires at 65, life expectancy 95');
     expect(summary('income', without)).toBe('W-2 $100,000 · 1099 $20,000 · Social Security estimated');
     expect(summary('contributions', without)).toBe('$10,000 per year · Pre-tax · 401(k)');
   });

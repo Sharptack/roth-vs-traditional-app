@@ -265,14 +265,14 @@ export default function HouseholdInputs({
                     <AgeInput label="Retirement age" value={p.retirementAge} onChange={setPerson(p.id, 'retirementAge')} />
                   )}
                   {personFields.has('planToAge') && (
-                    <AgeInput label="Plan to age" value={p.planToAge} onChange={setPerson(p.id, 'planToAge')} />
+                    <AgeInput label="Life expectancy" value={p.planToAge} onChange={setPerson(p.id, 'planToAge')} />
                   )}
                 </div>
               )}
               {personFields.has('sex') && (
                 <SelectInput
                   label="Biological sex"
-                  hint="Used only for life expectancy (SSA's period life table), in the pension calculator. The plan itself runs to each person's plan-to age."
+                  hint="Used only for the pension calculator's survival odds (SSA's period life table). The plan itself runs to each person's life expectancy above."
                   value={p.sex}
                   onChange={setPerson(p.id, 'sex')}
                   options={SEX_OPTIONS}
@@ -281,8 +281,12 @@ export default function HouseholdInputs({
             </fieldset>
           ))}
         </div>
-        {personFields.has('planToAge') && (
-          <p className="hint">The projection runs until {spouse ? 'the last of you reaches their' : 'you reach your'} plan-to age.</p>
+        {/* what the two ages mean (decided 2026-10-09: "Plan to age" renamed "Life expectancy") */}
+        {(personFields.has('retirementAge') || personFields.has('planToAge')) && (
+          <p className="hint">
+            {personFields.has('retirementAge') && 'Retirement age: when earnings and contributions stop and withdrawals begin; at or below the age now means already retired. '}
+            {personFields.has('planToAge') && `Life expectancy: how long the plan has to last; it runs until ${spouse ? 'the last of you reaches theirs' : 'you reach it'}.`}
+          </p>
         )}
       </>
     ),
@@ -800,7 +804,7 @@ export default function HouseholdInputs({
           {shown('survivorSpending') && spouse && (
             <SelectInput
               label="Spending after the first death"
-              hint="The survivor's spending each year, as a share of the couple's. The plan follows each person to their plan-to age; from the year after the first death the survivor files single."
+              hint="The survivor's spending each year, as a share of the couple's. The plan follows each person to their life expectancy; from the year after the first death the survivor files single."
               value={a.survivorSpending}
               onChange={set('survivorSpending')}
               options={['0.6', '0.7', '0.75', '0.8', '0.9', '1'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}% of the couple's` }))}

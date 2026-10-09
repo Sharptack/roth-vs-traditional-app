@@ -990,7 +990,7 @@ describe('NextApp', () => {
     expect(proj).toContain('Income by source in retirement');
     expect(proj).toContain('Balances over time');
     expect(proj).toContain('Year by year');
-    expect(proj).toContain('Plan to age');
+    expect(proj).toContain('Life expectancy');
     expect(proj).not.toContain('Project to age');
     expect(proj).toContain('Compare withdrawal strategies');
     expect(proj).toContain('Withdrawal strategy in retirement');
@@ -1084,7 +1084,7 @@ describe('NextApp', () => {
     expect(page).toContain('<span>W-2 wages · $100,000 per year</span>');
     expect(page).toContain('<span>Social Security · estimated from earnings</span>');
     expect(page).toContain('>Set start/end ages</button>');
-    for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add income', 'Withdrawal strategy in retirement']) {
+    for (const label of ['Biological sex', 'Life expectancy', 'or birthdate', '+ Add a debt', '+ Add income', 'Withdrawal strategy in retirement']) {
       expect(page, label).toContain(label);
     }
     // the calculators' own inputs aren't on the inputs page (decided 2026-10-08)

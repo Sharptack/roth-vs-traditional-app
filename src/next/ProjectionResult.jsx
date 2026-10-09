@@ -70,7 +70,7 @@ export function YearTable({ rows }) {
     <div>
       {death && (
         <p className="hint">
-          Shaded: survivor years, filing single, after the first death ({deathNote(death)}, by the plan-to ages).
+          Shaded: survivor years, filing single, after the first death ({deathNote(death)}, by the life expectancies).
         </p>
       )}
       <button type="button" className="link-button" onClick={() => setAll(!all)}>
@@ -254,7 +254,7 @@ export default function ProjectionResult({ view }) {
         { id: 'balances', title: 'Balances over time', summary: h.balances, content: balances },
         { id: 'table', title: 'Year by year', summary: h.table, content: <YearTable rows={rows} /> },
       ]}
-      disclaimer="Estimates only — not tax or financial advice. Today’s dollars at constant after-inflation returns (before and in retirement); spending flat; income rows by their ages, earnings flat in today’s dollars; withdrawals by the chosen strategy once anyone retires, with RMDs as a floor; survivor years from the first plan-to age; no state tax. IRMAA tiers in today’s dollars, at this year’s amounts."
+      disclaimer="Estimates only — not tax or financial advice. Today’s dollars at constant after-inflation returns (before and in retirement); spending flat; income rows by their ages, earnings flat in today’s dollars; withdrawals by the chosen strategy once anyone retires, with RMDs as a floor; survivor years from the first life expectancy; no state tax. IRMAA tiers in today’s dollars, at this year’s amounts."
     />
   );
 }

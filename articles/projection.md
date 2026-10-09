@@ -12,7 +12,7 @@ The projection follows the household from this year to the end of the plan, one 
 
 ## How each year is worked out
 
-1. **Ages and who is working.** A person works until their retirement age. For a couple, each person is followed to their own plan-to age (see [Survivor years](#/docs/inputs/survivor-years)).
+1. **Ages and who is working.** A person works until their retirement age. For a couple, each person is followed to their own life expectancy (see [Survivor years](#/docs/inputs/survivor-years)).
 2. **Income.** Earnings and other income from the income rows, in the years their ages cover; Social Security once each person claims; pensions from their start age.
 3. **Contributions** from each person still working, each capped at their own IRS limit for that year's age (so the catch-up starts at 50). Anything over the limit goes to a taxable account. Employer 401(k) contributions go into the person's Pre-tax account.
 4. **Required minimum distributions** from each owner's Pre-tax accounts, on the balance at the start of the year.
@@ -58,6 +58,6 @@ Some years bring in more than spending, tax and savings use: an RMD larger than 
 - Spending is flat in today's dollars; it doesn't fall with age or change for health care.
 - Earnings are flat in today's dollars: no raises.
 - Each return is the same every year (Monte Carlo comes in a later phase).
-- Only the first death is modeled; the survivor lives to their plan-to age.
+- Only the first death is modeled; the survivor lives to their life expectancy.
 - No state income tax.
 - Social Security's earnings test before full retirement age is not applied to work in retirement.

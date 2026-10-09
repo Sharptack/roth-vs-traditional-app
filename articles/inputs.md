@@ -15,7 +15,7 @@ A closed section still shows a one-line summary of what's in it, so you can chec
 
 **Filing status:** single, or married filing jointly. When filing jointly, you choose whether to enter your spouse separately:
 
-- **Yes:** each spouse gets their own age, retirement age, plan-to age, Social Security and income. Payroll tax, Social Security and the IRS contribution limit are worked out per person, with a spousal benefit when it is larger than a spouse's own.
+- **Yes:** each spouse gets their own age, retirement age, life expectancy, Social Security and income. Payroll tax, Social Security and the IRS contribution limit are worked out per person, with a spousal benefit when it is larger than a spouse's own.
 - **No, one combined income:** the household is treated as one earner, with the joint tax brackets.
 
 If you switch the spouse off, their details are kept. Switch them back on and everything you entered returns. The spouse's own inputs show only while the spouse is entered.
@@ -26,17 +26,17 @@ Below the filing status are the people: you, and your spouse when entered, side 
 
 Enter either one. Typing a birthdate fills in the age; typing an age clears the birthdate, since an age alone doesn't give one. The calculators use the age a person reaches this calendar year, and a birthdate gives the exact birth year, which sets the full retirement age for Social Security and the age required minimum distributions start. A household saved with a birthdate has its ages brought up to date each time it is opened.
 
-### Retirement age and plan-to age
+### Retirement age and life expectancy
 
 **Retirement age:** when that person stops working. Each spouse's is set on its own. The Roth vs. Pre-tax comparison takes its retirement-year snapshot when the last of you retires; each of you contributes until your own retirement, and those savings keep growing until then.
 
 Someone already retired keeps the age they retired at (65 for a 75-year-old who retired at 65): a retirement age at or below the age now means retired. They have no earnings or contributions from this year on, the return in retirement applies once no one works, and the Roth comparison's snapshot comes no earlier than today. With everyone retired and no earnings this year, the Roth vs. Pre-tax page has nothing to compare and says so; the Roth conversion calculator is the one for money already saved.
 
-**Plan-to age** (each person, 95 by default): the projection runs until the last of you reaches their plan-to age. **Biological sex** is used only for life expectancy, by the pension calculator for now.
+**Life expectancy** (each person, 95 by default; called the plan-to age before 2026-10-09): how long the plan has to last. The projection runs until the last of you reaches theirs. Retirement age is when that person stops working; life expectancy is when the plan ends for them. **Biological sex** is used only for the pension calculator's survival odds (SSA's life table) for now.
 
 ### Survivor years
 
-For a married couple entered separately, the plan follows each of you to your own plan-to age. Each person is counted through the year they reach it. From the year after the first death, the survivor:
+For a married couple entered separately, the plan follows each of you to your own life expectancy. Each person is counted through the year they reach it. From the year after the first death, the survivor:
 
 - files single, so the single brackets, standard deduction and thresholds apply (Social Security taxability, the Net Investment Income Tax, Medicare IRMAA). The year of death itself stays joint. Qualifying surviving spouse status, which needs a dependent child, is not modeled;
 - keeps the larger of the two Social Security benefits: their own (with any spousal benefit) or the deceased's, the deceased's from age 60;
@@ -44,7 +44,7 @@ For a married couple entered separately, the plan follows each of you to your ow
 - spends a share of what the couple spent (**Spending after the first death** in Assumptions, 80% by default);
 - owns the deceased's accounts. Pre-tax and Roth accounts roll over as the survivor's own, so required minimum distributions follow the survivor's age. Taxable accounts get a step-up in cost basis, so gains up to the death are never taxed.
 
-Only the first death is modeled; the survivor lives to their plan-to age. Two people with the same plan-to year have no survivor years. With different ages, the projection names each year by the year and the ages of those living, for example "2071 (your spouse 95)".
+Only the first death is modeled; the survivor lives to their life expectancy. Two people with the same life-expectancy year have no survivor years. With different ages, the projection names each year by the year and the ages of those living, for example "2071 (your spouse 95)".
 
 ## Children and dependents
 
@@ -157,6 +157,6 @@ Two calculators have an input only they read, shown first on their own page:
 
 Households saved, and links made, before the inputs page are converted when opened, and every calculator gives the same results as before, with one exception. A Social Security benefit entered as a known yearly amount becomes the benefit at full retirement age that gives that amount at its claiming age. Because that figure now also counts toward a spouse's spousal benefit, a couple can see a spousal benefit the older version never gave.
 
-Households saved before the inputs were regrouped (October 2026) are converted too: each person's Social Security becomes their Social Security row; "Social Security already received" becomes that person's benefit, claimed at their age now; interest and qualified dividends become Other income of that kind; the projection's end age becomes your plan-to age; and a pension offer that was filled in becomes a pension row. A pension now counts in every calculator, so a household with one sees different numbers.
+Households saved before the inputs were regrouped (October 2026) are converted too: each person's Social Security becomes their Social Security row; "Social Security already received" becomes that person's benefit, claimed at their age now; interest and qualified dividends become Other income of that kind; the projection's end age becomes your life expectancy; and a pension offer that was filled in becomes a pension row. A pension now counts in every calculator, so a household with one sees different numbers.
 
 Links to the original public calculator open as a one-person household.

@@ -303,7 +303,7 @@ export function validateHouseholdV2(household) {
     if (p.socialSecurity.mode === 'receiving' && (!isNum(p.socialSecurity.received) || p.socialSecurity.received < 0)) {
       errors.push(`Enter ${whose(p.id)} monthly Social Security benefit as received now.`);
     }
-    if (p.planToAge !== null && (!isNum(p.planToAge) || p.planToAge > 120)) errors.push(`Choose ${whose(p.id)} plan-to age (up to 120).`);
+    if (p.planToAge !== null && (!isNum(p.planToAge) || p.planToAge > 120)) errors.push(`Choose ${whose(p.id)} life expectancy (up to 120).`);
   }
   for (const p of household.people) {
     if (household.incomes.filter((r) => r.owner === p.id && r.type === 'socialSecurity').length > 1) {

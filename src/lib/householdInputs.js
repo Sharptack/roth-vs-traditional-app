@@ -71,7 +71,7 @@ export function accountsSummary(accounts) {
 function personLine(p) {
   // A retirement age at or below the age now: already retired (decided 2026-10-09).
   const retired = Number(p.age) > 0 && Number(p.retirementAge) > 0 && Number(p.retirementAge) <= Number(p.age);
-  return `${OWNER_LABELS[p.id]} ${p.age || '—'}, ${retired ? 'retired' : 'retires'} at ${p.retirementAge || '—'}, plans to ${p.planToAge || '—'}`;
+  return `${OWNER_LABELS[p.id]} ${p.age || '—'}, ${retired ? 'retired' : 'retires'} at ${p.retirementAge || '—'}, life expectancy ${p.planToAge || '—'}`;
 }
 
 // The income summary: yearly amounts by kind, then each person's Social Security and pensions.
