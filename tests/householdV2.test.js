@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { receivedAt, toHouseholdV2, validateHouseholdV2 } from '../src/lib/householdV2.js';
 import { DEFAULT_HOUSEHOLD_VALUES, setIncludeSpouse, newPerson } from '../src/lib/householdValues.js';
 import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs, toHousehold } from '../src/lib/household.js';
-import { householdToYearTaxParams } from '../src/lib/taxCalculator.js';
+import { householdToYearTaxParams, taxCalculatorResult } from '../src/lib/taxCalculator.js';
 import { householdToPensionInputs } from '../src/lib/pensionCalculator.js';
 
 const Y = 2026;
@@ -257,5 +257,28 @@ describe('the return in retirement (phase 2)', () => {
     const h = toHouseholdV2({ ...D, assumptions: { ...D.assumptions, retirementReturnRate: '0.05' } }, Y);
     expect(h.assumptions.retirementReturnRate).toBe(0.05);
     expect(h.assumptions.returnRate).toBe(0.07);
+  });
+});
+
+describe('the taxable accounts are the source of their own dividends (phase 2 step f)', () => {
+  const taxable = (extra = {}) => ({ ...D, accounts: [{ ...D.accounts[0], type: 'taxable', balance: '100000', ...extra }] });
+
+  it('this year’s tax counts them: the assumption’s 1.3%, or the account’s own yield', () => {
+    // $100,000 x 1.3% = $1,300; at its own 2%: $2,000
+    const params = householdToYearTaxParams(toHouseholdV2(taxable(), Y));
+    expect(params.income.preferentialIncome).toBeCloseTo(1300, 9);
+    expect(params.accountDividends).toBeCloseTo(1300, 9);
+    const r = taxCalculatorResult(params);
+    expect(r.rows.find((row) => row.key === 'preferential').label).toBe('Long-term gains and qualified dividends, including $1,300 of dividends from the taxable accounts');
+    expect(householdToYearTaxParams(toHouseholdV2(taxable({ dividendYield: '0.02' }), Y)).income.preferentialIncome).toBeCloseTo(2000, 9);
+    // no taxable account: nothing added
+    expect(householdToYearTaxParams(toHouseholdV2(D, Y)).accountDividends).toBeUndefined();
+  });
+
+  it('the Roth comparison: the accounts’ own yield for today’s balance, the assumption for the side account', () => {
+    expect(householdToCompareInputs(toHouseholdV2(taxable(), Y)).taxableDividends.existingYield).toBeUndefined();
+    const own = householdToCompareInputs(toHouseholdV2(taxable({ dividendYield: '0.02' }), Y)).taxableDividends;
+    expect(own.yield).toBe(0.013);
+    expect(own.existingYield).toBeCloseTo(0.02, 12);
   });
 });

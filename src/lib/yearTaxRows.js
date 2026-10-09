@@ -30,6 +30,7 @@ export function bracketSlices(start, top, brackets, rateShift = 0) {
 }
 
 const pct = (r) => `${Math.round(r * 1000) / 10}%`;
+const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
 
 // params: the same object passed to calculateYearTax; r: its result.
 // The rows appear only when they apply (round 2 phase 1): payroll tax beside each earned income,
@@ -56,7 +57,11 @@ export function yearTaxRows(params, r) {
   if (nonZero(p.additionalMedicare)) add('additionalMedicare', 'Additional Medicare tax (0.9% on earnings over the threshold)', p.additionalMedicare, 'tax');
   if (nonZero(L.ordinaryIncome)) add('ordinaryIncome', 'Pre-tax withdrawals, pensions, conversions', L.ordinaryIncome);
   if (nonZero(L.investmentOrdinaryIncome)) add('investmentOrdinary', 'Interest, non-qualified dividends, short-term gains', L.investmentOrdinaryIncome);
-  if (nonZero(L.preferentialIncome)) add('preferential', 'Long-term gains and qualified dividends', L.preferentialIncome);
+  if (nonZero(L.preferentialIncome)) {
+    // (the taxable accounts' dividends, when counted: taxCalculator.js accountDividends)
+    const fromAccounts = params.accountDividends > 0 ? `, including ${money(params.accountDividends)} of dividends from the taxable accounts` : '';
+    add('preferential', `Long-term gains and qualified dividends${fromAccounts}`, L.preferentialIncome);
+  }
   if (nonZero(L.socialSecurity)) add('socialSecurity', 'Social Security benefits', L.socialSecurity);
   if (nonZero(L.selfEmploymentTaxDeduction)) add('seDeduction', 'Half of self-employment tax', L.selfEmploymentTaxDeduction, 'sub');
   if (nonZero(L.pretaxDeferrals)) add('deferrals', 'Pre-tax 401(k)/IRA contributions', L.pretaxDeferrals, 'sub');

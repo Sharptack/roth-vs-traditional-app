@@ -97,7 +97,7 @@ What is already saved today: one row per account, or per group of accounts, with
 
 - **Pre-tax** (traditional 401(k), IRA): withdrawals are taxed as ordinary income, and required minimum distributions apply.
 - **Roth:** withdrawals are tax-free.
-- **Taxable** (a brokerage account): set its **cost basis**, the share of today's balance that is money put in rather than gains (50% by default). Only gains are taxed when money comes out, at the capital-gains rates. The account also pays dividends every year (**Dividends on taxable accounts** in Assumptions), which are taxed in the year they are paid; reinvested, they add to the cost basis. Everything else the account earns from here on is gain.
+- **Taxable** (a brokerage account): set its **cost basis**, the share of today's balance that is money put in rather than gains (50% by default). Only gains are taxed when money comes out, at the capital-gains rates. The account also pays dividends every year, which are taxed in the year they are paid; reinvested, they add to the cost basis. Set its **dividends a year** when you know them (a share of the balance), or leave it at the assumption (**Dividends on taxable accounts**, 1.3% by default). The accounts are the only source of these dividends: the tax calculator counts this year's, and the projection every year's. An **Other** income row of qualified dividends is for dividends from outside the listed accounts, so nothing is counted twice. Everything else the account earns from here on is gain.
 
 When the spouse isn't entered separately, accounts marked as theirs count as yours.
 

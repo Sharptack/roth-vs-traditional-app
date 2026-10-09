@@ -455,6 +455,19 @@ export default function HouseholdInputs({
                   options={BASIS_OPTIONS}
                 />
               )}
+              {a.type === 'taxable' && (
+                <SelectInput
+                  label="Dividends a year"
+                  hint="Qualified dividends, as a share of the balance. Counted in this year's tax and every year of the projection."
+                  value={a.dividendYield ?? ''}
+                  onChange={setRow('accounts', a.id, 'dividendYield')}
+                  options={[
+                    { value: '', label: `As the assumption (${Math.round(Number(values.assumptions.dividendYield) * 1000) / 10}%)` },
+                    { value: '0', label: 'None' },
+                    ...['0.01', '0.015', '0.02', '0.03', '0.04'].map((x) => ({ value: x, label: `${Math.round(Number(x) * 1000) / 10}%` })),
+                  ]}
+                />
+              )}
               {values.accounts.length > 1 && removeButton('accounts', a, i, 'account')}
             </li>
           ))}

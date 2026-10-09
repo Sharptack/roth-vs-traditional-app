@@ -30,7 +30,8 @@
 //                                          // the employer's 401(k) contribution: a match ('1' = 100% of the
 //                                          // deferral, on deferrals up to matchUpTo of W-2 pay, '0.04' = 4%)
 //                                          // or a flat employerAmount a year (employerContributions.js)
-//   accounts: [ { id, owner, type: 'pretax' | 'roth' | 'taxable', balance, basisShare } ],   // as version 1
+//   accounts: [ { id, owner, type: 'pretax' | 'roth' | 'taxable', balance, basisShare, dividendYield } ],   // as version 1,
+//                                          // plus a taxable account's own dividend yield ('' = the assumption)
 //   dependents: [ { id, kind: 'child' | 'other', age } ],   // a child counts for the child tax
 //                                          // credit while under 17; an other dependent ($500) this year
 //   liabilities: [ { id, kind, balance, rate, payment } ],   // kind: LIABILITY_KINDS; rate: the annual
@@ -96,7 +97,7 @@ const ROW_TEMPLATES = {
     prefix: 'c',
     row: { owner: 'p1', tax: 'pretax', account: '401k', amount: '', ...EMPLOYER_DEFAULTS },
   },
-  accounts: { prefix: 'a', row: { owner: 'p1', type: 'pretax', balance: '', basisShare: '0.5' } },
+  accounts: { prefix: 'a', row: { owner: 'p1', type: 'pretax', balance: '', basisShare: '0.5', dividendYield: '' } },
   liabilities: { prefix: 'l', row: { kind: 'mortgage', balance: '', rate: '', payment: '' } },
   dependents: { prefix: 'd', row: { kind: 'child', age: '' } },
 };
@@ -299,7 +300,7 @@ const ROW_RULES = {
     optional: { employer: EMPLOYER_TYPES },
     text: ['amount', 'matchRate', 'matchUpTo', 'employerAmount'],
   },
-  accounts: { choices: { owner: OWNERS, type: ACCOUNT_TYPES }, text: ['balance', 'basisShare'] },
+  accounts: { choices: { owner: OWNERS, type: ACCOUNT_TYPES }, text: ['balance', 'basisShare', 'dividendYield'] },
   liabilities: { choices: { kind: LIABILITY_KINDS }, text: ['balance', 'rate', 'payment'] },
   dependents: { choices: { kind: DEPENDENT_KINDS }, text: ['age'] },
 };

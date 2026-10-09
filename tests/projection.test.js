@@ -451,3 +451,21 @@ describe('runProjection: returns before and after retirement (HAND CALC)', () =>
     expect(rows.map((r) => r.endBalances.roth)).toEqual([expect.closeTo(110000, 6), expect.closeTo(121000, 6)]);
   });
 });
+
+describe('runProjection: each taxable account’s own dividend yield (HAND CALC)', () => {
+  it('an account’s own yield wins over the assumption', () => {
+    // the worker of the tax drag tests (wages $100,000: dividends at 15%), return 5%, assumption 2%;
+    // a second $100,000 taxable account at its own 3%. Year 1: 2,000 + 3,000 = 5,000 of dividends,
+    // tax 750; the second account: 100,000 x 1.05 - 450 = 104,550, basis 100,000 + 3,000 - 450 = 102,550
+    const h = retiree({ age: 40, taxable: 100000, basisShare: 1, returnRate: 0.05 });
+    h.people[0] = { ...h.people[0], retirementAge: 65, wages: 100000 };
+    h.accounts.push({ id: 'a4', owner: 'p1', type: 'taxable', balance: 100000, basisShare: 1, dividendYield: 0.03 });
+    h.assumptions.dividendYield = 0.02;
+    const r = runProjection(h, { endAge: 40 }).rows[0];
+    expect(r.dividends).toBeCloseTo(5000, 6);
+    expect(r.dividendTaxFromAccounts).toBeCloseTo(750, 6);
+    // 104,700 (the first, as before) + 104,550
+    expect(r.endBalances.taxable).toBeCloseTo(209250, 6);
+    expect(r.taxableBasis).toBeCloseTo(101700 + 102550, 6);
+  });
+});

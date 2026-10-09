@@ -17,12 +17,24 @@ export const TAX_CALCULATOR_DEFAULT_VALUES = {
   taxSocialSecurity: '0', // Social Security received this year
 };
 
+// This year's qualified dividends from the household's taxable accounts (phase 2 step f, decided
+// 2026-10-09): each account's balance x its own yield, else the assumption. The accounts are the only
+// source of these dividends; an "Other: qualified dividends" income row is dividends from elsewhere.
+// -> { dividends, balance } (balance: the taxable accounts' total). Version 1: none.
+export function taxableAccountDividends(household) {
+  const fallback = household.assumptions?.dividendYield ?? 0;
+  return (household.accounts ?? [])
+    .filter((a) => a.type === 'taxable')
+    .reduce((acc, a) => ({ dividends: acc.dividends + a.balance * (a.dividendYield ?? fallback), balance: acc.balance + a.balance }), { dividends: 0, balance: 0 });
+}
+
 // The calculateYearTax parameters for this household's current year.
 //  - people: each person's wages / 1099 income and age today (the 65+ deductions apply now).
 //  - pretaxDeferrals: this year's Pre-tax Future Contributions, each person's capped at their own
 //    IRS limit (only when the savings are currently Pre-tax).
 //  - income: the calculator's own inputs. A version 2 household's Social Security is each person's
-//    benefit once claimed (projection.js socialSecurityInYear); version 1 typed it in.
+//    benefit once claimed (projection.js socialSecurityInYear); version 1 typed it in. Qualified
+//    dividends include the taxable accounts' (taxableAccountDividends; accountDividends says how much).
 export function householdToYearTaxParams(household) {
   const { year, people, futureContributions: fc, filingStatus } = household;
   const tax = household.calculators?.tax ?? {};
@@ -33,6 +45,7 @@ export function householdToYearTaxParams(household) {
     if (!c || (c.currentType ?? fc.currentType) !== 'pretax') return acc;
     return acc + Math.min(Math.max(0, c.amount), checkContributionLimit(c.amount, c.accountType ?? fc.accountType, year, ageOf(p)).limit);
   }, 0);
+  const { dividends: accountDividends } = taxableAccountDividends(household);
   return {
     filingStatus,
     year,
@@ -41,10 +54,11 @@ export function householdToYearTaxParams(household) {
     qbi: Boolean(household.assumptions?.qualifiedBusinessIncome), // QBI on 1099 earnings (qbi.js)
     ...(household.deductions?.itemized > 0 && { itemizedDeductions: household.deductions.itemized }),
     ...creditCounts(household),
+    ...(accountDividends > 0 && { accountDividends }),
     income: {
       ordinaryIncome: tax.ordinaryIncome ?? 0,
       investmentOrdinaryIncome: tax.investmentOrdinaryIncome ?? 0,
-      preferentialIncome: tax.preferentialIncome ?? 0,
+      preferentialIncome: (tax.preferentialIncome ?? 0) + accountDividends,
       socialSecurity: household.version === 2 ? socialSecurityInYear(household, 0) : (tax.socialSecurity ?? 0),
     },
   };

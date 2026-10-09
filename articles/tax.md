@@ -1,6 +1,6 @@
 # The tax calculator
 
-This year's federal income tax for the household, from every kind of income at once, and what the next dollar would cost. It reads the household's inputs: this year's income rows, each person's age, Pre-tax contributions (deducted), itemized deductions, children and dependents, and whether Medicare IRMAA is included.
+This year's federal income tax for the household, from every kind of income at once, and what the next dollar would cost. It reads the household's inputs: this year's income rows, the dividends the taxable accounts pay this year (each account's balance times its dividend yield, shown in the qualified-dividends line), each person's age, Pre-tax contributions (deducted), itemized deductions, children and dependents, and whether Medicare IRMAA is included.
 
 ## The three rates
 

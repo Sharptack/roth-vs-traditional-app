@@ -437,9 +437,11 @@ export function compareRothVsTraditional(inputs) {
   const ownYears = contributionSplit.people && contributors?.some((c) => c.years !== undefined) ? contributors.map((c) => c.years ?? years) : null;
   // Tax drag (taxableDividends): how taxable money grows until retirement, and the taxed share of
   // its withdrawals in retirement (the dividends taxed whole). Absent = no dividends, as before.
+  // existingYield: today's taxable accounts' own (balance-weighted) yield; absent = yield.
   const dividendYield = inputs.taxableDividends?.yield ?? 0;
+  const existingYield = inputs.taxableDividends?.existingYield ?? dividendYield;
   const taxableGrowth = { returnRate, dividendYield, taxRate: inputs.taxableDividends?.taxRate ?? 0 };
-  const taxedShare = (gainShare) => taxedShareOfWithdrawal(gainShare, dividendYield, WITHDRAWAL_RATE);
+  const taxedShare = (gainShare, y = dividendYield) => taxedShareOfWithdrawal(gainShare, y, WITHDRAWAL_RATE);
   const grow = (side, key) =>
     ownYears
       ? contributionSplit.people.reduce((acc, p, i) => acc + futureValueContributions(p[side][key], returnRate, ownYears[i], years), 0)
@@ -487,6 +489,7 @@ export function compareRothVsTraditional(inputs) {
     basis: inputs.otherTaxableBalance * (inputs.otherTaxableBasis ?? 0),
     years,
     ...taxableGrowth,
+    dividendYield: existingYield,
   });
   const grown = {
     pretax:
@@ -501,8 +504,8 @@ export function compareRothVsTraditional(inputs) {
     pretaxGross: WITHDRAWAL_RATE * grown.pretax, // fully taxable, stacks as ordinary income
     roth: WITHDRAWAL_RATE * grown.roth, // tax-free
     taxableGross: WITHDRAWAL_RATE * grown.taxable, // gain part taxed via real LTCG brackets
-    taxableGains: WITHDRAWAL_RATE * grown.taxable * taxedShare(existingGainShare),
-    taxableGainShare: taxedShare(existingGainShare),
+    taxableGains: WITHDRAWAL_RATE * grown.taxable * taxedShare(existingGainShare, existingYield),
+    taxableGainShare: taxedShare(existingGainShare, existingYield),
   };
   // NOTE: no RMD sequencing or tax-efficient withdrawal ordering is modeled —
   // all accounts are treated as drawn simultaneously.
@@ -703,7 +706,11 @@ export function compareRothVsTraditional(inputs) {
       taxableGainShare,
       // With dividends, the taxed share at the 4% baseline (held as the withdrawal scales).
       ...solvePortfolioWithdrawal(targetAfterTaxIncome, buckets, ssBenefit, filingStatus, year, {
-        taxableGainShare: taxedShare(taxableGainShare),
+        // the bucket's yield: Existing Accounts' and the side account's, by value
+        taxableGainShare: taxedShare(
+          taxableGainShare,
+          buckets.taxable > 0 ? (grown.taxable * existingYield + (buckets.taxable - grown.taxable) * dividendYield) / buckets.taxable : dividendYield,
+        ),
         taxRules: retirementTaxRules,
       }),
     };

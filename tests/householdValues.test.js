@@ -41,7 +41,8 @@ describe('version 2 household values: defaults', () => {
     ]);
     // the employer's contribution is new in version 2 (phase 2): none
     expect(D.contributions).toEqual([{ id: 'c1', owner: 'p1', tax: v1.currentType, account: v1.accountType, amount: v1.savings, ...EMPLOYER_DEFAULTS }]);
-    expect(D.accounts).toEqual(v1.accounts);
+    // a taxable account's own dividend yield is new in version 2 (blank: the assumption)
+    expect(D.accounts).toEqual(v1.accounts.map((a) => ({ ...a, dividendYield: '' })));
     expect(D.liabilities).toEqual([]);
     expect(D.spending).toEqual({ debtPayments: v1.debtPayments, otherExpenses: v1.otherExpenses, retirementLifestyle: v1.retirementLifestyle });
     // survivor years' spending, the dividend yield and the return in retirement are new in version 2 (phase 2)

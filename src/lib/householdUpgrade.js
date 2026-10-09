@@ -107,7 +107,8 @@ export function upgradeHouseholdValues(values, year) {
     people,
     incomes,
     contributions,
-    accounts: Array.isArray(values?.accounts) ? values.accounts.map((a) => ({ ...a })) : accountRowsFromFlat(v),
+    // (a taxable account's own dividend yield is new in version 2: blank, the assumption)
+    accounts: (Array.isArray(values?.accounts) ? values.accounts.map((a) => ({ ...a })) : accountRowsFromFlat(v)).map((a) => ({ dividendYield: '', ...a })),
     liabilities: [],
     dependents: [],
     deductions: { itemized: '' },

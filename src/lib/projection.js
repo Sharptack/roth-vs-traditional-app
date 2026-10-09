@@ -53,6 +53,8 @@
 //   - once anyone has retired, the year's cash (the strategy withdraws enough to cover it)
 //   - while everyone works, the account itself: the paycheck is the budget, so less of the dividend
 //     is reinvested (tax = the year's tax with the dividends − without them; basis rises by the rest)
+// A taxable account may have a yield of its own (accounts[i].dividendYield, step f); the accounts the
+// projection opens (savings over the limit, reinvested surplus) take the assumption.
 // Absent (version 1 households) = no dividends, as before.
 //
 // Employer contributions (phase 2 step d, decided 2026-10-09): each person still working gets their
@@ -168,6 +170,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   const lastYearAlive = people.map((p) => (Number.isFinite(p.planToAge) ? p.planToAge : Infinity));
   const survivorSpending = assumptions.survivorSpending ?? DEFAULT_SURVIVOR_SPENDING;
   const dividendYield = assumptions.dividendYield ?? 0;
+  const yieldOf = (a) => a.dividendYield ?? dividendYield;
   let deceased = -1; // the index of the person who has died, from the year after their death
   const plan =
     contributions ??
@@ -182,6 +185,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     type: a.type,
     balance: a.balance,
     basis: a.type === 'taxable' ? a.balance * (a.basisShare ?? 0) : 0,
+    ...(a.type === 'taxable' && Number.isFinite(a.dividendYield) && { dividendYield: a.dividendYield }),
   }));
   const accountFor = (owner, type) => {
     const id = `new-${type}-${owner}`;
@@ -259,11 +263,11 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       .filter((_, i) => alive[i]);
     // Each taxable account's qualified dividends this year, on what stays invested.
     const dividendsOf = (withdrawals) =>
-      dividendYield > 0
-        ? Object.fromEntries(
-            accounts.filter((a) => a.type === 'taxable').map((a) => [a.id, Math.max(0, a.balance - (withdrawals[a.id] ?? 0)) * dividendYield]),
-          )
-        : {};
+      Object.fromEntries(
+        accounts
+          .filter((a) => a.type === 'taxable' && yieldOf(a) > 0)
+          .map((a) => [a.id, Math.max(0, a.balance - (withdrawals[a.id] ?? 0)) * yieldOf(a)]),
+      );
     const sum = (o) => Object.values(o).reduce((s, x) => s + x, 0);
     const taxParams = (withdrawals, conversions = [], withDividends = true) => {
       let ordinaryIncome = pension + conversions.reduce((s, c) => s + c.amount, 0);

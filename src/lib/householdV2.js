@@ -157,6 +157,8 @@ export function toHouseholdV2(input, year) {
       type: acc.type,
       balance: blankAsZero(acc.balance),
       ...(acc.type === 'taxable' && { basisShare: Number(acc.basisShare ?? 0.5) }),
+      // its own dividend yield (blank: the assumption; taxCalculator.js taxableAccountDividends)
+      ...(acc.type === 'taxable' && String(acc.dividendYield ?? '').trim() !== '' && { dividendYield: Number(acc.dividendYield) }),
     })),
     incomes,
     pensions,

@@ -1160,3 +1160,26 @@ describe('employer contributions (employerContributions, HAND CALC)', () => {
     expect(compareRothVsTraditional({ ...base, employerContributions: [] })).toEqual(compareRothVsTraditional(base));
   });
 });
+
+describe('tax drag: the Existing Accounts’ own yield (HAND CALC)', () => {
+  it('existingYield for today’s taxable balance, yield for the side account', () => {
+    // As 'tax drag on taxable money' above, but today's $100,000 pays no dividends (existingYield 0):
+    // it grows 100,000 x 1.05^2 = 110,250; the Roth side account is unchanged at 11,258.50.
+    // The 4% withdrawal from it: 4,410, gain share 10,250 / 110,250 -> taxed 4,410 x 0.0929705 = 410
+    const r = compareRothVsTraditional({
+      ...baseInputs,
+      year: 2026,
+      currentAge: 40,
+      retirementAge: 42,
+      returnRate: 0.05,
+      savings: 30000,
+      currentType: 'roth',
+      otherTaxableBalance: 100000,
+      otherTaxableBasis: 1,
+      taxableDividends: { yield: 0.02, existingYield: 0, taxRate: 0.15 },
+    });
+    expect(r.portfolio.roth.buckets.taxable - r.annuity.roth.side.futureValue).toBeCloseTo(110250, 6);
+    expect(r.annuity.roth.side.futureValue).toBeCloseTo(11258.5, 6);
+    expect(r.otherWithdrawals.taxableGains).toBeCloseTo(410, 6);
+  });
+});

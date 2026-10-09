@@ -39,7 +39,7 @@
 // CLAUDE.md); only the #/next preview goes through here. For one person, the round trip
 // form -> household -> compare inputs gives exactly the inputs toCompareInputs gives (tested).
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from './formInputs.js';
-import { TAX_CALCULATOR_DEFAULT_VALUES, householdToYearTaxParams } from './taxCalculator.js';
+import { TAX_CALCULATOR_DEFAULT_VALUES, householdToYearTaxParams, taxableAccountDividends } from './taxCalculator.js';
 import { calculateYearTax } from './yearTax.js';
 import { employerContributionFor } from './employerContributions.js';
 import { CONVERSION_DEFAULT_VALUES } from './conversionCalculator.js';
@@ -369,9 +369,17 @@ export function householdToCompareInputs(household) {
   if (itemized > 0) inputs.itemizedDeductions = itemized;
   // Tax drag (version 2 households, phase 2): taxable money pays qualified dividends, taxed while
   // saving at today's rate on the next dollar of them (capital-gains rate and NIIT).
-  if (assumptions.dividendYield > 0) {
+  // Today's taxable accounts pay their own yield (balance-weighted: existingYield, when it differs);
+  // the side account the assumption.
+  const own = taxableAccountDividends(household);
+  const existingYield = own.balance > 0 ? own.dividends / own.balance : (assumptions.dividendYield ?? 0);
+  if (assumptions.dividendYield > 0 || existingYield > 0) {
     const today = calculateYearTax(householdToYearTaxParams(household));
-    inputs.taxableDividends = { yield: assumptions.dividendYield, taxRate: today.marginalRates.preferentialIncome.incomeTax };
+    inputs.taxableDividends = {
+      yield: assumptions.dividendYield ?? 0,
+      ...(existingYield !== (assumptions.dividendYield ?? 0) && { existingYield }),
+      taxRate: today.marginalRates.preferentialIncome.incomeTax,
+    };
   }
   const { children, otherDependents } = dependentsInYear(household, 0);
   if (children > 0 || otherDependents > 0) inputs.childTaxCredit = { children, otherDependents };
