@@ -12,7 +12,7 @@
 //                                          // benefitFromPIA), spousal top-up included. No row: a PIA of 0
 //   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge }]       // numbers; ages null when blank
 //   pensions: [{ owner, monthly, startAge, cola, survivorShare }]            // the pension rows (pensionIncome.js)
-//   contributionRows: [{ id, owner, tax, account, amount }]
+//   contributionRows: [{ id, owner, tax, account, amount, employer }]   // employer: employerContributions.js
 //   liabilities: [{ id, kind, balance, rate, payment }]
 //   calculators.tax.taxExemptIncome                                         // carried, not used yet
 //
@@ -71,7 +71,20 @@ export function toHouseholdV2(input, year) {
     .map((r) => ({ owner: r.owner, monthly: r.amount, startAge: r.fromAge, cola: r.cola, survivorShare: r.survivorShare }));
   const contributionRows = values.contributions
     .filter((r) => ids.has(r.owner))
-    .map((r) => ({ id: r.id, owner: r.owner, tax: r.tax, account: r.account, amount: blankAsZero(r.amount) }));
+    .map((r) => ({
+      id: r.id,
+      owner: r.owner,
+      tax: r.tax,
+      account: r.account,
+      amount: blankAsZero(r.amount),
+      // the employer's 401(k) contribution (employerContributions.js); a save from before it: none
+      employer:
+        r.employer === 'match'
+          ? { type: 'match', matchRate: Number(r.matchRate) || 0, matchUpTo: Number(r.matchUpTo) || 0 }
+          : r.employer === 'flat'
+            ? { type: 'flat', amount: blankAsZero(r.employerAmount) }
+            : { type: 'none' },
+    }));
 
   const people = included.map((p) => {
     const birthYear = birthYearOf(p, year);

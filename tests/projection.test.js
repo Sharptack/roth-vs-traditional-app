@@ -389,3 +389,34 @@ describe('runProjection: tax drag on taxable accounts (2026, HAND CALC)', () => 
     expect(r.taxableBasis).toBeCloseTo(1990396.1538, 3);
   });
 });
+
+describe('runProjection: employer contributions (2026, HAND CALC)', () => {
+  // A worker, 40, single, wages $100,000, retiring at 65; $10,000 a year Pre-tax to a 401(k); return 0.
+  function worker(employer) {
+    const h = retiree({ age: 40 });
+    h.version = 2;
+    h.people[0] = { ...h.people[0], retirementAge: 65, wages: 100000 };
+    h.futureContributions.contributions = [{ owner: 'p1', amount: 10000 }];
+    h.contributionRows = [{ id: 'c1', owner: 'p1', tax: 'pretax', account: '401k', amount: 10000, employer }];
+    return h;
+  }
+
+  it('a 100% match on the first 4% of pay: $4,000 a year into Pre-tax, no change to the year’s tax', () => {
+    // year 1: 10,000 + 4,000 = 14,000; year 2: 28,000
+    const { rows } = runProjection(worker({ type: 'match', matchRate: 1, matchUpTo: 0.04 }), { endAge: 41 });
+    const plain = runProjection(worker({ type: 'none' }), { endAge: 41 }).rows;
+    expect(rows.map((r) => r.employerContributions)).toEqual([4000, 4000]);
+    expect(rows.map((r) => r.endBalances.pretax)).toEqual([14000, 28000]);
+    expect(rows[0].contributions.pretax).toBe(10000);
+    expect(rows[0].totalTax).toBe(plain[0].totalTax);
+    expect(rows[0].afterTaxIncome).toBe(plain[0].afterTaxIncome);
+  });
+
+  it('stops at retirement', () => {
+    // retiring at 41: the year at 41 has no wages and no employer money
+    const h = worker({ type: 'flat', amount: 5000 });
+    h.people[0].retirementAge = 41;
+    const { rows } = runProjection(h, { endAge: 41 });
+    expect(rows.map((r) => r.employerContributions)).toEqual([5000, 0]);
+  });
+});

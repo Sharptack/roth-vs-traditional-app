@@ -8,7 +8,7 @@
 //    and the projection runs until the LAST person's plan-to age.
 import { describe, it, expect } from 'vitest';
 import { piaFromKnownBenefit, upgradeHouseholdValues } from '../src/lib/householdUpgrade.js';
-import { DEFAULT_HOUSEHOLD_VALUES, newPerson } from '../src/lib/householdValues.js';
+import { DEFAULT_HOUSEHOLD_VALUES, EMPLOYER_DEFAULTS, newPerson } from '../src/lib/householdValues.js';
 import { toHouseholdV2, validateHouseholdV2 } from '../src/lib/householdV2.js';
 import { PREVIEW_DEFAULT_VALUES } from '../src/lib/household.js';
 import { V1_HOUSEHOLDS } from './fixtures/householdV1.js';
@@ -129,8 +129,8 @@ describe('upgradeHouseholdValues, field by field', () => {
     expect(v.incomes).toHaveLength(6);
     expect(v.calculators.pension).toEqual({ lumpSum: '300000' });
     expect(v.contributions).toEqual([
-      { id: 'c1', owner: 'p1', tax: 'pretax', account: '401k', amount: '31000' },
-      { id: 'c2', owner: 'p2', tax: 'roth', account: 'ira', amount: '8000' },
+      { id: 'c1', owner: 'p1', tax: 'pretax', account: '401k', amount: '31000', ...EMPLOYER_DEFAULTS },
+      { id: 'c2', owner: 'p2', tax: 'roth', account: 'ira', amount: '8000', ...EMPLOYER_DEFAULTS },
     ]);
     expect(v.liabilities).toEqual([]);
     expect(v.spending.debtPayments).toBe('6000');

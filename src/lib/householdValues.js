@@ -25,7 +25,11 @@
 //                                          //   blank = at retirement
 //                                          //  pension: amount = monthly at its start, fromAge = its start
 //                                          //   age, cola (decimal a year), survivorShare ('0' to '1')
-//   contributions: [ { id, owner, tax: 'pretax' | 'roth' | 'taxable', account: '401k' | 'ira', amount } ],
+//   contributions: [ { id, owner, tax: 'pretax' | 'roth' | 'taxable', account: '401k' | 'ira', amount,
+//                      employer: 'none' | 'match' | 'flat', matchRate, matchUpTo, employerAmount } ],
+//                                          // the employer's 401(k) contribution: a match ('1' = 100% of the
+//                                          // deferral, on deferrals up to matchUpTo of W-2 pay, '0.04' = 4%)
+//                                          // or a flat employerAmount a year (employerContributions.js)
 //   accounts: [ { id, owner, type: 'pretax' | 'roth' | 'taxable', balance, basisShare } ],   // as version 1
 //   dependents: [ { id, kind: 'child' | 'other', age } ],   // a child counts for the child tax
 //                                          // credit while under 17; an other dependent ($500) this year
@@ -60,6 +64,9 @@ export const OTHER_INCOME_KINDS = ['ordinary', 'taxExempt', 'interest', 'qualifi
 export const INCOME_TREATMENTS = OTHER_INCOME_KINDS;
 export const CONTRIBUTION_TAX_TYPES = ['pretax', 'roth', 'taxable'];
 export const CONTRIBUTION_ACCOUNTS = ['401k', 'ira'];
+export const EMPLOYER_TYPES = ['none', 'match', 'flat'];
+// A contribution row's employer fields before any are chosen (none; a match would be 100% of the first 4%).
+export const EMPLOYER_DEFAULTS = { employer: 'none', matchRate: '1', matchUpTo: '0.04', employerAmount: '' };
 export const ACCOUNT_TYPES = ['pretax', 'roth', 'taxable'];
 export const LIABILITY_KINDS = ['mortgage', 'car', 'student', 'creditCard', 'other'];
 export const SS_MODES = ['estimate', 'pia'];
@@ -84,7 +91,10 @@ const ROW_TEMPLATES = {
     prefix: 'i',
     row: { owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0' },
   },
-  contributions: { prefix: 'c', row: { owner: 'p1', tax: 'pretax', account: '401k', amount: '' } },
+  contributions: {
+    prefix: 'c',
+    row: { owner: 'p1', tax: 'pretax', account: '401k', amount: '', ...EMPLOYER_DEFAULTS },
+  },
   accounts: { prefix: 'a', row: { owner: 'p1', type: 'pretax', balance: '', basisShare: '0.5' } },
   liabilities: { prefix: 'l', row: { kind: 'mortgage', balance: '', rate: '', payment: '' } },
   dependents: { prefix: 'd', row: { kind: 'child', age: '' } },
@@ -282,7 +292,11 @@ const ROW_RULES = {
     optional: { treatment: OTHER_INCOME_KINDS, ssMode: SS_MODES },
     text: ['amount', 'fromAge', 'toAge', 'cola', 'survivorShare'],
   },
-  contributions: { choices: { owner: OWNERS, tax: CONTRIBUTION_TAX_TYPES, account: CONTRIBUTION_ACCOUNTS }, text: ['amount'] },
+  contributions: {
+    choices: { owner: OWNERS, tax: CONTRIBUTION_TAX_TYPES, account: CONTRIBUTION_ACCOUNTS },
+    optional: { employer: EMPLOYER_TYPES },
+    text: ['amount', 'matchRate', 'matchUpTo', 'employerAmount'],
+  },
   accounts: { choices: { owner: OWNERS, type: ACCOUNT_TYPES }, text: ['balance', 'basisShare'] },
   liabilities: { choices: { kind: LIABILITY_KINDS }, text: ['balance', 'rate', 'payment'] },
   dependents: { choices: { kind: DEPENDENT_KINDS }, text: ['age'] },

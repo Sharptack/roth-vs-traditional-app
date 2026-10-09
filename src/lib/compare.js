@@ -69,6 +69,16 @@
 //                                            Ordinary income under every retirement withdrawal, like Social
 //                                            Security a floor the account's withdrawal stacks on, and cash
 //                                            toward the retirement income number. Absent/0 = none, as before.
+//   taxableDividends                       — OPTIONAL (round 2 phase 2): { yield, taxRate }: taxable money (the
+//                                            side accounts, Existing Accounts' taxable balance) pays qualified
+//                                            dividends of `yield` a year, taxed at taxRate while saving, the rest
+//                                            reinvested as basis (growTaxable); in retirement the dividends in the
+//                                            4% withdrawal are taxed whole. Absent = no dividends, as before.
+//   employerContributions                  — OPTIONAL (round 2 phase 2): [{ amount, years }], each person's
+//                                            employer 401(k) contribution a year and the years it is paid, then
+//                                            left to grow to retirement. Pre-tax money the same in both scenarios,
+//                                            so it joins the Existing Accounts' Pre-tax balance at retirement (under
+//                                            the Future Contributions' withdrawal). Absent = none, as before.
 //
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
@@ -479,7 +489,9 @@ export function compareRothVsTraditional(inputs) {
     ...taxableGrowth,
   });
   const grown = {
-    pretax: futureValueLumpSum(inputs.otherPretaxBalance, returnRate, years),
+    pretax:
+      futureValueLumpSum(inputs.otherPretaxBalance, returnRate, years) +
+      (inputs.employerContributions ?? []).reduce((acc, e) => acc + futureValueContributions(e.amount, returnRate, e.years, years), 0),
     roth: futureValueLumpSum(inputs.otherRothBalance, returnRate, years),
     taxable: existingTaxable.value,
   };

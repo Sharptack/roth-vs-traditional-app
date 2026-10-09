@@ -41,6 +41,7 @@
 import { DEFAULT_FORM_VALUES, parseNumber, toCompareInputs } from './formInputs.js';
 import { TAX_CALCULATOR_DEFAULT_VALUES, householdToYearTaxParams } from './taxCalculator.js';
 import { calculateYearTax } from './yearTax.js';
+import { employerContributionFor } from './employerContributions.js';
 import { CONVERSION_DEFAULT_VALUES } from './conversionCalculator.js';
 import { dependentsInYear } from './dependents.js';
 import { PENSION_DEFAULT_VALUES, pensionFromValues } from './pensionCalculator.js';
@@ -356,6 +357,13 @@ export function householdToCompareInputs(household) {
     return acc + pensionIncomeAt(pen, { ageNow, age, inflation: inflationRate });
   }, 0);
   if (pensionIncome > 0) inputs.pensionIncome = pensionIncome;
+  // Employer 401(k) contributions (version 2 households, phase 2): each person's at today's age and
+  // pay, paid while they contribute (to their own retirement, or the first one's), then left to grow.
+  const employer = people.map((p, i) => ({
+    amount: employerContributionFor(household, p, ageOf(p)),
+    years: atLast ? yearsEach[i] : yearsToRetirement,
+  }));
+  if (employer.some((e) => e.amount > 0)) inputs.employerContributions = employer.filter((e) => e.amount > 0);
   if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
   if (assumptions.qualifiedBusinessIncome) inputs.qualifiedBusinessIncome = true;
   if (itemized > 0) inputs.itemizedDeductions = itemized;

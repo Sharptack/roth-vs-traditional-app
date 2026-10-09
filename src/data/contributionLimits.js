@@ -11,6 +11,9 @@
 //
 //   401k: employee elective deferral limit (IRC §402(g)) — $23,500 base for 2025
 //   ira:  combined Traditional + Roth IRA limit (IRC §219(b)) — $7,000 base for 2025
+//   annualAdditions (401k only): the overall limit on employee deferrals (catch-up not counted) plus
+//                 employer contributions (IRC §415(c)) — $70,000 for 2025, $72,000 for 2026 (the same
+//                 IRS announcements).
 //
 // Income phase-outs for IRA deductibility are not modeled.
 //
@@ -21,11 +24,11 @@
 // the same announcement's prior-year comparison ($23,500 / $7,000 for 2025).
 export const CONTRIBUTION_LIMITS = {
   2025: {
-    '401k': { base: 23500, catchUp50: 7500, catchUp60to63: 11250 },
+    '401k': { base: 23500, catchUp50: 7500, catchUp60to63: 11250, annualAdditions: 70000 },
     ira: { base: 7000, catchUp50: 1000 },
   },
   2026: {
-    '401k': { base: 24500, catchUp50: 8000, catchUp60to63: 11250 },
+    '401k': { base: 24500, catchUp50: 8000, catchUp60to63: 11250, annualAdditions: 72000 },
     ira: { base: 7500, catchUp50: 1100 },
   },
 };

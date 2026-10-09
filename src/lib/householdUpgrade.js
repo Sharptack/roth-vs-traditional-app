@@ -17,7 +17,7 @@
 import { parseNumber } from './formInputs.js';
 import { PREVIEW_DEFAULT_VALUES, SPOUSE_DEFAULT_VALUES, accountRowsFromFlat } from './household.js';
 import { benefitFromPIA } from './socialSecurity.js';
-import { HOUSEHOLD_VALUES_VERSION, isLegacyV2, migrateLegacyV2, newPerson } from './householdValues.js';
+import { EMPLOYER_DEFAULTS, HOUSEHOLD_VALUES_VERSION, isLegacyV2, migrateLegacyV2, newPerson } from './householdValues.js';
 
 const isBlankOrZero = (text) => ['', '0'].includes(String(text ?? '').trim());
 const pick = (values, key) => values[key] ?? PREVIEW_DEFAULT_VALUES[key];
@@ -70,7 +70,7 @@ export function upgradeHouseholdValues(values, year) {
       socialSecurity: socialSecurity(v.knowsSocialSecurity, v.socialSecurityBenefit, v.claimAge, v.currentAge, v.retirementAge, year),
     }),
   ];
-  contributions.push({ id: 'c1', owner: 'p1', tax: v.currentType, account: v.accountType, amount: v.savings });
+  contributions.push({ id: 'c1', owner: 'p1', tax: v.currentType, account: v.accountType, amount: v.savings, ...EMPLOYER_DEFAULTS });
 
   if (hasSpouseDetails(v)) {
     people.push(
@@ -84,7 +84,7 @@ export function upgradeHouseholdValues(values, year) {
     const ownTax = ['pretax', 'roth'].includes(v.spouseCurrentType) ? v.spouseCurrentType : null;
     const ownAccount = ['401k', 'ira'].includes(v.spouseAccountType) ? v.spouseAccountType : null;
     if (!isBlankOrZero(v.spouseSavings) || ownTax || ownAccount) {
-      contributions.push({ id: 'c2', owner: 'p2', tax: ownTax ?? v.currentType, account: ownAccount ?? v.accountType, amount: v.spouseSavings });
+      contributions.push({ id: 'c2', owner: 'p2', tax: ownTax ?? v.currentType, account: ownAccount ?? v.accountType, amount: v.spouseSavings, ...EMPLOYER_DEFAULTS });
     }
   }
 

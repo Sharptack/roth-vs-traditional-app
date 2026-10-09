@@ -16,6 +16,7 @@ import {
   setIncludeSpouse,
   setPersonField,
   updateRow,
+  EMPLOYER_DEFAULTS,
 } from '../src/lib/householdValues.js';
 import { PREVIEW_DEFAULT_VALUES, PROJECTION_DEFAULT_VALUES } from '../src/lib/household.js';
 import { PENSION_DEFAULT_VALUES } from '../src/lib/pensionCalculator.js';
@@ -38,7 +39,8 @@ describe('version 2 household values: defaults', () => {
       { id: 'i1', owner: 'p1', type: 'w2', amount: v1.grossIncome, ...blank },
       { id: 'i2', owner: 'p1', type: 'socialSecurity', amount: '', ...blank, fromAge: v1.claimAge },
     ]);
-    expect(D.contributions).toEqual([{ id: 'c1', owner: 'p1', tax: v1.currentType, account: v1.accountType, amount: v1.savings }]);
+    // the employer's contribution is new in version 2 (phase 2): none
+    expect(D.contributions).toEqual([{ id: 'c1', owner: 'p1', tax: v1.currentType, account: v1.accountType, amount: v1.savings, ...EMPLOYER_DEFAULTS }]);
     expect(D.accounts).toEqual(v1.accounts);
     expect(D.liabilities).toEqual([]);
     expect(D.spending).toEqual({ debtPayments: v1.debtPayments, otherExpenses: v1.otherExpenses, retirementLifestyle: v1.retirementLifestyle });

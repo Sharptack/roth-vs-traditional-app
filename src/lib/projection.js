@@ -55,6 +55,11 @@
 //     is reinvested (tax = the year's tax with the dividends − without them; basis rises by the rest)
 // Absent (version 1 households) = no dividends, as before.
 //
+// Employer contributions (phase 2 step d, decided 2026-10-09): each person still working gets their
+// employer's 401(k) contribution (employerContributions.js: a match on the deferral as entered, or a
+// flat amount), paid into their Pre-tax account at the end of the year. Not income this year and not
+// out of the paycheck; the same whatever contributions override the plan's. Version 1: none.
+//
 // Simplifications: spending is flat in today's dollars; earnings are flat (no raises); returns are
 // constant.
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
@@ -67,6 +72,7 @@ import { splitAtTakeHome } from './compare.js';
 import { irmaaCost, medicareEnrollees } from './irmaa.js';
 import { dependentsInYear } from './dependents.js';
 import { pensionIncomeInYear } from './pensionIncome.js';
+import { employerContributionFor } from './employerContributions.js';
 import { IRMAA_LOOKBACK_YEARS } from '../data/irmaa.js';
 
 export const DEFAULT_END_AGE = 95;
@@ -218,6 +224,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       made.push({ owner: c.owner, type: c.type, toAccount, excess: c.amount - toAccount });
     }
     const pretaxDeferrals = made.filter((m) => m.type === 'pretax').reduce((s, m) => s + m.toAccount, 0);
+    // The employers' contributions (Pre-tax, paid in at the end of the year).
+    const employerMade = people.map((p, i) => (working[i] ? employerContributionFor(household, p, ages[i]) : 0));
     const contributionCash = made.reduce((s, m) => s + m.toAccount + m.excess, 0);
 
     // 3. RMDs, per owner, spread over that owner's Pre-tax accounts by balance.
@@ -383,6 +391,9 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         contributed.taxable += m.excess;
       }
     }
+    people.forEach((p, i) => {
+      if (employerMade[i] > 0) accountFor(p.id, 'pretax').balance += employerMade[i];
+    });
     if (surplus > 0.005) {
       const side = accountFor(people[survivorYear ? 1 - deceased : 0].id, 'taxable');
       side.balance += surplus;
@@ -415,6 +426,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       startBalances: { ...startBalances, total: startBalances.pretax + startBalances.roth + startBalances.taxable },
       withdrawals: { ...withdrawn, total: withdrawn.pretax + withdrawn.roth + withdrawn.taxable },
       conversions: conversions.reduce((s, c) => s + c.amount, 0),
+      employerContributions: employerMade.reduce((s, e) => s + e, 0), // to Pre-tax, not in contributions
       contributions: { ...contributed, total: contributed.pretax + contributed.roth + contributed.taxable },
       wages: peopleThisYear.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0),
       grossIncome: tax.lines.grossIncome,

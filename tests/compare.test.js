@@ -1141,3 +1141,22 @@ describe('tax drag on taxable money (taxableDividends, HAND CALC)', () => {
     expect(compareRothVsTraditional({ ...without, taxableDividends: { yield: 0, taxRate: 0.15 } })).toEqual(compareRothVsTraditional(without));
   });
 });
+
+describe('employer contributions (employerContributions, HAND CALC)', () => {
+  // Single, 2026, 40 -> 42 at 5%, $10,000 Pre-tax a year, nothing existing.
+  const base = { ...baseInputs, year: 2026, currentAge: 40, retirementAge: 42, returnRate: 0.05 };
+
+  it('Pre-tax money in both scenarios, under the Future Contributions’ withdrawal', () => {
+    // $4,000 a year for 2 years: 4,000 x 1.05 + 4,000 = 8,200; 4% = 328 of Pre-tax withdrawal
+    // One person's $4,000 for 1 year then grown 1 more: 4,200 -> 4% = 168; together 496
+    const r = compareRothVsTraditional({ ...base, employerContributions: [{ amount: 4000, years: 2 }] });
+    expect(r.otherWithdrawals.pretaxGross).toBeCloseTo(328, 9);
+    expect(r.portfolio.roth.buckets.pretax).toBeCloseTo(8200, 9);
+    const two = compareRothVsTraditional({ ...base, employerContributions: [{ amount: 4000, years: 2 }, { amount: 4000, years: 1 }] });
+    expect(two.otherWithdrawals.pretaxGross).toBeCloseTo(496, 9);
+  });
+
+  it('absent or empty: the result without it', () => {
+    expect(compareRothVsTraditional({ ...base, employerContributions: [] })).toEqual(compareRothVsTraditional(base));
+  });
+});

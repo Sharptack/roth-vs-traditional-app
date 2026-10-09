@@ -21,8 +21,8 @@ const couple = {
     row({ id: 'i5', owner: 'p2', type: 'pension', amount: '2100', fromAge: '60', cola: '0.02', survivorShare: '0.5' }),
   ],
   contributions: [
-    { id: 'c1', owner: 'p1', tax: 'roth', account: '401k', amount: '24000' },
-    { id: 'c2', owner: 'p2', tax: 'pretax', account: 'ira', amount: '7000' },
+    { id: 'c1', owner: 'p1', tax: 'roth', account: '401k', amount: '24000', employer: 'match', matchRate: '0.5', matchUpTo: '0.06', employerAmount: '' },
+    { id: 'c2', owner: 'p2', tax: 'pretax', account: 'ira', amount: '7000', employer: 'none', matchRate: '1', matchUpTo: '0.04', employerAmount: '' },
   ],
   liabilities: [{ id: 'l1', kind: 'mortgage', balance: '310000', rate: '0.0625', payment: '2400' }],
 };
