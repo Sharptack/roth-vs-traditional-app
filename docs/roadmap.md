@@ -23,7 +23,7 @@ Inputs:
 - [x] Accounts collapse to one line like income rows.
 - [x] The cost basis field lines up on the calculators' input cards (one hint under both taxable fields).
 - [x] No "Retirement age must be after your current age" error: a retirement age at or below the current age means already retired (no earnings or contributions from this year, the retirement return, the Roth snapshot today); the age stays as entered (decided 2026-10-09). Follow-ons: this year's earnings and contributions follow the same rule (a 75-year-old's W-2 row with no end age no longer counts in the tax calculator); for someone retired, an Other income row with no ages counts for life; with everyone retired and no earnings, the Roth page says there is nothing to compare.
-- [ ] "a year" in labels becomes "per year".
+- [x] "a year" in labels becomes "per year" (and "a month" "per month", to match; 38 places in the app, comments and the Visualization prose left).
 
 Roth vs. Pre-tax:
 - [x] The start/end ages link closes again after opening ("Hide start/end ages").

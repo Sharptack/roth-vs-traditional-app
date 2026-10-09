@@ -238,7 +238,7 @@ describe('validateHouseholdV2', () => {
 });
 
 describe('employer contributions reach the calculators (phase 2)', () => {
-  it('a 100% match on the first 4% of pay: $4,000 a year for 30 years, in the Roth comparison', () => {
+  it('a 100% match on the first 4% of pay: $4,000 per year for 30 years, in the Roth comparison', () => {
     // the default household: 35, retiring at 65, W-2 $100,000, $10,000 Pre-tax to a 401(k)
     const values = { ...D, contributions: [{ ...D.contributions[0], employer: 'match', matchRate: '1', matchUpTo: '0.04' }] };
     const h = toHouseholdV2(values, Y);

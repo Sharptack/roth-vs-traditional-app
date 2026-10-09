@@ -15,11 +15,11 @@ describe('yearLookup', () => {
   it('returns the exact year when present', () => {
     expect(getYearData(table, 2025)).toEqual({ year: 2025, data: 'b' });
   });
-  it('falls back to the latest earlier year for a year not in the table', () => {
+  it('falls back to the latest earlier year for per year not in the table', () => {
     expect(getYearData(table, 2024)).toEqual({ year: 2023, data: 'a' });
     expect(getYearData(table, 2031)).toEqual({ year: 2025, data: 'b' });
   });
-  it('uses the earliest year for a year before all data', () => {
+  it('uses the earliest year for per year before all data', () => {
     expect(getYearData(table, 1999)).toEqual({ year: 2023, data: 'a' });
   });
   it('rejects a non-numeric year', () => {

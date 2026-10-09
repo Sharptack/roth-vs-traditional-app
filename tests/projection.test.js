@@ -401,7 +401,7 @@ describe('runProjection: employer contributions (2026, HAND CALC)', () => {
     return h;
   }
 
-  it('a 100% match on the first 4% of pay: $4,000 a year into Pre-tax, no change to the year’s tax', () => {
+  it('a 100% match on the first 4% of pay: $4,000 per year into Pre-tax, no change to the year’s tax', () => {
     // year 1: 10,000 + 4,000 = 14,000; year 2: 28,000
     const { rows } = runProjection(worker({ type: 'match', matchRate: 1, matchUpTo: 0.04 }), { endAge: 41 });
     const plain = runProjection(worker({ type: 'none' }), { endAge: 41 }).rows;

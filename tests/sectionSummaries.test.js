@@ -21,10 +21,10 @@ describe('resultHeadlines', () => {
 
   it('formats each card headline', () => {
     expect(resultHeadlines(result)).toEqual({
-      need: '$65,380 a year after tax',
+      need: '$65,380 per year after tax',
       buildup: '$940,608 Roth vs. $1,147,212 Pre-tax at retirement',
       rates: '22.0% now vs. 12.3% in retirement · tends to favor Pre-tax',
-      tradeoff: 'Pre-tax ahead by $1,234 a year after tax',
+      tradeoff: 'Pre-tax ahead by $1,234 per year after tax',
       blend: 'Best mix: 56% Roth, $1,671/yr more than either pure strategy',
       portfolio: 'Withdrawal rate needed: All-Roth 2.09% vs. All-Pre-tax 2.08%',
     });

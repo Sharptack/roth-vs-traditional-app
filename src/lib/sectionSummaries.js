@@ -23,13 +23,13 @@ function blendHeadline(blend) {
 export function resultHeadlines(result) {
   const { retirementNeed, rates, comparison, portfolio } = result;
   return {
-    need: `${formatCurrency(retirementNeed.target)} a year after tax`,
+    need: `${formatCurrency(retirementNeed.target)} per year after tax`,
     buildup: `${formatCurrency(portfolio.roth.totalValue)} Roth vs. ${formatCurrency(portfolio.pretax.totalValue)} Pre-tax at retirement`,
     rates: `${formatPercent(rates.marginalNow)} now vs. ${formatPercent(rates.effectiveRetirement)} in retirement · ${LEAN_SHORT[rates.lean]}`,
     tradeoff:
       comparison.winner === 'even'
         ? 'About even'
-        : `${WINNER_NAME[comparison.winner]} ahead by ${formatCurrency(comparison.afterTaxIncomeDifference)} a year after tax`,
+        : `${WINNER_NAME[comparison.winner]} ahead by ${formatCurrency(comparison.afterTaxIncomeDifference)} per year after tax`,
     blend: blendHeadline(result.blend),
     portfolio: `Withdrawal rate needed: All-Roth ${formatPercent(portfolio.roth.impliedWithdrawalRate, 2)} vs. All-Pre-tax ${formatPercent(portfolio.pretax.impliedWithdrawalRate, 2)}`,
   };

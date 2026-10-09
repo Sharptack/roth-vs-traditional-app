@@ -14,10 +14,10 @@ export default function UseInPlan({ choice, onUse }) {
     <section className="card use-in-plan" aria-labelledby="use-in-plan">
       <h2 id="use-in-plan">In the plan</h2>
       <p>
-        The plan saves <strong>{$(currentTotal)} a year {NAME[current]}</strong>. {lean}
+        The plan saves <strong>{$(currentTotal)} per year {NAME[current]}</strong>. {lean}
       </p>
       <button type="button" className={winner === other ? 'button' : 'button secondary'} onClick={onUse}>
-        Use {NAME[other]} in the plan: {$(otherTotal)} a year
+        Use {NAME[other]} in the plan: {$(otherTotal)} per year
       </button>
       <p className="hint">
         The same take-home cost either way. This writes the choice into Future Contributions, which every calculator reads

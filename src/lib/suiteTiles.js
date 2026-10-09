@@ -40,8 +40,8 @@ export function pensionTile(p, inputs) {
   if (!p || !inputs) return { headline: 'No pension yet', detail: 'Add a pension (an income row) to weigh it against a lump sum.' };
   const r = p.expected?.irr ?? null;
   return {
-    headline: r === null ? 'No return' : `${formatPercent(r)} a year`,
-    detail: `what ${formatCurrency(inputs.lumpSum)} must earn to match ${formatCurrency(inputs.monthly)} a month for life`,
+    headline: r === null ? 'No return' : `${formatPercent(r)} per year`,
+    detail: `what ${formatCurrency(inputs.lumpSum)} must earn to match ${formatCurrency(inputs.monthly)} per month for life`,
   };
 }
 

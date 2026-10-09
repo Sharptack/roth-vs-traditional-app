@@ -293,7 +293,7 @@ export default function TaxResult({ tax }) {
                 <div className="calc-row">
                   <span>Surcharge in {i.premiumYear}</span>
                   <span>
-                    {$(i.total)} a year
+                    {$(i.total)} per year
                     {i.enrolled > 1 && i.total > 0 && <span className="dim"> ({$(i.annual)} each)</span>}
                   </span>
                 </div>

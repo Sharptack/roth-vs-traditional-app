@@ -101,10 +101,10 @@ function incomeSummary(v) {
 export function incomeRowSummary(r, withOwner = false) {
   const type = r.type === 'other' ? `Other: ${OTHER_KIND_LABELS[r.treatment] ?? ''}` : INCOME_TYPE_LABELS[r.type];
   let amount;
-  if (r.type === 'socialSecurity') amount = r.ssMode === 'pia' ? `${money(r.amount)} a month at full retirement age` : r.ssMode === 'receiving' ? `${money(r.amount)} a month, received now` : 'estimated from earnings';
+  if (r.type === 'socialSecurity') amount = r.ssMode === 'pia' ? `${money(r.amount)} per month at full retirement age` : r.ssMode === 'receiving' ? `${money(r.amount)} per month, received now` : 'estimated from earnings';
   else if (r.type === 'pension' && r.election === 'lumpSum') amount = `${money(r.lumpSum)} lump sum, rolled over at ${String(r.fromAge ?? '').trim() || '—'}`;
-  else if (r.type === 'pension') amount = `${money(r.amount)} a month${String(r.fromAge ?? '').trim() ? ` from ${r.fromAge}` : ''}`;
-  else amount = String(r.amount ?? '').trim() === '' ? 'no amount yet' : `${money(r.amount)} a year`;
+  else if (r.type === 'pension') amount = `${money(r.amount)} per month${String(r.fromAge ?? '').trim() ? ` from ${r.fromAge}` : ''}`;
+  else amount = String(r.amount ?? '').trim() === '' ? 'no amount yet' : `${money(r.amount)} per year`;
   const from = String(r.fromAge ?? '').trim();
   const to = String(r.toAge ?? '').trim();
   const ages = MONTHLY_INCOME_TYPES.includes(r.type) ? null : [from && `from ${from}`, to && `to ${to}`].filter(Boolean).join(' ');
@@ -162,9 +162,9 @@ export const INPUT_SECTIONS = [
       if (kinds.size === 1) {
         const r = rows[0];
         const kind = r.tax === 'taxable' ? 'Taxable' : `${CONTRIBUTION_TAX_LABELS[r.tax]} · ${CONTRIBUTION_ACCOUNT_LABELS[r.account]}`;
-        return `${Number.isFinite(total) ? formatCurrency(total) : '—'} a year · ${kind}${employer}`;
+        return `${Number.isFinite(total) ? formatCurrency(total) : '—'} per year · ${kind}${employer}`;
       }
-      return `${totalsBy(rows, (r) => r.tax, (r) => r.amount, CONTRIBUTION_TAX_LABELS)} a year${employer}`;
+      return `${totalsBy(rows, (r) => r.tax, (r) => r.amount, CONTRIBUTION_TAX_LABELS)} per year${employer}`;
     },
   },
   { id: 'accounts', title: 'Existing Accounts', summary: (v) => accountsSummary(v.accounts) },
@@ -177,7 +177,7 @@ export const INPUT_SECTIONS = [
       const balance = rows.reduce((a, r) => a + (blankIsZero(r.balance) || 0), 0);
       const payment = rows.reduce((a, r) => a + (blankIsZero(r.payment) || 0), 0);
       const what = rows.length === 1 ? LIABILITY_KIND_LABELS[rows[0].kind] : `${rows.length} debts`;
-      return `${what} · ${formatCurrency(balance)} · ${formatCurrency(payment)} a month`;
+      return `${what} · ${formatCurrency(balance)} · ${formatCurrency(payment)} per month`;
     },
   },
   {
@@ -185,7 +185,7 @@ export const INPUT_SECTIONS = [
     title: 'Deductions',
     summary: (v) => {
       const itemized = blankIsZero(v.deductions?.itemized);
-      return itemized > 0 ? `Itemized ${formatCurrency(itemized)} a year, when more than the standard deduction` : 'The standard deduction';
+      return itemized > 0 ? `Itemized ${formatCurrency(itemized)} per year, when more than the standard deduction` : 'The standard deduction';
     },
   },
   {
@@ -195,7 +195,7 @@ export const INPUT_SECTIONS = [
       const ending = (blankIsZero(v.spending.debtPayments) || 0) + (blankIsZero(v.spending.otherExpenses) || 0);
       const change = Math.round((Number(v.spending.retirementLifestyle) - 1) * 100);
       const retired = change === 0 ? 'same as today' : `${Math.abs(change)}% ${change > 0 ? 'higher' : 'lower'}`;
-      return [ending > 0 && `${formatCurrency(ending)} a year ends at retirement`, `retirement spending ${retired}`]
+      return [ending > 0 && `${formatCurrency(ending)} per year ends at retirement`, `retirement spending ${retired}`]
         .filter(Boolean)
         .join(' · ')
         .replace(/^r/, 'R');
@@ -240,7 +240,7 @@ export const INPUT_SECTIONS = [
       const p = countedRows(v, 'incomes').find((r) => r.type === 'pension');
       if (!p) return 'No pension yet';
       const lump = String(p.lumpSum ?? '').trim() ? p.lumpSum : v.calculators.pension.lumpSum;
-      return `${money(lump)} or ${money(p.amount)} a month from ${p.fromAge || '—'} · the plan takes the ${p.election === 'lumpSum' ? 'lump sum' : 'monthly payments'}`;
+      return `${money(lump)} or ${money(p.amount)} per month from ${p.fromAge || '—'} · the plan takes the ${p.election === 'lumpSum' ? 'lump sum' : 'monthly payments'}`;
     },
   },
 ];

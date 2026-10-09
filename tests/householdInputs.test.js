@@ -29,19 +29,19 @@ describe('the version 2 inputs: section summaries', () => {
   it('summarizes the default household', () => {
     expect(summary('household', D)).toBe('Single · You 35, retires at 65, plans to 95');
     expect(summary('income', D)).toBe('W-2 $100,000 · Social Security estimated');
-    expect(summary('contributions', D)).toBe('$10,000 a year · Pre-tax · 401(k)');
+    expect(summary('contributions', D)).toBe('$10,000 per year · Pre-tax · 401(k)');
     expect(summary('accounts', D)).toBe('Pre-tax $100,000');
     expect(summary('liabilities', D)).toBe('None');
     expect(summary('deductions', D)).toBe('The standard deduction');
-    expect(summary('deductions', setGroupField(D, 'deductions', 'itemized', '30000'))).toBe('Itemized $30,000 a year, when more than the standard deduction');
-    expect(summary('spending', D)).toBe('$6,000 a year ends at retirement · retirement spending same as today');
+    expect(summary('deductions', setGroupField(D, 'deductions', 'itemized', '30000'))).toBe('Itemized $30,000 per year, when more than the standard deduction');
+    expect(summary('spending', D)).toBe('$6,000 per year ends at retirement · retirement spending same as today');
     expect(summary('assumptions', D)).toBe('7% return after inflation · 2.5% inflation · proportional (every account alike) in retirement · heirs taxed at 24%');
     expect(summary('assumptions', { ...D, assumptions: { ...D.assumptions, retirementReturnRate: '0.05' } })).toMatch(/^7% return after inflation, 5% in retirement · /);
     expect(summary('projection', D)).toBe('Proportional (every account alike) · heirs taxed at 24%');
     expect(summary('conversion', D)).toBe('Convert $50,000 this year');
     expect(summary('pension', D)).toBe('No pension yet');
     const withPension = addRow(D, 'incomes', { type: 'pension', amount: '1800', fromAge: '65' });
-    expect(summary('pension', withPension)).toBe('$300,000 or $1,800 a month from 65 · the plan takes the monthly payments');
+    expect(summary('pension', withPension)).toBe('$300,000 or $1,800 per month from 65 · the plan takes the monthly payments');
     expect(summary('income', withPension)).toBe('W-2 $100,000 · Social Security estimated · Pension $1,800/mo from 65');
     // other income by kind; an entered PIA
     let other = addRow(D, 'incomes', { type: 'other', treatment: 'qualified', amount: '8000' });
@@ -55,23 +55,23 @@ describe('the version 2 inputs: section summaries', () => {
     // W-2: 100,000 + 50,000 = 150,000
     expect(summary('income', v)).toBe("W-2 $150,000 · 1099 $20,000 · Your Social Security estimated · Spouse's Social Security estimated");
     // two kinds (Pre-tax 401(k), Roth 401(k)) -> totals by type
-    expect(summary('contributions', v)).toBe('Pre-tax $10,000 · Roth $5,000 a year');
+    expect(summary('contributions', v)).toBe('Pre-tax $10,000 · Roth $5,000 per year');
     const without = setIncludeSpouse(v, false);
     expect(summary('household', without)).toBe('Married filing jointly, one combined income · You 35, retires at 65, plans to 95');
     expect(summary('income', without)).toBe('W-2 $100,000 · 1099 $20,000 · Social Security estimated');
-    expect(summary('contributions', without)).toBe('$10,000 a year · Pre-tax · 401(k)');
+    expect(summary('contributions', without)).toBe('$10,000 per year · Pre-tax · 401(k)');
   });
 
   it('summarizes debts, spending and assumptions', () => {
     let v = addRow(D, 'liabilities', { balance: '250000', rate: '0.06', payment: '1800' });
-    expect(summary('liabilities', v)).toBe('Mortgage · $250,000 · $1,800 a month');
+    expect(summary('liabilities', v)).toBe('Mortgage · $250,000 · $1,800 per month');
     v = addRow(v, 'liabilities', { kind: 'car', balance: '15000', rate: '0.07', payment: '400' });
     // 250,000 + 15,000 = 265,000; 1,800 + 400 = 2,200
-    expect(summary('liabilities', v)).toBe('2 debts · $265,000 · $2,200 a month');
+    expect(summary('liabilities', v)).toBe('2 debts · $265,000 · $2,200 per month');
 
     v = setGroupField(setGroupField(D, 'spending', 'otherExpenses', '2000'), 'spending', 'retirementLifestyle', '0.8');
     // 6,000 + 2,000 = 8,000; 0.8 = 20% lower
-    expect(summary('spending', v)).toBe('$8,000 a year ends at retirement · retirement spending 20% lower');
+    expect(summary('spending', v)).toBe('$8,000 per year ends at retirement · retirement spending 20% lower');
     v = setGroupField(setGroupField(v, 'spending', 'debtPayments', ''), 'spending', 'otherExpenses', '0');
     expect(summary('spending', setGroupField(v, 'spending', 'retirementLifestyle', '1.25'))).toBe('Retirement spending 25% higher');
 
@@ -95,7 +95,7 @@ describe('the version 2 inputs: section summaries', () => {
 
   it('shows one kind of taxable contribution without an account type', () => {
     const v = updateRow(D, 'contributions', 'c1', 'tax', 'taxable');
-    expect(summary('contributions', v)).toBe('$10,000 a year · Taxable');
+    expect(summary('contributions', v)).toBe('$10,000 per year · Taxable');
   });
 });
 
@@ -137,20 +137,20 @@ describe('sectionChanged', () => {
 
 describe('an income row, closed (decided 2026-10-09): its type and amount on one line', () => {
   const row = (fields) => ({ owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', ...fields });
-  it('earnings and other income: a year, with any ages', () => {
-    expect(incomeRowSummary(row({ amount: '100000' }))).toBe('W-2 wages · $100,000 a year');
-    expect(incomeRowSummary(row({ type: '1099', amount: '20000', fromAge: '60', toAge: '65' }))).toBe('1099 (self-employed) · $20,000 a year · from 60 to 65');
+  it('earnings and other income: per year, with any ages', () => {
+    expect(incomeRowSummary(row({ amount: '100000' }))).toBe('W-2 wages · $100,000 per year');
+    expect(incomeRowSummary(row({ type: '1099', amount: '20000', fromAge: '60', toAge: '65' }))).toBe('1099 (self-employed) · $20,000 per year · from 60 to 65');
     expect(incomeRowSummary(row({ type: 'other', treatment: 'qualified', amount: '5000', toAge: '70' }))).toBe(
-      'Other: Qualified dividends, long-term gains · $5,000 a year · to 70',
+      'Other: Qualified dividends, long-term gains · $5,000 per year · to 70',
     );
     expect(incomeRowSummary(row({}))).toBe('W-2 wages · no amount yet');
   });
-  it('Social Security and pensions: a month; whose, with a spouse', () => {
+  it('Social Security and pensions: per month; whose, with a spouse', () => {
     expect(incomeRowSummary(row({ type: 'socialSecurity' }))).toBe('Social Security · estimated from earnings');
     expect(incomeRowSummary(row({ type: 'socialSecurity', ssMode: 'pia', amount: '2500', fromAge: '67' }))).toBe(
-      'Social Security · $2,500 a month at full retirement age',
+      'Social Security · $2,500 per month at full retirement age',
     );
-    expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', owner: 'p2' }), true)).toBe('Pension · $1,800 a month from 65 · Spouse');
+    expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', owner: 'p2' }), true)).toBe('Pension · $1,800 per month from 65 · Spouse');
     expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', lumpSum: '300000', election: 'lumpSum' }))).toBe('Pension · $300,000 lump sum, rolled over at 65');
   });
 });

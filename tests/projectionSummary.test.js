@@ -49,7 +49,7 @@ describe('summarizeProjection (HAND CALC)', () => {
 });
 
 describe('sustainableSpending (HAND CALC)', () => {
-  it('$500,000 Pre-tax over three years at 0%: 166,666.67 a year withdrawn, 137,932.67 after tax', () => {
+  it('$500,000 Pre-tax over three years at 0%: 166,666.67 per year withdrawn, 137,932.67 after tax', () => {
     // W = 500,000 / 3 = 166,666.67; taxable 150,566.67:
     //   1,240 + 4,560 + 22% x 55,300 (12,166) + 24% x 44,866.67 (10,768) = 28,734 -> 137,932.67
     const s = sustainableSpending(retiree({ age: 66, pretax: 500000 }), { endAge: 68 });
@@ -80,7 +80,7 @@ describe('projectionView and its tile', () => {
   });
 });
 
-describe('whenLabel: when a year falls, in words', () => {
+describe('whenLabel: when per year falls, in words', () => {
   it('one person: their age; a couple: the year and the ages of those living', async () => {
     const { whenLabel } = await import('../src/lib/projectionSummary.js');
     expect(whenLabel({ year: 2061, ages: [95] })).toBe('age 95');

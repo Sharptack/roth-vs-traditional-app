@@ -200,7 +200,7 @@ export default function RateBuckets({ params, irmaa, ages }) {
           </span>
           {cliffs.map((c, i) => (
             <span key={`k${c.income}`} className="dim">
-              above {$(c.income + step)}: +{$(c.irmaaJump)} a year{i < cliffs.length - 1 ? ';' : ''}
+              above {$(c.income + step)}: +{$(c.irmaaJump)} per year{i < cliffs.length - 1 ? ';' : ''}
             </span>
           ))}
         </p>

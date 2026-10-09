@@ -21,7 +21,7 @@ describe('irmaaTier (HAND CALC)', () => {
     expect(t.annual).toBeCloseTo(1148.4, 6);
   });
 
-  it('2026 single $150,000: tier 2 ($137,000-$171,000), $2,884.80 a year, $21,000 of room', () => {
+  it('2026 single $150,000: tier 2 ($137,000-$171,000), $2,884.80 per year, $21,000 of room', () => {
     // 202.90 + 37.50 = 240.40 a month x 12 = 2,884.80
     const t = irmaaTier(150000, 'single', 2026);
     expect(t.tier).toBe(2);

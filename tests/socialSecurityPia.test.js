@@ -101,6 +101,6 @@ describe('an entered PIA through the household', () => {
   });
 
   it('Copy summary says it was entered as a PIA', () => {
-    expect(describeHousehold(household).join('\n')).toContain('You, Social Security: $2,400 a month at full retirement age (PIA, entered), claimed at retirement');
+    expect(describeHousehold(household).join('\n')).toContain('You, Social Security: $2,400 per month at full retirement age (PIA, entered), claimed at retirement');
   });
 });

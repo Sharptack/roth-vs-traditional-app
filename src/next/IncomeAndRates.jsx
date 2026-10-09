@@ -39,7 +39,7 @@ export default function IncomeAndRates({ rows }) {
         formatY={(v) => $(v)}
         formatYTick={short}
         xLabel="Year"
-        yLabel="Income a year (today's dollars)"
+        yLabel="Income per year (today's dollars)"
       />
       <LineChart
         series={[

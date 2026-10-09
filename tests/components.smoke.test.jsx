@@ -790,7 +790,7 @@ describe('Round 2026-09-25b adjustments', () => {
     const html = render();
     const sec3 = html.slice(html.indexOf('id="sec3"'));
     expect(sec3).toContain('After-tax income at a 4% withdrawal');
-    expect(sec3).toMatch(/\+\$[\d,]+ a year/); // the larger portfolio's lead
+    expect(sec3).toMatch(/\+\$[\d,]+ per year/); // the larger portfolio's lead
     expect(html).not.toContain('not the whole story');
   });
 
@@ -890,7 +890,7 @@ describe('Collapsible sections', () => {
       'After-tax comparison',
       'Total future portfolio comparison',
     ]);
-    expect(html).toContain('class="collapsible-summary">$65,380 a year after tax<');
+    expect(html).toContain('class="collapsible-summary">$65,380 per year after tax<');
     expect(html).not.toContain('aria-expanded="false"');
     expect(html).toContain('Collapse all results');
     // the tax rate comparison, the number the decision turns on, carries the accent
@@ -959,7 +959,7 @@ describe('NextApp', () => {
     const roth = renderToStaticMarkup(<NextApp initialPage="roth" />);
     expect(roth).toContain('Roth vs. Pre-tax inputs');
     expect(roth).toContain('Compare a change'); // ported from the public page (round 2 phase 1)
-    expect(roth).toContain('Use Roth in the plan: $7,800 a year'); // the "Use in the plan" trial
+    expect(roth).toContain('Use Roth in the plan: $7,800 per year'); // the "Use in the plan" trial
     expect(firstTitle(roth)).toBe('Future Contributions');
     expect(roth).toContain('href="#/inputs"');
     expect(roth).toContain('Claim at');
@@ -969,7 +969,7 @@ describe('NextApp', () => {
     expect(roth).toContain('RMDs start at 75.');
     expect(roth).toContain('Over a lifetime, year by year');
     expect(roth).toMatch(/Find the break-even tax change|there is no break-even to find/);
-    expect(roth).toMatch(/(Roth|Pre-tax) supports \$[\d,]+ a year more|About even/);
+    expect(roth).toMatch(/(Roth|Pre-tax) supports \$[\d,]+ per year more|About even/);
     expect(roth).toContain('href="#/projection"');
     expect(roth).toContain('href="#/"');
     expect(roth).not.toMatch(/NaN|Infinity/);
@@ -1081,7 +1081,7 @@ describe('NextApp', () => {
     expect(page).toContain('class="collapsible card collapsible-card inputs-assumptions"');
     expect((page.match(/mini-block/g) ?? []).length).toBe(8);
     // income rows: closed, one line each
-    expect(page).toContain('<span>W-2 wages · $100,000 a year</span>');
+    expect(page).toContain('<span>W-2 wages · $100,000 per year</span>');
     expect(page).toContain('<span>Social Security · estimated from earnings</span>');
     expect(page).toContain('>Set start/end ages</button>');
     for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add income', 'Withdrawal strategy in retirement']) {
@@ -1242,7 +1242,7 @@ describe('preview pages: Medicare IRMAA', () => {
     const html = renderToStaticMarkup(<TaxResult tax={taxCalculatorResult(person(64, { ordinaryIncome: 150000 }), { irmaa: true })} />);
     expect(html).toContain('Medicare premiums in 2028');
     expect(html).toContain('2 of 5');
-    expect(html).toContain('$2,885 a year');
+    expect(html).toContain('$2,885 per year');
     expect(html).toContain('$21,000');
     const young = renderToStaticMarkup(<TaxResult tax={taxCalculatorResult(person(50, { ordinaryIncome: 150000 }), { irmaa: true })} />);
     expect(young).not.toContain('Medicare premiums');
@@ -1373,7 +1373,7 @@ describe('Employer contributions (phase 2)', () => {
     const html = renderToStaticMarkup(<HouseholdInputs values={values} onUpdate={() => {}} sections={['contributions']} defaultOpen={['contributions']} />);
     expect(html).toContain('Employer contribution');
     expect(html).toContain('100% of what is deferred, on deferrals up to 4% of W-2 pay');
-    expect(inputSections(['contributions'])[0].summary(values)).toBe('$10,000 a year · Pre-tax · 401(k) · employer match');
+    expect(inputSections(['contributions'])[0].summary(values)).toBe('$10,000 per year · Pre-tax · 401(k) · employer match');
     // an IRA has no employer fields
     const ira = { ...D, contributions: [{ ...D.contributions[0], account: 'ira' }] };
     expect(renderToStaticMarkup(<HouseholdInputs values={ira} onUpdate={() => {}} sections={['contributions']} defaultOpen={['contributions']} />)).not.toContain(

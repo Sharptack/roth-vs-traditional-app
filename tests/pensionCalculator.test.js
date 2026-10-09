@@ -17,7 +17,7 @@ describe('irr (HAND CALC)', () => {
 });
 
 describe('pensionPayments (HAND CALC)', () => {
-  it('a 3% cost-of-living increase steps up once a year', () => {
+  it('a 3% cost-of-living increase steps up once per year', () => {
     // two years: 12 x 1,000 then 12 x 1,030 = 24,360
     const { payments } = pensionPayments({ monthly: 1000, startAge: 65, cola: 0.03, endAge: 67 });
     expect(payments).toHaveLength(24);
@@ -40,14 +40,14 @@ describe('pensionPayments (HAND CALC)', () => {
 describe('pensionResult (HAND CALC)', () => {
   const base = { lumpSum: 120000, monthly: 1000, startAge: 65, endAge: 75 };
 
-  it('$120,000 or $1,000 a month for 10 years: the payments just return the lump sum, 0%', () => {
+  it('$120,000 or $1,000 per month for 10 years: the payments just return the lump sum, 0%', () => {
     const r = pensionResult(base);
     expect(r.totalPayments).toBe(120000);
     expect(r.irr).toBeCloseTo(0, 8);
     expect(r.breakEvenAge).toBe(75); // the 120th payment
   });
 
-  it('the same pension to 85: about 8.2% a year, and the rate makes the payments worth the lump sum', () => {
+  it('the same pension to 85: about 8.2% per year, and the rate makes the payments worth the lump sum', () => {
     // 120 = (1 - (1+m)^-240) / m: m between 0.65% (121.35) and 0.70% (116.08) a month,
     // so between 8.08% and 8.73% a year
     const r = pensionResult({ ...base, endAge: 85 });
@@ -88,7 +88,7 @@ describe('the pension calculator in the household', () => {
     expect(r.expected.lifeExpectancy).toBeGreaterThan(15);
     expect(r.months).toEqual({ own: 120, survivor: 96 });
     expect(r.totalPayments).toBe(168000);
-    expect(pensionTile(r, inputs).headline).toMatch(/^\d+\.\d% a year$/);
+    expect(pensionTile(r, inputs).headline).toMatch(/^\d+\.\d% per year$/);
     // without a spouse entered, the survivor share is ignored
     const single = householdToPensionInputs(toHousehold({ ...values, includeSpouse: 'no' }, 2026));
     expect(single.survivorShare).toBe(0);

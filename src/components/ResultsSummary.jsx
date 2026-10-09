@@ -621,7 +621,7 @@ function BlendExplorer({ result }) {
       {hasInteriorOptimum ? (
         <p className="note">
           <strong>Here, blending helps.</strong> The best mix ({optimalIndex}% Roth) delivers{' '}
-          {$(gainOverBetterPure)} a year more than either pure strategy &mdash; because the
+          {$(gainOverBetterPure)} per year more than either pure strategy &mdash; because the
           effective rate on the Pre-tax slice climbs as that slice grows (brackets, the Social
           Security phase-in, or capital-gains stacking), a mix can land below where either
           extreme lands.
@@ -912,7 +912,7 @@ function TaxRates({ result }) {
         <strong>{LEAN_TEXT[s.lean]}</strong>
       </p>
       <p className="hint">
-        In dollars: {ahead} comes out ahead by {$(Math.abs(s.dollarDifference))} a year after tax.
+        In dollars: {ahead} comes out ahead by {$(Math.abs(s.dollarDifference))} per year after tax.
       </p>
 
       <RateWalkthrough sideAware={s} socialSecurity={result.socialSecurity} otherWithdrawals={result.otherWithdrawals} />
@@ -1125,7 +1125,7 @@ function PortfolioComparison({ result }) {
                 <td key={c.key}>
                   {$(portfolio[c.key].atBaseline.afterTaxIncome)}
                   {incomeLeader === c.key && (
-                    <span className="th-sub">+{$(Math.abs(incomeGap))} a year</span>
+                    <span className="th-sub">+{$(Math.abs(incomeGap))} per year</span>
                   )}
                 </td>
               ))}

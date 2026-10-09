@@ -61,7 +61,7 @@ export default function LifetimeComparison({ lifetime, household, result }) {
   const taxEachYear = (rows) => rows.map((r) => r.totalTax);
   const firstRetired = roth.rows.find((r) => r.working.some((w) => !w))?.year;
   const rows = [
-    ['Sustainable spending, after tax, a year', roth.sustainable, pretax.sustainable, d.sustainable, true],
+    ['Sustainable spending, after tax, per year', roth.sustainable, pretax.sustainable, d.sustainable, true],
     ['Lifetime tax (income and payroll)', roth.summary.totalTax, pretax.summary.totalTax, d.totalTax],
     [`Ending balance at ${end}`, roth.summary.endingBalance.total, pretax.summary.endingBalance.total, roth.summary.endingBalance.total - pretax.summary.endingBalance.total],
     [`Ending balance after tax for heirs`, roth.summary.endingAfterTax, pretax.summary.endingAfterTax, d.endingAfterTax],
@@ -80,7 +80,7 @@ export default function LifetimeComparison({ lifetime, household, result }) {
         <strong>
           {winner === 'even'
             ? 'About even'
-            : `${VERDICT[winner]} supports ${$(Math.abs(d.sustainable))} a year more`}
+            : `${VERDICT[winner]} supports ${$(Math.abs(d.sustainable))} per year more`}
         </strong>{' '}
         of steady after-tax spending to {end}.
       </p>

@@ -54,9 +54,9 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
   const rate = (
       <>
         <div className="hero">
-          <div className="hero-value">{e.irr === null ? 'None' : `${pct(e.irr)} a year`}</div>
+          <div className="hero-value">{e.irr === null ? 'None' : `${pct(e.irr)} per year`}</div>
           <div className="hero-sub">
-            What {$(inputs.lumpSum)} would have to earn, every year, to pay {$(inputs.monthly)} a month from {inputs.startAge} for
+            What {$(inputs.lumpSum)} would have to earn, every year, to pay {$(inputs.monthly)} per month from {inputs.startAge} for
             life
             {e.spouseLifeExpectancy !== null && <>, then {formatPercent(inputs.survivorShare, 0)} of it to a surviving spouse for theirs</>}:
             each payment counted by the chance of being alive to receive it.
@@ -99,7 +99,7 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
             <thead>
               <tr>
                 <th scope="col">If payments stop at age</th>
-                <th scope="col">Return a year</th>
+                <th scope="col">Return per year</th>
               </tr>
             </thead>
             <tbody>

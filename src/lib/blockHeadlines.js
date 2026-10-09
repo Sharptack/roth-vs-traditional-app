@@ -61,5 +61,5 @@ export function projectionHeadlines(view) {
 // The lifetime Roth vs. Pre-tax comparison (compareLifetime).
 export function lifetimeHeadline(lifetime) {
   if (lifetime.winner === 'even') return 'About even';
-  return `${lifetime.winner === 'roth' ? 'Roth' : 'Pre-tax'} supports ${$(Math.abs(lifetime.difference.sustainable))} a year more`;
+  return `${lifetime.winner === 'roth' ? 'Roth' : 'Pre-tax'} supports ${$(Math.abs(lifetime.difference.sustainable))} per year more`;
 }

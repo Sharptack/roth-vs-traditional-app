@@ -1122,7 +1122,7 @@ describe('tax drag on taxable money (taxableDividends, HAND CALC)', () => {
     expect(r.otherWithdrawals.taxableGains).toBeCloseTo(2315.238, 6);
   });
 
-  it('the side account over the IRS limit: Roth puts $5,500 a year in it', () => {
+  it('the side account over the IRS limit: Roth puts $5,500 per year in it', () => {
     // 30,000 Roth, limit 24,500: 5,500 a year to the side account.
     // year 1: 5,500 (basis 5,500). year 2: dividends 110, tax 16.50 -> 5,500 x 1.05 - 16.50 + 5,500
     //   = 11,258.50; basis 5,500 + 93.50 + 5,500 = 11,093.50

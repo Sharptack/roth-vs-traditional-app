@@ -9,9 +9,9 @@ describe('the household as text', () => {
       '- You: age 35, retires at 65',
       '- You, income: $100,000 W-2',
       '- You, Social Security: estimated, claimed at retirement',
-      '- Future Contributions, you: $10,000 a year, Pre-tax, 401(k)',
+      '- Future Contributions, you: $10,000 per year, Pre-tax, 401(k)',
       '- Existing Account: Pre-tax $100,000',
-      '- Costs ending before retirement: $6,000 debt, $0 other, a year',
+      '- Costs ending before retirement: $6,000 debt, $0 other, per year',
       "- Retirement lifestyle: 100% of today's spending",
       '- Return after inflation: 7%',
       '- Inflation (fixed-dollar thresholds): 2.5%',
@@ -46,8 +46,8 @@ describe('the household as text', () => {
     );
     expect(lines).toContain('- Filing status: Married Filing Jointly');
     expect(lines).toContain('- Spouse, income: $60,000 1099');
-    expect(lines).toContain('- Spouse, Social Security: $18,000 a year (entered), claimed at 67');
-    expect(lines).toContain('- Future Contributions, spouse: $6,000 a year, Roth, IRA');
+    expect(lines).toContain('- Spouse, Social Security: $18,000 per year (entered), claimed at 67');
+    expect(lines).toContain('- Future Contributions, spouse: $6,000 per year, Roth, IRA');
     expect(lines).toContain('- Existing Account: you, Pre-tax $100,000');
     expect(lines).toContain('- Existing Account: spouse, Taxable $40,000, 25% cost basis');
   });

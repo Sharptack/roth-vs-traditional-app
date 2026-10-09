@@ -127,14 +127,14 @@ export default function ProjectionResult({ view }) {
         <div className="hero">
           <div className="hero-value">{Math.round(funded * 100)}%</div>
           <div className="hero-sub">
-            {over ? 'Funded' : 'Underfunded'}: the plan supports {$(sustainable)} a year after tax to {end}; the
+            {over ? 'Funded' : 'Underfunded'}: the plan supports {$(sustainable)} per year after tax to {end}; the
             retirement income number is {$(need)}.
           </div>
         </div>
         <p className="hint">
           {s.runsOut
-            ? `At ${$(need)} a year the money runs out after ${s.lastsLabel}.`
-            : `At ${$(need)} a year the money lasts to ${end}, with ${$(s.endingBalance.total)} left.`}{' '}
+            ? `At ${$(need)} per year the money runs out after ${s.lastsLabel}.`
+            : `At ${$(need)} per year the money lasts to ${end}, with ${$(s.endingBalance.total)} left.`}{' '}
           Sustainable spending is the highest steady after-tax income, in today&rsquo;s dollars, that lasts to the end age.
         </p>
       </>
@@ -142,7 +142,7 @@ export default function ProjectionResult({ view }) {
   const strategies = (
       <>
         <p className="hint">
-          Each strategy run at the retirement income number ({$(need)} a year), all else the same. The chosen one is marked.
+          Each strategy run at the retirement income number ({$(need)} per year), all else the same. The chosen one is marked.
         </p>
         <table className="compare-table strategy-table">
           <thead>
@@ -223,7 +223,7 @@ export default function ProjectionResult({ view }) {
             formatY={(v) => $(v)}
             formatYTick={short}
             xLabel="Year"
-            yLabel="Dollars a year (today's)"
+            yLabel="Dollars per year (today's)"
           />
   );
   const balances = (

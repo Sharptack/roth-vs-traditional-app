@@ -39,7 +39,7 @@ describe('result block headlines', () => {
     const p = { irr: 0.06, expected: { irr: 0.054 }, byEndAge: [{ endAge: 80, irr: 0.01 }, { endAge: 95, irr: null }] };
     const inputs = { lumpSum: 300000, monthly: 1800, endAge: 90 };
     expect(pensionHeadlines(p, inputs, 0.1)).toEqual({
-      irr: '5.4% a year vs. 10.0% assumed',
+      irr: '5.4% per year vs. 10.0% assumed',
       ages: '1.0% to age 80, none to age 95',
     });
     expect(pensionHeadlines({ ...p, expected: { irr: null }, byEndAge: [] }, inputs, 0.1)).toEqual({ irr: 'No return vs. 10.0% assumed', ages: '' });
@@ -72,8 +72,8 @@ describe('result block headlines', () => {
   });
 
   it('the lifetime comparison', () => {
-    expect(lifetimeHeadline({ winner: 'pretax', difference: { sustainable: -834.4 } })).toBe('Pre-tax supports $834 a year more');
-    expect(lifetimeHeadline({ winner: 'roth', difference: { sustainable: 1200 } })).toBe('Roth supports $1,200 a year more');
+    expect(lifetimeHeadline({ winner: 'pretax', difference: { sustainable: -834.4 } })).toBe('Pre-tax supports $834 per year more');
+    expect(lifetimeHeadline({ winner: 'roth', difference: { sustainable: 1200 } })).toBe('Roth supports $1,200 per year more');
     expect(lifetimeHeadline({ winner: 'even', difference: { sustainable: 3 } })).toBe('About even');
   });
 });

@@ -7,16 +7,16 @@ import { irr, pensionOnLifeTable, pensionPayments, pensionResult } from '../src/
 const diesAt = (n) => Array.from({ length: n + 1 }, (_, a) => (a < n ? 0 : 1));
 
 describe('life tables (HAND CALC)', () => {
-  it('survival within a year falls as (1 − q)^(months/12)', () => {
+  it('survival within per year falls as (1 − q)^(months/12)', () => {
     const qs = [0, 0, 0.5, 1]; // ages 0-3
     expect(survival(qs, 2, 12)).toBeCloseTo(0.5, 12);
     expect(survival(qs, 2, 6)).toBeCloseTo(Math.SQRT1_2, 12); // 0.5^(1/2)
-    expect(survival(qs, 0, 30)).toBeCloseTo(Math.SQRT1_2, 12); // two safe years, then half a year at q 0.5
+    expect(survival(qs, 0, 30)).toBeCloseTo(Math.SQRT1_2, 12); // two safe years, then half per year at q 0.5
     expect(survival(qs, 3, 1)).toBe(0);
     expect(survival(qs, 4, 1)).toBe(0); // past the table
   });
 
-  it('life expectancy: certain death in the first month at 70, from 65: 5 years and half a month', () => {
+  it('life expectancy: certain death in the first month at 70, from 65: 5 years and half per month', () => {
     // 60 whole months, then the month the death falls in counts half (deaths spread through it)
     expect(lifeExpectancy(diesAt(70), 65)).toBeCloseTo(5 + 1 / 24, 12);
     expect(survivalCurve(diesAt(70), 65)).toHaveLength(1 + 6 * 12);

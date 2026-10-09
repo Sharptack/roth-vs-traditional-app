@@ -13,9 +13,9 @@ function personLines(p, year, label) {
     p.selfEmploymentIncome > 0 && `${formatCurrency(p.selfEmploymentIncome)} 1099`,
   ].filter(Boolean);
   const ss = p.socialSecurity.known
-    ? `${formatCurrency(p.socialSecurity.benefit)} a year (entered)`
+    ? `${formatCurrency(p.socialSecurity.benefit)} per year (entered)`
     : p.socialSecurity.mode === 'pia'
-      ? `${formatCurrency(p.socialSecurity.pia)} a month at full retirement age (PIA, entered)`
+      ? `${formatCurrency(p.socialSecurity.pia)} per month at full retirement age (PIA, entered)`
       : 'estimated';
   const claim = p.socialSecurity.claimAge ? `, claimed at ${p.socialSecurity.claimAge}` : ', claimed at retirement';
   return [
@@ -36,7 +36,7 @@ export function describeHousehold(household) {
     lines.push(
       bullet(
         `Future Contributions, ${names[i].toLowerCase()}`,
-        `${formatCurrency(c.amount)} a year, ${TYPE[c.currentType ?? fc.currentType]}, ${ACCOUNT_TYPES[c.accountType ?? fc.accountType]}`,
+        `${formatCurrency(c.amount)} per year, ${TYPE[c.currentType ?? fc.currentType]}, ${ACCOUNT_TYPES[c.accountType ?? fc.accountType]}`,
       ),
     );
   });
@@ -48,7 +48,7 @@ export function describeHousehold(household) {
     lines.push(bullet('Existing Account', `${who}${TYPE[a.type]} ${formatCurrency(a.balance)}${basis}`));
   }
   lines.push(
-    bullet('Costs ending before retirement', `${formatCurrency(spending.debtPaymentsEnding)} debt, ${formatCurrency(spending.otherExpensesEnding)} other, a year`),
+    bullet('Costs ending before retirement', `${formatCurrency(spending.debtPaymentsEnding)} debt, ${formatCurrency(spending.otherExpensesEnding)} other, per year`),
     bullet('Retirement lifestyle', `${formatPercent(spending.retirementLifestyle, 0)} of today's spending`),
     bullet('Return after inflation', formatPercent(assumptions.returnRate, 0)),
     ...(assumptions.retirementReturnRate !== undefined && assumptions.retirementReturnRate !== assumptions.returnRate

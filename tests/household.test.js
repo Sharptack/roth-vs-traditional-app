@@ -76,7 +76,7 @@ describe('calculateHouseholdEmploymentTaxes (2026, HAND CALC)', () => {
 });
 
 describe('spousalAdjustmentFactor (HAND CALC)', () => {
-  it('25/36 of 1% a month for 36 months, then 5/12 of 1%; no credits after FRA', () => {
+  it('25/36 of 1% per month for 36 months, then 5/12 of 1%; no credits after FRA', () => {
     expect(spousalAdjustmentFactor(0)).toBe(1);
     expect(spousalAdjustmentFactor(24)).toBe(1); // no delayed credits on a spousal benefit
     expect(spousalAdjustmentFactor(-12)).toBeCloseTo(1 - 12 * 25 / 36 / 100, 12); // 8.333% off
