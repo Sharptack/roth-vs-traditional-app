@@ -20,7 +20,7 @@ import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 import { householdValuesV2FromSearch } from '../lib/householdLink.js';
 import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/householdInputs.js';
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
-import { DEFAULT_HOUSEHOLD_VALUES, isoDate, refreshAges } from '../lib/householdValues.js';
+import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, isoDate, refreshAges } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
@@ -141,13 +141,14 @@ function usePreviewPage() {
 }
 
 // client: a Supabase client for tests (null = no backend); omitted = the configured backend,
-// loaded on demand (services/supabaseClient.js).
-export default function NextApp({ initialPage, client }) {
-  const [values, setValues] = useState(() => (FROM_LINK ? opening(FROM_LINK.values) : DEFAULT_HOUSEHOLD_VALUES));
+// loaded on demand (services/supabaseClient.js). initialValues: for tests (the household to open with).
+export default function NextApp({ initialPage, initialValues, client }) {
+  const [values, setValues] = useState(() => initialValues ?? (FROM_LINK ? opening(FROM_LINK.values) : DEFAULT_HOUSEHOLD_VALUES));
   const [locked, setLocked] = useState(Boolean(FROM_LINK?.viewOnly));
-  // "Start a new household" (decided 2026-10-08): back to the defaults, with an Undo that restores the
-  // household on screen (and which saved household it was). A saved household is never touched.
-  const [beforeNew, setBeforeNew] = useState(null);
+  // "Clear inputs" (decided 2026-10-09; "Start a new household" before it): a blank form, with an Undo
+  // that restores the household on screen (and which saved household it was). A saved household is
+  // never touched until it is saved over.
+  const [beforeClear, setBeforeClear] = useState(null);
   // "Compare a change" on the Roth page (decided 2026-10-08): a second household, starting as a copy.
   const [compareValues, setCompareValues] = useState(null);
   // Sign-in and the saved household on screen ({ id, label }), when a backend is configured.
@@ -213,6 +214,38 @@ export default function NextApp({ initialPage, client }) {
   };
 
   const formProps = { values, onUpdate: setValues, locked, onEditCopy: () => setLocked(false) };
+  // Clear inputs, or Undo right after: on the clients card when signed in, else beside the inputs.
+  const clearControl = beforeClear ? (
+    <span className="clear-inputs">
+      <span className="dim">Inputs cleared.</span>{' '}
+      <button
+        type="button"
+        className="link-button"
+        onClick={() => {
+          setValues(beforeClear.values);
+          setOpened(beforeClear.opened);
+          setLocked(beforeClear.locked);
+          setBeforeClear(null);
+        }}
+      >
+        Undo
+      </button>
+    </span>
+  ) : (
+    <button
+      type="button"
+      className="link-button clear-inputs"
+      onClick={() => {
+        setBeforeClear({ values, opened, locked });
+        setValues(BLANK_HOUSEHOLD_VALUES);
+        setOpened(null);
+        setLocked(false);
+      }}
+    >
+      Clear inputs
+    </button>
+  );
+  const ownClear = !cloud.session && clearControl;
   const share = !locked && <ShareHousehold values={values} household={h} getTiles={summaryTiles} />;
   const calculator = CALCULATORS.find((c) => c.id === page);
   // Saved households: the whole card (every client) on the homepage, compact (the household on
@@ -225,11 +258,13 @@ export default function NextApp({ initialPage, client }) {
         opened={opened}
         compact={compact}
         onOpen={({ id, label, values: stored }) => {
+          setBeforeClear(null);
           setValues(opening(stored));
           setLocked(false);
           setOpened({ id, label, values: stored });
         }}
         onSaved={setOpened}
+        clearControl={clearControl}
       />
     );
 
@@ -250,36 +285,7 @@ export default function NextApp({ initialPage, client }) {
             </p>
             <p className="header-links">
               <a href={docsHash('inputs')}>How the inputs work &rarr;</a>{' '}
-              {beforeNew ? (
-                <>
-                  <span className="dim">Started a new household.</span>{' '}
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => {
-                      setValues(beforeNew.values);
-                      setOpened(beforeNew.opened);
-                      setLocked(beforeNew.locked);
-                      setBeforeNew(null);
-                    }}
-                  >
-                    Undo
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => {
-                    setBeforeNew({ values, opened, locked });
-                    setValues(DEFAULT_HOUSEHOLD_VALUES);
-                    setOpened(null);
-                    setLocked(false);
-                  }}
-                >
-                  Start a new household
-                </button>
-              )}
+              {ownClear}
             </p>
           </header>
           <main className="inputs-page">
@@ -328,6 +334,7 @@ export default function NextApp({ initialPage, client }) {
                     Inputs
                   </h2>
                   <div className="form-head-actions">
+                    {ownClear}
                     <a className="link-button" href={PAGES.inputs}>
                       Edit inputs &rarr;
                     </a>

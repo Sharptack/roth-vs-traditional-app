@@ -18,8 +18,8 @@ const NOTICE =
 
 // opened: { id, label, values } of the household on screen (values = as last opened or saved), or
 // null; onOpen({ id, label, values }); onSaved({ id, label, values }) after a save, onSaved(null) when
-// the open household is deleted.
-export default function SavedHouseholds({ client, values, opened, onOpen, onSaved, compact = false }) {
+// the open household is deleted. clearControl: the "Clear inputs" button (NextApp.jsx), shown on the card.
+export default function SavedHouseholds({ client, values, opened, onOpen, onSaved, clearControl, compact = false }) {
   const [rows, setRows] = useState(null);
   const [label, setLabel] = useState('');
   const [status, setStatus] = useState(null); // { kind: 'ok' | 'error', message }
@@ -159,6 +159,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
     return (
       <section className="card saved-households compact" aria-label="Saved households">
         {onScreen ?? <p className="saved-on-screen dim">Not saved yet.</p>}
+        {clearControl && <p className="saved-clear">{clearControl}</p>}
         {statusLine}
         <details className="details">
           <summary>{opened ? 'Save as a new household' : 'Save this household'}</summary>
@@ -178,6 +179,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
       <p className="hint">{NOTICE}</p>
       {picker}
       {onScreen}
+      {clearControl && <p className="saved-clear">{clearControl}</p>}
       {saveForm}
       {statusLine}
     </section>

@@ -138,6 +138,19 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
   },
 };
 
+// "Clear inputs" (decided 2026-10-09): a blank form for a new client. The people, income, savings,
+// spending and the calculators' own amounts are empty (one blank account, as the list never starts
+// empty); the assumptions keep their defaults, as they are the firm's, not the client's.
+export const BLANK_HOUSEHOLD_VALUES = {
+  ...DEFAULT_HOUSEHOLD_VALUES,
+  people: [newPerson('p1', { age: '', retirementAge: '', planToAge: '' })],
+  incomes: [],
+  contributions: [],
+  accounts: [{ id: 'a1', ...ROW_TEMPLATES.accounts.row }],
+  spending: { debtPayments: '', otherExpenses: '', retirementLifestyle: '1' },
+  calculators: { ...DEFAULT_HOUSEHOLD_VALUES.calculators, conversion: { amount: '' }, pension: { lumpSum: '' } },
+};
+
 // A new pension row (the pension calculator's "Add a pension"): the old example offer.
 export const NEW_PENSION = { amount: '1800', fromAge: '65', cola: '0', survivorShare: '0' };
 

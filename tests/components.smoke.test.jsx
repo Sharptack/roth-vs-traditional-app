@@ -1055,7 +1055,7 @@ describe('NextApp', () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const page = renderToStaticMarkup(<NextApp initialPage="inputs" />);
     expect(page).toContain('<h1>Inputs</h1>');
-    expect(page).toContain('>Start a new household</button>');
+    expect(page).toContain('>Clear inputs</button>');
     for (const group of ['Household', 'Income and expenses', 'Assets and liabilities', 'Assumptions']) {
       expect(page, group).toContain(`class="inputs-group-title">${group}</h2>`);
     }
@@ -1071,6 +1071,17 @@ describe('NextApp', () => {
     expect(page).toContain('href="#/pension"');
     expect(page).not.toContain('suite-tile-headline');
     expect(page).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('a cleared household (Clear inputs): every page renders, asking for the inputs', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const { BLANK_HOUSEHOLD_VALUES } = await import('../src/lib/householdValues.js');
+    for (const page of ['home', 'inputs', 'roth', 'tax', 'projection', 'conversion', 'pension']) {
+      const html = renderToStaticMarkup(<NextApp initialPage={page} initialValues={BLANK_HOUSEHOLD_VALUES} client={null} />);
+      expect(html, page).not.toMatch(/NaN|Infinity/);
+    }
+    const home = renderToStaticMarkup(<NextApp initialPage="home" initialValues={BLANK_HOUSEHOLD_VALUES} client={null} />);
+    expect(home).toContain('Needs inputs');
   });
 
   it('shows the spouse only when filing jointly, side by side, and renders a two-earner result', async () => {
