@@ -28,9 +28,8 @@ strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabas
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 2 done (2026-10-09: survivor years, tax drag, employer contributions, returns before and
-  after retirement, income rows over their ages, the surplus setting, the projection article); next is phase 3,
-  retirement spending (steps to be set in the plan doc).
+- **Current step:** phase 2 done, then the "Before phase 3: adjustments" list (2026-10-09, in the plan doc; its
+  "Later" items are placed there); next is phase 3, retirement spending (steps to be set in the plan doc).
 - **Docs**: articles listed in `src/lib/docs.js`; each phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
   `index.html`; Netlify's form detection must be on).
 - Round one's plan (finished): https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45.
@@ -54,7 +53,7 @@ strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabas
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 821 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 837 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -103,7 +102,9 @@ npm run build     # static site -> dist/ (base './')
 - `src/lib/` calculators: `household.js` (v1 form values → household → compare inputs), `householdLink.js`
   (share links), `householdText.js`, `savedHousehold.js`, `taxCalculator.js`, `conversionCalculator.js`,
   `pensionCalculator.js`, `irmaa.js`, `rmd.js`, `projection.js` (`runProjection`: the year loop, strategy seam),
-  `strategies.js`, `projectionSummary.js` (sustainable spending, `projectionView`), `lifetimeComparison.js`, `suiteTiles.js`.
+  `strategies.js`, `projectionSummary.js` (sustainable spending, `projectionView`), `lifetimeComparison.js`, `suiteTiles.js`,
+  `conversionLifetime.js` (the projection with and without a conversion this year: runProjection `convertNow`).
+  A pension row taken as a lump sum becomes `household.rollovers` (or a Pre-tax account today), householdV2.js.
 - UI: `src/App.jsx` (the shell: hash routes from `src/lib/route.js`, NextApp always mounted, Docs and Visualization
   lazy, the feedback footer), `src/components/` (`ResultsSummary.jsx` = the Roth page's blocks, `fields.jsx` = form
   inputs, `DocsPage.jsx`, `Feedback.jsx`, `charts/`), `src/next/` (`NextApp.jsx`: the home page, the inputs page
@@ -133,6 +134,9 @@ Application/chrome.exe`. The calculators stay mounted (hidden) behind the Docs a
 (e.g. `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-09 — Before phase 3: the Dashboard (Decisions / Evaluations), inputs page blocks, income rows that fold,
+  Clear inputs, QBI yes/no per 1099 row, tax page totals, conversion lifetime view, Roth income/rates charts, pension
+  lump sum in the plan, feedback tab, the conversion article. 837 tests.
 - 2026-10-09 — Phase 2 (f), phase 2 done: dividends from each taxable account (tax page too), income rows over their
   ages in the projection, income above the need saved or spent, the projection article. 821 tests.
 - 2026-10-09 — Phase 2 (e): a return in retirement (assumptions.retirementReturnRate, default the same), in the
