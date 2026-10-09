@@ -92,6 +92,20 @@ function incomeSummary(v) {
   return parts.length > 0 ? parts.map((s) => s.replace(/^[a-z]/, (c) => c.toUpperCase())).join(' · ') : 'None';
 }
 
+// One income row, closed (decided 2026-10-09): its type and amount, and whose with a spouse.
+//   "W-2 wages · $100,000 a year", "Pension · $1,800 a month from 65 · Spouse"
+export function incomeRowSummary(r, withOwner = false) {
+  const type = r.type === 'other' ? `Other: ${OTHER_KIND_LABELS[r.treatment] ?? ''}` : INCOME_TYPE_LABELS[r.type];
+  let amount;
+  if (r.type === 'socialSecurity') amount = r.ssMode === 'pia' ? `${money(r.amount)} a month at full retirement age` : 'estimated from earnings';
+  else if (r.type === 'pension') amount = `${money(r.amount)} a month${String(r.fromAge ?? '').trim() ? ` from ${r.fromAge}` : ''}`;
+  else amount = String(r.amount ?? '').trim() === '' ? 'no amount yet' : `${money(r.amount)} a year`;
+  const from = String(r.fromAge ?? '').trim();
+  const to = String(r.toAge ?? '').trim();
+  const ages = MONTHLY_INCOME_TYPES.includes(r.type) ? null : [from && `from ${from}`, to && `to ${to}`].filter(Boolean).join(' ');
+  return [type, amount, ages, withOwner ? OWNER_LABELS[r.owner] : null].filter(Boolean).join(' · ');
+}
+
 export const INPUT_SECTIONS = [
   {
     id: 'household',

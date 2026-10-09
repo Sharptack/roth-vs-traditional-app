@@ -1051,14 +1051,22 @@ describe('NextApp', () => {
     expect(html).not.toContain('collapse-bar');
   });
 
-  it('the inputs page: four groups, every section as its own card, and links to each calculator', async () => {
+  it('the inputs page: the groups as blocks with their sections inside, and links to each calculator', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const page = renderToStaticMarkup(<NextApp initialPage="inputs" />);
     expect(page).toContain('<h1>Inputs</h1>');
     expect(page).toContain('>Clear inputs</button>');
-    for (const group of ['Household', 'Income and expenses', 'Assets and liabilities', 'Assumptions']) {
-      expect(page, group).toContain(`class="inputs-group-title">${group}</h2>`);
+    // three groups as blocks (closed at first, a line per section), Assumptions a block of its own
+    for (const group of ['household', 'income', 'assets']) {
+      expect(page, group).toContain(`class="collapsible card collapsible-card inputs-group inputs-group-${group}"`);
     }
+    expect(page).toContain('<strong>Existing Accounts:</strong> Pre-tax $100,000');
+    expect(page).toContain('class="collapsible card collapsible-card inputs-assumptions"');
+    expect((page.match(/mini-block/g) ?? []).length).toBe(8);
+    // income rows: closed, one line each
+    expect(page).toContain('<span>W-2 wages · $100,000 a year</span>');
+    expect(page).toContain('<span>Social Security · estimated from earnings</span>');
+    expect(page).toContain('>Set start/end ages</button>');
     for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add income', 'Withdrawal strategy in retirement']) {
       expect(page, label).toContain(label);
     }
@@ -1066,7 +1074,7 @@ describe('NextApp', () => {
     for (const label of ['+ Add other income types', 'Lump sum offered', 'Project to age', 'Convert to Roth this year']) {
       expect(page, label).not.toContain(label);
     }
-    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(9);
+    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(12);
     expect(page).toContain('Open a calculator');
     expect(page).toContain('href="#/pension"');
     expect(page).not.toContain('suite-tile-headline');
@@ -1143,7 +1151,7 @@ describe('preview sign-in and saved households', () => {
     expect(renderToStaticMarkup(<AccountBar client={{}} cloud={{ configured: true, ready: false, session: null }} />)).toBe('');
   });
 
-  it('the clients card (homepage): the testing-stage notice, save form, and the open household', async () => {
+  it('the clients card (dashboard, inputs page): a block, the testing-stage notice, save form, the open household', async () => {
     const { default: SavedHouseholds } = await import('../src/next/SavedHouseholds.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES } = await import('../src/lib/householdValues.js');
     const html = renderToStaticMarkup(
@@ -1155,7 +1163,9 @@ describe('preview sign-in and saved households', () => {
         onSaved={() => {}}
       />,
     );
-    expect(html).toContain('>Clients</h2>');
+    expect(html).toContain('<span class="collapsible-title" id="saved-title">Clients</span>');
+    expect(html).toContain('aria-expanded="true"'); // open at first
+    expect(html).toContain('On screen: J.M. 2026</span>'); // the summary, seen when closed
     expect(html).toContain('Don’t store client names');
     expect(html).not.toContain('Re-open saved');
     expect(html).toContain('On screen: <strong>J.M. 2026</strong>');

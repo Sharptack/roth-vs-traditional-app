@@ -7,6 +7,7 @@ import {
   INPUT_SECTIONS,
   PERSON_FIELDS,
   accountsSummary,
+  incomeRowSummary,
   inputSections,
 } from '../src/lib/householdInputs.js';
 import { DEFAULT_HOUSEHOLD_VALUES as D, addRow, setGroupField, setIncludeSpouse, updateRow } from '../src/lib/householdValues.js';
@@ -130,5 +131,24 @@ describe('sectionChanged', () => {
     const changed = updateRow(D, 'contributions', 'c1', 'tax', 'roth');
     expect(ALL_SECTION_IDS.filter((id) => sectionChanged(id, D, changed))).toEqual(['contributions']);
     expect(ALL_SECTION_IDS.filter((id) => sectionChanged(id, D, D))).toEqual([]);
+  });
+});
+
+describe('an income row, closed (decided 2026-10-09): its type and amount on one line', () => {
+  const row = (fields) => ({ owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', ...fields });
+  it('earnings and other income: a year, with any ages', () => {
+    expect(incomeRowSummary(row({ amount: '100000' }))).toBe('W-2 wages · $100,000 a year');
+    expect(incomeRowSummary(row({ type: '1099', amount: '20000', fromAge: '60', toAge: '65' }))).toBe('1099 (self-employed) · $20,000 a year · from 60 to 65');
+    expect(incomeRowSummary(row({ type: 'other', treatment: 'qualified', amount: '5000', toAge: '70' }))).toBe(
+      'Other: Qualified dividends, long-term gains · $5,000 a year · to 70',
+    );
+    expect(incomeRowSummary(row({}))).toBe('W-2 wages · no amount yet');
+  });
+  it('Social Security and pensions: a month; whose, with a spouse', () => {
+    expect(incomeRowSummary(row({ type: 'socialSecurity' }))).toBe('Social Security · estimated from earnings');
+    expect(incomeRowSummary(row({ type: 'socialSecurity', ssMode: 'pia', amount: '2500', fromAge: '67' }))).toBe(
+      'Social Security · $2,500 a month at full retirement age',
+    );
+    expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', owner: 'p2' }), true)).toBe('Pension · $1,800 a month from 65 · Spouse');
   });
 });

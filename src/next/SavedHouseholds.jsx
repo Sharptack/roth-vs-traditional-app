@@ -1,9 +1,10 @@
 // The signed-in advisor's saved households (Supabase, row-level security: only their own).
-// The homepage shows the whole card: every client in a dropdown (choosing one opens it), save the
-// household on screen as new or over the one that's open, delete it. Every other page shows it
+// The dashboard and the inputs page show the whole card: every client in a dropdown (choosing one
+// opens it), save the household on screen as new or over the one that's open, delete it. Every other page shows it
 // compact (compact, decided 2026-10-08): only the household on screen, with Save changes, Re-open
 // saved (back to the saved version) and saving as new; no list of clients.
 import { useCallback, useEffect, useState } from 'react';
+import Collapsible from '../components/Collapsible.jsx';
 import { deleteHousehold, listHouseholds, loadHousehold, saveHousehold } from '../services/cloud.js';
 import { HOME_HASH } from '../lib/route.js';
 import { sameSavedHouseholdV2 } from '../lib/savedHousehold.js';
@@ -24,6 +25,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
   const [label, setLabel] = useState('');
   const [status, setStatus] = useState(null); // { kind: 'ok' | 'error', message }
   const [busy, setBusy] = useState(false);
+  const [cardOpen, setCardOpen] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -173,15 +175,22 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
     );
   }
 
+  // The whole card (the dashboard and the inputs page): a block like the others (decided 2026-10-09).
   return (
-    <section className="card saved-households" aria-labelledby="saved-title">
-      <h2 id="saved-title">Clients</h2>
+    <Collapsible
+      className="saved-households"
+      headingId="saved-title"
+      title="Clients"
+      summary={opened ? `On screen: ${opened.label}${changed ? ' (unsaved changes)' : ''}` : 'Household on screen not saved'}
+      open={cardOpen}
+      onToggle={() => setCardOpen(!cardOpen)}
+    >
       <p className="hint">{NOTICE}</p>
       {picker}
       {onScreen}
       {clearControl && <p className="saved-clear">{clearControl}</p>}
       {saveForm}
       {statusLine}
-    </section>
+    </Collapsible>
   );
 }

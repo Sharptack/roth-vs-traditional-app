@@ -1652,16 +1652,97 @@ th.win .th-sub {
   gap: 16px;
 }
 
-/* the inputs page's four groups (Household; Income and expenses; Assets and liabilities; Assumptions) */
-.inputs-group {
+/* the inputs page's groups (Household; Income and expenses; Assets and liabilities), each a block
+   with its sections as smaller blocks inside; closed, a line per section */
+.group-summary {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
-.inputs-group-title {
-  margin: 8px 0 0;
+.group-summary strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mini-block.collapsible-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.mini-block.collapsible-card .collapsible-title {
   font-size: 1.05rem;
+}
+
+.mini-block.collapsible-card .collapsible-summary {
+  font-size: 0.88rem;
+}
+
+.mini-block.collapsible-card > .collapsible-body {
+  margin-top: 12px;
+}
+
+/* the filing status on its own line; the spouse question below it */
+.filing-status {
+  max-width: 320px;
+}
+
+/* an income row: closed, one line (type and amount); open, its fields */
+.next-app .account-row.income-row {
+  display: block;
+}
+
+.income-row-head {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.income-row-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.income-row.open > .income-row-head .collapsible-chevron::before {
+  transform: rotate(90deg);
+}
+
+.next-app .income-row-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0 12px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.next-app .income-row-body[hidden] {
+  display: none;
+}
+
+.next-app .income-row-body .field-row {
+  display: contents;
+}
+
+.next-app .income-row-body > .hint,
+.next-app .income-row-body > .link-button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.next-app .income-row-body > .row-ages-link {
+  margin-bottom: 12px;
 }
 
 /* one person: one column, not stretched across the page */

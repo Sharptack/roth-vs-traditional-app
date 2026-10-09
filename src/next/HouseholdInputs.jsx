@@ -28,6 +28,7 @@ import {
   OTHER_KIND_LABELS,
   OWNER_LABELS,
   PERSON_FIELDS,
+  incomeRowSummary,
   inputSections,
   sectionChanged,
 } from '../lib/householdInputs.js';
@@ -37,6 +38,7 @@ import {
   addRow,
   hasSpouseV2,
   isoDate,
+  newRowId,
   removeRow,
   setGroupField,
   setIncludeSpouse,
@@ -129,8 +131,11 @@ export default function HouseholdInputs({
 }) {
   const formId = useId();
   const [open, setOpen] = useState(() => new Set(defaultOpen));
+  // Income rows open (closed: one line, type and amount; decided 2026-10-09): a new row opens.
+  const [openRows, setOpenRows] = useState(() => new Set());
+  // Income rows whose start/end ages are shown (always when one is filled in).
+  const [agesShown, setAgesShown] = useState(() => new Set());
   const sections = inputSections(sectionIds);
-  const allOpen = sections.every((s) => open.has(s.id));
   const spouse = hasSpouseV2(values);
   const people = activePeople(values);
   const personFields = new Set(fields.people ?? PERSON_FIELDS);
@@ -186,14 +191,15 @@ export default function HouseholdInputs({
   const body = {
     household: () => (
       <>
-        <div className="field-row">
+        <div className="filing-status">
           <SelectInput
             label="Filing status"
             value={values.filingStatus}
             onChange={(value) => onUpdate((v) => ({ ...v, filingStatus: value }))}
             options={toOptions(FILING_STATUSES)}
           />
-          {values.filingStatus === 'mfj' && (
+        </div>
+        {values.filingStatus === 'mfj' && (
             <RadioGroup
               legend="Enter your spouse separately?"
               name={`${formId}-includeSpouse`}
@@ -204,8 +210,7 @@ export default function HouseholdInputs({
                 { value: 'yes', label: 'Yes' },
               ]}
             />
-          )}
-        </div>
+        )}
         {values.filingStatus === 'mfj' && (
           <p className="hint">
             {spouse
@@ -311,34 +316,63 @@ export default function HouseholdInputs({
               <SelectInput label="Kind" value={r.treatment} onChange={setRow('incomes', r.id, 'treatment')} options={labelOptions(OTHER_KIND_LABELS)} />
             )}
             <CurrencyInput label="Amount (annual)" value={r.amount} onChange={setRow('incomes', r.id, 'amount')} />
-            <div className="field-row">
-              <AgeInput label="First age" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} />
-              <AgeInput label="Last age" value={r.toAge} onChange={setRow('incomes', r.id, 'toAge')} />
-            </div>
+            {agesShown.has(r.id) || String(r.fromAge).trim() || String(r.toAge).trim() ? (
+              <div className="field-row">
+                <AgeInput label="Starts at age" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} />
+                <AgeInput label="Ends after age" value={r.toAge} onChange={setRow('incomes', r.id, 'toAge')} />
+              </div>
+            ) : (
+              <button type="button" className="link-button row-ages-link" onClick={() => setAgesShown((o) => new Set(o).add(r.id))}>
+                Set start/end ages
+              </button>
+            )}
           </>
         );
       };
       return (
         <>
           <p className="hint">
-            One row per source. Earnings and other income are yearly; ages are the first and last ages
-            it is received, both included (blank = from now, and until retirement; for a row starting at or
-            after retirement, for life). Social Security (one
-            row each; without one, no benefit of their own) and pensions are monthly.
+            One row per source; click a row to open it. Earnings and other income are yearly, from now
+            until retirement unless start and end ages are set (both included; a row starting at or after
+            retirement runs for life). Social Security (one row each; without one, no benefit of their own)
+            and pensions are monthly.
           </p>
           <ul className="account-list">
-            {rows.map((r, i) => (
-              <li key={r.id} className="account-row">
-                <div className="field-row">
-                  <SelectInput label="Type" value={r.type} onChange={setIncomeType(r)} options={labelOptions(INCOME_TYPE_LABELS)} />
-                  {ownerSelect('incomes', r)}
-                </div>
-                {fieldsFor(r)}
-                {removeButton('incomes', r, i, 'income')}
-              </li>
-            ))}
+            {rows.map((r, i) => {
+              const isOpen = openRows.has(r.id);
+              const bodyId = `${formId}-income-${r.id}`;
+              return (
+                <li key={r.id} className={isOpen ? 'account-row income-row open' : 'account-row income-row'}>
+                  <button
+                    type="button"
+                    className="income-row-head"
+                    aria-expanded={isOpen}
+                    aria-controls={bodyId}
+                    onClick={() => setOpenRows((o) => toggleId(o, r.id))}
+                  >
+                    <span className="collapsible-chevron" aria-hidden="true" />
+                    <span>{incomeRowSummary(r, spouse)}</span>
+                  </button>
+                  <div id={bodyId} className="income-row-body" hidden={!isOpen}>
+                    <div className="field-row">
+                      <SelectInput label="Type" value={r.type} onChange={setIncomeType(r)} options={labelOptions(INCOME_TYPE_LABELS)} />
+                      {ownerSelect('incomes', r)}
+                    </div>
+                    {fieldsFor(r)}
+                    {removeButton('incomes', r, i, 'income')}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
-          <button type="button" className="link-button" onClick={() => add('incomes')}>
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              setOpenRows((o) => new Set(o).add(newRowId(values.incomes, 'i')));
+              add('incomes');
+            }}
+          >
             + Add income
           </button>
         </>
@@ -771,18 +805,19 @@ export default function HouseholdInputs({
     },
   };
 
-  const section = (sec) => {
+  // mini: a section inside a group's block on the inputs page.
+  const section = (sec, mini = false) => {
     const content = body[sec.id]();
     return (
       <Collapsible
         key={sec.id}
         variant={layout === 'page' ? 'card' : 'row'}
-        className={`inputs-${sec.id}`}
+        className={mini ? `inputs-${sec.id} mini-block` : `inputs-${sec.id}`}
         title={titles[sec.id] ?? sec.title}
         summary={sec.summary(values)}
         changed={Boolean(baseValues) && sectionChanged(sec.id, baseValues, values)}
         open={open.has(sec.id)}
-        onToggle={() => setOpen(toggleId(open, sec.id))}
+        onToggle={() => setOpen((o) => toggleId(o, sec.id))}
       >
         {locked ? (
           <fieldset className="locked-fieldset" disabled>
@@ -795,13 +830,19 @@ export default function HouseholdInputs({
     );
   };
 
+  // The inputs page (decided 2026-10-09): each group is a block of its own, its sections smaller
+  // blocks inside it; a group of one section (Assumptions) is just that section. Group ids are kept
+  // in the same open set as section ids, prefixed "group:".
+  const groupKey = (g) => `group:${g.id}`;
+  const toggleable = [...sections.map((s) => s.id), ...(groups ?? []).filter((g) => g.sections.length > 1).map(groupKey)];
+  const everyOpen = toggleable.every((id) => open.has(id));
   const head = (
     <div className="form-head">
       {title && <h2 className="form-title">{title}</h2>}
       <div className="form-head-actions">
         {headLink}
-        <button type="button" className="link-button" onClick={() => setOpen(new Set(allOpen ? [] : sections.map((s) => s.id)))}>
-          {allOpen ? 'Collapse all' : 'Expand all'}
+        <button type="button" className="link-button" onClick={() => setOpen(new Set(everyOpen ? [] : toggleable))}>
+          {everyOpen ? 'Collapse all' : 'Expand all'}
         </button>
       </div>
     </div>
@@ -821,14 +862,30 @@ export default function HouseholdInputs({
         {head}
         {lockedNote}
         {groups ? (
-          groups.map((g) => (
-            <section key={g.id} className="inputs-group" aria-labelledby={`${formId}-${g.id}`}>
-              <h2 id={`${formId}-${g.id}`} className="inputs-group-title">
-                {g.title}
-              </h2>
-              <div className="inputs-blocks">{inputSections(g.sections).map(section)}</div>
-            </section>
-          ))
+          groups.map((g) => {
+            const own = inputSections(g.sections);
+            if (own.length === 1) return section(own[0]);
+            return (
+              <Collapsible
+                key={g.id}
+                className={`inputs-group inputs-group-${g.id}`}
+                title={g.title}
+                summary={
+                  <span className="group-summary">
+                    {own.map((sec) => (
+                      <span key={sec.id}>
+                        <strong>{sec.title}:</strong> {sec.summary(values)}
+                      </span>
+                    ))}
+                  </span>
+                }
+                open={open.has(groupKey(g))}
+                onToggle={() => setOpen((o) => toggleId(o, groupKey(g)))}
+              >
+                <div className="inputs-blocks">{own.map((sec) => section(sec, true))}</div>
+              </Collapsible>
+            );
+          })
         ) : (
           <div className="inputs-blocks">{sections.map(section)}</div>
         )}
