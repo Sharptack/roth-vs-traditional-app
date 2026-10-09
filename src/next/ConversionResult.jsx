@@ -1,7 +1,7 @@
 // The Roth conversion calculator's results, as blocks (reworked 2026-10-09): the conversion over a
 // lifetime (the three figures it turns on: lifetime tax, the legacy, retirement income, with and
-// without it, and the tax paid each year as bars); this year's tax on it, with its effective rate; and
-// the bracket bar with the conversion's own slice and the conversion that fills each bracket marked.
+// without it); this year's tax on it, with its effective rate; the bracket bar with the conversion's
+// own slice and the conversion that fills each bracket marked; and charts (the tax paid each year as bars).
 // Renders lib/conversionCalculator.js's conversionResult and lib/conversionLifetime.js's
 // conversionLifetime; no math of its own.
 import { conversionHeadlines } from '../lib/blockHeadlines.js';
@@ -74,6 +74,17 @@ function Lifetime({ lifetime: l }) {
             l.with.rows[0].conversionTaxWithheld,
           )} of it, and ${$(l.amount - l.with.rows[0].conversionTaxWithheld)} reaches Roth.`}
       </p>
+    </>
+  );
+}
+
+// The charts block (decided 2026-10-09: its own block at the bottom; more charts may join it).
+function Charts({ lifetime: l }) {
+  const w = l.with.totals;
+  const wo = l.without.totals;
+  const end = l.years[l.years.length - 1];
+  return (
+    <>
       <h3 className="subhead">Tax paid each year</h3>
       <GroupedBarChart
         x={l.years.map((y) => y.year)}
@@ -201,6 +212,7 @@ export default function ConversionResult({ conversion: c, pretaxBalance, lifetim
           },
         { id: 'cost', title: 'This year’s tax on the conversion', summary: h.cost, className: lifetime ? undefined : 'key-card', content: cost },
         { id: 'bar', title: 'Where the conversion lands', summary: h.bar, content: where },
+        lifetime && { id: 'charts', title: 'Charts', summary: 'Tax paid each year, with and without it', content: <Charts lifetime={lifetime} /> },
       ]}
       disclaimer="Estimates only — not tax or financial advice. Federal tax under current law, in today's dollars. IRMAA at this year’s amounts (when included in Assumptions). Not modeled: state tax, the five-year rule on converted amounts. One conversion this year; for conversions every year, use the withdrawal strategies on the projection page."
     />

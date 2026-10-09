@@ -1051,7 +1051,7 @@ describe('NextApp', () => {
     expect(tax).toContain('>Average tax rate<');
     expect(blockCount(proj)).toBe(6);
     expect(proj).toMatch(/Peak \$[\d,]+ in \d{4}/);
-    expect(blockCount(conv)).toBe(3);
+    expect(blockCount(conv)).toBe(4); // the charts block at the bottom (2026-10-09)
     expect(blockCount(pen)).toBe(0); // no pension: no results
     expect(blockCount(penResult)).toBe(3); // with "In the plan"
     // the Roth page: its five cards, the blend explorer, the lifetime comparison and its full table

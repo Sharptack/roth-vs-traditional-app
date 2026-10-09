@@ -29,7 +29,7 @@ Roth vs. Pre-tax:
 - [x] The start/end ages link closes again after opening ("Hide start/end ages").
 - [x] "Federal income tax on that" opens to show its calculation (bracket by bracket, then any child tax credit).
 
-Pension: [x] "In the plan" lines up (the lump-sum hint moved under the row). Roth conversion: the "Tax paid each year" chart moves to its own block at the bottom (more charts may join it).
+Pension: [x] "In the plan" lines up (the lump-sum hint moved under the row). Roth conversion: [x] the "Tax paid each year" chart moves to its own block at the bottom (more charts may join it).
 
 **Next: phase 3, retirement spending.** Steps not yet set (set them here first). It must start with a spending input for a household already retired: the projection, the Roth comparison and the conversion page's lifetime view all need it.
 

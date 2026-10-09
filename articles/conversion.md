@@ -10,7 +10,7 @@ The page runs the household's year-by-year projection twice, to the end of the p
 - **Legacy:** the portfolio at the end of the plan, and the same after the heirs' tax on Pre-tax money (the rate set under Assumptions), since heirs inherit Roth money tax-free.
 - **Total retirement income:** everything withdrawn and received in the years anyone is retired: withdrawals, Social Security, pensions, other income. Conversions stay invested, so they don't count. Spending is the same in both runs, so when the conversion lowers later taxes, less has to be withdrawn; read this figure beside the tax and the legacy.
 
-Below them, the tax paid each year as bars, with and without the conversion, and the totals. The conversion's tax shows as a taller bar this year; lower RMDs and withdrawals later show as shorter ones.
+At the bottom of the page, the **Charts** block shows the tax paid each year as bars, with and without the conversion, and the totals. The conversion's tax shows as a taller bar this year; lower RMDs and withdrawals later show as shorter ones.
 
 **Who pays the conversion's tax.** Once anyone in the household has retired, the year's withdrawals cover it, as for any other tax. While everyone still works there is no withdrawal to pay it from, so the tax is held back from the conversion and less reaches Roth; the page says how much. When the money runs out in either run, the page says so: after that year spending goes unmet and less tax is paid, so the figures compare two plans that both fall short.
 
