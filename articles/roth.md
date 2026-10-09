@@ -42,7 +42,7 @@ Many tools ask you to guess your retirement tax bracket. Guessing is hard, and s
 1. Start with your household's take-home pay today: gross income minus federal income tax **and payroll tax**. For W-2 income that's FICA (Social Security and Medicare). For 1099 income it's self-employment tax, which is roughly double because you pay both halves, though half of it is deductible before income tax (and 1099 income also gets the qualified business income deduction). Payroll tax comes out of every paycheck but stops when you stop working, so it isn't part of the lifestyle you need to replace. If your savings are Pre-tax, they come off your income before income tax is figured (up to the IRS limit); itemized deductions, when they're more than the standard deduction, and the child tax credit count too.
 2. Subtract costs that will end before you retire: debt payments, kids' college or private school.
 3. Subtract what you save for retirement.
-4. What's left is your **retirement income number**, the after-tax lifestyle you're already living without those costs.
+4. What's left is your **retirement income number**, the after-tax lifestyle you're already living without those costs. The page's **"How is this calculated?"** dropdown shows the arithmetic; its "Federal income tax on that" line opens to the tax bracket by bracket.
 
 For a couple, "retirement" is the year the **last** of you retires. Each of you contributes until your own retirement; the savings of whoever retires first keep growing, untouched, until then.
 

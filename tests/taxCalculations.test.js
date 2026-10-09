@@ -4,6 +4,7 @@ import {
   calculateTaxFromGross,
   getMarginalRate,
   getStandardDeduction,
+  taxByBracket,
 } from '../src/lib/taxCalculations.js';
 import { getYearData } from '../src/lib/yearLookup.js';
 
@@ -206,5 +207,20 @@ describe('2026 tax data (HAND CALC)', () => {
 
   it('keeps 2025 results unchanged when 2025 is requested', () => {
     expect(calculateTax(60000, 'single', 2025)).toBeCloseTo(8114, 6);
+  });
+});
+
+describe('taxByBracket (HAND CALC, single 2026)', () => {
+  it('73,900 of taxable income: 10% x 12,400 + 12% x 38,000 + 22% x 23,500 = 1,240 + 4,560 + 5,170 = 10,970', () => {
+    const rows = taxByBracket(73900, 'single', 2026);
+    expect(rows.map((r) => [r.rate, r.amount, r.tax])).toEqual([
+      [0.1, 12400, 1240],
+      [0.12, 38000, 4560],
+      [0.22, 23500, 5170],
+    ]);
+    expect(rows.reduce((a, r) => a + r.tax, 0)).toBeCloseTo(calculateTax(73900, 'single', 2026), 9);
+  });
+  it('none under the deduction', () => {
+    expect(taxByBracket(0, 'single', 2026)).toEqual([]);
   });
 });

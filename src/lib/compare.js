@@ -83,7 +83,7 @@
 // No inflation is modeled: tax brackets, the SS benefit and the budget are held
 // at today's values, so the return rate is best read as an after-inflation
 // (real) return and every dollar figure as today's dollars.
-import { calculateTaxFromGross, getStandardDeduction } from './taxCalculations.js';
+import { calculateTaxFromGross, getStandardDeduction, taxByBracket } from './taxCalculations.js';
 import { qbiDeduction } from './qbi.js';
 import { childTaxCredit } from './childTaxCredit.js';
 import { calculateEmploymentTaxes, calculateHouseholdEmploymentTaxes } from './ficaTax.js';
@@ -759,6 +759,8 @@ export function compareRothVsTraditional(inputs) {
         ...(itemizedExtra > 0 && { itemizedDeductions: inputs.itemizedDeductions }),
         ...(current.childTaxCredit > 0 && { childTaxCredit: current.childTaxCredit }),
         incomeTax: current.tax,
+        // That tax bracket by bracket, before any credit (taxCalculations.js taxByBracket).
+        taxBrackets: taxByBracket(current.taxableIncome, filingStatus, year),
         // Income tax had the savings not been deducted (equal to incomeTax
         // when nothing is Pre-tax); the difference is the tax the deduction saves.
         incomeTaxWithoutPretaxDeduction: withoutContribution.tax,

@@ -2532,3 +2532,22 @@ th.win .th-sub {
   max-width: 100%;
   flex: 1 1 220px;
 }
+
+/* a calculation row that opens to show its own arithmetic (the Roth page's "Federal income tax on that") */
+.calc-row-details > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.calc-row-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.calc-row-details > summary > span:first-child::before {
+  content: '▸ ';
+  color: var(--accent);
+}
+
+.calc-row-details[open] > summary > span:first-child::before {
+  content: '▾ ';
+}

@@ -97,11 +97,23 @@ function RetirementNumberMath({ result }) {
           )}
           {b.qbiDeduction > 0 && <Row label="Qualified business income (QBI) deduction" value={minus(b.qbiDeduction)} kind="sub" />}
           <Row label="Taxable income" value={$(b.taxableIncome)} kind="total" />
-          <Row
-            label={b.childTaxCredit > 0 ? `Federal income tax on that, less the ${$(b.childTaxCredit)} child tax credit` : 'Federal income tax on that'}
-            value={$(b.incomeTax)}
-            kind="total"
-          />
+          <details className="calc-row-details">
+            <summary className="calc-row total">
+              <span>
+                {b.childTaxCredit > 0 ? `Federal income tax on that, less the ${$(b.childTaxCredit)} child tax credit` : 'Federal income tax on that'}
+              </span>
+              <span>{$(b.incomeTax)}</span>
+            </summary>
+            {(b.taxBrackets ?? []).map((t) => (
+              <Row
+                key={t.rate}
+                label={`${formatPercent(t.rate, 0)} on ${$(t.amount)}${Number.isFinite(t.to) ? ` (taxable income ${$(t.from)} to ${$(t.to)})` : ` (over ${$(t.from)})`}`}
+                value={$(t.tax)}
+                kind="sub"
+              />
+            ))}
+            {b.childTaxCredit > 0 && <Row label="Child tax credit" value={minus(b.childTaxCredit)} kind="sub" />}
+          </details>
 
           <Row label="Step 2: what you live on" kind="heading" />
           <Row label="Gross income" value={$(b.grossIncome)} />

@@ -33,6 +33,22 @@ export function calculateTax(taxableIncome, filingStatus, year, rateShift = 0) {
   return tax;
 }
 
+// calculateTax's arithmetic as rows, one per bracket the income reaches (the Roth page's "Federal
+// income tax on that", opened; decided 2026-10-09): [{ rate, from, to, amount, tax }], where amount
+// is the slice of taxable income in [from, to). The taxes add up to calculateTax.
+export function taxByBracket(taxableIncome, filingStatus, year, rateShift = 0) {
+  const rows = [];
+  if (!(taxableIncome > 0)) return rows;
+  let bottom = 0;
+  for (const { rate, upTo } of getFilingData(filingStatus, year).brackets) {
+    if (taxableIncome <= bottom) break;
+    const amount = Math.min(taxableIncome, upTo) - bottom;
+    rows.push({ rate: rate + rateShift, from: bottom, to: upTo, amount, tax: amount * (rate + rateShift) });
+    bottom = upTo;
+  }
+  return rows;
+}
+
 // Marginal rate: the rate the NEXT dollar of taxable income would be taxed at.
 // A bracket owns [bottom, upTo), so exactly at a boundary the next dollar is in
 // the higher bracket. If taxable income is negative (income below the standard
