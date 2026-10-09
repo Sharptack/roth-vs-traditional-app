@@ -10,7 +10,9 @@
 //                                          // from the person's Social Security row; mode 'pia': the
 //                                          // benefit is worked out from the PIA (socialSecurity.js
 //                                          // benefitFromPIA), spousal top-up included. No row: a PIA of 0
-//   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge }]       // numbers; ages null when blank
+//   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge, qbi }]  // numbers; ages null when blank;
+//                                          // qbi (1099 rows): false when the business doesn't qualify for QBI
+//   people[i].qbiShare                     // the share of this year's 1099 earnings that qualifies (yearTax.js)
 //   pensions: [{ owner, monthly, startAge, cola, survivorShare }]            // the pension rows (pensionIncome.js)
 //   contributionRows: [{ id, owner, tax, account, amount, employer }]   // employer: employerContributions.js
 //   liabilities: [{ id, kind, balance, rate, payment }]
@@ -63,6 +65,7 @@ export function toHouseholdV2(input, year) {
       amount: blankAsZero(r.amount),
       fromAge: blankAsNull(r.fromAge),
       toAge: blankAsNull(r.toAge),
+      ...(r.type === '1099' && { qbi: r.qbi !== 'no' }),
       ...(r.type === 'socialSecurity' && { ssMode: r.ssMode === 'pia' ? 'pia' : 'estimate' }),
       ...(r.type === 'pension' && { cola: Number(r.cola ?? 0) || 0, survivorShare: Number(r.survivorShare ?? 0) || 0 }),
     }));
@@ -89,8 +92,9 @@ export function toHouseholdV2(input, year) {
   const people = included.map((p) => {
     const birthYear = birthYearOf(p, year);
     const age = year - birthYear;
-    const earned = (type) =>
-      incomes.filter((r) => r.owner === p.id && r.type === type && receivedAt(r, age)).reduce((a, r) => a + r.amount, 0);
+    const earned = (type, keep = () => true) =>
+      incomes.filter((r) => r.owner === p.id && r.type === type && receivedAt(r, age) && keep(r)).reduce((a, r) => a + r.amount, 0);
+    const selfEmployed = earned('1099');
     const ss = incomes.find((r) => r.owner === p.id && r.type === 'socialSecurity');
     // The PIA as typed (blank = not entered: an error when "enter the PIA" is chosen).
     const piaTyped = ss && parseNumber(values.incomes.find((r) => r.id === ss.id)?.amount);
@@ -103,7 +107,8 @@ export function toHouseholdV2(input, year) {
       retirementAge: parseNumber(p.retirementAge),
       planToAge: blankAsNull(p.planToAge),
       wages: earned('w2'),
-      selfEmploymentIncome: earned('1099'),
+      selfEmploymentIncome: selfEmployed,
+      ...(selfEmployed > 0 && earned('1099', (r) => r.qbi) < selfEmployed && { qbiShare: earned('1099', (r) => r.qbi) / selfEmployed }),
       // No Social Security row: no benefit of their own (a PIA of 0); a spousal top-up can still come.
       socialSecurity: {
         mode: ss ? ss.ssMode : 'pia',

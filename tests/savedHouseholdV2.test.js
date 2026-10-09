@@ -8,7 +8,7 @@ import { upgradeHouseholdValues } from '../src/lib/householdUpgrade.js';
 import { V1_HOUSEHOLDS } from './fixtures/householdV1.js';
 import { YEAR, pinsFor, pinsForV2 } from './fixtures/householdPins.js';
 
-const row = (r) => ({ treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', ...r });
+const row = (r) => ({ treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', ...r });
 const couple = {
   ...setIncludeSpouse({ ...DEFAULT_HOUSEHOLD_VALUES, filingStatus: 'mfj' }, true),
   people: [

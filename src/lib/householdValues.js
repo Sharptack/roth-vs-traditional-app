@@ -15,6 +15,8 @@
 //   incomes: [ { id, owner, type, treatment, amount, fromAge, toAge, ssMode, cola, survivorShare } ],
 //                                          // type: INCOME_TYPES. By type (the other fields are kept,
 //                                          // unused):
+//                                          //  1099: qbi 'yes' | 'no', whether the business qualifies
+//                                          //   for the QBI deduction (decided 2026-10-09; default yes)
 //                                          //  w2, 1099: amount a year; fromAge..toAge the owner's first
 //                                          //   and last ages it's received (both included); blank fromAge =
 //                                          //   from now, blank toAge = until the owner retires
@@ -92,7 +94,7 @@ export function newPerson(id, overrides = {}) {
 const ROW_TEMPLATES = {
   incomes: {
     prefix: 'i',
-    row: { owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0' },
+    row: { owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes' },
   },
   contributions: {
     prefix: 'c',
@@ -307,7 +309,7 @@ function cleanPerson(raw, id) {
 const ROW_RULES = {
   incomes: {
     choices: { owner: OWNERS, type: INCOME_TYPES },
-    optional: { treatment: OTHER_INCOME_KINDS, ssMode: SS_MODES },
+    optional: { treatment: OTHER_INCOME_KINDS, ssMode: SS_MODES, qbi: ['yes', 'no'] },
     text: ['amount', 'fromAge', 'toAge', 'cola', 'survivorShare'],
   },
   contributions: {

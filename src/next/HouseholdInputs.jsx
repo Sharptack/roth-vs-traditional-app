@@ -316,6 +316,18 @@ export default function HouseholdInputs({
               <SelectInput label="Kind" value={r.treatment} onChange={setRow('incomes', r.id, 'treatment')} options={labelOptions(OTHER_KIND_LABELS)} />
             )}
             <CurrencyInput label="Amount (annual)" value={r.amount} onChange={setRow('incomes', r.id, 'amount')} />
+            {r.type === '1099' && (
+              <SelectInput
+                label="Qualifies for the QBI deduction?"
+                hint="Most self-employment income does (a trade or business in the US). Not: wages paid as a 1099 by a former employer, or income that is really investment income."
+                value={r.qbi ?? 'yes'}
+                onChange={setRow('incomes', r.id, 'qbi')}
+                options={[
+                  { value: 'yes', label: 'Yes' },
+                  { value: 'no', label: 'No' },
+                ]}
+              />
+            )}
             {agesShown.has(r.id) || String(r.fromAge).trim() || String(r.toAge).trim() ? (
               <div className="field-row">
                 <AgeInput label="Starts at age" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} />

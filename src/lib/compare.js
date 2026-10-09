@@ -312,8 +312,10 @@ export function compareRothVsTraditional(inputs) {
   // deduction (qbi.js, basic rule). The marginal rate stays the bracket of the last dollar (the
   // comparison's "marginal today"); the tax saved across the whole contribution (option
   // taxSavedAcrossContribution) counts the QBI deduction and the credit through the real tax.
+  // Only 1099 earnings from a qualifying business count (each earner's qbiShare, default all; yearTax.js).
   const earnersSE = inputs.earners ? inputs.earners.reduce((acc, e) => acc + (e.selfEmploymentIncome ?? 0), 0) : selfEmploymentIncome;
-  const qbi = inputs.qualifiedBusinessIncome ? Math.max(0, earnersSE - fica.selfEmployment.deduction) : 0;
+  const qualifyingSE = inputs.earners ? inputs.earners.reduce((acc, e) => acc + (e.selfEmploymentIncome ?? 0) * (e.qbiShare ?? 1), 0) : selfEmploymentIncome;
+  const qbi = inputs.qualifiedBusinessIncome && earnersSE > 0 ? Math.max(0, qualifyingSE * (1 - fica.selfEmployment.deduction / earnersSE)) : 0;
   // Itemized deductions beyond the standard deduction come off like an adjustment.
   const itemizedExtra = Math.max(0, (inputs.itemizedDeductions ?? 0) - getStandardDeduction(filingStatus, year));
   // The child tax credit (preview option childTaxCredit) comes off the tax; MAGI is gross income

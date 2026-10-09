@@ -32,6 +32,8 @@
 //   otherDependents other dependents (the $500 credit). Default 0 (lib/childTaxCredit.js).
 //   qbi             true: take the qualified business income deduction on 1099 earnings (lib/qbi.js,
 //                   the basic rule). Off by default, so the current calculator's numbers don't change.
+//                   people[i].qbiShare (0 to 1, default 1): the share of that person's 1099 earnings
+//                   from a business that qualifies (decided 2026-10-09: a yes/no on each 1099 row).
 //
 // Age deductions: for each person whose `age` is given and is 65 or older, the additional standard
 // deduction and (2025-2028) the senior deduction (data/ageDeductions.js). Callers that pass no
@@ -131,7 +133,12 @@ function core({ filingStatus, year, people = [], pretaxDeferrals = 0, income = {
   const standardDeduction = (itemizing ? itemized : baseStandardDeduction) + additional65 + age.senior;
   // QBI: 1099 earnings less the deductible half of self-employment tax; the deduction comes off
   // taxable income (not AGI), from the ordinary part first, so gains still stack on top.
-  const qualifiedBusinessIncome = qbi ? Math.max(0, selfEmploymentIncome - payroll.selfEmployment.deduction) : 0;
+  // Only the qualifying share counts, with its share of the self-employment tax deduction.
+  const qualifyingSelfEmployment = people.reduce((acc, p) => acc + (p.selfEmploymentIncome ?? 0) * (p.qbiShare ?? 1), 0);
+  const qualifiedBusinessIncome =
+    qbi && selfEmploymentIncome > 0
+      ? Math.max(0, qualifyingSelfEmployment * (1 - payroll.selfEmployment.deduction / selfEmploymentIncome))
+      : 0;
   const qbiResult = qbiDeduction({
     qbi: qualifiedBusinessIncome,
     taxableIncome: Math.max(0, agi - standardDeduction),

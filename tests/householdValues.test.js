@@ -34,7 +34,8 @@ describe('version 2 household values: defaults', () => {
     expect(p1.planToAge).toBe(PROJECTION_DEFAULT_VALUES.projEndAge);
     // one W-2 income row and a Social Security row (estimated, claimed at retirement), one Pre-tax
     // 401(k) contribution row, one Pre-tax account
-    const blank = { treatment: 'ordinary', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0' };
+    // (qbi: whether a 1099 row's business qualifies for QBI, new 2026-10-09: yes)
+    const blank = { treatment: 'ordinary', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes' };
     expect(D.incomes).toEqual([
       { id: 'i1', owner: 'p1', type: 'w2', amount: v1.grossIncome, ...blank },
       { id: 'i2', owner: 'p1', type: 'socialSecurity', amount: '', ...blank, fromAge: v1.claimAge },
@@ -137,7 +138,7 @@ describe('spouse and rows', () => {
     expect(newRowId([{ id: 'i1' }, { id: 'i2' }], 'i')).toBe('i3');
     expect(newRowId([{ id: 'i2' }], 'i')).toBe('i3');
     let v = addRow(D, 'incomes', { owner: 'p2', type: '1099' });
-    expect(v.incomes[2]).toEqual({ id: 'i3', owner: 'p2', type: '1099', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0' });
+    expect(v.incomes[2]).toEqual({ id: 'i3', owner: 'p2', type: '1099', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes' });
     v = addRow(v, 'liabilities');
     expect(v.liabilities).toEqual([{ id: 'l1', kind: 'mortgage', balance: '', rate: '', payment: '' }]);
     v = updateRow(v, 'incomes', 'i3', 'amount', '30000');

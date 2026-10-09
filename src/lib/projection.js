@@ -289,13 +289,24 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         : working[i]
           ? people[i][type === 'w2' ? 'wages' : 'selfEmploymentIncome']
           : 0;
+    // The share of a person's 1099 earnings this year from a business that qualifies for QBI.
+    const qbiShareOf = (i, paycheckOnly) => {
+      if (paycheckOnly || !incomeRows) return people[i].qbiShare ?? 1;
+      const all = earnings(i, '1099');
+      const qualifying = incomeRows.filter((r) => r.owner === people[i].id && r.type === '1099' && r.qbi !== false && counts(r)).reduce((s, r) => s + r.amount, 0);
+      return all > 0 ? qualifying / all : 1;
+    };
     const earnersThisYear = (paycheckOnly) =>
       people
-        .map((p, i) => ({
-          age: assumptions.ageDeductions ? ages[i] : undefined,
-          wages: paycheckOnly ? (working[i] ? p.wages : 0) : earnings(i, 'w2'),
-          selfEmploymentIncome: paycheckOnly ? (working[i] ? p.selfEmploymentIncome : 0) : earnings(i, '1099'),
-        }))
+        .map((p, i) => {
+          const qbiShare = qbiShareOf(i, paycheckOnly);
+          return {
+            age: assumptions.ageDeductions ? ages[i] : undefined,
+            wages: paycheckOnly ? (working[i] ? p.wages : 0) : earnings(i, 'w2'),
+            selfEmploymentIncome: paycheckOnly ? (working[i] ? p.selfEmploymentIncome : 0) : earnings(i, '1099'),
+            ...(qbiShare < 1 && { qbiShare }),
+          };
+        })
         .filter((_, i) => alive[i]);
     const peopleThisYear = earnersThisYear(false);
     const paycheckPeople = earnersThisYear(true);

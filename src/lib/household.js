@@ -322,10 +322,13 @@ export function householdToCompareInputs(household) {
   const ownClaimAge = people.some((p) => p.socialSecurity.claimAge !== null && p.socialSecurity.claimAge !== undefined);
   // An entered PIA (version 2 household) is read per person too.
   const ownPia = people.some((p) => p.socialSecurity.mode === 'pia');
-  if (people.length > 1 || ownClaimAge || ownPia) {
+  // A 1099 business that doesn't qualify for QBI (version 2) is read per person too.
+  const ownQbiShare = people.some((p) => (p.qbiShare ?? 1) < 1);
+  if (people.length > 1 || ownClaimAge || ownPia || ownQbiShare) {
     inputs.earners = people.map((p) => ({
       wages: p.wages,
       selfEmploymentIncome: p.selfEmploymentIncome,
+      ...((p.qbiShare ?? 1) < 1 && { qbiShare: p.qbiShare }),
       currentAge: ageOf(p),
       claimAge: p.socialSecurity.claimAge ?? p.retirementAge,
       knowsSocialSecurity: p.socialSecurity.known,

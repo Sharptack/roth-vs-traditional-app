@@ -92,3 +92,51 @@ describe('the Roth comparison takes QBI on 1099 earnings (version 2 households)'
     expect(r.current.marginalRate).toBe(0.22);
   });
 });
+
+// A 1099 row whose business doesn't qualify (decided 2026-10-09: a yes/no on each 1099 row).
+// Worked by hand, single, 2026, $100,000 of 1099 income, $60,000 of it qualifying:
+//   net SE earnings 100,000 × 0.9235 = 92,350 (under the $184,500 wage base)
+//   SE tax 92,350 × 15.3% = 14,129.55; half deducted: 7,064.775
+//   QBI = 60,000 × (1 − 7,064.775 / 100,000) = 55,761.135 (the qualifying share of net earnings)
+//   AGI 92,935.225; taxable before QBI 92,935.225 − 16,100 = 76,835.225 (under $201,750)
+//   tentative 20% × 55,761.135 = 11,152.227; limit 20% × 76,835.225 = 15,367.045 -> 11,152.227
+//   All qualifying: tentative 18,587.045, capped at 15,367.045. None: 0.
+describe('QBI on the qualifying share of 1099 income', () => {
+  const tax = (people) => calculateYearTaxTotals({ filingStatus: 'single', year: 2026, people, qbi: true });
+  it('a person with part of their 1099 income from a business that does not qualify', () => {
+    expect(tax([{ age: 45, wages: 0, selfEmploymentIncome: 100000, qbiShare: 0.6 }]).lines.qbiDeduction).toBeCloseTo(11152.227, 2);
+    expect(tax([{ age: 45, wages: 0, selfEmploymentIncome: 100000 }]).lines.qbiDeduction).toBeCloseTo(15367.045, 2);
+    expect(tax([{ age: 45, wages: 0, selfEmploymentIncome: 100000, qbiShare: 0 }]).lines.qbiDeduction).toBe(0);
+  });
+
+  it('from the household: the yes/no on each 1099 row, in the tax calculator, the Roth comparison and the projection', async () => {
+    const { toHouseholdV2 } = await import('../src/lib/householdV2.js');
+    const { householdToYearTaxParams } = await import('../src/lib/taxCalculator.js');
+    const { householdToCompareInputs } = await import('../src/lib/household.js');
+    const { compareRothVsTraditional } = await import('../src/lib/compare.js');
+    const { runProjection } = await import('../src/lib/projection.js');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const v = {
+      ...D,
+      incomes: [
+        { ...D.incomes[0], id: 'i1', type: '1099', amount: '60000', qbi: 'yes' },
+        { ...D.incomes[0], id: 'i2', type: '1099', amount: '40000', qbi: 'no' },
+        D.incomes[1],
+      ],
+      contributions: [],
+    };
+    const h = toHouseholdV2(v, 2026);
+    expect(h.people[0].qbiShare).toBeCloseTo(0.6, 12);
+    const params = householdToYearTaxParams(h);
+    expect(calculateYearTaxTotals(params).lines.qbiDeduction).toBeCloseTo(11152.227, 2);
+    // the Roth comparison's tax today: the same deduction
+    const r = compareRothVsTraditional({ ...householdToCompareInputs(h), skipBlend: true });
+    expect(r.current.qbiDeduction).toBeCloseTo(11152.227, 2);
+    // the projection's first year (working, no contributions)
+    expect(runProjection(h).rows[0].incomeTax).toBeCloseTo(calculateYearTaxTotals(params).incomeTax, 6);
+    // every row qualifying (the default): the full deduction
+    const all = toHouseholdV2({ ...v, incomes: v.incomes.map((x) => ({ ...x, qbi: 'yes' })) }, 2026);
+    expect(all.people[0].qbiShare).toBeUndefined();
+    expect(calculateYearTaxTotals(householdToYearTaxParams(all)).lines.qbiDeduction).toBeCloseTo(15367.045, 2);
+  });
+});
