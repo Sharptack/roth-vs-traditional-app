@@ -420,3 +420,34 @@ describe('runProjection: employer contributions (2026, HAND CALC)', () => {
     expect(rows.map((r) => r.employerContributions)).toEqual([5000, 0]);
   });
 });
+
+describe('runProjection: returns before and after retirement (HAND CALC)', () => {
+  it('one person: the after-retirement return from the year they retire', () => {
+    // 64, retiring at 65, $100,000 Roth; 10% before, 0% after; no need, no tax.
+    // 64: 100,000 x 1.10 = 110,000; 65: 110,000 x 1.00 = 110,000
+    const h = retiree({ age: 64, roth: 100000, returnRate: 0.1 });
+    h.people[0].retirementAge = 65;
+    h.assumptions.retirementReturnRate = 0;
+    const { rows } = runProjection(h, { endAge: 65 });
+    expect(rows.map((r) => r.endBalances.roth)).toEqual([expect.closeTo(110000, 6), expect.closeTo(110000, 6)]);
+    expect(rows.map((r) => r.returnRate)).toEqual([0.1, 0]);
+  });
+
+  it('a couple: the before-retirement return while either still works', () => {
+    // you 60 (retiring at 61), your spouse 59 (retiring at 61), $100,000 Roth; 10% before, 0% after.
+    // year 0: both work -> 110,000; year 1: you retired, spouse works -> 121,000; year 2: both retired -> 121,000
+    const h = couple({ age1: 60, age2: 59, planTo1: 95, planTo2: 95, returnRate: 0.1, accounts: [{ id: 'a1', owner: 'p1', type: 'roth', balance: 100000 }] });
+    h.people[0].retirementAge = 61;
+    h.people[1].retirementAge = 61;
+    h.assumptions.retirementReturnRate = 0;
+    const { rows } = runProjection(h, { endAge: 62 });
+    expect(rows.map((r) => r.endBalances.roth)).toEqual([expect.closeTo(110000, 6), expect.closeTo(121000, 6), expect.closeTo(121000, 6)]);
+  });
+
+  it('absent (version 1 households): the one return throughout', () => {
+    const h = retiree({ age: 64, roth: 100000, returnRate: 0.1 });
+    h.people[0].retirementAge = 65;
+    const { rows } = runProjection(h, { endAge: 65 });
+    expect(rows.map((r) => r.endBalances.roth)).toEqual([expect.closeTo(110000, 6), expect.closeTo(121000, 6)]);
+  });
+});

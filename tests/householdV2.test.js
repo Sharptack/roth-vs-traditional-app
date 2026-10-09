@@ -32,8 +32,8 @@ describe('toHouseholdV2', () => {
     expect(h2.calculators.projection).toEqual(h1.calculators.projection);
     expect(h2.calculators.conversion).toEqual(h1.calculators.conversion);
     // and survivor years' spending (phase 2), which version 1 never reaches (no plan-to ages), and the
-    // dividends on taxable accounts (tax drag, phase 2)
-    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true, survivorSpending: 0.8, dividendYield: 0.013 });
+    // dividends on taxable accounts (tax drag, phase 2), and the return in retirement ('same': the one return)
+    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true, survivorSpending: 0.8, dividendYield: 0.013, retirementReturnRate: 0.07 });
     expect(h2.spending).toEqual(h1.spending);
   });
 
@@ -248,5 +248,14 @@ describe('employer contributions reach the calculators (phase 2)', () => {
     const flat = { ...D, contributions: [{ ...D.contributions[0], employer: 'flat', employerAmount: '6,000' }] };
     expect(householdToCompareInputs(toHouseholdV2(flat, Y)).employerContributions).toEqual([{ amount: 6000, years: 30 }]);
     expect(householdToCompareInputs(toHouseholdV2(D, Y)).employerContributions).toBeUndefined();
+  });
+});
+
+describe('the return in retirement (phase 2)', () => {
+  it("'same' is the one return; a value of its own reaches the projection", () => {
+    expect(toHouseholdV2(D, Y).assumptions.retirementReturnRate).toBe(0.07);
+    const h = toHouseholdV2({ ...D, assumptions: { ...D.assumptions, retirementReturnRate: '0.05' } }, Y);
+    expect(h.assumptions.retirementReturnRate).toBe(0.05);
+    expect(h.assumptions.returnRate).toBe(0.07);
   });
 });

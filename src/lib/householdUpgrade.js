@@ -121,6 +121,7 @@ export function upgradeHouseholdValues(values, year) {
       medicareIrmaa: pick(v, 'medicareIrmaa'),
       survivorSpending: '0.8', // new in version 2 (survivor years, phase 2)
       dividendYield: '0.013', // new in version 2 (tax drag, phase 2)
+      retirementReturnRate: 'same', // new in version 2 (phase 2): no change
     },
     calculators: {
       projection: { endAge: v.projEndAge, heirTaxRate: v.projHeirTaxRate, strategy: v.projStrategy },

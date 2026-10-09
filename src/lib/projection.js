@@ -60,7 +60,11 @@
 // flat amount), paid into their Pre-tax account at the end of the year. Not income this year and not
 // out of the paycheck; the same whatever contributions override the plan's. Version 1: none.
 //
-// Simplifications: spending is flat in today's dollars; earnings are flat (no raises); returns are
+// Returns (phase 2 step e, decided 2026-10-09): assumptions.returnRate while anyone still works,
+// assumptions.retirementReturnRate once no one does (a couple: from the year the last retires, when the
+// Roth comparison takes its snapshot). Absent = returnRate throughout, as before.
+//
+// Simplifications: spending is flat in today's dollars; earnings are flat (no raises); each return is
 // constant.
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
 import { calculateEmploymentTaxes } from './ficaTax.js';
@@ -153,7 +157,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
   // The household's own what-if (assumptions.retirementRateShift) unless a caller sets one.
   const rateShiftInRetirement = retirementRateShift ?? assumptions.retirementRateShift ?? 0;
-  const returnRate = assumptions.returnRate;
+  const workingReturn = assumptions.returnRate;
+  const retiredReturn = assumptions.retirementReturnRate ?? workingReturn;
   const inflation = assumptions.inflationRate ?? 0;
   const lastAge = endAge ?? assumptions.endAge ?? DEFAULT_END_AGE;
   const age0 = people.map((p) => year - p.birthYear);
@@ -198,6 +203,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const filingStatusThisYear = survivorYear ? 'single' : filingStatus;
     const working = people.map((p, i) => alive[i] && ages[i] < p.retirementAge);
     const anyRetired = people.some((_, i) => alive[i] && !working[i]);
+    const returnRate = working.some(Boolean) ? workingReturn : retiredReturn;
     const thresholdScale = 1 / (1 + inflation) ** t;
     const ssOf = (i) => (ages[i] >= ss[i].ownStartAge ? ss[i].own : 0) + (ages[i] >= ss[i].topUpStartAge ? ss[i].topUp : 0);
     let socialSecurity;
@@ -445,6 +451,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       marginalPretaxRate: tax.marginalRates.ordinaryIncome.incomeTax,
       bracketRoom: tax.bracketRoom.ordinary.room,
       need: needThisYear,
+      returnRate, // this year's return (before or after retirement)
       afterTaxIncome: cash, // after all tax and this year's contributions
       surplus,
       shortfall,

@@ -206,6 +206,9 @@ export function toHouseholdV2(input, year) {
     },
     assumptions: {
       returnRate: Number(a.returnRate),
+      // The return once no one works (phase 2; projection.js): 'same' (or blank) = returnRate.
+      retirementReturnRate:
+        a.retirementReturnRate === 'same' || String(a.retirementReturnRate ?? '').trim() === '' ? Number(a.returnRate) : Number(a.retirementReturnRate),
       inflationRate: Number(a.inflationRate),
       ageDeductions: a.ageDeductions === 'yes',
       taxSavedAcrossContribution: a.taxSavedBasis === 'average',
