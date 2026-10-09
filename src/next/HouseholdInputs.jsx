@@ -374,6 +374,48 @@ export default function HouseholdInputs({
                 </div>
                 {spouse && <div className="field-row">{ownerSelect('contributions', r)}</div>}
                 <CurrencyInput label="Amount (annual)" value={r.amount} onChange={setRow('contributions', r.id, 'amount')} />
+                {r.tax !== 'taxable' && r.account === '401k' && (
+                  <>
+                    <div className="field-row">
+                      <SelectInput
+                        label="Employer contribution"
+                        value={r.employer ?? 'none'}
+                        onChange={setRow('contributions', r.id, 'employer')}
+                        options={[
+                          { value: 'none', label: 'None' },
+                          { value: 'match', label: 'A match' },
+                          { value: 'flat', label: 'A flat amount' },
+                        ]}
+                      />
+                      {r.employer === 'match' && (
+                        <>
+                          <SelectInput
+                            label="Matches"
+                            value={r.matchRate}
+                            onChange={setRow('contributions', r.id, 'matchRate')}
+                            options={['0.25', '0.5', '0.75', '1'].map((x) => ({ value: x, label: `${Number(x) * 100}%` }))}
+                          />
+                          <SelectInput
+                            label="Of pay up to"
+                            value={r.matchUpTo}
+                            onChange={setRow('contributions', r.id, 'matchUpTo')}
+                            options={['0.03', '0.04', '0.05', '0.06', '0.08', '0.1'].map((x) => ({ value: x, label: `${Math.round(Number(x) * 100)}%` }))}
+                          />
+                        </>
+                      )}
+                      {r.employer === 'flat' && (
+                        <CurrencyInput label="Employer amount (annual)" value={r.employerAmount} onChange={setRow('contributions', r.id, 'employerAmount')} />
+                      )}
+                    </div>
+                    {r.employer === 'match' && (
+                      <p className="hint">
+                        {Number(r.matchRate) * 100}% of what is deferred, on deferrals up to {Math.round(Number(r.matchUpTo) * 100)}% of W-2 pay.
+                        Pre-tax, into this 401(k), while working.
+                      </p>
+                    )}
+                    {r.employer === 'flat' && <p className="hint">Pre-tax, into this 401(k), each year while working.</p>}
+                  </>
+                )}
                 {removeButton('contributions', r, i, 'contribution')}
               </li>
             ))}

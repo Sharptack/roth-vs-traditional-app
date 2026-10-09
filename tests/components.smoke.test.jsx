@@ -1320,3 +1320,27 @@ describe('Tax drag (phase 2)', () => {
     expect(renderToStaticMarkup(<ProjectionResult view={view} />)).not.toMatch(/NaN|Infinity/);
   });
 });
+
+describe('Employer contributions (phase 2)', () => {
+  it('the contribution row’s employer fields, the summary and the year table', async () => {
+    const { default: HouseholdInputs } = await import('../src/next/HouseholdInputs.jsx');
+    const { previewResult } = await import('../src/next/NextApp.jsx');
+    const { projectionView } = await import('../src/lib/projectionSummary.js');
+    const { inputSections } = await import('../src/lib/householdInputs.js');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const values = { ...D, contributions: [{ ...D.contributions[0], employer: 'match', matchRate: '1', matchUpTo: '0.04' }] };
+    const html = renderToStaticMarkup(<HouseholdInputs values={values} onUpdate={() => {}} sections={['contributions']} defaultOpen={['contributions']} />);
+    expect(html).toContain('Employer contribution');
+    expect(html).toContain('100% of what is deferred, on deferrals up to 4% of W-2 pay');
+    expect(inputSections(['contributions'])[0].summary(values)).toBe('$10,000 a year · Pre-tax · 401(k) · employer match');
+    // an IRA has no employer fields
+    const ira = { ...D, contributions: [{ ...D.contributions[0], account: 'ira' }] };
+    expect(renderToStaticMarkup(<HouseholdInputs values={ira} onUpdate={() => {}} sections={['contributions']} defaultOpen={['contributions']} />)).not.toContain(
+      'Employer contribution',
+    );
+    const { household, result } = previewResult(values, 2026);
+    const view = projectionView(household, result.retirementNeed.target);
+    expect(view.rows[0].employerContributions).toBe(4000);
+    expect(view.rows.at(-1).employerContributions).toBe(0);
+  });
+});

@@ -123,13 +123,21 @@ export const INPUT_SECTIONS = [
       const rows = countedRows(v, 'contributions');
       const total = rows.reduce((a, r) => a + blankIsZero(r.amount), 0);
       if (rows.length === 0) return 'None';
+      // "· employer match" / "· employer $5,000" when a 401(k) row has one
+      const employerRows = rows.filter((r) => r.tax !== 'taxable' && r.account === '401k' && (r.employer === 'match' || r.employer === 'flat'));
+      const employer =
+        employerRows.length === 0
+          ? ''
+          : employerRows.every((r) => r.employer === 'flat')
+            ? ` · employer ${formatCurrency(employerRows.reduce((a, r) => a + blankIsZero(r.employerAmount), 0))}`
+            : ' · employer match';
       const kinds = new Set(rows.map((r) => (r.tax === 'taxable' ? 'taxable' : `${r.tax}|${r.account}`)));
       if (kinds.size === 1) {
         const r = rows[0];
         const kind = r.tax === 'taxable' ? 'Taxable' : `${CONTRIBUTION_TAX_LABELS[r.tax]} · ${CONTRIBUTION_ACCOUNT_LABELS[r.account]}`;
-        return `${Number.isFinite(total) ? formatCurrency(total) : '—'} a year · ${kind}`;
+        return `${Number.isFinite(total) ? formatCurrency(total) : '—'} a year · ${kind}${employer}`;
       }
-      return `${totalsBy(rows, (r) => r.tax, (r) => r.amount, CONTRIBUTION_TAX_LABELS)} a year`;
+      return `${totalsBy(rows, (r) => r.tax, (r) => r.amount, CONTRIBUTION_TAX_LABELS)} a year${employer}`;
     },
   },
   { id: 'accounts', title: 'Existing Accounts', summary: (v) => accountsSummary(v.accounts) },

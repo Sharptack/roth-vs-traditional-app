@@ -38,6 +38,7 @@ const COLUMNS = [
   { key: 'wTaxable', label: 'From taxable', value: (r) => r.withdrawals.taxable },
   { key: 'wRoth', label: 'From Roth', value: (r) => r.withdrawals.roth },
   { key: 'contributed', label: 'Contributed', value: (r) => r.contributions.total },
+  { key: 'employer', label: 'Employer (to Pre-tax)', value: (r) => r.employerContributions ?? 0 },
   { key: 'converted', label: 'Converted to Roth', value: (r) => r.conversions },
   { key: 'dividends', label: 'Dividends (taxable accounts)', value: (r) => r.dividends ?? 0 },
   { key: 'taxableSS', label: 'Taxable SS', value: (r) => r.taxableSocialSecurity },
