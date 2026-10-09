@@ -187,6 +187,7 @@ export const INPUT_SECTIONS = [
         `${pct(a.inflationRate)} inflation`,
         shift ? `rates ${shift > 0 ? '+' : '−'}${Math.abs(Math.round(shift * 100))} pts in retirement` : null,
         a.medicareIrmaa === 'no' ? 'no IRMAA' : null,
+        a.surplus === 'spend' ? 'surplus spent' : null,
         hasSpouseV2(v) ? `survivor spends ${Math.round(Number(a.survivorSpending) * 100)}%` : null,
         // dividends only when not the default 1.3%
         a.dividendYield === '0.013' ? null : Number(a.dividendYield) > 0 ? `${pct(a.dividendYield)} dividends` : 'no dividends',
@@ -233,7 +234,7 @@ export const ALL_SECTION_IDS = INPUT_GROUPS.flatMap((g) => g.sections);
 // A person's fields, and the assumptions (a calculator's card can show some of them). The
 // withdrawal strategy and heirs' tax rate are the projection's (calculators.projection).
 export const PERSON_FIELDS = ['age', 'sex', 'retirementAge', 'planToAge'];
-export const ASSUMPTION_FIELDS = ['returnRate', 'retirementReturnRate', 'inflationRate', 'ageDeductions', 'medicareIrmaa', 'retirementRateShift', 'taxSavedBasis', 'survivorSpending', 'dividendYield', 'strategy', 'heirTaxRate'];
+export const ASSUMPTION_FIELDS = ['returnRate', 'retirementReturnRate', 'inflationRate', 'ageDeductions', 'medicareIrmaa', 'retirementRateShift', 'taxSavedBasis', 'survivorSpending', 'dividendYield', 'surplus', 'strategy', 'heirTaxRate'];
 const WITHOUT_PROJECTION = ASSUMPTION_FIELDS.filter((f) => f !== 'strategy' && f !== 'heirTaxRate');
 
 // The inputs each calculator reads: its sections (its own first), for the household and the

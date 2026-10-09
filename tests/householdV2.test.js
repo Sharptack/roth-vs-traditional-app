@@ -33,7 +33,7 @@ describe('toHouseholdV2', () => {
     expect(h2.calculators.conversion).toEqual(h1.calculators.conversion);
     // and survivor years' spending (phase 2), which version 1 never reaches (no plan-to ages), and the
     // dividends on taxable accounts (tax drag, phase 2), and the return in retirement ('same': the one return)
-    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true, survivorSpending: 0.8, dividendYield: 0.013, retirementReturnRate: 0.07 });
+    expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true, survivorSpending: 0.8, dividendYield: 0.013, retirementReturnRate: 0.07, surplus: 'save' });
     expect(h2.spending).toEqual(h1.spending);
   });
 

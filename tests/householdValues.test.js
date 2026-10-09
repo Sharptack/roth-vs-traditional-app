@@ -45,11 +45,12 @@ describe('version 2 household values: defaults', () => {
     expect(D.accounts).toEqual(v1.accounts.map((a) => ({ ...a, dividendYield: '' })));
     expect(D.liabilities).toEqual([]);
     expect(D.spending).toEqual({ debtPayments: v1.debtPayments, otherExpenses: v1.otherExpenses, retirementLifestyle: v1.retirementLifestyle });
-    // survivor years' spending, the dividend yield and the return in retirement are new in version 2 (phase 2)
-    const { survivorSpending, dividendYield, retirementReturnRate, ...shared } = D.assumptions;
+    // survivor years' spending, the dividend yield, the return in retirement and the surplus setting are new in version 2 (phase 2)
+    const { survivorSpending, dividendYield, retirementReturnRate, surplus, ...shared } = D.assumptions;
     expect(survivorSpending).toBe('0.8');
     expect(dividendYield).toBe('0.013');
     expect(retirementReturnRate).toBe('same');
+    expect(surplus).toBe('save');
     for (const k of Object.keys(shared)) expect(D.assumptions[k]).toBe(v1[k]);
     expect(D.calculators.projection).toEqual({
       heirTaxRate: PROJECTION_DEFAULT_VALUES.projHeirTaxRate,

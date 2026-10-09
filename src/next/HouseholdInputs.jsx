@@ -322,7 +322,8 @@ export default function HouseholdInputs({
         <>
           <p className="hint">
             One row per source. Earnings and other income are yearly; ages are the first and last ages
-            it is received, both included (blank = from now, and until retirement). Social Security (one
+            it is received, both included (blank = from now, and until retirement; for a row starting at or
+            after retirement, for life). Social Security (one
             row each; without one, no benefit of their own) and pensions are monthly.
           </p>
           <ul className="account-list">
@@ -692,6 +693,19 @@ export default function HouseholdInputs({
                 { value: '0.02', label: '2%' },
                 { value: '0.03', label: '3%' },
               ]}
+            />
+          )}
+          {shown('surplus') && (
+            <RadioGroup
+              legend="Income above what is needed"
+              name={`${formId}-surplus`}
+              value={a.surplus ?? 'save'}
+              onChange={set('surplus')}
+              options={[
+                { value: 'save', label: 'Save it' },
+                { value: 'spend', label: 'Spend it' },
+              ]}
+              hint="Some years bring in more than spending, tax and savings use: an RMD larger than the need, rent or part-time work, Social Security plus a pension; before retirement, income beyond today's paycheck. Saved, it is reinvested in a taxable account; spent, spending rises in those years. The projection shows each year's."
             />
           )}
           {shown('strategy') && strategySelect()}
