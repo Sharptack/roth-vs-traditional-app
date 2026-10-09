@@ -1690,7 +1690,22 @@ th.win .th-sub {
   margin-bottom: 4px;
 }
 
-/* #/next suite homepage tiles */
+/* the dashboard's tiles, in two groups (Decisions, Evaluations) */
+.suite-group + .suite-group {
+  margin-top: 24px;
+}
+
+.suite-group-title {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+}
+
+.suite-group-title .dim {
+  font-size: 0.9rem;
+  font-weight: 400;
+  margin-left: 6px;
+}
+
 .suite-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

@@ -165,7 +165,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
           <p className="hint">{NOTICE}</p>
           {saveForm}
           <p className="hint">
-            Open another client on the <a href={HOME_HASH}>home page</a>.
+            Open another client on the <a href={HOME_HASH}>dashboard</a>.
           </p>
         </details>
       </section>

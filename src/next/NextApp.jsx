@@ -78,39 +78,51 @@ const projectionOf = (r) => (r.result.valid ? projectionView(r.household, r.resu
 const isHome = (page) => page === 'home';
 const shownOn = (page, id) => isHome(page) || page === id;
 
+// Each calculator is a decision (weighs one choice) or an evaluation (shows where the household
+// stands); decided 2026-10-09. The dashboard shows them in these two groups, in this order.
+export const CALCULATOR_GROUPS = [
+  { id: 'decisions', title: 'Decisions', blurb: 'Weigh one choice against the other.' },
+  { id: 'evaluations', title: 'Evaluations', blurb: 'Where the household stands: this year, and every year of the plan.' },
+];
+
 export const CALCULATORS = [
   {
     id: 'roth',
+    group: 'decisions',
     title: 'Roth vs. Pre-tax',
     blurb: 'Which leaves more after tax: saving Future Contributions Roth or Pre-tax?',
     ownTitle: 'Roth vs. Pre-tax inputs',
   },
   {
-    id: 'tax',
-    title: 'Tax calculator',
-    blurb: 'This year’s federal tax: the marginal rate, the effective marginal rate (EMTR), the average tax rate, and the room left in each bracket.',
-    ownTitle: 'Tax calculator inputs',
-    article: 'tax',
-  },
-  {
-    id: 'projection',
-    title: 'Year-by-year projection',
-    blurb: 'From today to the end age: income, taxes, RMDs and balances every year, and whether the money lasts.',
-    ownTitle: 'Projection inputs',
-    article: 'projection',
-  },
-  {
     id: 'conversion',
+    group: 'decisions',
     title: 'Roth conversion',
     blurb: 'This year’s tax cost of converting Pre-tax money to Roth, and the conversion that fills each bracket.',
     ownTitle: 'Roth conversion inputs',
   },
   {
     id: 'pension',
+    group: 'decisions',
     title: 'Pension: lump sum or monthly',
     blurb: 'The return the lump sum would have to earn to match the monthly benefit.',
     ownTitle: 'Pension inputs',
     article: 'pension',
+  },
+  {
+    id: 'projection',
+    group: 'evaluations',
+    title: 'Year-by-year projection',
+    blurb: 'From today to the end age: income, taxes, RMDs and balances every year, and whether the money lasts.',
+    ownTitle: 'Projection inputs',
+    article: 'projection',
+  },
+  {
+    id: 'tax',
+    group: 'evaluations',
+    title: 'Tax calculator',
+    blurb: 'This year’s federal tax: the marginal rate, the effective marginal rate (EMTR), the average tax rate, and the room left in each bracket.',
+    ownTitle: 'Tax calculator inputs',
+    article: 'tax',
   },
 ];
 
@@ -229,9 +241,9 @@ export default function NextApp({ initialPage, client }) {
         <>
           <header className="page-header">
             <p className="header-links">
-              <a href={HOME_HASH}>&larr; All calculators</a>
+              <a href={HOME_HASH}>&larr; Dashboard</a>
             </p>
-            <h1>Household inputs</h1>
+            <h1>Inputs</h1>
             <p>
               Every input in one place. Each calculator reads the ones it needs, and its own inputs card
               edits the same household.
@@ -282,13 +294,18 @@ export default function NextApp({ initialPage, client }) {
             />
             <nav className="card inputs-next" aria-label="Calculators">
               <h2>Open a calculator</h2>
-              <ul>
-                {CALCULATORS.map((c) => (
-                  <li key={c.id}>
-                    <a href={PAGES[c.id]}>{c.title}</a> <span className="dim">{c.blurb}</span>
-                  </li>
-                ))}
-              </ul>
+              {CALCULATOR_GROUPS.map((g) => (
+                <div key={g.id}>
+                  <h3>{g.title}</h3>
+                  <ul>
+                    {CALCULATORS.filter((c) => c.group === g.id).map((c) => (
+                      <li key={c.id}>
+                        <a href={PAGES[c.id]}>{c.title}</a> <span className="dim">{c.blurb}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </nav>
           </main>
         </>
@@ -297,8 +314,8 @@ export default function NextApp({ initialPage, client }) {
       {page === 'home' && (
         <>
           <header className="page-header">
-            <h1>Client household</h1>
-            <p>Set up the household once; every calculator reads the same inputs.</p>
+            <h1>Dashboard</h1>
+            <p>Set up the household&rsquo;s inputs once; every calculator reads them.</p>
             <p className="header-links">
               <a href={DOCS_HASH}>Docs &rarr;</a> How each calculator works and how to use it.
             </p>
@@ -308,7 +325,7 @@ export default function NextApp({ initialPage, client }) {
               <section className="card home-household" aria-labelledby="home-household-title">
                 <div className="form-head">
                   <h2 id="home-household-title" className="form-title">
-                    Household
+                    Inputs
                   </h2>
                   <div className="form-head-actions">
                     <a className="link-button" href={PAGES.inputs}>
@@ -328,17 +345,24 @@ export default function NextApp({ initialPage, client }) {
             </div>
             <div className="results-column">
               {saved(false)}
-              <div className="suite-tiles">
-                {CALCULATORS.map((c) => (
-                  <a key={c.id} className="card suite-tile" href={PAGES[c.id]}>
-                    <span className="suite-tile-title">{c.title}</span>
-                    <span className="suite-tile-headline">{tiles[c.id].headline}</span>
-                    <span className="suite-tile-detail">{tiles[c.id].detail}</span>
-                    <span className="suite-tile-blurb">{c.blurb}</span>
-                    <span className="suite-tile-open">Open &rarr;</span>
-                  </a>
-                ))}
-              </div>
+              {CALCULATOR_GROUPS.map((g) => (
+                <section key={g.id} className="suite-group" aria-labelledby={`group-${g.id}`}>
+                  <h2 id={`group-${g.id}`} className="suite-group-title">
+                    {g.title} <span className="dim">{g.blurb}</span>
+                  </h2>
+                  <div className="suite-tiles">
+                    {CALCULATORS.filter((c) => c.group === g.id).map((c) => (
+                      <a key={c.id} className="card suite-tile" href={PAGES[c.id]}>
+                        <span className="suite-tile-title">{c.title}</span>
+                        <span className="suite-tile-headline">{tiles[c.id].headline}</span>
+                        <span className="suite-tile-detail">{tiles[c.id].detail}</span>
+                        <span className="suite-tile-blurb">{c.blurb}</span>
+                        <span className="suite-tile-open">Open &rarr;</span>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
           </main>
         </>
@@ -348,7 +372,7 @@ export default function NextApp({ initialPage, client }) {
         <>
           <header className="page-header">
             <p className="header-links">
-              <a href={HOME_HASH}>&larr; All calculators</a>
+              <a href={HOME_HASH}>&larr; Dashboard</a>
             </p>
             <h1>{calculator.title}</h1>
             <p>{calculator.blurb}</p>

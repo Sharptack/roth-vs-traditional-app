@@ -577,7 +577,7 @@ describe('ResultsSummary', () => {
 describe('App: the calculators are the site', () => {
   it('opens on the calculators homepage, with no preview banner, and the feedback link', () => {
     const html = renderToStaticMarkup(<App />);
-    expect(html).toContain('Client household');
+    expect(html).toContain('<h1>Dashboard</h1>');
     expect(html).not.toContain('Preview, not finished');
     expect(html).not.toContain('(preview)');
     expect(html).toContain('href="#/roth"');
@@ -944,7 +944,7 @@ describe('NextApp', () => {
     const html = renderToStaticMarkup(<NextApp />);
     expect(html).not.toContain('Preview, not finished');
     // the homepage: the household and a tile per calculator, each with its headline
-    expect(html).toContain('Client household');
+    expect(html).toContain('<h1>Dashboard</h1>');
     expect(html).toContain('href="#/roth"');
     expect(html).toContain('href="#/tax"');
     expect(html).toContain('22% marginal · 22.0% EMTR');
@@ -1054,7 +1054,7 @@ describe('NextApp', () => {
   it('the inputs page: four groups, every section as its own card, and links to each calculator', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const page = renderToStaticMarkup(<NextApp initialPage="inputs" />);
-    expect(page).toContain('Household inputs');
+    expect(page).toContain('<h1>Inputs</h1>');
     expect(page).toContain('>Start a new household</button>');
     for (const group of ['Household', 'Income and expenses', 'Assets and liabilities', 'Assumptions']) {
       expect(page, group).toContain(`class="inputs-group-title">${group}</h2>`);
@@ -1184,7 +1184,7 @@ describe('preview sign-in and saved households', () => {
     expect(open).toContain('<summary>Save as a new household</summary>');
     expect(open).not.toContain('<h2');
     expect(open).not.toContain('client-select'); // no list of clients
-    expect(open).toContain('home page</a>');
+    expect(open).toContain('dashboard</a>');
     expect(open).not.toMatch(/<details[^>]* open/);
     const none = renderToStaticMarkup(<SavedHouseholds {...props} opened={null} />);
     expect(none).toContain('Not saved yet.');
