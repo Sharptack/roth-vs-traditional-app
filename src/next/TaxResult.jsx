@@ -64,9 +64,10 @@ function Row({ row }) {
 // The ordinary brackets as a vertical bar, bottom to top: the part of income sheltered by
 // deductions, then each bracket, filled as far as ordinary taxable income reaches.
 // A segment's optional `added` (the conversion calculator) is drawn as its own slice at the top of
-// the fill; `caption` replaces the default caption.
-export function BracketBar({ bar, caption }) {
-  const W = 360;
+// the fill; `caption` replaces the default caption. notes: [{ rate, text }], a note beside the top of
+// that bracket (the conversion that fills it; decided 2026-10-09 in place of a table).
+export function BracketBar({ bar, caption, notes = [] }) {
+  const W = notes.length > 0 ? 560 : 360;
   const H = 340;
   const barX = 150;
   const barW = 64;
@@ -106,6 +107,14 @@ export function BracketBar({ bar, caption }) {
               <text x={barX + barW + 8} y={top} className="bb-amount" dominantBaseline="middle">
                 {b.top !== null ? $(b.top) : ''}
               </text>
+              {b.key !== 'deduction' &&
+                notes
+                  .filter((n) => Math.abs(n.rate - b.rate) < 1e-9)
+                  .map((n) => (
+                    <text key={n.text} x={barX + barW + 92} y={top} className="bb-note" dominantBaseline="middle">
+                      {n.text}
+                    </text>
+                  ))}
             </g>
           );
         })}

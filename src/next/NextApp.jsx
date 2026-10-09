@@ -26,6 +26,7 @@ import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, pensionTile, projectionTile, rothTile, taxTile } from '../lib/suiteTiles.js';
 import { conversionResult } from '../lib/conversionCalculator.js';
+import { conversionLifetime } from '../lib/conversionLifetime.js';
 import { householdToPensionInputs, pensionResult } from '../lib/pensionCalculator.js';
 import { householdToYearTaxParams, taxCalculatorResult } from '../lib/taxCalculator.js';
 import HouseholdInputs from './HouseholdInputs.jsx';
@@ -97,7 +98,7 @@ export const CALCULATORS = [
     id: 'conversion',
     group: 'decisions',
     title: 'Roth conversion',
-    blurb: 'This year’s tax cost of converting Pre-tax money to Roth, and the conversion that fills each bracket.',
+    blurb: 'A Roth conversion this year: its tax now and its effective rate, and lifetime tax, the legacy and retirement income with and without it.',
     ownTitle: 'Roth conversion inputs',
   },
   {
@@ -176,6 +177,12 @@ export default function NextApp({ initialPage, initialValues, client }) {
   // beat behind while typing (useDeferredValue) instead of blocking each keystroke.
   const deferredRoth = useDeferredValue(roth);
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
+  // The conversion over a lifetime (two projections, with and without it): its own page only.
+  const conversionOverLife = useMemo(() => {
+    if (page !== 'conversion' || !deferredRoth.result.valid) return null;
+    const hh = deferredRoth.household;
+    return conversionLifetime(hh, deferredRoth.result.retirementNeed.target, hh.calculators.conversion.amount);
+  }, [deferredRoth, page]);
   // The lifetime Roth vs. Pre-tax comparison (phase 6): only on the Roth page (two projections and
   // two sustainable-spending searches), a beat behind the inputs like the projection.
   const comparing = page === 'roth' && compareValues !== null;
@@ -471,7 +478,12 @@ export default function NextApp({ initialPage, initialValues, client }) {
               )}
               {calculator.id === 'tax' && <TaxResult tax={tax} />}
               {calculator.id === 'projection' && <ProjectionResult view={projection} />}
-              {calculator.id === 'conversion' && <ConversionResult conversion={conversion} pretaxBalance={pretaxBalance} />}
+              {calculator.id === 'conversion' && <ConversionResult
+                  conversion={conversion}
+                  pretaxBalance={pretaxBalance}
+                  lifetime={conversionOverLife}
+                  lifetimeError={roth.result.valid ? null : roth.result.errors[0]}
+                />}
               {calculator.id === 'pension' && (
                 <PensionResult
                   pension={pension}

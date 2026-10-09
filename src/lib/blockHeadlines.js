@@ -2,7 +2,7 @@
 // header, so a closed block still says what is in it (round 2 phase 0, step c; the Roth page's
 // are sectionSummaries.js's). Pure: each takes the calculator's own result.
 import { formatCurrency as $, formatPercent } from './format.js';
-import { conversionTile, pensionTile, projectionTile, taxTile } from './suiteTiles.js';
+import { pensionTile, projectionTile, taxTile } from './suiteTiles.js';
 
 const pct = (r) => formatPercent(r, 1);
 
@@ -27,12 +27,13 @@ export function taxHeadlines(t) {
   };
 }
 
-// The Roth conversion calculator (conversionResult).
-export function conversionHeadlines(c) {
-  const first = c.fills[0];
+// The Roth conversion calculator (conversionResult; lifetime: conversionLifetime.js, when worked out).
+//   lifetime: "Lifetime tax +$2,727 · legacy after heirs' tax +$2,727"
+export function conversionHeadlines(c, lifetime) {
+  const signed = (v) => (Math.abs(v) < 0.5 ? '$0' : `${v >= 0 ? '+' : '−'}${$(Math.abs(v))}`);
   return {
-    cost: conversionTile(c).headline,
-    fills: first ? `To the top of ${formatPercent(first.rate, 0)}: convert ${$(first.amount)}` : '',
+    lifetime: lifetime ? `Lifetime tax ${signed(lifetime.difference.lifetimeTax)} · legacy after heirs' tax ${signed(lifetime.difference.legacyAfterTax)}` : '',
+    cost: `${$(c.cost)} tax, an effective rate of ${pct(c.rate)}`,
     bar: `Reaches ${bracketLine(c.bar)}`,
   };
 }

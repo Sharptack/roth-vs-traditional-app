@@ -999,8 +999,15 @@ describe('NextApp', () => {
     expect(proj).not.toMatch(/NaN|Infinity/);
     expect(html).toContain('href="#/projection"');
     const conv = renderToStaticMarkup(<NextApp initialPage="conversion" />);
-    expect(conv).toContain('Tax cost of the conversion');
-    expect(conv).toContain('Converting to fill a bracket');
+    // (reworked 2026-10-09) the lifetime view first, this year's tax with its effective rate, the bar
+    // with the conversion that fills each bracket; no table of fills
+    expect(conv).toContain('Over a lifetime, with and without it');
+    for (const label of ['Lifetime tax (federal income tax and IRMAA)', 'Legacy: the portfolio in', 'Total retirement income', 'Tax paid each year']) {
+      expect(conv, label).toContain(label);
+    }
+    expect(conv).toContain('Effective rate of the conversion');
+    expect(conv).toContain('fills it</text>');
+    expect(conv).not.toContain('Converting to fill a bracket');
     expect(conv).toContain('Convert to Roth this year');
     expect(conv).toContain('class="bb-added"');
     expect(conv).not.toMatch(/NaN|Infinity/);

@@ -1880,6 +1880,49 @@ th.win .th-sub {
   fill: var(--dim);
 }
 
+/* the conversion page: the conversion that fills each bracket, beside its top */
+.bb-note {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--accent);
+}
+
+/* the conversion page's three lifetime figures */
+.conversion-keys {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 760px) {
+  .conversion-keys {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.conversion-key {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.conversion-key .stat-value {
+  font-size: 1.4rem;
+}
+
+.conversion-key .better {
+  color: var(--win-text);
+}
+
+.conversion-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 36px;
+  margin-bottom: 8px;
+}
+
 .bracket-bar figcaption {
   font-size: 0.92rem;
   color: var(--dim);

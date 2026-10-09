@@ -28,11 +28,12 @@ describe('result block headlines', () => {
   it('the Roth conversion calculator', () => {
     const c = { cost: 11364, rate: 0.2273, amount: 50000, fills: [{ rate: 0.22, amount: 30000 }], bar: { currentRate: 0.24, room: 5000 } };
     expect(conversionHeadlines(c)).toEqual({
-      cost: '$11,364 tax (22.7%)',
-      fills: 'To the top of 22%: convert $30,000',
+      lifetime: '',
+      cost: '$11,364 tax, an effective rate of 22.7%',
       bar: 'Reaches the 24.0% bracket, $5,000 of room',
     });
-    expect(conversionHeadlines({ ...c, fills: [] }).fills).toBe('');
+    const lifetime = { difference: { lifetimeTax: 2727.27, legacyAfterTax: -1200.4 } };
+    expect(conversionHeadlines(c, lifetime).lifetime).toBe("Lifetime tax +$2,727 · legacy after heirs' tax −$1,200");
   });
 
   it('the pension calculator', () => {
