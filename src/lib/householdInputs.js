@@ -111,6 +111,14 @@ export function incomeRowSummary(r, withOwner = false) {
   return [type, amount, ages, withOwner ? OWNER_LABELS[r.owner] : null].filter(Boolean).join(' · ');
 }
 
+// One account row, closed (decided 2026-10-09, like income rows): its type and balance, a taxable
+// account's cost basis, and whose with a spouse. "Taxable · $50,000 · 50% basis · Spouse"
+export function accountRowSummary(a, withOwner = false) {
+  const balance = String(a.balance ?? '').trim() === '' ? 'no balance yet' : money(a.balance);
+  const basis = a.type === 'taxable' && String(a.basisShare ?? '').trim() !== '' ? `${Math.round(Number(a.basisShare) * 100)}% basis` : null;
+  return [ACCOUNT_TYPE_LABELS[a.type], balance, basis, withOwner ? OWNER_LABELS[a.owner] : null].filter(Boolean).join(' · ');
+}
+
 export const INPUT_SECTIONS = [
   {
     id: 'household',

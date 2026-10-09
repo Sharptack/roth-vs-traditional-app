@@ -98,7 +98,7 @@ What is saved each year, or being considered: one row per contribution, with who
 
 ## Existing Accounts
 
-What is already saved today: one row per account, or per group of accounts, with its type and balance.
+What is already saved today: one row per account, or per group of accounts, with its type and balance. Like income rows, a closed row is one line (its type, balance, and a taxable account's cost basis); click it to open it, and a new row opens.
 
 - **Pre-tax** (traditional 401(k), IRA): withdrawals are taxed as ordinary income, and required minimum distributions apply.
 - **Roth:** withdrawals are tax-free.

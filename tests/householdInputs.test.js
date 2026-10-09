@@ -8,6 +8,7 @@ import {
   PERSON_FIELDS,
   accountsSummary,
   incomeRowSummary,
+  accountRowSummary,
   inputSections,
 } from '../src/lib/householdInputs.js';
 import { DEFAULT_HOUSEHOLD_VALUES as D, addRow, setGroupField, setIncludeSpouse, updateRow } from '../src/lib/householdValues.js';
@@ -151,5 +152,13 @@ describe('an income row, closed (decided 2026-10-09): its type and amount on one
     );
     expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', owner: 'p2' }), true)).toBe('Pension · $1,800 a month from 65 · Spouse');
     expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', lumpSum: '300000', election: 'lumpSum' }))).toBe('Pension · $300,000 lump sum, rolled over at 65');
+  });
+});
+
+describe('accountRowSummary (an account row, closed; 2026-10-09)', () => {
+  it('type, balance, a taxable account\'s basis, and whose with a spouse', () => {
+    expect(accountRowSummary({ type: 'pretax', owner: 'p1', balance: '100000', basisShare: '0.5' })).toBe('Pre-tax · $100,000');
+    expect(accountRowSummary({ type: 'taxable', owner: 'p2', balance: '50000', basisShare: '0.25' }, true)).toBe('Taxable · $50,000 · 25% basis · Spouse');
+    expect(accountRowSummary({ type: 'roth', owner: 'p1', balance: '' })).toBe('Roth · no balance yet');
   });
 });

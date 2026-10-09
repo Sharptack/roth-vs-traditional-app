@@ -29,6 +29,7 @@ import {
   OWNER_LABELS,
   PERSON_FIELDS,
   incomeRowSummary,
+  accountRowSummary,
   inputSections,
   sectionChanged,
 } from '../lib/householdInputs.js';
@@ -523,49 +524,78 @@ export default function HouseholdInputs({
     accounts: () => (
       <>
         <p className="hint">
-          What is already saved today, one row per account (or per group of accounts). Contributions
-          are kept separate.
+          What is already saved today, one row per account (or per group of accounts); click a row to
+          open it. Contributions are kept separate.
         </p>
         <ul className="account-list">
-          {values.accounts.map((a, i) => (
-            <li key={a.id} className="account-row">
-              <div className="field-row">
-                <SelectInput
-                  label="Type"
-                  value={a.type}
-                  onChange={setRow('accounts', a.id, 'type')}
-                  options={labelOptions(ACCOUNT_TYPE_LABELS)}
-                />
-                {ownerSelect('accounts', a)}
-              </div>
-              <CurrencyInput label="Balance" value={a.balance} onChange={setRow('accounts', a.id, 'balance')} />
-              {a.type === 'taxable' && (
-                <SelectInput
-                  label="Cost basis"
-                  hint="The share of today's balance that is money put in, not gains. Only gains are taxed."
-                  value={a.basisShare}
-                  onChange={setRow('accounts', a.id, 'basisShare')}
-                  options={BASIS_OPTIONS}
-                />
-              )}
-              {a.type === 'taxable' && (
-                <SelectInput
-                  label="Dividends a year"
-                  hint="Qualified dividends, as a share of the balance. Counted in this year's tax and every year of the projection."
-                  value={a.dividendYield ?? ''}
-                  onChange={setRow('accounts', a.id, 'dividendYield')}
-                  options={[
-                    { value: '', label: `As the assumption (${Math.round(Number(values.assumptions.dividendYield) * 1000) / 10}%)` },
-                    { value: '0', label: 'None' },
-                    ...['0.01', '0.015', '0.02', '0.03', '0.04'].map((x) => ({ value: x, label: `${Math.round(Number(x) * 1000) / 10}%` })),
-                  ]}
-                />
-              )}
-              {values.accounts.length > 1 && removeButton('accounts', a, i, 'account')}
-            </li>
-          ))}
+          {values.accounts.map((a, i) => {
+            const isOpen = openRows.has(a.id);
+            const bodyId = `${formId}-account-${a.id}`;
+            return (
+              <li key={a.id} className={isOpen ? 'account-row income-row open' : 'account-row income-row'}>
+                <button
+                  type="button"
+                  className="income-row-head"
+                  aria-expanded={isOpen}
+                  aria-controls={bodyId}
+                  onClick={() => setOpenRows((o) => toggleId(o, a.id))}
+                >
+                  <span className="collapsible-chevron" aria-hidden="true" />
+                  <span>{accountRowSummary(a, spouse)}</span>
+                </button>
+                <div id={bodyId} className="income-row-body" hidden={!isOpen}>
+                  <div className="field-row">
+                    <SelectInput
+                      label="Type"
+                      value={a.type}
+                      onChange={setRow('accounts', a.id, 'type')}
+                      options={labelOptions(ACCOUNT_TYPE_LABELS)}
+                    />
+                    {ownerSelect('accounts', a)}
+                  </div>
+                  <CurrencyInput label="Balance" value={a.balance} onChange={setRow('accounts', a.id, 'balance')} />
+                  {a.type === 'taxable' && (
+                    <SelectInput
+                      label="Cost basis"
+                      value={a.basisShare}
+                      onChange={setRow('accounts', a.id, 'basisShare')}
+                      options={BASIS_OPTIONS}
+                    />
+                  )}
+                  {a.type === 'taxable' && (
+                    <SelectInput
+                      label="Dividends a year"
+                      value={a.dividendYield ?? ''}
+                      onChange={setRow('accounts', a.id, 'dividendYield')}
+                      options={[
+                        { value: '', label: `As the assumption (${Math.round(Number(values.assumptions.dividendYield) * 1000) / 10}%)` },
+                        { value: '0', label: 'None' },
+                        ...['0.01', '0.015', '0.02', '0.03', '0.04'].map((x) => ({ value: x, label: `${Math.round(Number(x) * 1000) / 10}%` })),
+                      ]}
+                    />
+                  )}
+                  {a.type === 'taxable' && (
+                    // One hint under both fields, so the two line up (decided 2026-10-09).
+                    <p className="hint">
+                      Cost basis: the share of today's balance that is money put in, not gains; only gains are taxed.
+                      Dividends: qualified dividends as a share of the balance, counted in this year's tax and every
+                      year of the projection.
+                    </p>
+                  )}
+                  {values.accounts.length > 1 && removeButton('accounts', a, i, 'account')}
+                </div>
+              </li>
+            );
+          })}
         </ul>
-        <button type="button" className="link-button" onClick={() => add('accounts')}>
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => {
+            setOpenRows((o) => new Set(o).add(newRowId(values.accounts, 'a')));
+            add('accounts');
+          }}
+        >
           + Add an account
         </button>
       </>
