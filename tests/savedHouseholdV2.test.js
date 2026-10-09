@@ -8,15 +8,18 @@ import { upgradeHouseholdValues } from '../src/lib/householdUpgrade.js';
 import { V1_HOUSEHOLDS } from './fixtures/householdV1.js';
 import { YEAR, pinsFor, pinsForV2 } from './fixtures/householdPins.js';
 
+const row = (r) => ({ treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', ...r });
 const couple = {
   ...setIncludeSpouse({ ...DEFAULT_HOUSEHOLD_VALUES, filingStatus: 'mfj' }, true),
   people: [
-    newPerson('p1', { ageEntry: 'birthdate', birthDate: '1970-03-14', age: '56', sex: 'male', socialSecurity: { mode: 'pia', pia: '3100', claimAge: '68' } }),
+    newPerson('p1', { ageEntry: 'birthdate', birthDate: '1970-03-14', age: '56', sex: 'male', planToAge: '92' }),
     newPerson('p2', { age: '54', retirementAge: '60', sex: 'female' }),
   ],
   incomes: [
-    { id: 'i1', owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '150,000', fromAge: '', toAge: '' },
-    { id: 'i9', owner: 'p2', type: 'other', treatment: 'taxExempt', amount: '4000', fromAge: '55', toAge: '59' },
+    row({ id: 'i1', owner: 'p1', type: 'w2', amount: '150,000' }),
+    row({ id: 'i9', owner: 'p2', type: 'other', treatment: 'taxExempt', amount: '4000', fromAge: '55', toAge: '59' }),
+    row({ id: 'i4', owner: 'p1', type: 'socialSecurity', ssMode: 'pia', amount: '3100', fromAge: '68' }),
+    row({ id: 'i6', owner: 'p2', type: 'pension', amount: '1500', fromAge: '60', survivorShare: '1' }),
   ],
   contributions: [
     { id: 'c1', owner: 'p1', tax: 'roth', account: '401k', amount: '24000' },
@@ -31,7 +34,7 @@ describe('saved households in version 2: what is stored', () => {
   it('round-trips the values (row ids are renumbered; the same household comes back)', () => {
     const back = valuesV2FromCase(json(caseFromValuesV2(couple)), YEAR);
     expect(noIds(back)).toEqual(noIds(couple));
-    expect(back.incomes.map((r) => r.id)).toEqual(['i1', 'i2']);
+    expect(back.incomes.map((r) => r.id)).toEqual(['i1', 'i2', 'i3', 'i4']);
     const h = (v) => ({ ...toHouseholdV2(v, YEAR), incomes: undefined, contributionRows: undefined, liabilities: undefined });
     expect(h(back)).toEqual(h(couple));
   });
@@ -64,10 +67,15 @@ describe('saved households in version 2: what is stored', () => {
     expect(back.evil).toBeUndefined();
     expect([back.filingStatus, back.includeSpouse]).toEqual(['single', 'no']);
     expect(back.people).toHaveLength(1); // p3 isn't a person
-    expect(back.people[0]).toMatchObject({ age: '35', sex: '', ageEntry: 'age', socialSecurity: { mode: 'estimate' } });
-    expect(back.people[0].socialSecurity.pia).toHaveLength(64);
+    expect(back.people[0]).toMatchObject({ age: '35', sex: '', ageEntry: 'age' });
+    expect(back.people[0].socialSecurity).toBeUndefined();
     expect(back.people[0].extra).toBeUndefined();
-    expect(back.incomes).toEqual([{ id: 'i1', owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '50000', fromAge: '', toAge: '' }]);
+    // the first layout's Social Security (a person carried it) comes back as a row: a bad mode as
+    // "estimate", an overlong PIA cut to 64 characters
+    expect(back.incomes).toHaveLength(2);
+    expect(back.incomes[0]).toEqual(row({ id: 'i1', owner: 'p1', type: 'w2', amount: '50000' }));
+    expect(back.incomes[1]).toMatchObject({ id: 'i2', owner: 'p1', type: 'socialSecurity', ssMode: 'estimate' });
+    expect(back.incomes[1].amount).toHaveLength(64);
     expect(back.contributions).toEqual([]); // 403(b) isn't an account type yet
     expect(back.accounts).toEqual(DEFAULT_HOUSEHOLD_VALUES.accounts); // never starts empty
     expect(back.liabilities).toEqual([{ id: 'l1', kind: 'mortgage', balance: '', rate: '', payment: '' }]);
@@ -126,7 +134,15 @@ describe('a version 1 save opens as version 2', () => {
         delete p.compareInputs.knowsSocialSecurity;
         delete p.compareInputs.socialSecurityBenefit;
       }
-      expect(v2).toEqual(v1);
+      // the decided changes (householdUpgrade.test.js): a typed pension offer counted, the younger
+      // spouse's plan-to age; the rest as version 1
+      expect(v2.tax).toEqual(v1.tax);
+      expect(v2.conversion).toEqual(v1.conversion);
+      if (name !== 'singleEverything') {
+        expect(v2.roth).toEqual(v1.roth);
+        expect(v2.compareInputs).toEqual(v1.compareInputs);
+      }
+      if (name === 'spouseRemoved') expect(v2.projection).toEqual(v1.projection);
     });
   }
 

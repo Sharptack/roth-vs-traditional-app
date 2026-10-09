@@ -980,8 +980,8 @@ describe('NextApp', () => {
     expect(tax).toContain('Effective marginal rate');
     expect(tax).toContain('>The calculation<');
     expect(firstTitle(tax)).toBe('Income');
-    expect(tax).toContain('+ Add other income types');
-    expect(tax).not.toContain('Claim at');
+    expect(tax).toContain('+ Add income');
+    expect(tax).toContain('Claim at'); // Social Security is an income row: once claimed, it is taxed this year
     expect(tax).not.toContain('Retirement age');
     expect(tax).not.toMatch(/NaN|Infinity/);
     const proj = renderToStaticMarkup(<NextApp initialPage="projection" />);
@@ -990,7 +990,8 @@ describe('NextApp', () => {
     expect(proj).toContain('Income by source in retirement');
     expect(proj).toContain('Balances over time');
     expect(proj).toContain('Year by year');
-    expect(proj).toContain('Project to age');
+    expect(proj).toContain('Plan to age');
+    expect(proj).not.toContain('Project to age');
     expect(proj).toContain('Compare withdrawal strategies');
     expect(proj).toContain('Withdrawal strategy in retirement');
     expect((proj.match(/<tr class="chosen-row"/g) ?? []).length).toBe(1);
@@ -1003,10 +1004,24 @@ describe('NextApp', () => {
     expect(conv).toContain('Convert to Roth this year');
     expect(conv).toContain('class="bb-added"');
     expect(conv).not.toMatch(/NaN|Infinity/);
+    // The default household has no pension: the page says so and offers one.
     const pen = renderToStaticMarkup(<NextApp initialPage="pension" />);
-    expect(pen).toContain('rate of return');
-    expect(pen).toContain('How long you live decides it');
+    expect(pen).toContain('No pension yet');
+    expect(pen).toContain('>Add a pension</button>');
     expect(pen).toContain('Lump sum offered');
+    // With a pension row, the results.
+    const { default: PensionResult } = await import('../src/next/PensionResult.jsx');
+    const { householdToPensionInputs, pensionResult } = await import('../src/lib/pensionCalculator.js');
+    const { DEFAULT_HOUSEHOLD_VALUES, NEW_PENSION, addRow } = await import('../src/lib/householdValues.js');
+    const { previewResult } = await import('../src/next/NextApp.jsx');
+    const { household: withPension } = previewResult(addRow(DEFAULT_HOUSEHOLD_VALUES, 'incomes', { type: 'pension', ...NEW_PENSION }), 2026);
+    const penInputs = householdToPensionInputs(withPension);
+    const penResult = renderToStaticMarkup(
+      <PensionResult pension={pensionResult(penInputs)} inputs={penInputs} nominalReturn={0.0975} realReturn={0.07} inflation={0.025} />,
+    );
+    expect(penResult).toContain('rate of return');
+    expect(penResult).toContain('How long you live decides it');
+    expect(penResult).not.toMatch(/NaN|Infinity/);
     expect(pen).toContain('href="#/docs/pension"');
     expect(tax).toContain('href="#/docs/tax"');
     expect(firstTitle(pen)).toBe('Pension offer');
@@ -1024,27 +1039,34 @@ describe('NextApp', () => {
     expect(blockCount(proj)).toBe(6);
     expect(proj).toMatch(/Peak \$[\d,]+ in \d{4}/);
     expect(blockCount(conv)).toBe(3);
-    expect(blockCount(pen)).toBe(2);
-    expect(pen).toMatch(/a year vs\. [\d.]+% assumed/);
+    expect(blockCount(pen)).toBe(0); // no pension: no results
+    expect(blockCount(penResult)).toBe(2);
     // the Roth page: its five cards, the blend explorer, the lifetime comparison and its full table
     expect(blockCount(roth)).toBe(8);
     expect(roth).toContain('>Show full table<');
     expect(roth.indexOf('Estimates only')).toBeGreaterThan(roth.indexOf('>Show full table<'));
-    for (const page of [tax, proj, conv, pen]) expect(page).toMatch(/(Expand|Collapse) all results/);
+    for (const page of [tax, proj, conv]) expect(page).toMatch(/(Expand|Collapse) all results/);
     // the collapse bar: on calculator pages only, inputs shown at first
     expect(roth).toContain('class="collapse-bar" aria-controls="calc-inputs" aria-expanded="true"');
     expect(html).not.toContain('collapse-bar');
   });
 
-  it('the inputs page: every section as its own card, and links to each calculator', async () => {
+  it('the inputs page: four groups, every section as its own card, and links to each calculator', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const page = renderToStaticMarkup(<NextApp initialPage="inputs" />);
     expect(page).toContain('Household inputs');
     expect(page).toContain('>Start a new household</button>');
-    for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add other income types', 'Lump sum offered', 'Project to age']) {
+    for (const group of ['Household', 'Income and expenses', 'Assets and liabilities', 'Assumptions']) {
+      expect(page, group).toContain(`class="inputs-group-title">${group}</h2>`);
+    }
+    for (const label of ['Biological sex', 'Plan to age', 'or birthdate', '+ Add a debt', '+ Add income', 'Withdrawal strategy in retirement']) {
       expect(page, label).toContain(label);
     }
-    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(13);
+    // the calculators' own inputs aren't on the inputs page (decided 2026-10-08)
+    for (const label of ['+ Add other income types', 'Lump sum offered', 'Project to age', 'Convert to Roth this year']) {
+      expect(page, label).not.toContain(label);
+    }
+    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(9);
     expect(page).toContain('Open a calculator');
     expect(page).toContain('href="#/pension"');
     expect(page).not.toContain('suite-tile-headline');

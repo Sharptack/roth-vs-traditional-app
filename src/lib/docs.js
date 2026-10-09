@@ -48,7 +48,7 @@ export const OTHER_ARTICLES = [
 
 const SLUG = /^[a-z0-9-]+$/;
 
-// "#/docs/inputs/people" -> { article: 'inputs', section: 'people' }; the index -> { article: null,
+// "#/docs/inputs/household" -> { article: 'inputs', section: 'household' }; the index -> { article: null,
 // section: null }; null when the hash isn't in the Docs section. An unknown article comes back as
 // is (the page says it can't be found).
 export function docsLocation(hash) {

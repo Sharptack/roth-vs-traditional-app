@@ -3,6 +3,7 @@ import {
   ALL_SECTION_IDS,
   ASSUMPTION_FIELDS,
   CALCULATOR_INPUTS,
+  INPUT_GROUPS,
   INPUT_SECTIONS,
   PERSON_FIELDS,
   accountsSummary,
@@ -24,33 +25,37 @@ function couple() {
 
 describe('the version 2 inputs: section summaries', () => {
   it('summarizes the default household', () => {
-    expect(summary('household', D)).toBe('Single');
-    expect(summary('people', D)).toBe('You 35, retires at 65');
-    expect(summary('income', D)).toBe('W-2 $100,000');
+    expect(summary('household', D)).toBe('Single · You 35, retires at 65, plans to 95');
+    expect(summary('income', D)).toBe('W-2 $100,000 · Social Security estimated');
     expect(summary('contributions', D)).toBe('$10,000 a year · Pre-tax · 401(k)');
     expect(summary('accounts', D)).toBe('Pre-tax $100,000');
     expect(summary('liabilities', D)).toBe('None');
     expect(summary('deductions', D)).toBe('The standard deduction');
     expect(summary('deductions', setGroupField(D, 'deductions', 'itemized', '30000'))).toBe('Itemized $30,000 a year, when more than the standard deduction');
     expect(summary('spending', D)).toBe('$6,000 a year ends at retirement · retirement spending same as today');
-    expect(summary('assumptions', D)).toBe('7% return after inflation · 2.5% inflation');
-    expect(summary('projection', D)).toBe('To age 95 · heirs taxed at 24% · proportional (every account alike)');
+    expect(summary('assumptions', D)).toBe('7% return after inflation · 2.5% inflation · proportional (every account alike) in retirement · heirs taxed at 24%');
+    expect(summary('projection', D)).toBe('Proportional (every account alike) · heirs taxed at 24%');
     expect(summary('conversion', D)).toBe('Convert $50,000 this year');
-    expect(summary('pension', D)).toBe('$300,000 or $1,800 a month from 65');
+    expect(summary('pension', D)).toBe('No pension yet');
+    const withPension = addRow(D, 'incomes', { type: 'pension', amount: '1800', fromAge: '65' });
+    expect(summary('pension', withPension)).toBe('$300,000 or $1,800 a month from 65');
+    expect(summary('income', withPension)).toBe('W-2 $100,000 · Social Security estimated · Pension $1,800/mo from 65');
+    // other income by kind; an entered PIA
+    let other = addRow(D, 'incomes', { type: 'other', treatment: 'qualified', amount: '8000' });
+    other = updateRow(updateRow(other, 'incomes', 'i2', 'ssMode', 'pia'), 'incomes', 'i2', 'amount', '2400');
+    expect(summary('income', other)).toBe('W-2 $100,000 · Qualified $8,000 · Social Security $2,400/mo PIA');
   });
 
   it('adds up a couple by type, and leaves the spouse out when not included', () => {
     const v = couple();
-    expect(summary('household', v)).toBe('Married filing jointly · two people');
-    expect(summary('people', v)).toBe('You 35, retires at 65 · Spouse 35, retires at 65');
+    expect(summary('household', v)).toBe('Married filing jointly · You 35, retires at 65, plans to 95 · Spouse 35, retires at 65, plans to 95');
     // W-2: 100,000 + 50,000 = 150,000
-    expect(summary('income', v)).toBe('W-2 $150,000 · 1099 $20,000');
+    expect(summary('income', v)).toBe("W-2 $150,000 · 1099 $20,000 · Your Social Security estimated · Spouse's Social Security estimated");
     // two kinds (Pre-tax 401(k), Roth 401(k)) -> totals by type
     expect(summary('contributions', v)).toBe('Pre-tax $10,000 · Roth $5,000 a year');
     const without = setIncludeSpouse(v, false);
-    expect(summary('household', without)).toBe('Married filing jointly · one combined income');
-    expect(summary('people', without)).toBe('You 35, retires at 65');
-    expect(summary('income', without)).toBe('W-2 $100,000 · 1099 $20,000');
+    expect(summary('household', without)).toBe('Married filing jointly, one combined income · You 35, retires at 65, plans to 95');
+    expect(summary('income', without)).toBe('W-2 $100,000 · 1099 $20,000 · Social Security estimated');
     expect(summary('contributions', without)).toBe('$10,000 a year · Pre-tax · 401(k)');
   });
 
@@ -68,7 +73,7 @@ describe('the version 2 inputs: section summaries', () => {
     expect(summary('spending', setGroupField(v, 'spending', 'retirementLifestyle', '1.25'))).toBe('Retirement spending 25% higher');
 
     v = setGroupField(setGroupField(D, 'assumptions', 'retirementRateShift', '-0.02'), 'assumptions', 'medicareIrmaa', 'no');
-    expect(summary('assumptions', v)).toBe('7% return after inflation · 2.5% inflation · rates −2 pts in retirement · no IRMAA');
+    expect(summary('assumptions', v)).toBe('7% return after inflation · 2.5% inflation · rates −2 pts in retirement · no IRMAA · proportional (every account alike) in retirement · heirs taxed at 24%');
   });
 
   it('adds up accounts by type (blank balances count as 0)', () => {
@@ -91,8 +96,9 @@ describe('the version 2 inputs: section summaries', () => {
 
 describe('the inputs each calculator reads', () => {
   it('lists only known sections and fields, with no repeats, its own section first', () => {
+    const known = INPUT_SECTIONS.map((s) => s.id);
     for (const [id, { sections, fields = {} }] of Object.entries(CALCULATOR_INPUTS)) {
-      expect(sections.every((s) => ALL_SECTION_IDS.includes(s)), id).toBe(true);
+      expect(sections.every((s) => known.includes(s)), id).toBe(true);
       expect(new Set(sections).size, id).toBe(sections.length);
       for (const f of fields.people ?? []) expect(PERSON_FIELDS).toContain(f);
       for (const f of fields.assumptions ?? []) expect(ASSUMPTION_FIELDS).toContain(f);
@@ -100,6 +106,13 @@ describe('the inputs each calculator reads', () => {
     expect(CALCULATOR_INPUTS.roth.sections[0]).toBe('contributions');
     expect(CALCULATOR_INPUTS.tax.sections[0]).toBe('income');
     expect(CALCULATOR_INPUTS.pension.sections[0]).toBe('pension');
+  });
+
+  it('the inputs page: four groups, every household section once; the calculator-only sections are not on it', () => {
+    expect(INPUT_GROUPS.map((g) => g.title)).toEqual(['Household', 'Income and expenses', 'Assets and liabilities', 'Assumptions']);
+    expect(ALL_SECTION_IDS).toEqual(['household', 'dependents', 'income', 'contributions', 'spending', 'deductions', 'accounts', 'liabilities', 'assumptions']);
+    expect(INPUT_SECTIONS.map((s) => s.id).filter((id) => !ALL_SECTION_IDS.includes(id))).toEqual(['projection', 'conversion', 'pension']);
+    expect(CALCULATOR_INPUTS.roth.titles).toEqual({ contributions: 'Future Contributions' });
   });
 
   it('keeps the order given and skips unknown ids', () => {

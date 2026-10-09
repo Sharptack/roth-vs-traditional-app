@@ -8,7 +8,7 @@ import { householdToPensionInputs } from '../src/lib/pensionCalculator.js';
 const Y = 2026;
 const D = DEFAULT_HOUSEHOLD_VALUES;
 const v2 = (overrides) => ({ ...D, ...overrides });
-const income = (id, owner, type, amount, fromAge = '', toAge = '', treatment = 'ordinary') => ({ id, owner, type, treatment, amount, fromAge, toAge });
+const income = (id, owner, type, amount, fromAge = '', toAge = '', treatment = 'ordinary', more = {}) => ({ id, owner, type, treatment, amount, fromAge, toAge, ssMode: 'estimate', cola: '0', survivorShare: '0', ...more });
 const contribution = (id, owner, tax, account, amount) => ({ id, owner, tax, account, amount });
 const couple = (overrides) => v2({ filingStatus: 'mfj', includeSpouse: 'yes', people: [newPerson('p1'), newPerson('p2', { age: '33', retirementAge: '62' })], ...overrides });
 
@@ -20,7 +20,9 @@ describe('toHouseholdV2', () => {
     // version 2 adds the QBI deduction on 1099 earnings (round 2 phase 1); otherwise the same
     expect(householdToCompareInputs(h2)).toEqual({ ...householdToCompareInputs(h1), qualifiedBusinessIncome: true });
     expect(householdToYearTaxParams(h2)).toEqual({ ...householdToYearTaxParams(h1), qbi: true });
-    expect(householdToPensionInputs(h2)).toEqual(householdToPensionInputs(h1));
+    // no pension row: nothing for the pension calculator (version 1 always had its example offer)
+    expect(h2.calculators.pension).toBeNull();
+    expect(h2.pensions).toEqual([]);
     expect(h2.calculators.projection).toEqual(h1.calculators.projection);
     expect(h2.calculators.conversion).toEqual(h1.calculators.conversion);
     expect(h2.assumptions).toEqual({ ...h1.assumptions, qualifiedBusinessIncome: true, snapshotAtLastRetirement: true });
@@ -65,19 +67,22 @@ describe('toHouseholdV2', () => {
     expect(householdToCompareInputs(h).currentAge).toBe(36);
   });
 
-  it("puts this year's other income in the tax calculator, by type (HAND CALC)", () => {
+  it("puts this year's other income in the tax calculator, by kind; Social Security from each benefit (HAND CALC)", () => {
     // other ordinary 5,000; other tax-exempt 2,000; interest 3,000 + spouse's 1,000 = 4,000;
-    // qualified 8,000; the spouse's Social Security 14,000; an interest row from 70 doesn't count yet
+    // qualified 8,000; an interest row from 70 doesn't count yet.
+    // The spouse, 66 (born 1960, full retirement age 67), claims a PIA of 1,250 at 66: 12 months
+    // early, x (1 - 12 x 5/9%) = 0.933333 -> 1,250 x 12 x 0.933333 = 14,000 this year.
     const values = couple({
+      people: [newPerson('p1'), newPerson('p2', { age: '66', retirementAge: '66' })],
       incomes: [
         income('i1', 'p1', 'w2', '100000'),
         income('i2', 'p1', 'other', '5000'),
         income('i3', 'p1', 'other', '2000', '', '', 'taxExempt'),
-        income('i4', 'p1', 'interest', '3000'),
-        income('i5', 'p2', 'interest', '1000'),
-        income('i6', 'p1', 'qualified', '8000'),
-        income('i7', 'p2', 'socialSecurity', '14000'),
-        income('i8', 'p1', 'interest', '9000', '70'),
+        income('i4', 'p1', 'other', '3000', '', '', 'interest'),
+        income('i5', 'p2', 'other', '1000', '', '', 'interest'),
+        income('i6', 'p1', 'other', '8000', '', '', 'qualified'),
+        income('i7', 'p2', 'socialSecurity', '1250', '66', '', 'ordinary', { ssMode: 'pia' }),
+        income('i8', 'p1', 'other', '9000', '70', '', 'interest'),
       ],
     });
     const h = toHouseholdV2(values, Y);
@@ -85,14 +90,50 @@ describe('toHouseholdV2', () => {
       ordinaryIncome: 5000,
       investmentOrdinaryIncome: 4000,
       preferentialIncome: 8000,
-      socialSecurity: 14000,
       taxExemptIncome: 2000,
     });
+    expect(householdToYearTaxParams(h).income.socialSecurity).toBeCloseTo(14000, 6);
     expect(h.people.map((p) => p.wages)).toEqual([100000, 0]);
     // without the spouse, their rows are left out
     const single = toHouseholdV2({ ...values, includeSpouse: 'no' }, Y);
     expect(single.calculators.tax.investmentOrdinaryIncome).toBe(3000);
-    expect(single.calculators.tax.socialSecurity).toBe(0);
+    expect(householdToYearTaxParams(single).income.socialSecurity).toBe(0);
+  });
+
+  it("Social Security rows: each person's own; none = no benefit of their own; one per person", () => {
+    const h = toHouseholdV2(D, Y);
+    expect(h.people[0].socialSecurity).toMatchObject({ mode: 'estimate', pia: null, claimAge: null });
+    const none = toHouseholdV2(v2({ incomes: [income('i1', 'p1', 'w2', '100000')] }), Y);
+    expect(none.people[0].socialSecurity).toMatchObject({ mode: 'pia', pia: 0 });
+    expect(householdToCompareInputs(none).earners[0].pia).toBe(0);
+    const two = toHouseholdV2(v2({ incomes: [...D.incomes, income('i3', 'p1', 'socialSecurity', '')] }), Y);
+    expect(validateHouseholdV2(two)).toEqual(['Enter one Social Security row for you.']);
+  });
+
+  it('pension rows: in the pension calculator (its owner first), the tax this year and the Roth comparison (HAND CALC)', () => {
+    // You 35; the spouse 66 with a pension of 2,000 a month since 62, no COLA, 2.5% inflation:
+    // paid now, so 24,000 this year (today's dollars).
+    const values = couple({
+      people: [newPerson('p1'), newPerson('p2', { age: '66', retirementAge: '62' })],
+      incomes: [income('i1', 'p1', 'w2', '100000'), income('i2', 'p2', 'pension', '2000', '62', '', 'ordinary', { survivorShare: '0.5' })],
+      calculators: { ...D.calculators, pension: { lumpSum: '250000' } },
+    });
+    const h = toHouseholdV2(values, Y);
+    expect(h.pensions).toEqual([{ owner: 'p2', monthly: 2000, startAge: 62, cola: 0, survivorShare: 0.5 }]);
+    expect(h.calculators.tax.ordinaryIncome).toBeCloseTo(24000, 8);
+    expect(h.calculators.pension).toMatchObject({ owner: 'p2', lumpSum: 250000, monthly: 2000, startAge: 62, survivorShare: 0.5 });
+    // the pension calculator sees the spouse as the owner, you as the survivor (35 now -> 31 at 62)
+    expect(householdToPensionInputs(h)).toMatchObject({ lumpSum: 250000, monthly: 2000, startAge: 62, survivorShare: 0.5, spouseAgeAtStart: 31 });
+    // the Roth comparison's snapshot: you retire at 65, 30 years on (the spouse 96): the pension is
+    // 24,000 / 1.025^30 = 24,000 / 2.097568 = 11,441.84 in today's dollars
+    expect(householdToCompareInputs(h).pensionIncome).toBeCloseTo(11441.84, 1);
+  });
+
+  it("the projection runs until the last person's plan-to age", () => {
+    // you 35 to 95 (2086); the spouse 33 to 95 (2088): you'd be 97 then
+    expect(toHouseholdV2(couple({}), Y).calculators.projection.endAge).toBe(97);
+    expect(toHouseholdV2(couple({ people: [newPerson('p1', { planToAge: '90' }), newPerson('p2', { age: '33', planToAge: '85' })] }), Y).calculators.projection.endAge).toBe(90);
+    expect(toHouseholdV2(D, Y).calculators.projection.endAge).toBe(95);
   });
 
   it('adds up each person\'s Roth and Pre-tax contributions, with their own types (HAND CALC)', () => {

@@ -37,6 +37,7 @@ export function conversionTile(c) {
 // Pension: the return the lump sum would have to earn to match the monthly benefit, on life
 // expectancy (each payment counted by the chance of being alive to receive it).
 export function pensionTile(p, inputs) {
+  if (!p || !inputs) return { headline: 'No pension yet', detail: 'Add a pension (an income row) to weigh it against a lump sum.' };
   const r = p.expected?.irr ?? null;
   return {
     headline: r === null ? 'No return' : `${formatPercent(r)} a year`,

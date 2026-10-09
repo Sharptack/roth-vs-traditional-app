@@ -7,6 +7,7 @@ import { checkContributionLimit } from './contributionLimits.js';
 import { dependentsInYear } from './dependents.js';
 import { irmaaFromThisYear } from './irmaa.js';
 import { getBrackets } from './taxCalculations.js';
+import { socialSecurityInYear } from './projection.js';
 
 // The calculator's own form fields (stored in the household under calculators.tax).
 export const TAX_CALCULATOR_DEFAULT_VALUES = {
@@ -20,7 +21,8 @@ export const TAX_CALCULATOR_DEFAULT_VALUES = {
 //  - people: each person's wages / 1099 income and age today (the 65+ deductions apply now).
 //  - pretaxDeferrals: this year's Pre-tax Future Contributions, each person's capped at their own
 //    IRS limit (only when the savings are currently Pre-tax).
-//  - income: the calculator's own inputs.
+//  - income: the calculator's own inputs. A version 2 household's Social Security is each person's
+//    benefit once claimed (projection.js socialSecurityInYear); version 1 typed it in.
 export function householdToYearTaxParams(household) {
   const { year, people, futureContributions: fc, filingStatus } = household;
   const tax = household.calculators?.tax ?? {};
@@ -43,7 +45,7 @@ export function householdToYearTaxParams(household) {
       ordinaryIncome: tax.ordinaryIncome ?? 0,
       investmentOrdinaryIncome: tax.investmentOrdinaryIncome ?? 0,
       preferentialIncome: tax.preferentialIncome ?? 0,
-      socialSecurity: tax.socialSecurity ?? 0,
+      socialSecurity: household.version === 2 ? socialSecurityInYear(household, 0) : (tax.socialSecurity ?? 0),
     },
   };
 }

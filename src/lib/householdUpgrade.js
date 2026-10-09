@@ -17,7 +17,7 @@
 import { parseNumber } from './formInputs.js';
 import { PREVIEW_DEFAULT_VALUES, SPOUSE_DEFAULT_VALUES, accountRowsFromFlat } from './household.js';
 import { benefitFromPIA } from './socialSecurity.js';
-import { HOUSEHOLD_VALUES_VERSION, newPerson } from './householdValues.js';
+import { HOUSEHOLD_VALUES_VERSION, isLegacyV2, migrateLegacyV2, newPerson } from './householdValues.js';
 
 const isBlankOrZero = (text) => ['', '0'].includes(String(text ?? '').trim());
 const pick = (values, key) => values[key] ?? PREVIEW_DEFAULT_VALUES[key];
@@ -46,7 +46,7 @@ function hasSpouseDetails(values) {
 
 // year: the calendar year the household is opened in (for the PIA's full retirement age).
 export function upgradeHouseholdValues(values, year) {
-  if (values?.version === HOUSEHOLD_VALUES_VERSION) return values;
+  if (values?.version === HOUSEHOLD_VALUES_VERSION) return isLegacyV2(values) ? migrateLegacyV2(values, year) : values;
   const v = { ...PREVIEW_DEFAULT_VALUES, ...values };
   const incomes = [];
   const contributions = [];
@@ -99,7 +99,8 @@ export function upgradeHouseholdValues(values, year) {
     if (!isBlankOrZero(v[key])) addIncome('p1', type, v[key], thisYear);
   }
 
-  return {
+  // Built in the first version 2 layout, then brought to the current one (migrateLegacyV2).
+  return migrateLegacyV2({
     version: HOUSEHOLD_VALUES_VERSION,
     filingStatus: v.filingStatus,
     includeSpouse: v.includeSpouse === 'yes' ? 'yes' : 'no',
@@ -132,6 +133,6 @@ export function upgradeHouseholdValues(values, year) {
         spouseEndAge: v.penSpouseEndAge,
       },
     },
-  };
+  }, year);
 }
 

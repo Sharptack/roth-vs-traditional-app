@@ -18,7 +18,7 @@ import { householdToCompareInputs } from '../lib/household.js';
 import { toHouseholdV2, validateHouseholdV2 } from '../lib/householdV2.js';
 import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 import { householdValuesV2FromSearch } from '../lib/householdLink.js';
-import { CALCULATOR_INPUTS, inputSections } from '../lib/householdInputs.js';
+import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/householdInputs.js';
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
 import { DEFAULT_HOUSEHOLD_VALUES, isoDate, refreshAges } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
@@ -151,8 +151,9 @@ export default function NextApp({ initialPage, client }) {
   const h = roth.household;
   const tax = useMemo(() => (shownOn(page, 'tax') ? taxOf(h) : null), [h, page]);
   const conversion = useMemo(() => (shownOn(page, 'conversion') ? conversionOf(h) : null), [h, page]);
-  const pensionInputs = useMemo(() => householdToPensionInputs(h), [h]);
-  const pension = useMemo(() => (shownOn(page, 'pension') ? pensionResult(pensionInputs) : null), [pensionInputs, page]);
+  // The pension calculator needs a pension income row (none: nothing to work out).
+  const pensionInputs = useMemo(() => (h.calculators.pension ? householdToPensionInputs(h) : null), [h]);
+  const pension = useMemo(() => (shownOn(page, 'pension') && pensionInputs ? pensionResult(pensionInputs) : null), [pensionInputs, page]);
   const pretaxBalance = h.accounts.filter((a) => a.type === 'pretax').reduce((sum, a) => sum + (a.balance || 0), 0);
   const realReturn = h.assumptions.returnRate;
   const inflation = h.assumptions.inflationRate ?? 0;
@@ -191,7 +192,7 @@ export default function NextApp({ initialPage, client }) {
     const all = tilesOf({
       tax: tax ?? taxOf(h),
       conversion: conversion ?? conversionOf(h),
-      pension: pension ?? pensionResult(pensionInputs),
+      pension: pension ?? (pensionInputs && pensionResult(pensionInputs)),
       projection: projection ?? projectionOf(roth),
     });
     return CALCULATORS.map((c) => ({ title: c.title, ...all[c.id] }));
@@ -272,8 +273,9 @@ export default function NextApp({ initialPage, client }) {
             <HouseholdInputs
               {...formProps}
               layout="page"
-              title="Household"
-              defaultOpen={['household', 'people', 'income', 'contributions']}
+              title="Household inputs"
+              groups={INPUT_GROUPS}
+              defaultOpen={['household', 'income', 'contributions']}
               footer={share}
             />
             <nav className="card inputs-next" aria-label="Calculators">
@@ -371,6 +373,7 @@ export default function NextApp({ initialPage, client }) {
                   title={comparing ? 'Your inputs (baseline)' : calculator.ownTitle}
                   sections={CALCULATOR_INPUTS[calculator.id].sections}
                   fields={CALCULATOR_INPUTS[calculator.id].fields}
+                  titles={CALCULATOR_INPUTS[calculator.id].titles}
                   defaultOpen={CALCULATOR_INPUTS[calculator.id].sections.slice(0, 1)}
                   headLink={
                     <a className="link-button" href={PAGES.inputs}>
@@ -388,6 +391,7 @@ export default function NextApp({ initialPage, client }) {
                     title="With a change"
                     sections={CALCULATOR_INPUTS[calculator.id].sections}
                     fields={CALCULATOR_INPUTS[calculator.id].fields}
+                    titles={CALCULATOR_INPUTS[calculator.id].titles}
                     defaultOpen={CALCULATOR_INPUTS[calculator.id].sections.slice(0, 1)}
                   />
                 )}

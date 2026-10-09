@@ -1644,15 +1644,27 @@ th.win .th-sub {
   gap: 16px;
 }
 
-.row-actions .add-other select {
-  width: auto;
-  font-size: 0.85rem;
-}
-
 .inputs-page .household-inputs-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* the inputs page's four groups (Household; Income and expenses; Assets and liabilities; Assumptions) */
+.inputs-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inputs-group-title {
+  margin: 8px 0 0;
+  font-size: 1.05rem;
+}
+
+/* one person: one column, not stretched across the page */
+.people-grid.one {
+  grid-template-columns: minmax(0, 480px);
 }
 
 .inputs-blocks {
@@ -1662,7 +1674,7 @@ th.win .th-sub {
   align-items: start;
 }
 
-.inputs-blocks .inputs-people,
+.inputs-blocks .inputs-household,
 .inputs-blocks .inputs-income {
   grid-column: 1 / -1;
 }

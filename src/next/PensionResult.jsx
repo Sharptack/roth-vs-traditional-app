@@ -12,6 +12,14 @@ const age = (a) => (a === null ? 'never' : `${Math.floor(a)}${a % 1 > 0.001 ? ` 
 // nominalReturn: the household's assumed return with inflation added back (the pension's payments
 // are in the dollars of the day they're paid).
 export default function PensionResult({ pension: p, inputs, nominalReturn, realReturn, inflation }) {
+  if (!p) {
+    return (
+      <section className="card">
+        <h2>No pension yet</h2>
+        <p>The household has no pension. Add one in the inputs card (Pension offer), or as an income row on the inputs page; it then counts in every calculator, and this page weighs it against a lump sum.</p>
+      </section>
+    );
+  }
   const e = p.expected;
   const worth = e.presentValueAt(nominalReturn);
   const better = e.irr !== null && e.irr > nominalReturn;

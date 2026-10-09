@@ -68,8 +68,9 @@ function pinsFromPreview({ household, result }) {
   const tax = taxCalculatorResult(params, irmaa);
   pins.tax = { ...scalars(tax.result, 1), marginal: scalars(tax.marginal), irmaa: scalars(tax.irmaa, 1) };
   pins.conversion = scalars(conversionResult(params, household.calculators.conversion.amount, irmaa), 2);
-  const pensionInputs = householdToPensionInputs(household);
-  pins.pension = { inputs: scalars(pensionInputs), result: scalars(pensionResult(pensionInputs), 1) };
+  // A version 2 household without a pension row has nothing for the pension calculator.
+  const pensionInputs = household.calculators.pension ? householdToPensionInputs(household) : null;
+  pins.pension = pensionInputs && { inputs: scalars(pensionInputs), result: scalars(pensionResult(pensionInputs), 1) };
   if (result.valid) {
     const view = projectionView(household, result.retirementNeed.target);
     pins.projection = {

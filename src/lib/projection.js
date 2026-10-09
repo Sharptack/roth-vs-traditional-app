@@ -61,7 +61,8 @@ export function proportionalStrategy({ accounts, rmdByAccount, need, evaluate })
 }
 
 // Per-person Social Security for the projection: when each part starts, and how much it is.
-function socialSecuritySchedule(household) {
+// (Also the tax calculator's Social Security this year, socialSecurityInYear.)
+export function socialSecuritySchedule(household) {
   const { year, people } = household;
   const ageOf = (p) => year - p.birthYear;
   const ss = estimateHouseholdSocialSecurity({
@@ -88,6 +89,17 @@ function socialSecuritySchedule(household) {
       topUpStartAge: s.spousalStartAge ?? Infinity,
     };
   });
+}
+
+// The household's Social Security in year t (0 = this year): each part that has started by then.
+export function socialSecurityInYear(household, t) {
+  // An age not entered yet (the form shows the error): nothing to work out.
+  if (!household.people.every((p) => Number.isFinite(p.birthYear) && Number.isFinite(p.retirementAge))) return 0;
+  const ages = household.people.map((p) => household.year - p.birthYear + t);
+  return socialSecuritySchedule(household).reduce(
+    (acc, s, i) => acc + (ages[i] >= s.ownStartAge ? s.own : 0) + (ages[i] >= s.topUpStartAge ? s.topUp : 0),
+    0,
+  );
 }
 
 // household: the household object (its year is the first projected year).

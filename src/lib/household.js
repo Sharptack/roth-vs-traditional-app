@@ -43,6 +43,7 @@ import { TAX_CALCULATOR_DEFAULT_VALUES } from './taxCalculator.js';
 import { CONVERSION_DEFAULT_VALUES } from './conversionCalculator.js';
 import { dependentsInYear } from './dependents.js';
 import { PENSION_DEFAULT_VALUES, pensionFromValues } from './pensionCalculator.js';
+import { pensionIncomeAt } from './pensionIncome.js';
 
 // The projection page's own inputs (stored under calculators.projection).
 export const PROJECTION_DEFAULT_VALUES = {
@@ -344,6 +345,16 @@ export function householdToCompareInputs(household) {
       ages: assumptions.ageDeductions ? people.map((p) => ageOf(p) + yearsToRetirement) : [],
     };
   }
+  // Pensions (version 2 households): each at the snapshot retirement year, or its first year when it
+  // starts later (like Social Security, a floor under the retirement withdrawals), today's dollars.
+  const pensionIncome = (household.pensions ?? []).reduce((acc, pen) => {
+    const owner = people.find((p) => p.id === pen.owner);
+    if (!owner) return acc;
+    const ageNow = ageOf(owner);
+    const age = Math.max(pen.startAge ?? ageNow, ageNow + yearsToRetirement);
+    return acc + pensionIncomeAt(pen, { ageNow, age, inflation: inflationRate });
+  }, 0);
+  if (pensionIncome > 0) inputs.pensionIncome = pensionIncome;
   if (assumptions.taxSavedAcrossContribution) inputs.taxSavedAcrossContribution = true;
   if (assumptions.qualifiedBusinessIncome) inputs.qualifiedBusinessIncome = true;
   if (itemized > 0) inputs.itemizedDeductions = itemized;

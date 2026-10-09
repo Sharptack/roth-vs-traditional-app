@@ -1,10 +1,10 @@
-// The version 2 household's inputs (round 2 phase 0, step b), as data: the sections of the inputs
-// page, each with a one-line summary for its closed header, the labels of the row lists, and the
-// inputs each calculator reads (its inputs card shows only those). Pure; the component is
-// src/next/HouseholdInputs.jsx; the values are householdValues.js's.
+// The version 2 household's inputs (round 2 phase 0, step b; regrouped 2026-10-08), as data: the
+// sections, each with a one-line summary for its closed header, the inputs page's four groups, the
+// labels of the row lists, and the inputs each calculator reads (its inputs card shows only those).
+// Pure; the component is src/next/HouseholdInputs.jsx; the values are householdValues.js's.
 import { formatCurrency } from './format.js';
 import { parseNumber } from './formInputs.js';
-import { INCOME_TYPES, activePeople, hasSpouseV2 } from './householdValues.js';
+import { activePeople, hasSpouseV2 } from './householdValues.js';
 import { STRATEGIES } from './strategies.js';
 
 export const ACCOUNT_TYPE_LABELS = { pretax: 'Pre-tax', roth: 'Roth', taxable: 'Taxable' };
@@ -12,17 +12,23 @@ export const OWNER_LABELS = { p1: 'You', p2: 'Spouse' };
 export const INCOME_TYPE_LABELS = {
   w2: 'W-2 wages',
   1099: '1099 (self-employed)',
+  socialSecurity: 'Social Security',
+  pension: 'Pension',
   other: 'Other',
+};
+// The kinds of "Other" income.
+export const OTHER_KIND_LABELS = {
+  ordinary: 'Taxable as ordinary income',
+  taxExempt: 'Tax-exempt',
   interest: 'Interest, non-qualified dividends, short-term gains',
   qualified: 'Qualified dividends, long-term gains',
-  socialSecurity: 'Social Security already received',
 };
-// The short form, for summaries.
-const INCOME_SHORT = { w2: 'W-2', 1099: '1099', other: 'Other', interest: 'Interest', qualified: 'Qualified', socialSecurity: 'Social Security' };
-// The types every income row offers; the rest come from "Add other income types".
-export const BASIC_INCOME_TYPES = ['w2', '1099', 'other'];
-export const OTHER_INCOME_TYPES = ['interest', 'qualified', 'socialSecurity'];
-export const INCOME_TREATMENT_LABELS = { ordinary: 'Ordinary income', taxExempt: 'Tax-exempt' };
+export const INCOME_TREATMENT_LABELS = OTHER_KIND_LABELS;
+// The short forms, for summaries.
+const ANNUAL_SHORT = { w2: 'W-2', 1099: '1099' };
+const OTHER_SHORT = { ordinary: 'Other', taxExempt: 'Tax-exempt', interest: 'Interest', qualified: 'Qualified' };
+// Income typed as a yearly amount; Social Security and pensions are monthly.
+export const MONTHLY_INCOME_TYPES = ['socialSecurity', 'pension'];
 export const CONTRIBUTION_TAX_LABELS = { pretax: 'Pre-tax', roth: 'Roth', taxable: 'Taxable' };
 export const CONTRIBUTION_ACCOUNT_LABELS = { '401k': '401(k)', ira: 'IRA' };
 export const LIABILITY_KIND_LABELS = {
@@ -63,21 +69,38 @@ export function accountsSummary(accounts) {
 }
 
 function personLine(p) {
-  return `${OWNER_LABELS[p.id]} ${p.age || '—'}, retires at ${p.retirementAge || '—'}`;
+  return `${OWNER_LABELS[p.id]} ${p.age || '—'}, retires at ${p.retirementAge || '—'}, plans to ${p.planToAge || '—'}`;
+}
+
+// The income summary: yearly amounts by kind, then each person's Social Security and pensions.
+function incomeSummary(v) {
+  const rows = countedRows(v, 'incomes');
+  const annual = totalsBy(
+    rows.filter((r) => !MONTHLY_INCOME_TYPES.includes(r.type)),
+    (r) => (r.type === 'other' ? `other:${r.treatment}` : r.type),
+    (r) => r.amount,
+    { ...ANNUAL_SHORT, ...Object.fromEntries(Object.entries(OTHER_SHORT).map(([k, l]) => [`other:${k}`, l])) },
+    ['w2', '1099', ...Object.keys(OTHER_SHORT).map((k) => `other:${k}`)], // ('1099' would sort first)
+  );
+  const two = hasSpouseV2(v);
+  const whose = (r) => (two ? `${r.owner === 'p1' ? 'your' : "spouse's"} ` : '');
+  const ss = rows
+    .filter((r) => r.type === 'socialSecurity')
+    .map((r) => `${two ? (r.owner === 'p1' ? 'Your' : "Spouse's") + ' ' : ''}Social Security ${r.ssMode === 'pia' ? `${money(r.amount)}/mo PIA` : 'estimated'}`);
+  const pensions = rows.filter((r) => r.type === 'pension').map((r) => `${whose(r)}pension ${money(r.amount)}/mo from ${r.fromAge || '—'}`);
+  const parts = [annual === 'None' ? null : annual, ...ss, ...pensions].filter(Boolean);
+  return parts.length > 0 ? parts.map((s) => s.replace(/^[a-z]/, (c) => c.toUpperCase())).join(' · ') : 'None';
 }
 
 export const INPUT_SECTIONS = [
   {
     id: 'household',
     title: 'Household',
-    summary: (v) =>
-      v.filingStatus === 'mfj'
-        ? hasSpouseV2(v)
-          ? 'Married filing jointly · two people'
-          : 'Married filing jointly · one combined income'
-        : 'Single',
+    summary: (v) => {
+      const status = v.filingStatus === 'mfj' ? (hasSpouseV2(v) ? 'Married filing jointly' : 'Married filing jointly, one combined income') : 'Single';
+      return [status, ...activePeople(v).map(personLine)].join(' · ');
+    },
   },
-  { id: 'people', title: 'People', summary: (v) => activePeople(v).map(personLine).join(' · ') },
   {
     id: 'dependents',
     title: 'Children and dependents',
@@ -92,14 +115,10 @@ export const INPUT_SECTIONS = [
       return parts.length > 0 ? parts.join(' · ') : 'None';
     },
   },
-  {
-    id: 'income',
-    title: 'Income',
-    summary: (v) => totalsBy(countedRows(v, 'incomes'), (r) => r.type, (r) => r.amount, INCOME_SHORT, INCOME_TYPES),
-  },
+  { id: 'income', title: 'Income', summary: incomeSummary },
   {
     id: 'contributions',
-    title: 'Future Contributions',
+    title: 'Contributions',
     summary: (v) => {
       const rows = countedRows(v, 'contributions');
       const total = rows.reduce((a, r) => a + blankIsZero(r.amount), 0);
@@ -158,61 +177,77 @@ export const INPUT_SECTIONS = [
         `${pct(a.inflationRate)} inflation`,
         shift ? `rates ${shift > 0 ? '+' : '−'}${Math.abs(Math.round(shift * 100))} pts in retirement` : null,
         a.medicareIrmaa === 'no' ? 'no IRMAA' : null,
+        `${strategyLabel(v).toLowerCase()} in retirement`,
+        `heirs taxed at ${Math.round(Number(v.calculators.projection.heirTaxRate ?? 0) * 100)}%`,
       ]
         .filter(Boolean)
         .join(' · ');
     },
   },
+  // Calculator cards only (on the inputs page these are under Assumptions; a conversion is the
+  // conversion calculator's what-if; the lump-sum offer belongs to the pension calculator).
   {
     id: 'projection',
-    title: 'Projection',
-    summary: (v) => {
-      const p = v.calculators.projection;
-      const strategy = (STRATEGIES.find((s) => s.id === p.strategy) ?? STRATEGIES[0]).label.toLowerCase();
-      return `To age ${p.endAge || '—'} · heirs taxed at ${Math.round(Number(p.heirTaxRate ?? 0) * 100)}% · ${strategy}`;
-    },
+    title: 'Withdrawals',
+    summary: (v) => `${strategyLabel(v)} · heirs taxed at ${Math.round(Number(v.calculators.projection.heirTaxRate ?? 0) * 100)}%`,
   },
   { id: 'conversion', title: 'Conversion', summary: (v) => `Convert ${money(v.calculators.conversion.amount)} this year` },
   {
     id: 'pension',
     title: 'Pension offer',
     summary: (v) => {
-      const p = v.calculators.pension;
-      return `${money(p.lumpSum)} or ${money(p.monthly)} a month from ${p.startAge || '—'}`;
+      const p = countedRows(v, 'incomes').find((r) => r.type === 'pension');
+      return p
+        ? `${money(v.calculators.pension.lumpSum)} or ${money(p.amount)} a month from ${p.fromAge || '—'}`
+        : 'No pension yet';
     },
   },
 ];
 
-// Every section, in the inputs page's order.
-export const ALL_SECTION_IDS = INPUT_SECTIONS.map((s) => s.id);
+const strategyLabel = (v) => (STRATEGIES.find((s) => s.id === v.calculators.projection.strategy) ?? STRATEGIES[0]).label;
 
-// A person's fields, in groups (a calculator's card can show some of them).
-export const PERSON_FIELDS = ['age', 'sex', 'retirementAge', 'planToAge', 'socialSecurity'];
-export const ASSUMPTION_FIELDS = ['returnRate', 'inflationRate', 'ageDeductions', 'medicareIrmaa', 'retirementRateShift', 'taxSavedBasis'];
+// The inputs page: four groups, each holding its sections (decided 2026-10-08).
+export const INPUT_GROUPS = [
+  { id: 'household', title: 'Household', sections: ['household', 'dependents'] },
+  { id: 'income', title: 'Income and expenses', sections: ['income', 'contributions', 'spending', 'deductions'] },
+  { id: 'assets', title: 'Assets and liabilities', sections: ['accounts', 'liabilities'] },
+  { id: 'assumptions', title: 'Assumptions', sections: ['assumptions'] },
+];
 
-// The inputs each calculator reads: its sections (its own first), and for People and Assumptions
-// the fields it reads (all of them when not listed). Sex and plan-to age are read by no calculator
-// yet (phase 2), so they are on the inputs page only.
-const FOR_ROTH = ['age', 'retirementAge', 'socialSecurity'];
+// Every section of the inputs page, in its order.
+export const ALL_SECTION_IDS = INPUT_GROUPS.flatMap((g) => g.sections);
+
+// A person's fields, and the assumptions (a calculator's card can show some of them). The
+// withdrawal strategy and heirs' tax rate are the projection's (calculators.projection).
+export const PERSON_FIELDS = ['age', 'sex', 'retirementAge', 'planToAge'];
+export const ASSUMPTION_FIELDS = ['returnRate', 'inflationRate', 'ageDeductions', 'medicareIrmaa', 'retirementRateShift', 'taxSavedBasis', 'strategy', 'heirTaxRate'];
+const WITHOUT_PROJECTION = ASSUMPTION_FIELDS.filter((f) => f !== 'strategy' && f !== 'heirTaxRate');
+
+// The inputs each calculator reads: its sections (its own first), for the household and the
+// assumptions the fields it reads (all of them when not listed), and section titles of its own.
+// Sex is read only by the pension calculator so far (phase 2 brings it to the plan).
+const FOR_PLAN = ['age', 'retirementAge', 'planToAge'];
 export const CALCULATOR_INPUTS = {
   roth: {
-    sections: ['contributions', 'household', 'people', 'dependents', 'income', 'deductions', 'accounts', 'spending', 'assumptions', 'projection'],
-    fields: { people: FOR_ROTH },
+    sections: ['contributions', 'household', 'dependents', 'income', 'deductions', 'accounts', 'spending', 'assumptions'],
+    fields: { people: FOR_PLAN },
+    // The Roth page keeps its Future Contributions / Existing Accounts pair (Michael, 2026-10-08).
+    titles: { contributions: 'Future Contributions' },
   },
   tax: {
-    sections: ['income', 'household', 'people', 'dependents', 'contributions', 'deductions', 'assumptions'],
+    sections: ['income', 'household', 'dependents', 'contributions', 'deductions', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   projection: {
-    sections: ['projection', 'household', 'people', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
-    fields: { people: FOR_ROTH },
+    sections: ['projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
+    fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
   conversion: {
-    sections: ['conversion', 'household', 'people', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
+    sections: ['conversion', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   pension: {
-    sections: ['pension', 'household', 'people', 'assumptions'],
+    sections: ['pension', 'household', 'assumptions'],
     fields: { people: ['age', 'sex'], assumptions: ['returnRate', 'inflationRate'] },
   },
 };
@@ -225,8 +260,7 @@ export function inputSections(ids = ALL_SECTION_IDS) {
 // The values each section edits, to tell whether a section differs between two households (the
 // Roth page's "Compare a change" marks the sections the change touches).
 const SECTION_DATA = {
-  household: (v) => [v.filingStatus, v.includeSpouse],
-  people: (v) => v.people,
+  household: (v) => [v.filingStatus, v.includeSpouse, v.people],
   dependents: (v) => v.dependents ?? [],
   income: (v) => v.incomes,
   contributions: (v) => v.contributions,
@@ -234,10 +268,10 @@ const SECTION_DATA = {
   liabilities: (v) => v.liabilities,
   deductions: (v) => v.deductions,
   spending: (v) => v.spending,
-  assumptions: (v) => v.assumptions,
+  assumptions: (v) => [v.assumptions, v.calculators.projection],
   projection: (v) => v.calculators.projection,
   conversion: (v) => v.calculators.conversion,
-  pension: (v) => v.calculators.pension,
+  pension: (v) => [v.calculators.pension, v.incomes.filter((r) => r.type === 'pension')],
 };
 
 export function sectionChanged(id, a, b) {

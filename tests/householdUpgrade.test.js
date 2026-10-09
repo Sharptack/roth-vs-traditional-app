@@ -1,6 +1,11 @@
 // Version 1 -> version 2 (round 2 phase 0): every version 1 example opens with the same results
-// (tests/householdV1Pins.test.js), except two decided changes: a known benefit becomes a PIA, and
-// a PIA counts for the spousal top-up; and (round 2 phase 1) 1099 earnings get the QBI deduction.
+// (tests/householdV1Pins.test.js), except decided changes:
+//  - a known benefit becomes a PIA, and a PIA counts for the spousal top-up (2026-10-07);
+//  - (round 2 phase 1) 1099 earnings get the QBI deduction;
+//  - (2026-10-08, the inputs regrouped) a pension is an income row: a pension offer someone typed
+//    in becomes one, counted by every calculator; one left at the example defaults doesn't, so the
+//    pension calculator has nothing to show; its fixed end ages are gone (life expectancy decides);
+//    and the projection runs until the LAST person's plan-to age.
 import { describe, it, expect } from 'vitest';
 import { piaFromKnownBenefit, upgradeHouseholdValues } from '../src/lib/householdUpgrade.js';
 import { DEFAULT_HOUSEHOLD_VALUES, newPerson } from '../src/lib/householdValues.js';
@@ -16,11 +21,37 @@ const withoutKnownBenefit = (pins) => ({
   compareInputs: { ...pins.compareInputs, knowsSocialSecurity: undefined, socialSecurityBenefit: undefined },
 });
 
+// The examples whose typed-in pension offer becomes a pension row (counted in the Roth comparison,
+// the projection and the lifetime comparison), and the couple whose younger spouse's plan-to age
+// runs the projection longer.
+const PENSION_COUNTED = ['singleEverything', 'mfjOlderKnown'];
+const SPOUSE_PLANS_LONGER = ['mfjSpouse'];
+const PLAN_SECTIONS = ['compareInputs', 'roth', 'projection', 'lifetime'];
+// The pension calculator without the fixed end ages (life expectancy replaced them, phase 1 step c).
+const withoutEndAges = (pension) =>
+  pension && {
+    inputs: { ...pension.inputs, endAge: undefined, spouseEndAge: undefined },
+    result: { ...pension.result, irr: undefined, totalPayments: undefined, months: undefined },
+  };
+
 describe('version 1 households open in version 2 with the same results', () => {
   for (const [name, values] of Object.entries(V1_HOUSEHOLDS)) {
     if (name === 'mfjMixedBenefits') continue; // the decided change, below
     it(name, () => {
-      expect(withoutKnownBenefit(pinsForV2(upgradeHouseholdValues(values, YEAR), { qbi: false, lastRetirement: false }))).toEqual(withoutKnownBenefit(pinsFor(values)));
+      const v2 = upgradeHouseholdValues(values, YEAR);
+      const before = withoutKnownBenefit(pinsFor(values));
+      const after = withoutKnownBenefit(pinsForV2(v2, { qbi: false, lastRetirement: false }));
+      const hasPension = v2.incomes.some((r) => r.type === 'pension');
+      expect(hasPension, name).toBe(PENSION_COUNTED.includes(name));
+      if (hasPension) expect(withoutEndAges(after.pension)).toEqual(withoutEndAges(before.pension));
+      else expect(after.pension).toBeNull();
+      expect(after.tax).toEqual(before.tax);
+      expect(after.conversion).toEqual(before.conversion);
+      const changed = PENSION_COUNTED.includes(name) ? PLAN_SECTIONS : SPOUSE_PLANS_LONGER.includes(name) ? ['projection', 'lifetime'] : [];
+      for (const section of PLAN_SECTIONS) {
+        if (changed.includes(section)) expect(after[section], `${name} ${section}`).not.toEqual(before[section]);
+        else expect(after[section], `${name} ${section}`).toEqual(before[section]);
+      }
     });
   }
 
@@ -76,15 +107,27 @@ describe('upgradeHouseholdValues, field by field', () => {
       ['p1', '62', '67', 'age', '', ''],
       ['p2', '66', '68', 'age', '', ''],
     ]);
-    expect(v.people[0].socialSecurity).toMatchObject({ mode: 'pia', claimAge: '70' });
-    expect(v.people[1].socialSecurity).toMatchObject({ mode: 'pia', claimAge: '66' });
-    expect(v.incomes).toEqual([
+    expect(v.people.every((p) => p.socialSecurity === undefined)).toBe(true);
+    const pick = ({ id, owner, type, treatment, amount, fromAge, toAge }) => ({ id, owner, type, treatment, amount, fromAge, toAge });
+    expect(v.incomes.slice(0, 3).map(pick)).toEqual([
       { id: 'i1', owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '130000', fromAge: '', toAge: '' },
       { id: 'i2', owner: 'p2', type: 'w2', treatment: 'ordinary', amount: '45000', fromAge: '', toAge: '' },
-      // the tax calculator's own income: this year only (your age now)
-      { id: 'i3', owner: 'p1', type: 'qualified', treatment: 'ordinary', amount: '12000', fromAge: '62', toAge: '62' },
-      { id: 'i4', owner: 'p1', type: 'socialSecurity', treatment: 'ordinary', amount: '14000', fromAge: '62', toAge: '62' },
+      // the tax calculator's own income: this year only (your age now), as other income of its kind
+      { id: 'i3', owner: 'p1', type: 'other', treatment: 'qualified', amount: '12000', fromAge: '62', toAge: '62' },
     ]);
+    // each person's Social Security as a row: the known benefits as PIAs at their claiming ages
+    // (36,000 at 70 for someone 62 now: 2,419.35, as above). The tax calculator's "Social Security
+    // received" 14,000 is dropped: your benefit is entered (and the spouse's 14,000 at 66 is this
+    // year's anyway).
+    expect(v.incomes.slice(3, 5).map(({ owner, type, ssMode, fromAge }) => ({ owner, type, ssMode, fromAge }))).toEqual([
+      { owner: 'p1', type: 'socialSecurity', ssMode: 'pia', fromAge: '70' },
+      { owner: 'p2', type: 'socialSecurity', ssMode: 'pia', fromAge: '66' },
+    ]);
+    expect(Number(v.incomes[3].amount)).toBeCloseTo(2419.354839, 6);
+    // the pension offer was typed in (start age 67, survivor 75%): a pension row for you
+    expect(v.incomes[5]).toMatchObject({ id: 'i6', owner: 'p1', type: 'pension', amount: '1800', fromAge: '67', cola: '0', survivorShare: '0.75' });
+    expect(v.incomes).toHaveLength(6);
+    expect(v.calculators.pension).toEqual({ lumpSum: '300000' });
     expect(v.contributions).toEqual([
       { id: 'c1', owner: 'p1', tax: 'pretax', account: '401k', amount: '31000' },
       { id: 'c2', owner: 'p2', tax: 'roth', account: 'ira', amount: '8000' },
@@ -96,7 +139,7 @@ describe('upgradeHouseholdValues, field by field', () => {
   it('"both" becomes a W-2 row and a 1099 row', () => {
     // 180,000 in all, 40,000 of it 1099 -> W-2 140,000 + 1099 40,000
     const v = upgradeHouseholdValues(V1_HOUSEHOLDS.singleBoth, YEAR);
-    expect(v.incomes.map((r) => [r.type, r.amount])).toEqual([['w2', '140000'], ['1099', '40000']]);
+    expect(v.incomes.filter((r) => r.type !== 'socialSecurity').map((r) => [r.type, r.amount])).toEqual([['w2', '140000'], ['1099', '40000']]);
   });
 
   it("keeps a spouse who was typed in but isn't included, and an old link's three balances", () => {
@@ -115,7 +158,12 @@ describe('upgradeHouseholdValues, field by field', () => {
 });
 
 describe('Social Security worked out from earnings needs no PIA', () => {
-  const person = (socialSecurity) => ({ ...DEFAULT_HOUSEHOLD_VALUES, people: [newPerson('p1', { socialSecurity })] });
+  // The default household with its Social Security row (i2) set as given.
+  const person = ({ mode, pia, claimAge }) => ({
+    ...DEFAULT_HOUSEHOLD_VALUES,
+    people: [newPerson('p1')],
+    incomes: DEFAULT_HOUSEHOLD_VALUES.incomes.map((r) => (r.id === 'i2' ? { ...r, ssMode: mode, amount: pia, fromAge: claimAge } : r)),
+  });
 
   it('"estimate" with the PIA blank: no error, the benefit comes from earnings', () => {
     const h = toHouseholdV2(person({ mode: 'estimate', pia: '', claimAge: '' }), YEAR);

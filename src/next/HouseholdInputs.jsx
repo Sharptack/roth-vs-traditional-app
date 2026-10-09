@@ -1,7 +1,8 @@
-// The version 2 household's inputs (round 2 phase 0, step b): the inputs page (every section, each
-// its own card) and each calculator's inputs card (only the sections and fields it reads, as rows
-// of one card). Sections, summaries and each calculator's list come from lib/householdInputs.js;
-// every change goes through lib/householdValues.js's update functions.
+// The version 2 household's inputs (round 2 phase 0, step b; regrouped 2026-10-08): the inputs page
+// (four groups, each section its own card across the page) and each calculator's inputs card (only
+// the sections and fields it reads, as rows of one card). Sections, groups, summaries and each
+// calculator's list come from lib/householdInputs.js; every change goes through
+// lib/householdValues.js's update functions.
 import { useId, useState } from 'react';
 import Collapsible, { toggleId } from '../components/Collapsible.jsx';
 import {
@@ -19,19 +20,19 @@ import {
   ACCOUNT_TYPE_LABELS,
   ALL_SECTION_IDS,
   ASSUMPTION_FIELDS,
-  BASIC_INCOME_TYPES,
   CONTRIBUTION_ACCOUNT_LABELS,
   CONTRIBUTION_TAX_LABELS,
-  INCOME_TREATMENT_LABELS,
   INCOME_TYPE_LABELS,
   LIABILITY_KIND_LABELS,
-  OTHER_INCOME_TYPES,
+  MONTHLY_INCOME_TYPES,
+  OTHER_KIND_LABELS,
   OWNER_LABELS,
   PERSON_FIELDS,
   inputSections,
   sectionChanged,
 } from '../lib/householdInputs.js';
 import {
+  NEW_PENSION,
   activePeople,
   addRow,
   hasSpouseV2,
@@ -45,6 +46,14 @@ import {
 import { STRATEGIES } from '../lib/strategies.js';
 
 const labelOptions = (labels, keys = Object.keys(labels)) => keys.map((value) => ({ value, label: labels[value] }));
+
+const COLA_OPTIONS = ['0', '0.01', '0.02', '0.025', '0.03'].map((v) => ({ value: v, label: v === '0' ? 'None' : `${Number(v) * 100}%` }));
+const SURVIVOR_OPTIONS = [
+  { value: '0', label: 'None' },
+  { value: '0.5', label: '50%' },
+  { value: '0.75', label: '75%' },
+  { value: '1', label: '100%' },
+];
 
 const CLAIM_AGE_OPTIONS = [
   { value: '', label: 'At retirement (62–70)' },
@@ -95,7 +104,8 @@ const percent = (t) => t.replace(/[^0-9.]/g, '').slice(0, 6);
 // values: version 2 values; onUpdate(fn): apply fn(values) -> new values (the update functions of
 //   householdValues.js), so quick changes never act on stale values.
 // sections: the section ids to show, in order; fields: { people, assumptions } field lists (all
-//   when not given). layout 'page': each section its own card (the inputs page); 'card': one card,
+//   when not given); titles: section titles of the calculator's own. layout 'page': each section its
+//   own card, in groups (the inputs page; groups: [{ id, title, sections }]); 'card': one card,
 //   sections as rows (a calculator's inputs card).
 // title, headLink: the card's heading and a link beside it ('card' layout); footer: content at the
 //   bottom (the share link). locked: view only (a view-only link); onEditCopy unlocks.
@@ -106,6 +116,8 @@ export default function HouseholdInputs({
   onUpdate,
   sections: sectionIds = ALL_SECTION_IDS,
   fields = {},
+  titles = {},
+  groups,
   layout = 'card',
   title = 'Inputs',
   headLink,
@@ -129,7 +141,37 @@ export default function HouseholdInputs({
   const setPerson = (id, field) => (value) => onUpdate((v) => setPersonField(v, id, field, value, today));
   const setRow = (list, id, field) => (value) => onUpdate((v) => updateRow(v, list, id, field, value));
   const add = (list, overrides) => onUpdate((v) => addRow(v, list, overrides));
+  // An income row's type: a yearly amount and a monthly one (Social Security, a pension) don't
+  // carry over, so switching between them clears the amount and ages.
+  const setIncomeType = (row) => (type) =>
+    onUpdate((v) => {
+      let next = updateRow(v, 'incomes', row.id, 'type', type);
+      if (MONTHLY_INCOME_TYPES.includes(type) !== MONTHLY_INCOME_TYPES.includes(row.type) || MONTHLY_INCOME_TYPES.includes(type)) {
+        for (const field of ['amount', 'fromAge', 'toAge']) next = updateRow(next, 'incomes', row.id, field, '');
+      }
+      if (type === 'pension') for (const [field, value] of Object.entries(NEW_PENSION)) next = updateRow(next, 'incomes', row.id, field, value);
+      return next;
+    });
   const remove = (list, id) => onUpdate((v) => removeRow(v, list, id));
+
+  const strategySelect = () => (
+    <SelectInput
+      label="Withdrawal strategy in retirement"
+      hint="Which accounts pay for spending each year, in the projection and the Roth page's lifetime comparison. RMDs are always taken first. Conversions move Pre-tax money to Roth before RMDs start, taxed that year."
+      value={values.calculators.projection.strategy}
+      onChange={setGroup('calculators.projection', 'strategy')}
+      options={STRATEGIES.map((st) => ({ value: st.id, label: st.label }))}
+    />
+  );
+  const heirSelect = () => (
+    <SelectInput
+      label="Tax rate for heirs on inherited Pre-tax money"
+      hint="Used only for the after-tax ending balance."
+      value={values.calculators.projection.heirTaxRate}
+      onChange={setGroup('calculators.projection', 'heirTaxRate')}
+      options={['0', '0.12', '0.22', '0.24', '0.32', '0.35'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%` }))}
+    />
+  );
 
   const ownerSelect = (list, row) =>
     spouse && (
@@ -144,159 +186,147 @@ export default function HouseholdInputs({
   const body = {
     household: () => (
       <>
-        <SelectInput
-          label="Filing status"
-          value={values.filingStatus}
-          onChange={(value) => onUpdate((v) => ({ ...v, filingStatus: value }))}
-          options={toOptions(FILING_STATUSES)}
-        />
-        {values.filingStatus === 'mfj' && (
-          <RadioGroup
-            legend="Enter your spouse separately?"
-            name={`${formId}-includeSpouse`}
-            value={values.includeSpouse}
-            onChange={(value) => onUpdate((v) => setIncludeSpouse(v, value === 'yes'))}
-            options={[
-              { value: 'no', label: 'No, one combined income' },
-              { value: 'yes', label: 'Yes' },
-            ]}
-            hint={
-              spouse
-                ? 'Payroll tax, Social Security and the IRS contribution limit are figured per person, with a spousal benefit when it is larger. The Roth comparison looks at the year the last of you retires; each of you saves until your own retirement.'
-                : 'With one combined income, payroll tax and Social Security treat the household as one earner.'
-            }
+        <div className="field-row">
+          <SelectInput
+            label="Filing status"
+            value={values.filingStatus}
+            onChange={(value) => onUpdate((v) => ({ ...v, filingStatus: value }))}
+            options={toOptions(FILING_STATUSES)}
           />
+          {values.filingStatus === 'mfj' && (
+            <RadioGroup
+              legend="Enter your spouse separately?"
+              name={`${formId}-includeSpouse`}
+              value={values.includeSpouse}
+              onChange={(value) => onUpdate((v) => setIncludeSpouse(v, value === 'yes'))}
+              options={[
+                { value: 'no', label: 'No, one combined income' },
+                { value: 'yes', label: 'Yes' },
+              ]}
+            />
+          )}
+        </div>
+        {values.filingStatus === 'mfj' && (
+          <p className="hint">
+            {spouse
+              ? 'Payroll tax, Social Security and the IRS contribution limit are figured per person, with a spousal benefit when it is larger. The Roth comparison looks at the year the last of you retires; each of you saves until your own retirement.'
+              : 'With one combined income, payroll tax and Social Security treat the household as one earner.'}
+          </p>
         )}
-      </>
-    ),
-
-    people: () => (
-      <>
-      <div className="people-grid">
-        {people.map((p) => (
-          <fieldset key={p.id} className="person-column">
-            <legend>{OWNER_LABELS[p.id]}</legend>
-            {personFields.has('age') && (
-              <div className="field-row">
-                <AgeInput label="Age" value={p.age} onChange={setPerson(p.id, 'age')} />
-                <TextField
-                  label="or birthdate"
-                  type="date"
-                  value={p.birthDate}
-                  onChange={setPerson(p.id, 'birthDate')}
-                />
-              </div>
-            )}
-            {personFields.has('sex') && (
-              <SelectInput
-                label="Biological sex"
-                hint="Used only for life expectancy (SSA's period life table): the pension calculator, and from phase 2 the plan."
-                value={p.sex}
-                onChange={setPerson(p.id, 'sex')}
-                options={SEX_OPTIONS}
-              />
-            )}
-            {(personFields.has('retirementAge') || personFields.has('planToAge')) && (
-              <div className="field-row">
-                {personFields.has('retirementAge') && (
-                  <AgeInput label="Retirement age" value={p.retirementAge} onChange={setPerson(p.id, 'retirementAge')} />
-                )}
-                {personFields.has('planToAge') && (
-                  <AgeInput label="Plan to age" value={p.planToAge} onChange={setPerson(p.id, 'planToAge')} />
-                )}
-              </div>
-            )}
-            {personFields.has('socialSecurity') && (
-              <>
+        <div className={spouse ? 'people-grid' : 'people-grid one'}>
+          {people.map((p) => (
+            <fieldset key={p.id} className="person-column">
+              <legend>{OWNER_LABELS[p.id]}</legend>
+              {personFields.has('age') && (
+                <div className="field-row">
+                  <AgeInput label="Age" value={p.age} onChange={setPerson(p.id, 'age')} />
+                  <TextField label="or birthdate" type="date" value={p.birthDate} onChange={setPerson(p.id, 'birthDate')} />
+                </div>
+              )}
+              {(personFields.has('retirementAge') || personFields.has('planToAge')) && (
+                <div className="field-row">
+                  {personFields.has('retirementAge') && (
+                    <AgeInput label="Retirement age" value={p.retirementAge} onChange={setPerson(p.id, 'retirementAge')} />
+                  )}
+                  {personFields.has('planToAge') && (
+                    <AgeInput label="Plan to age" value={p.planToAge} onChange={setPerson(p.id, 'planToAge')} />
+                  )}
+                </div>
+              )}
+              {personFields.has('sex') && (
                 <SelectInput
-                  label="Social Security"
-                  value={p.socialSecurity.mode}
-                  onChange={setPerson(p.id, 'socialSecurity.mode')}
-                  options={SS_MODE_OPTIONS}
+                  label="Biological sex"
+                  hint="Used only for life expectancy (SSA's period life table): the pension calculator, and from phase 2 the plan."
+                  value={p.sex}
+                  onChange={setPerson(p.id, 'sex')}
+                  options={SEX_OPTIONS}
                 />
-                {p.socialSecurity.mode === 'pia' && (
-                  <CurrencyInput
-                    label="Monthly benefit at full retirement age (PIA)"
-                    hint="From the SSA statement, in today's dollars. The benefit at the claiming age, and any spousal benefit, are worked out from it."
-                    value={p.socialSecurity.pia}
-                    onChange={setPerson(p.id, 'socialSecurity.pia')}
-                  />
-                )}
-                <SelectInput
-                  label="Claim at"
-                  value={p.socialSecurity.claimAge}
-                  onChange={setPerson(p.id, 'socialSecurity.claimAge')}
-                  options={CLAIM_AGE_OPTIONS}
-                />
-              </>
-            )}
-          </fieldset>
-        ))}
-      </div>
-      {personFields.has('planToAge') && (
-        <p className="hint">Plan-to age and biological sex are used from the survivor-years phase on.</p>
-      )}
+              )}
+            </fieldset>
+          ))}
+        </div>
+        {personFields.has('planToAge') && (
+          <p className="hint">The projection runs until {spouse ? 'the last of you reaches their' : 'you reach your'} plan-to age.</p>
+        )}
       </>
     ),
 
     income: () => {
       const rows = values.incomes.filter((r) => people.some((p) => p.id === r.owner));
+      const fieldsFor = (r) => {
+        if (r.type === 'socialSecurity') {
+          return (
+            <>
+              <SelectInput label="Benefit" value={r.ssMode} onChange={setRow('incomes', r.id, 'ssMode')} options={SS_MODE_OPTIONS} />
+              {r.ssMode === 'pia' && (
+                <CurrencyInput
+                  label="Monthly benefit at full retirement age (PIA)"
+                  hint="From the SSA statement, in today's dollars. The benefit at the claiming age, and any spousal benefit, are worked out from it."
+                  value={r.amount}
+                  onChange={setRow('incomes', r.id, 'amount')}
+                />
+              )}
+              <SelectInput label="Claim at" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} options={CLAIM_AGE_OPTIONS} />
+            </>
+          );
+        }
+        if (r.type === 'pension') {
+          return (
+            <>
+              <div className="field-row">
+                <CurrencyInput label="Monthly benefit" hint="As the plan states it, at the start." value={r.amount} onChange={setRow('incomes', r.id, 'amount')} />
+                <AgeInput label="Starts at age" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} />
+              </div>
+              <div className="field-row">
+                <SelectInput label="Cost-of-living increase" value={r.cola} onChange={setRow('incomes', r.id, 'cola')} options={COLA_OPTIONS} />
+                {spouse && (
+                  <SelectInput
+                    label="Survivor benefit"
+                    hint="The share the other spouse keeps (used from the survivor-years phase on)."
+                    value={r.survivorShare}
+                    onChange={setRow('incomes', r.id, 'survivorShare')}
+                    options={SURVIVOR_OPTIONS}
+                  />
+                )}
+              </div>
+            </>
+          );
+        }
+        return (
+          <>
+            {r.type === 'other' && (
+              <SelectInput label="Kind" value={r.treatment} onChange={setRow('incomes', r.id, 'treatment')} options={labelOptions(OTHER_KIND_LABELS)} />
+            )}
+            <CurrencyInput label="Amount (annual)" value={r.amount} onChange={setRow('incomes', r.id, 'amount')} />
+            <div className="field-row">
+              <AgeInput label="First age" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} />
+              <AgeInput label="Last age" value={r.toAge} onChange={setRow('incomes', r.id, 'toAge')} />
+            </div>
+          </>
+        );
+      };
       return (
         <>
           <p className="hint">
-            One row per source, a year at a time. Ages are the first and last ages it is received, both
-            included; blank = from now, and until retirement.
+            One row per source. Earnings and other income are yearly; ages are the first and last ages
+            it is received, both included (blank = from now, and until retirement). Social Security (one
+            row each; without one, no benefit of their own) and pensions are monthly.
           </p>
           <ul className="account-list">
             {rows.map((r, i) => (
               <li key={r.id} className="account-row">
                 <div className="field-row">
-                  <SelectInput
-                    label="Type"
-                    value={r.type}
-                    onChange={setRow('incomes', r.id, 'type')}
-                    options={labelOptions(INCOME_TYPE_LABELS, BASIC_INCOME_TYPES.includes(r.type) ? BASIC_INCOME_TYPES : [...BASIC_INCOME_TYPES, r.type])}
-                  />
+                  <SelectInput label="Type" value={r.type} onChange={setIncomeType(r)} options={labelOptions(INCOME_TYPE_LABELS)} />
                   {ownerSelect('incomes', r)}
                 </div>
-                {r.type === 'other' && (
-                  <SelectInput
-                    label="Taxed as"
-                    value={r.treatment}
-                    onChange={setRow('incomes', r.id, 'treatment')}
-                    options={labelOptions(INCOME_TREATMENT_LABELS)}
-                  />
-                )}
-                <CurrencyInput label="Amount (annual)" value={r.amount} onChange={setRow('incomes', r.id, 'amount')} />
-                <div className="field-row">
-                  <AgeInput label="First age" value={r.fromAge} onChange={setRow('incomes', r.id, 'fromAge')} />
-                  <AgeInput label="Last age" value={r.toAge} onChange={setRow('incomes', r.id, 'toAge')} />
-                </div>
+                {fieldsFor(r)}
                 {removeButton('incomes', r, i, 'income')}
               </li>
             ))}
           </ul>
-          <div className="row-actions">
-            <button type="button" className="link-button" onClick={() => add('incomes')}>
-              + Add income
-            </button>
-            <label className="add-other">
-              <span className="sr-only">Add other income types</span>
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) add('incomes', { type: e.target.value });
-                }}
-              >
-                <option value="">+ Add other income types…</option>
-                {OTHER_INCOME_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {INCOME_TYPE_LABELS[t]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <button type="button" className="link-button" onClick={() => add('incomes')}>
+            + Add income
+          </button>
         </>
       );
     },
@@ -306,9 +336,9 @@ export default function HouseholdInputs({
       return (
         <>
           <p className="hint">
-            What is saved each year, or being considered: the Future Contributions. Over the IRS limit
-            the excess goes to a taxable account. For now each person&rsquo;s Roth and Pre-tax rows need
-            one type and one account type.
+            What is saved each year, or being considered (the Roth page calls these the Future
+            Contributions). Over the IRS limit the excess goes to a taxable account. For now each
+            person&rsquo;s Roth and Pre-tax rows need one type and one account type.
           </p>
           <ul className="account-list">
             {rows.map((r, i) => (
@@ -345,8 +375,8 @@ export default function HouseholdInputs({
     accounts: () => (
       <>
         <p className="hint">
-          What is already saved today, one row per account (or per group of accounts). Future
-          Contributions are kept separate.
+          What is already saved today, one row per account (or per group of accounts). Contributions
+          are kept separate.
         </p>
         <ul className="account-list">
           {values.accounts.map((a, i) => (
@@ -559,33 +589,18 @@ export default function HouseholdInputs({
               hint="A deduction that crosses a bracket edge saves the higher rate only on the part above the edge: $10,000 into the 22% bracket, a $20,000 deduction saves 22% on $10,000 and 12% on the rest, about 17%."
             />
           )}
+          {shown('strategy') && strategySelect()}
+          {shown('heirTaxRate') && heirSelect()}
         </>
       );
     },
 
-    projection: () => {
-      const p = values.calculators.projection;
-      const set = (field) => setGroup('calculators.projection', field);
-      return (
-        <>
-          <AgeInput label="Project to age" value={p.endAge} onChange={set('endAge')} />
-          <SelectInput
-            label="Withdrawal strategy in retirement"
-            hint="Which accounts pay for spending each year. RMDs are always taken first. Conversions move Pre-tax money to Roth before RMDs start, taxed that year."
-            value={p.strategy}
-            onChange={set('strategy')}
-            options={STRATEGIES.map((s) => ({ value: s.id, label: s.label }))}
-          />
-          <SelectInput
-            label="Tax rate for heirs on inherited Pre-tax money"
-            hint="Used only for the after-tax ending balance."
-            value={p.heirTaxRate}
-            onChange={set('heirTaxRate')}
-            options={['0', '0.12', '0.22', '0.24', '0.32', '0.35'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%` }))}
-          />
-        </>
-      );
-    },
+    projection: () => (
+      <>
+        {strategySelect()}
+        {heirSelect()}
+      </>
+    ),
 
     conversion: () => (
       <CurrencyInput
@@ -597,33 +612,39 @@ export default function HouseholdInputs({
     ),
 
     pension: () => {
-      const p = values.calculators.pension;
-      const set = (field) => setGroup('calculators.pension', field);
+      const row = values.incomes.find((r) => r.type === 'pension' && people.some((p) => p.id === r.owner));
       return (
         <>
-          <CurrencyInput label="Lump sum offered" value={p.lumpSum} onChange={set('lumpSum')} />
-          <CurrencyInput label="Monthly benefit" value={p.monthly} onChange={set('monthly')} />
-          <AgeInput label="Payments start at age" value={p.startAge} onChange={set('startAge')} />
-          <SelectInput
-            label="Cost-of-living increase each year"
-            value={p.cola}
-            onChange={set('cola')}
-            options={['0', '0.01', '0.02', '0.025', '0.03'].map((v) => ({ value: v, label: v === '0' ? 'None' : `${Number(v) * 100}%` }))}
+          <CurrencyInput
+            label="Lump sum offered"
+            value={values.calculators.pension.lumpSum}
+            onChange={setGroup('calculators.pension', 'lumpSum')}
           />
-          {spouse && (
+          {row ? (
             <>
-              <SelectInput
-                label="Survivor benefit for your spouse"
-                hint="The share of the benefit your spouse keeps after you."
-                value={p.survivorShare}
-                onChange={set('survivorShare')}
-                options={[
-                  { value: '0', label: 'None' },
-                  { value: '0.5', label: '50%' },
-                  { value: '0.75', label: '75%' },
-                  { value: '1', label: '100%' },
-                ]}
-              />
+              <p className="hint">The pension itself is an income row: changing it here changes it everywhere.</p>
+              {spouse && <div className="field-row">{ownerSelect('incomes', row)}</div>}
+              <div className="field-row">
+                <CurrencyInput label="Monthly benefit" value={row.amount} onChange={setRow('incomes', row.id, 'amount')} />
+                <AgeInput label="Starts at age" value={row.fromAge} onChange={setRow('incomes', row.id, 'fromAge')} />
+              </div>
+              <SelectInput label="Cost-of-living increase each year" value={row.cola} onChange={setRow('incomes', row.id, 'cola')} options={COLA_OPTIONS} />
+              {spouse && (
+                <SelectInput
+                  label="Survivor benefit for the spouse"
+                  hint="The share of the benefit the other spouse keeps."
+                  value={row.survivorShare}
+                  onChange={setRow('incomes', row.id, 'survivorShare')}
+                  options={SURVIVOR_OPTIONS}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <p className="hint">The household has no pension yet. Add one to compare it with the lump sum; it joins the income rows.</p>
+              <button type="button" className="button secondary" onClick={() => add('incomes', { type: 'pension', ...NEW_PENSION })}>
+                Add a pension
+              </button>
             </>
           )}
         </>
@@ -638,7 +659,7 @@ export default function HouseholdInputs({
         key={sec.id}
         variant={layout === 'page' ? 'card' : 'row'}
         className={`inputs-${sec.id}`}
-        title={sec.title}
+        title={titles[sec.id] ?? sec.title}
         summary={sec.summary(values)}
         changed={Boolean(baseValues) && sectionChanged(sec.id, baseValues, values)}
         open={open.has(sec.id)}
@@ -680,7 +701,18 @@ export default function HouseholdInputs({
       <form className="household-inputs-page" onSubmit={(e) => e.preventDefault()} noValidate>
         {head}
         {lockedNote}
-        <div className="inputs-blocks">{sections.map(section)}</div>
+        {groups ? (
+          groups.map((g) => (
+            <section key={g.id} className="inputs-group" aria-labelledby={`${formId}-${g.id}`}>
+              <h2 id={`${formId}-${g.id}`} className="inputs-group-title">
+                {g.title}
+              </h2>
+              <div className="inputs-blocks">{inputSections(g.sections).map(section)}</div>
+            </section>
+          ))
+        ) : (
+          <div className="inputs-blocks">{sections.map(section)}</div>
+        )}
         {footer && <div className="card">{footer}</div>}
       </form>
     );

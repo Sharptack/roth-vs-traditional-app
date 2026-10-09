@@ -127,9 +127,13 @@ export function pensionOnLifeTable({ lumpSum, monthly, startAge, cola = 0, survi
 }
 
 // The calculator's inputs from the household (ages from the shared inputs; the rest its own).
+// The pension's owner is "you" here, the other person the spouse (calculators.pension.owner;
+// person 1 when not given).
 export function householdToPensionInputs(household) {
   const own = household.calculators?.pension ?? {};
-  const [p1, p2] = household.people;
+  const owner = household.people.find((p) => p.id === own.owner) ?? household.people[0];
+  const p1 = owner;
+  const p2 = household.people.find((p) => p !== owner);
   const startAge = own.startAge;
   const yearsUntilStart = startAge - (household.year - p1.birthYear);
   return {
