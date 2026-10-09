@@ -2371,6 +2371,61 @@ th.win .th-sub {
   margin: 0;
 }
 
+/* the tax page: "(also called the effective tax rate)" under the average tax rate's label */
+.stat-note {
+  font-size: 0.78rem;
+  color: var(--dim);
+  margin-top: -2px;
+}
+
+/* AGI and the tax paid, under the three rates */
+.tax-totals {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.tax-totals > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.tax-totals strong {
+  font-size: 1.15rem;
+}
+
+.tax-totals .tax-total {
+  margin-left: auto;
+}
+
+.tax-totals .tax-total strong {
+  color: var(--accent);
+}
+
+/* the IRMAA key under the tax page's buckets */
+.rb-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+}
+
+.rb-key-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 0;
+  border-top: 2px solid #c62828;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
 .contribution-notes h2 {
   font-size: 1.05rem;
   margin-bottom: 6px;

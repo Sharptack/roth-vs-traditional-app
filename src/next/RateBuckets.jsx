@@ -4,7 +4,8 @@
 // sheltered part grey, the room left in today's bracket marked. Right, the effective marginal rate
 // (EMTR) bucket:
 // the real tax on the next dollar at each level, labelled where it changes, with IRMAA cliffs as
-// lines. A switch shows the next dollar as ordinary income or as capital gains. Renders
+// plain lines and a key under the chart with each cliff's amount (decided 2026-10-09). A switch
+// shows the next dollar as ordinary income or as capital gains. Renders
 // lib/rateProfile.js; no math of its own.
 import { useMemo, useState } from 'react';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
@@ -88,11 +89,10 @@ export default function RateBuckets({ params, irmaa, ages }) {
     }
   });
 
-  // The right margin: the next dollar first, then each IRMAA cliff, then effective-rate labels that
-  // run past the bucket.
+  // The right margin: the next dollar first, then effective-rate labels that run past the bucket
+  // (the IRMAA cliffs are in the key below the chart).
   const margin = spread([
     { key: 'next', y: y(today) - 6, text: `next dollar: ${pct(profile.now.nextRate)}`, className: 'rb-label rb-strong' },
-    ...cliffs.map((c) => ({ key: `c${c.income}`, y: y(c.income + step) + 4, text: `IRMAA +${$(c.irmaaJump)}/yr`, className: 'rb-label rb-cliff-text' })),
     ...labels.filter((l) => l.x >= RX + BW).map((l) => ({ key: `el${l.y}`, y: l.y + 4, text: `${pct(l.value)}${l.value > MAX_RATE ? ' ›' : ''}`, className: 'rb-label rb-eff' })),
   ]);
   const inside = labels.filter((l) => l.x < RX + BW);
@@ -192,12 +192,25 @@ export default function RateBuckets({ params, irmaa, ages }) {
           Width = tax rate (a full bucket is {pct(MAX_RATE, 0)}). Below today&rsquo;s line: your income as it is; above it: more {source === 'preferentialIncome' ? 'capital gains' : 'ordinary income'}.
         </text>
       </svg>
+      {cliffs.length > 0 && (
+        <p className="rb-key">
+          <span>
+            <span className="rb-key-swatch" aria-hidden="true" />
+            Medicare IRMAA tiers:
+          </span>
+          {cliffs.map((c, i) => (
+            <span key={`k${c.income}`} className="dim">
+              above {$(c.income + step)}: +{$(c.irmaaJump)} a year{i < cliffs.length - 1 ? ';' : ''}
+            </span>
+          ))}
+        </p>
+      )}
       <figcaption className="hint">
         The left bucket is the bracket (the marginal rate). The right one is the effective marginal rate: what the next dollar
         really costs in federal income tax, counting
         everything it sets off: Social Security made taxable, gains pushed out of the 0% rate, deductions phasing out, the Net
-        Investment Income Tax. Red lines are Medicare IRMAA cliffs: one dollar over raises the premium two years later by the
-        amount shown. Payroll tax is in the calculation below.
+        Investment Income Tax. Red lines are Medicare IRMAA tiers: one dollar over raises the premium two years later by the
+        amount in the key. Payroll tax is in the calculation above.
       </figcaption>
     </figure>
   );

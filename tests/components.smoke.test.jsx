@@ -1391,3 +1391,21 @@ describe('The rest of the household in the projection (phase 2 step f)', () => {
     expect(html).toContain('Income above what is needed');
   });
 });
+
+describe('The tax page (2026-10-09)', () => {
+  it('AGI and the tax paid under the rates, the calculation above the chart, IRMAA tiers in a key', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D, setPersonField } = await import('../src/lib/householdValues.js');
+    const values = setPersonField(D, 'p1', 'age', '64', '2026-10-09');
+    const html = renderToStaticMarkup(<NextApp initialPage="tax" initialValues={values} client={null} />);
+    expect(html).toContain('<div class="stat-note">(also called the effective tax rate)</div>');
+    // by hand, single, 2026: AGI 100,000 − 10,000 Pre-tax deferral = 90,000; taxable 90,000 − 16,100 =
+    // 73,900; tax 10% × 12,400 + 12% × 38,000 + 22% × 23,500 = 1,240 + 4,560 + 5,170 = 10,970;
+    // payroll 7.65% × 100,000 = 7,650; total 18,620
+    expect(html).toContain('Adjusted gross income (AGI)</span><strong>$90,000</strong>');
+    expect(html).toContain('Total tax paid</span><strong>$18,620</strong>');
+    expect(html.indexOf('>The calculation<')).toBeLessThan(html.indexOf('>Tax bracket visual<'));
+    expect(html).toContain('Medicare IRMAA tiers:');
+    expect(html).not.toContain('IRMAA +$'); // no longer labelled on the chart
+  });
+});

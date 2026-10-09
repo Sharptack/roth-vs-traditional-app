@@ -1,7 +1,7 @@
 // The tax calculator's results (roadmap phase 2), as blocks: the marginal rate, the effective marginal
-// rate (EMTR) and the average tax rate, the other
-// sources' marginal rates, the "fill up the bracket" bar, IRMAA, and the full calculation. Renders
-// lib/taxCalculator.js's taxCalculatorResult; no math of its own.
+// rate (EMTR) and the average tax rate with AGI and the total tax under them; the full calculation
+// (above the chart, decided 2026-10-09); the two buckets; the other sources' marginal rates; IRMAA.
+// Renders lib/taxCalculator.js's taxCalculatorResult; no math of its own.
 import { useMemo } from 'react';
 import { taxHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
@@ -162,15 +162,51 @@ export default function TaxResult({ tax }) {
               </div>
               <div className="rate-pair-item">
                 <div className="stat-label">Average tax rate</div>
+                <div className="stat-note">(also called the effective tax rate)</div>
                 <div className="stat-value">{pct(r.effectiveRate)}</div>
                 <div className="stat-sub">
                   {$(r.incomeTax)} income tax ÷ {$(r.lines.grossIncome)} total income
                   {hasPayroll && <>; {pct(r.effectiveRateWithPayroll)} with {$(r.payrollTax)} payroll tax</>}
                 </div>
               </div>
+              <div className="tax-totals">
+                <div>
+                  <span className="stat-label">Adjusted gross income (AGI)</span>
+                  <strong>{$(r.lines.agi)}</strong>
+                </div>
+                <div>
+                  <span className="stat-label">Taxable income</span>
+                  <strong>{$(r.lines.taxableIncome)}</strong>
+                </div>
+                <div>
+                  <span className="stat-label">Federal income tax</span>
+                  <strong>{$(r.incomeTax)}</strong>
+                </div>
+                {hasPayroll && (
+                  <div>
+                    <span className="stat-label">Payroll tax</span>
+                    <strong>{$(r.payrollTax)}</strong>
+                  </div>
+                )}
+                <div className="tax-total">
+                  <span className="stat-label">Total tax paid</span>
+                  <strong>{$(r.totalTax)}</strong>
+                </div>
+              </div>
               <p className="hint tax-rate-link">
                 <a href={docsHash('rates')}>What these three rates mean &rarr;</a>
               </p>
+            </div>
+          ),
+        },
+        {
+          id: 'calculation',
+          title: 'The calculation',
+          summary: h.calculation,
+          closed: true,
+          content: (
+            <div className="calc">
+              <CalculationRows rows={rows} />
             </div>
           ),
         },
@@ -231,17 +267,6 @@ export default function TaxResult({ tax }) {
                 cliff: one dollar over the line costs the whole step.
               </p>
             </>
-          ),
-        },
-        {
-          id: 'calculation',
-          title: 'The calculation',
-          summary: h.calculation,
-          closed: true,
-          content: (
-            <div className="calc">
-              <CalculationRows rows={rows} />
-            </div>
           ),
         },
       ]}
