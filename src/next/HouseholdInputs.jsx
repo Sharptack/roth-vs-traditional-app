@@ -611,6 +611,22 @@ export default function HouseholdInputs({
               options={['0.6', '0.7', '0.75', '0.8', '0.9', '1'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}% of the couple's` }))}
             />
           )}
+          {shown('dividendYield') && (
+            <SelectInput
+              label="Dividends on taxable accounts"
+              hint="Qualified dividends a taxable account pays each year, as part of the return (stock funds; a broad stock index fund pays about 1.3%). They are taxed every year, not only when sold: while working the account pays the tax and reinvests the rest; in retirement the year's withdrawals cover it. Used by the Roth comparison and the projection."
+              value={a.dividendYield}
+              onChange={set('dividendYield')}
+              options={[
+                { value: '0', label: 'None' },
+                { value: '0.01', label: '1%' },
+                { value: '0.013', label: '1.3% (broad stock index fund)' },
+                { value: '0.015', label: '1.5%' },
+                { value: '0.02', label: '2%' },
+                { value: '0.03', label: '3%' },
+              ]}
+            />
+          )}
           {shown('strategy') && strategySelect()}
           {shown('heirTaxRate') && heirSelect()}
         </>

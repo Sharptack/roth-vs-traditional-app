@@ -96,7 +96,7 @@ What is already saved today: one row per account, or per group of accounts, with
 
 - **Pre-tax** (traditional 401(k), IRA): withdrawals are taxed as ordinary income, and required minimum distributions apply.
 - **Roth:** withdrawals are tax-free.
-- **Taxable** (a brokerage account): set its **cost basis**, the share of today's balance that is money put in rather than gains (50% by default). Only gains are taxed when money comes out, at the capital-gains rates; everything the account earns from here on is gain.
+- **Taxable** (a brokerage account): set its **cost basis**, the share of today's balance that is money put in rather than gains (50% by default). Only gains are taxed when money comes out, at the capital-gains rates. The account also pays dividends every year (**Dividends on taxable accounts** in Assumptions), which are taxed in the year they are paid; reinvested, they add to the cost basis. Everything else the account earns from here on is gain.
 
 When the spouse isn't entered separately, accounts marked as theirs count as yours.
 
@@ -127,6 +127,7 @@ Together they set the **retirement income number**, the after-tax income the hou
 - **Tax a Pre-tax contribution saves today:** across the whole contribution (a deduction that crosses a bracket edge saves the higher rate only on the part above it), or at the marginal rate.
 
 - **Spending after the first death** (a couple only): the survivor's spending as a share of the couple's, 80% by default (see Survivor years).
+- **Dividends on taxable accounts:** the qualified dividends a taxable account pays each year, as a share of its balance, 1.3% by default (about what a broad stock index fund pays). They are part of the expected return, not added to it, and they are taxed every year rather than only when shares are sold, at the capital-gains rates (plus the Net Investment Income Tax at higher incomes). This "tax drag" is why a taxable account grows more slowly than a Roth or Pre-tax account at the same return. While anyone in the household works, the account pays the tax out of the dividends and reinvests the rest. In retirement the year's withdrawals cover the tax, and the dividends count toward Social Security taxability, MAGI and IRMAA. The Roth comparison taxes them while saving at today's rate on the next dollar of dividends, and treats the dividends inside each retirement withdrawal as fully taxable. Stock funds only for now: bond interest, taxed as ordinary income, comes with a later setting for the portfolio's mix.
 - **Withdrawal strategy in retirement:** which accounts pay for spending each year (and any Roth conversions), in the projection and the Roth page's lifetime comparison.
 - **Tax rate for heirs** on inherited Pre-tax money, used only for the after-tax ending balance.
 

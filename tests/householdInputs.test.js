@@ -74,6 +74,8 @@ describe('the version 2 inputs: section summaries', () => {
 
     v = setGroupField(setGroupField(D, 'assumptions', 'retirementRateShift', '-0.02'), 'assumptions', 'medicareIrmaa', 'no');
     expect(summary('assumptions', v)).toBe('7% return after inflation · 2.5% inflation · rates −2 pts in retirement · no IRMAA · proportional (every account alike) in retirement · heirs taxed at 24%');
+    expect(summary('assumptions', { ...v, assumptions: { ...v.assumptions, dividendYield: '0.02' } })).toContain('no IRMAA · 2% dividends · proportional');
+    expect(summary('assumptions', { ...v, assumptions: { ...v.assumptions, dividendYield: '0' } })).toContain('no IRMAA · no dividends · proportional');
   });
 
   it('adds up accounts by type (blank balances count as 0)', () => {

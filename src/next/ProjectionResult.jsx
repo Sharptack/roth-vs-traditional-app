@@ -39,6 +39,7 @@ const COLUMNS = [
   { key: 'wRoth', label: 'From Roth', value: (r) => r.withdrawals.roth },
   { key: 'contributed', label: 'Contributed', value: (r) => r.contributions.total },
   { key: 'converted', label: 'Converted to Roth', value: (r) => r.conversions },
+  { key: 'dividends', label: 'Dividends (taxable accounts)', value: (r) => r.dividends ?? 0 },
   { key: 'taxableSS', label: 'Taxable SS', value: (r) => r.taxableSocialSecurity },
   { key: 'incomeTax', label: 'Income tax', value: (r) => r.incomeTax, key1: true },
   { key: 'payroll', label: 'Payroll tax', value: (r) => r.payrollTax },

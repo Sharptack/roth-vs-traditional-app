@@ -1300,3 +1300,23 @@ describe('Survivor years on the projection page (phase 2)', () => {
     expect(single).not.toContain('Spending after the first death');
   });
 });
+
+describe('Tax drag (phase 2)', () => {
+  it('the dividends input in Assumptions, and the year table’s dividends', async () => {
+    const { default: ProjectionResult } = await import('../src/next/ProjectionResult.jsx');
+    const { default: HouseholdInputs } = await import('../src/next/HouseholdInputs.jsx');
+    const { previewResult } = await import('../src/next/NextApp.jsx');
+    const { projectionView } = await import('../src/lib/projectionSummary.js');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const inputs = renderToStaticMarkup(<HouseholdInputs values={D} onUpdate={() => {}} sections={['assumptions']} defaultOpen={['assumptions']} />);
+    expect(inputs).toContain('Dividends on taxable accounts');
+    expect(inputs).toContain('1.3% (broad stock index fund)');
+    // a taxable account: its dividends show in the year table (behind "Show all columns")
+    const values = { ...D, accounts: [{ ...D.accounts[0], type: 'taxable', basisShare: '0.5' }] };
+    const { household, result } = previewResult(values, 2026);
+    const view = projectionView(household, result.retirementNeed.target);
+    expect(view.rows[0].dividends).toBeCloseTo(1300, 6); // 1.3% of $100,000 while working
+    expect(view.rows[0].dividendTaxFromAccounts).toBeCloseTo(195, 6); // at 15%
+    expect(renderToStaticMarkup(<ProjectionResult view={view} />)).not.toMatch(/NaN|Infinity/);
+  });
+});
