@@ -20,7 +20,7 @@ import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 import { householdValuesV2FromSearch } from '../lib/householdLink.js';
 import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/householdInputs.js';
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
-import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, isoDate, refreshAges } from '../lib/householdValues.js';
+import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, isoDate, refreshAges, updateRow } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
@@ -488,6 +488,16 @@ export default function NextApp({ initialPage, initialValues, client }) {
                 <PensionResult
                   pension={pension}
                   inputs={pensionInputs}
+                  election={h.calculators.pension?.election}
+                  onElect={
+                    locked
+                      ? undefined
+                      : (election) =>
+                          setValues((v) => {
+                            const row = v.incomes.find((r) => r.type === 'pension' && activePeople(v).some((p) => p.id === r.owner));
+                            return row ? updateRow(v, 'incomes', row.id, 'election', election) : v;
+                          })
+                  }
                   realReturn={realReturn}
                   inflation={inflation}
                   nominalReturn={(1 + realReturn) * (1 + inflation) - 1}

@@ -10,8 +10,9 @@ const pct = (r) => (r === null ? '—' : formatPercent(r, 1));
 const age = (a) => (a === null ? 'never' : `${Math.floor(a)}${a % 1 > 0.001 ? ` and ${Math.round((a % 1) * 12)} months` : ''}`);
 
 // nominalReturn: the household's assumed return with inflation added back (the pension's payments
-// are in the dollars of the day they're paid).
-export default function PensionResult({ pension: p, inputs, nominalReturn, realReturn, inflation }) {
+// are in the dollars of the day they're paid). election: which one the plan takes ('monthly' |
+// 'lumpSum'); onElect(election): switch it (decided 2026-10-09; absent: view only).
+export default function PensionResult({ pension: p, inputs, nominalReturn, realReturn, inflation, election = 'monthly', onElect }) {
   if (!p) {
     return (
       <section className="card">
@@ -26,6 +27,30 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
   const table = (sex) => (sex === 'male' ? 'men' : sex === 'female' ? 'women' : 'men and women averaged');
   const endAt = (age, years) => Math.round(age + years);
   const h = pensionHeadlines(p, inputs, nominalReturn);
+  const lump = election === 'lumpSum';
+  const inPlan = (
+    <>
+      <p>
+        {lump ? (
+          <>
+            The plan takes the <strong>{$(inputs.lumpSum)} lump sum</strong>, rolled over to a Pre-tax IRA at {inputs.startAge}{' '}
+            (today, if that has passed); the monthly benefit is left out of every calculator.
+          </>
+        ) : (
+          <>
+            The plan takes the <strong>{$(inputs.monthly)} monthly benefit</strong> from {inputs.startAge}, counted as income in every
+            calculator.
+          </>
+        )}
+      </p>
+      {onElect && (
+        <button type="button" className="button secondary" onClick={() => onElect(lump ? 'monthly' : 'lumpSum')} disabled={!lump && !(inputs.lumpSum > 0)}>
+          {lump ? 'Use the monthly benefit in the plan' : 'Use the lump sum in the plan'}
+        </button>
+      )}
+      <p className="hint">The projection and the other calculators follow the choice; the comparison above is the same either way.</p>
+    </>
+  );
   const rate = (
       <>
         <div className="hero">
@@ -98,6 +123,7 @@ export default function PensionResult({ pension: p, inputs, nominalReturn, realR
       blocks={[
         { id: 'irr', title: 'The pension’s rate of return', summary: h.irr, className: 'key-card', content: rate },
         p.byEndAge.length > 0 && { id: 'ages', title: 'How long you live decides it', summary: h.ages, content: ages },
+        { id: 'plan', title: 'In the plan', summary: lump ? 'The lump sum, rolled over to a Pre-tax IRA' : 'The monthly benefit', content: inPlan },
       ]}
       disclaimer="Estimates only — not tax or financial advice. Tax is left out: both are taxed alike (the lump sum rolled into a Pre-tax account, the pension as ordinary income). Life expectancy from SSA’s Period Life Table, 2023 (2026 Trustees Report). Not modeled: the plan’s own solvency and PBGC limits."
     />

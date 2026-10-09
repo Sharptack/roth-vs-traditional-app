@@ -40,7 +40,7 @@ describe('the version 2 inputs: section summaries', () => {
     expect(summary('conversion', D)).toBe('Convert $50,000 this year');
     expect(summary('pension', D)).toBe('No pension yet');
     const withPension = addRow(D, 'incomes', { type: 'pension', amount: '1800', fromAge: '65' });
-    expect(summary('pension', withPension)).toBe('$300,000 or $1,800 a month from 65');
+    expect(summary('pension', withPension)).toBe('$300,000 or $1,800 a month from 65 · the plan takes the monthly payments');
     expect(summary('income', withPension)).toBe('W-2 $100,000 · Social Security estimated · Pension $1,800/mo from 65');
     // other income by kind; an entered PIA
     let other = addRow(D, 'incomes', { type: 'other', treatment: 'qualified', amount: '8000' });
@@ -150,5 +150,6 @@ describe('an income row, closed (decided 2026-10-09): its type and amount on one
       'Social Security · $2,500 a month at full retirement age',
     );
     expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', owner: 'p2' }), true)).toBe('Pension · $1,800 a month from 65 · Spouse');
+    expect(incomeRowSummary(row({ type: 'pension', amount: '1800', fromAge: '65', lumpSum: '300000', election: 'lumpSum' }))).toBe('Pension · $300,000 lump sum, rolled over at 65');
   });
 });

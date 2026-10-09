@@ -87,7 +87,9 @@ function incomeSummary(v) {
   const ss = rows
     .filter((r) => r.type === 'socialSecurity')
     .map((r) => `${two ? (r.owner === 'p1' ? 'Your' : "Spouse's") + ' ' : ''}Social Security ${r.ssMode === 'pia' ? `${money(r.amount)}/mo PIA` : 'estimated'}`);
-  const pensions = rows.filter((r) => r.type === 'pension').map((r) => `${whose(r)}pension ${money(r.amount)}/mo from ${r.fromAge || '—'}`);
+  const pensions = rows
+    .filter((r) => r.type === 'pension')
+    .map((r) => (r.election === 'lumpSum' ? `${whose(r)}pension taken as a ${money(r.lumpSum)} lump sum` : `${whose(r)}pension ${money(r.amount)}/mo from ${r.fromAge || '—'}`));
   const parts = [annual === 'None' ? null : annual, ...ss, ...pensions].filter(Boolean);
   return parts.length > 0 ? parts.map((s) => s.replace(/^[a-z]/, (c) => c.toUpperCase())).join(' · ') : 'None';
 }
@@ -98,6 +100,7 @@ export function incomeRowSummary(r, withOwner = false) {
   const type = r.type === 'other' ? `Other: ${OTHER_KIND_LABELS[r.treatment] ?? ''}` : INCOME_TYPE_LABELS[r.type];
   let amount;
   if (r.type === 'socialSecurity') amount = r.ssMode === 'pia' ? `${money(r.amount)} a month at full retirement age` : 'estimated from earnings';
+  else if (r.type === 'pension' && r.election === 'lumpSum') amount = `${money(r.lumpSum)} lump sum, rolled over at ${String(r.fromAge ?? '').trim() || '—'}`;
   else if (r.type === 'pension') amount = `${money(r.amount)} a month${String(r.fromAge ?? '').trim() ? ` from ${r.fromAge}` : ''}`;
   else amount = String(r.amount ?? '').trim() === '' ? 'no amount yet' : `${money(r.amount)} a year`;
   const from = String(r.fromAge ?? '').trim();
@@ -225,9 +228,9 @@ export const INPUT_SECTIONS = [
     title: 'Pension offer',
     summary: (v) => {
       const p = countedRows(v, 'incomes').find((r) => r.type === 'pension');
-      return p
-        ? `${money(v.calculators.pension.lumpSum)} or ${money(p.amount)} a month from ${p.fromAge || '—'}`
-        : 'No pension yet';
+      if (!p) return 'No pension yet';
+      const lump = String(p.lumpSum ?? '').trim() ? p.lumpSum : v.calculators.pension.lumpSum;
+      return `${money(lump)} or ${money(p.amount)} a month from ${p.fromAge || '—'} · the plan takes the ${p.election === 'lumpSum' ? 'lump sum' : 'monthly payments'}`;
     },
   },
 ];

@@ -178,6 +178,35 @@ export default function HouseholdInputs({
     />
   );
 
+  // A pension's lump-sum offer and which one the plan takes (decided 2026-10-09: on the pension row).
+  const pensionChoice = (row) => (
+    <>
+      <div className="field-row">
+        <CurrencyInput
+          label="Lump sum offered"
+          hint="Blank: none offered."
+          value={row.lumpSum ?? ''}
+          onChange={setRow('incomes', row.id, 'lumpSum')}
+        />
+        <SelectInput
+          label="In the plan"
+          value={row.election ?? 'monthly'}
+          onChange={setRow('incomes', row.id, 'election')}
+          options={[
+            { value: 'monthly', label: 'The monthly benefit' },
+            { value: 'lumpSum', label: 'The lump sum' },
+          ]}
+        />
+      </div>
+      {row.election === 'lumpSum' && (
+        <p className="hint">
+          Every calculator leaves the monthly benefit out; the lump sum is rolled over to a Pre-tax IRA at the start age (today,
+          if that has passed).
+        </p>
+      )}
+    </>
+  );
+
   const ownerSelect = (list, row) =>
     spouse && (
       <SelectInput label="Whose" value={row.owner} onChange={setRow(list, row.id, 'owner')} options={labelOptions(OWNER_LABELS)} />
@@ -307,6 +336,7 @@ export default function HouseholdInputs({
                   />
                 )}
               </div>
+              {pensionChoice(r)}
             </>
           );
         }
@@ -780,11 +810,6 @@ export default function HouseholdInputs({
       const row = values.incomes.find((r) => r.type === 'pension' && people.some((p) => p.id === r.owner));
       return (
         <>
-          <CurrencyInput
-            label="Lump sum offered"
-            value={values.calculators.pension.lumpSum}
-            onChange={setGroup('calculators.pension', 'lumpSum')}
-          />
           {row ? (
             <>
               <p className="hint">The pension itself is an income row: changing it here changes it everywhere.</p>
@@ -803,10 +828,14 @@ export default function HouseholdInputs({
                   options={SURVIVOR_OPTIONS}
                 />
               )}
+              {pensionChoice(row)}
             </>
           ) : (
             <>
-              <p className="hint">The household has no pension yet. Add one to compare it with the lump sum; it joins the income rows.</p>
+              <p className="hint">
+                The household has no pension yet. Add one, with its monthly benefit and the lump sum offered instead; it joins the
+                income rows.
+              </p>
               <button type="button" className="button secondary" onClick={() => add('incomes', { type: 'pension', ...NEW_PENSION })}>
                 Add a pension
               </button>

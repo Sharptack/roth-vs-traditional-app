@@ -1015,13 +1015,19 @@ describe('NextApp', () => {
     const pen = renderToStaticMarkup(<NextApp initialPage="pension" />);
     expect(pen).toContain('No pension yet');
     expect(pen).toContain('>Add a pension</button>');
-    expect(pen).toContain('Lump sum offered');
+    // the lump sum is part of the pension (2026-10-09): nothing to fill in before adding one
+    expect(pen).not.toContain('Lump sum offered');
     // With a pension row, the results.
     const { default: PensionResult } = await import('../src/next/PensionResult.jsx');
     const { householdToPensionInputs, pensionResult } = await import('../src/lib/pensionCalculator.js');
     const { DEFAULT_HOUSEHOLD_VALUES, NEW_PENSION, addRow } = await import('../src/lib/householdValues.js');
     const { previewResult } = await import('../src/next/NextApp.jsx');
-    const { household: withPension } = previewResult(addRow(DEFAULT_HOUSEHOLD_VALUES, 'incomes', { type: 'pension', ...NEW_PENSION }), 2026);
+    const pensionValues = addRow(DEFAULT_HOUSEHOLD_VALUES, 'incomes', { type: 'pension', ...NEW_PENSION });
+    const { household: withPension } = previewResult(pensionValues, 2026);
+    const penPage = renderToStaticMarkup(<NextApp initialPage="pension" client={null} initialValues={pensionValues} />);
+    expect(penPage).toContain('Lump sum offered');
+    expect(penPage).toContain('>In the plan<');
+    expect(penPage).toContain('>Use the lump sum in the plan</button>');
     const penInputs = householdToPensionInputs(withPension);
     const penResult = renderToStaticMarkup(
       <PensionResult pension={pensionResult(penInputs)} inputs={penInputs} nominalReturn={0.0975} realReturn={0.07} inflation={0.025} />,
@@ -1047,7 +1053,7 @@ describe('NextApp', () => {
     expect(proj).toMatch(/Peak \$[\d,]+ in \d{4}/);
     expect(blockCount(conv)).toBe(3);
     expect(blockCount(pen)).toBe(0); // no pension: no results
-    expect(blockCount(penResult)).toBe(2);
+    expect(blockCount(penResult)).toBe(3); // with "In the plan"
     // the Roth page: its five cards, the blend explorer, the lifetime comparison and its full table
     expect(blockCount(roth)).toBe(8);
     expect(roth).toContain('>Show full table<');
