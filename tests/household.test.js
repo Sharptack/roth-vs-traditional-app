@@ -382,7 +382,8 @@ describe('toHousehold / householdToCompareInputs', () => {
     it("validates the spouse's ages and the household's structure", () => {
       expect(validateHousehold(toHousehold(values, Y))).toEqual([]);
       const bad = toHousehold({ ...values, spouseAge: '70', spouseRetirementAge: '65' }, Y);
-      expect(validateHousehold(bad)).toContain("Your spouse's retirement age must be after their current age.");
+      // a retirement age at or below the age now: already retired, not an error (decided 2026-10-09)
+      expect(validateHousehold(bad)).toEqual([]);
       const orphan = toHousehold(values, Y);
       orphan.accounts[0].owner = 'p9';
       expect(validateHousehold(orphan)[0]).toMatch(/someone not in the household/);

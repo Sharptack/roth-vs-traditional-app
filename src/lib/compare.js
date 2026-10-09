@@ -203,8 +203,9 @@ export function validateInputs(inputs) {
   }
   if (!isNum(inputs.retirementAge) || inputs.retirementAge > 100) {
     errors.push('Enter your planned retirement age.');
-  } else if (isNum(inputs.currentAge) && inputs.retirementAge <= inputs.currentAge) {
-    errors.push('Retirement age must be after your current age.');
+  } else if (isNum(inputs.currentAge) && inputs.retirementAge < inputs.currentAge) {
+    // (A household already retired comes in at its age now: householdToCompareInputs.)
+    errors.push("Retirement age can't be before your current age.");
   }
   for (const [key, label] of [
     ['debtPayments', 'Debt payments'],

@@ -22,7 +22,7 @@ The projection follows the household from this year to the end of the plan, one 
 
 ## Income over the years
 
-Each income row counts in the years its ages cover. A blank first age means from now. A blank last age means until the owner retires, or for life for a row that starts at or after retirement, such as part-time work or an annuity. Earnings are taxed with payroll tax; rent and annuities as ordinary income; interest and qualified dividends at their own rates; tax-exempt income counts as cash.
+Each income row counts in the years its ages cover. A blank first age means from now. A blank last age means until the owner retires, or for life for a row that starts at or after retirement, such as part-time work or an annuity. For someone already retired, a blank first age is now, so their other income counts for life; earnings with no last age don't count. Earnings are taxed with payroll tax; rent and annuities as ordinary income; interest and qualified dividends at their own rates; tax-exempt income counts as cash.
 
 Before retirement, the household lives on today's paycheck, so income beyond it is extra (see Income above what is needed, below). Earnings that end before retirement are taken as lower spending, not drawn from savings.
 

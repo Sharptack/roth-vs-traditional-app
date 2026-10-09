@@ -22,7 +22,7 @@ Inputs:
 - [ ] The clients card starts collapsed and is renamed "Households".
 - [ ] Accounts collapse to one line like income rows.
 - [ ] The cost basis field lines up on the calculators' input cards.
-- [ ] No "Retirement age must be after your current age" error: a retirement age at or below the current age means already retired (no earnings or contributions from this year, the retirement return, the Roth snapshot today); the age stays as entered (decided 2026-10-09).
+- [x] No "Retirement age must be after your current age" error: a retirement age at or below the current age means already retired (no earnings or contributions from this year, the retirement return, the Roth snapshot today); the age stays as entered (decided 2026-10-09). Follow-ons: this year's earnings and contributions follow the same rule (a 75-year-old's W-2 row with no end age no longer counts in the tax calculator); for someone retired, an Other income row with no ages counts for life; with everyone retired and no earnings, the Roth page says there is nothing to compare.
 - [ ] "a year" in labels becomes "per year".
 
 Roth vs. Pre-tax:

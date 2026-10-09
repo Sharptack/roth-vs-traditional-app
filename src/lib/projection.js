@@ -124,11 +124,15 @@ export function proportionalStrategy({ accounts, rmdByAccount, need, evaluate })
 // Per-person Social Security for the projection: when each part starts, and how much it is.
 // (Also the tax calculator's Social Security this year, socialSecurityInYear.)
 // Whether an income row counts at this age (see the header): a blank last age is until retirement,
-// or for life when the row starts at or after retirement.
-export function incomeRowCounts(row, age, retirementAge) {
-  if (row.fromAge !== null && row.fromAge !== undefined && age < row.fromAge) return false;
+// or for life when the row starts at or after retirement. ageNow: the owner's age this year. For
+// someone already retired (decided 2026-10-09) a blank first age is now, so other income (rent,
+// interest) counts for life; earnings with no last age don't count (they ended at retirement).
+const EARNINGS = ['w2', '1099'];
+export function incomeRowCounts(row, age, retirementAge, ageNow = -Infinity) {
+  const from = row.fromAge ?? null;
+  if (from !== null && age < from) return false;
   if (row.toAge !== null && row.toAge !== undefined) return age <= row.toAge;
-  const startsRetired = row.fromAge !== null && row.fromAge !== undefined && row.fromAge >= retirementAge;
+  const startsRetired = from !== null ? from >= retirementAge : !EARNINGS.includes(row.type) && ageNow >= retirementAge;
   return startsRetired || age < retirementAge;
 }
 
@@ -301,7 +305,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     // earnings while working, the base that income beyond the paycheck is measured against.
     const counts = (r) => {
       const i = people.findIndex((p) => p.id === r.owner);
-      return i >= 0 && incomeRowCounts(r, ages[i], people[i].retirementAge);
+      return i >= 0 && incomeRowCounts(r, ages[i], people[i].retirementAge, age0[i]);
     };
     const earnings = (i, type) =>
       incomeRows

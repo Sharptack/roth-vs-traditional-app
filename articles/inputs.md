@@ -30,6 +30,8 @@ Enter either one. Typing a birthdate fills in the age; typing an age clears the 
 
 **Retirement age:** when that person stops working. Each spouse's is set on its own. The Roth vs. Pre-tax comparison takes its retirement-year snapshot when the last of you retires; each of you contributes until your own retirement, and those savings keep growing until then.
 
+Someone already retired keeps the age they retired at (65 for a 75-year-old who retired at 65): a retirement age at or below the age now means retired. They have no earnings or contributions from this year on, the return in retirement applies once no one works, and the Roth comparison's snapshot comes no earlier than today. With everyone retired and no earnings this year, the Roth vs. Pre-tax page has nothing to compare and says so; the Roth conversion calculator is the one for money already saved.
+
 **Plan-to age** (each person, 95 by default): the projection runs until the last of you reaches their plan-to age. **Biological sex** is used only for life expectancy, by the pension calculator for now.
 
 ### Survivor years
@@ -57,7 +59,7 @@ One row per source of income, added with **Add income**, each with whose it is a
 - **Pension** (below): a monthly amount.
 - **Other**, a yearly amount, of one of four kinds: taxable as ordinary income (for example Pre-tax withdrawals); tax-exempt; interest, non-qualified dividends and short-term gains (ordinary rates, and investment income for the Net Investment Income Tax); or qualified dividends and long-term gains (the 0%, 15% and 20% rates, stacked on top of ordinary income).
 
-A yearly row runs from now until its owner retires, or for life when it starts at or after retirement. To change that, **Set start/end ages**: the ages of the row's owner when it is received, both included (part-time work in early retirement, a rental that ends). A blank start age means from now; a blank end age means until retirement, or for life for a row that starts at or after it.
+A yearly row runs from now until its owner retires, or for life when it starts at or after retirement. To change that, **Set start/end ages**: the ages of the row's owner when it is received, both included (part-time work in early retirement, a rental that ends). A blank start age means from now; a blank end age means until retirement, or for life for a row that starts at or after it. For someone already retired, a row with blank ages counts for life (rent, interest, an annuity), except earnings: a retiree's part-time work needs an end age.
 
 The tax and conversion calculators read the income received this year. The projection reads every row in the years its ages cover: earnings (taxed with payroll tax), ordinary income such as rent or an annuity, interest and qualified dividends, each taxed as its kind, and tax-exempt income as cash (it doesn't yet count toward Social Security taxability or IRMAA, as it does by law). Before retirement, income beyond today's paycheck is extra (see **Income above what is needed** in Assumptions); earnings that end before retirement are taken as lower spending, not drawn from savings. After the first death, the deceased's earnings stop and their other income goes on. Dividends from the taxable accounts are worked out from the accounts, not entered here.
 

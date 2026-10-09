@@ -585,3 +585,19 @@ describe('runProjection: a conversion this year (convertNow, HAND CALC)', () => 
     expect(none.conversions).toBe(0);
   });
 });
+
+describe('incomeRowCounts: someone already retired (decided 2026-10-09)', () => {
+  // 75, retired at 65: a blank first age is now, so other income counts for life; earnings with no
+  // last age ended at retirement; a working person (40, retiring at 65) is unchanged.
+  it('blank ages', async () => {
+    const { incomeRowCounts } = await import('../src/lib/projection.js');
+    const rent = { type: 'other', fromAge: null, toAge: null };
+    const wages = { type: 'w2', fromAge: null, toAge: null };
+    expect(incomeRowCounts(rent, 75, 65, 75)).toBe(true);
+    expect(incomeRowCounts(rent, 90, 65, 75)).toBe(true);
+    expect(incomeRowCounts(wages, 75, 65, 75)).toBe(false);
+    expect(incomeRowCounts({ ...wages, toAge: 77 }, 76, 65, 75)).toBe(true); // part-time work to 77
+    expect(incomeRowCounts(rent, 64, 65, 40)).toBe(true);
+    expect(incomeRowCounts(rent, 66, 65, 40)).toBe(false); // working: until retirement, as before
+  });
+});

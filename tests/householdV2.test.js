@@ -322,3 +322,22 @@ it('already receiving at 75: no claiming-age error (the claim is the age now)', 
   const h = toHouseholdV2(v2({ people: [newPerson('p1', { age: '75', retirementAge: '65' })], incomes: [income('s', 'p1', 'socialSecurity', '2000', '', '', 'ordinary', { ssMode: 'receiving' })] }), Y);
   expect(validateHouseholdV2(h).filter((e) => e.includes('claiming age'))).toEqual([]);
 });
+
+describe('a retirement age at or below the age now: already retired (decided 2026-10-09)', () => {
+  it('no error; the Roth comparison snapshot is today (0 years)', () => {
+    // 70, retired at 65, part-time W-2 $20,000 to 72: earnings this year, so there is a paycheck to compare
+    const h = toHouseholdV2(v2({ people: [newPerson('p1', { age: '70', retirementAge: '65' })], incomes: [income('w', 'p1', 'w2', '20000', '', '72')] }), Y);
+    expect(validateHouseholdV2(h)).toEqual([]);
+    const inputs = householdToCompareInputs(h);
+    expect(inputs.grossIncome).toBe(20000);
+    expect(inputs.currentAge).toBe(70);
+    expect(inputs.retirementAge).toBe(70); // years to retirement 0, not -5
+  });
+
+  it('a couple, one retired: the snapshot at the other one\'s retirement', () => {
+    // p1 60 retiring at 65 (5 years), p2 70 retired at 65 (0, not -5): the last retirement, 5 years
+    const h = toHouseholdV2(couple({ people: [newPerson('p1', { age: '60', retirementAge: '65' }), newPerson('p2', { age: '70', retirementAge: '65' })] }), Y);
+    expect(validateHouseholdV2(h)).toEqual([]);
+    expect(householdToCompareInputs(h).retirementAge).toBe(65);
+  });
+});

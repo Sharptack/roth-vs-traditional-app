@@ -55,6 +55,9 @@ const FROM_LINK = typeof window === 'undefined' ? null : householdValuesV2FromSe
 // A household opened from a link or a save: birthdate-entered ages brought up to date.
 const opening = (values) => refreshAges(values, isoDate(new Date()));
 
+export const RETIRED_MESSAGE =
+  'Everyone in the household has retired, with no earnings this year, so there are no contributions to compare. The Roth conversion calculator weighs moving Pre-tax money to Roth.';
+
 // The Roth calculator's whole calculation, outside React so it can be tested.
 //  values: the form's values (version 2; version 1 values, as older tests pass, are converted
 //    first); every calculator reads the version 2 household.
@@ -62,7 +65,13 @@ const opening = (values) => refreshAges(values, isoDate(new Date()));
 export function previewResult(values, year, { blend = true } = {}) {
   const household = toHouseholdV2(upgradeHouseholdValues(values, year), year);
   const householdErrors = validateHouseholdV2(household);
-  const result = compareRothVsTraditional({ ...householdToCompareInputs(household), skipBlend: !blend });
+  const inputs = householdToCompareInputs(household);
+  // Already retired, with no earnings this year: nothing is saved from a paycheck to compare.
+  const retired = household.people.every((p) => household.year - p.birthYear >= p.retirementAge);
+  if (householdErrors.length === 0 && retired && !(inputs.grossIncome > 0)) {
+    return { household, result: { valid: false, errors: [RETIRED_MESSAGE] } };
+  }
+  const result = compareRothVsTraditional({ ...inputs, skipBlend: !blend });
   if (householdErrors.length === 0) return { household, result };
   const errors = [...(result.valid ? [] : result.errors), ...householdErrors];
   return { household, result: { valid: false, errors } };

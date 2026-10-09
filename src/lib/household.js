@@ -231,9 +231,8 @@ export function validateHousehold(household) {
     if (!isNum(age) || age < 16 || age > 100) errors.push("Enter your spouse's current age (16–100).");
     if (!isNum(p.retirementAge) || p.retirementAge > 100) {
       errors.push("Enter your spouse's planned retirement age.");
-    } else if (isNum(age) && p.retirementAge <= age) {
-      errors.push("Your spouse's retirement age must be after their current age.");
     }
+    // A retirement age at or below the age now means already retired (decided 2026-10-09).
     if (!isNum(p.wages) || !isNum(p.selfEmploymentIncome) || p.wages < 0 || p.selfEmploymentIncome < 0) {
       errors.push("Enter your spouse's income.");
     }
@@ -283,7 +282,8 @@ export function householdToCompareInputs(household) {
   const { year, people, accounts, futureContributions: fc, spending, assumptions } = household;
   const ageOf = (p) => year - p.birthYear;
   const p1 = people[0];
-  const yearsEach = people.map((p) => p.retirementAge - ageOf(p));
+  // Someone already retired (a retirement age at or below the age now, decided 2026-10-09): 0 years.
+  const yearsEach = people.map((p) => Math.max(0, p.retirementAge - ageOf(p)));
   const atLast = Boolean(assumptions.snapshotAtLastRetirement);
   const yearsToRetirement = atLast ? Math.max(...yearsEach) : Math.min(...yearsEach);
   // A pension's lump sum rolled over later (version 2 household.rollovers) counts as Pre-tax money
@@ -311,7 +311,7 @@ export function householdToCompareInputs(household) {
     filingStatus: household.filingStatus,
     currentAge: ageOf(p1),
     // One person: their own retirement age as entered (so a blank age gives today's messages).
-    retirementAge: people.length === 1 ? p1.retirementAge : ageOf(p1) + yearsToRetirement,
+    retirementAge: people.length === 1 ? (Number.isFinite(ageOf(p1)) ? Math.max(p1.retirementAge, ageOf(p1)) : p1.retirementAge) : ageOf(p1) + yearsToRetirement,
     debtPayments: spending.debtPaymentsEnding,
     otherExpenses: spending.otherExpensesEnding,
     savings: fc.contributions.reduce((acc, c) => acc + c.amount, 0),

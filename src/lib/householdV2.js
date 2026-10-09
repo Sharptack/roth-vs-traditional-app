@@ -39,6 +39,7 @@
 import { parseNumber } from './formInputs.js';
 import { pensionFromValues } from './pensionCalculator.js';
 import { pensionIncomeInYear } from './pensionIncome.js';
+import { incomeRowCounts } from './projection.js';
 import { SS_MODES, activePeople, isLegacyV2, migrateLegacyV2, parseBirthDate } from './householdValues.js';
 import { validateHousehold } from './household.js';
 
@@ -51,6 +52,10 @@ export function receivedAt(row, age) {
   if (row.toAge !== null && !(age <= row.toAge)) return false;
   return true;
 }
+
+// Whether a row counts this year, as the projection counts it (projection.js incomeRowCounts):
+// someone already retired has no earnings from a row with no last age. A blank retirement age: no limit.
+const countsThisYear = (row, age, retirementAge) => receivedAt(row, age) && (!(age >= retirementAge) || incomeRowCounts(row, age, retirementAge, age));
 
 function birthYearOf(person, year) {
   const date = person.ageEntry === 'birthdate' ? parseBirthDate(person.birthDate) : null;
@@ -105,7 +110,7 @@ export function toHouseholdV2(input, year) {
     const birthYear = birthYearOf(p, year);
     const age = year - birthYear;
     const earned = (type, keep = () => true) =>
-      incomes.filter((r) => r.owner === p.id && r.type === type && receivedAt(r, age) && keep(r)).reduce((a, r) => a + r.amount, 0);
+      incomes.filter((r) => r.owner === p.id && r.type === type && countsThisYear(r, age, parseNumber(p.retirementAge)) && keep(r)).reduce((a, r) => a + r.amount, 0);
     const selfEmployed = earned('1099');
     const ss = incomes.find((r) => r.owner === p.id && r.type === 'socialSecurity');
     // The PIA, or the monthly check now, as typed (blank = not entered: an error for those two).
@@ -143,7 +148,10 @@ export function toHouseholdV2(input, year) {
   const thisYear = (kind) =>
     incomes
       .filter((r) => r.type === 'other' && r.treatment === kind)
-      .filter((r) => receivedAt(r, year - people.find((p) => p.id === r.owner).birthYear))
+      .filter((r) => {
+        const p = people.find((x) => x.id === r.owner);
+        return countsThisYear(r, year - p.birthYear, p.retirementAge);
+      })
       .reduce((a, r) => a + r.amount, 0);
   const a = values.assumptions;
   const pensionsThisYear = pensionIncomeInYear({ year, people, pensions, assumptions: { inflationRate: Number(a.inflationRate) || 0 } }, 0);
@@ -156,8 +164,10 @@ export function toHouseholdV2(input, year) {
   const household1 = firstOf('p1');
   const currentType = household1?.tax ?? 'pretax';
   const accountType = household1?.account ?? '401k';
+  // Someone already retired saves nothing from this year on (the projection's rule too).
+  const retiredNow = (p) => year - p.birthYear >= p.retirementAge;
   const contributions = people.map((p) => {
-    const own = rothOrPretax.filter((r) => r.owner === p.id);
+    const own = retiredNow(p) ? [] : rothOrPretax.filter((r) => r.owner === p.id);
     const first = own[0];
     return {
       owner: p.id,

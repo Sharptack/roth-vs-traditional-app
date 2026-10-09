@@ -544,7 +544,7 @@ describe('ResultsSummary', () => {
 
   it('lists validation errors instead of results for bad input', () => {
     const html = render({ retirementAge: '30' });
-    expect(html).toContain('Retirement age must be after your current age');
+    expect(html).toContain("Retirement age can&#x27;t be before your current age");
     expect(html).not.toContain('Marginal rate while working');
   });
 
@@ -1129,7 +1129,8 @@ describe('NextApp', () => {
     expect(result.current.fica.people).toHaveLength(2);
     expect(renderToStaticMarkup(<ResultsSummary result={result} />)).not.toMatch(/NaN|Infinity/);
     const older = setPersonField(setPersonField(values, 'p2', 'age', '70'), 'p2', 'retirementAge', '65');
-    expect(previewResult(older, 2026).result.errors).toContain("Your spouse's retirement age must be after their current age.");
+    // the spouse retired at 65 and 70 now: already retired, no error (decided 2026-10-09)
+    expect(previewResult(older, 2026).result.valid).toBe(true);
   });
 
   it("a view-only household opens locked, with Edit a copy and no share button", async () => {
@@ -1406,6 +1407,27 @@ describe('The rest of the household in the projection (phase 2 step f)', () => {
     expect(renderToStaticMarkup(<ProjectionResult view={spent} />)).not.toMatch(/NaN|Infinity/);
     const html = renderToStaticMarkup(<HouseholdInputs values={D} onUpdate={() => {}} sections={['assumptions']} defaultOpen={['assumptions']} />);
     expect(html).toContain('Income above what is needed');
+  });
+});
+
+describe('Already retired (2026-10-09)', () => {
+  it('75, retired at 65, receiving Social Security: every page renders; the Roth page says there is nothing to compare', async () => {
+    const { default: NextApp, previewResult, RETIRED_MESSAGE } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D, newPerson } = await import('../src/lib/householdValues.js');
+    const values = {
+      ...D,
+      people: [newPerson('p1', { age: '75', retirementAge: '65' })],
+      incomes: [D.incomes[0], { ...D.incomes[1], ssMode: 'receiving', amount: '2500' }], // the W-2 row ends at retirement
+      contributions: [],
+      accounts: [{ ...D.accounts[0], balance: '800000' }],
+    };
+    expect(previewResult(values, 2026).result.errors).toEqual([RETIRED_MESSAGE]);
+    for (const page of ['home', 'inputs', 'roth', 'tax', 'conversion', 'pension', 'projection']) {
+      const html = renderToStaticMarkup(<NextApp initialPage={page} initialValues={values} client={null} />);
+      expect(html).not.toMatch(/NaN|Infinity|must be after/);
+    }
+    const inputs = renderToStaticMarkup(<NextApp initialPage="inputs" initialValues={values} client={null} />);
+    expect(inputs).toContain('You 75, retired at 65');
   });
 });
 

@@ -288,10 +288,13 @@ describe('validateInputs', () => {
   it('accepts the base inputs', () => {
     expect(validateInputs(baseInputs)).toEqual([]);
   });
-  it('rejects a retirement age that is not after the current age', () => {
-    const r = compareRothVsTraditional({ ...baseInputs, retirementAge: 35 });
+  it('rejects a retirement age before the current age; at it is retiring now (0 years, 2026-10-09)', () => {
+    const r = compareRothVsTraditional({ ...baseInputs, retirementAge: baseInputs.currentAge - 1 });
     expect(r.valid).toBe(false);
     expect(r.errors.join(' ')).toMatch(/retirement age/i);
+    const now = compareRothVsTraditional({ ...baseInputs, retirementAge: baseInputs.currentAge });
+    expect(now.valid).toBe(true);
+    expect(now.years).toBe(0);
   });
   it('rejects missing or negative numbers', () => {
     expect(validateInputs({ ...baseInputs, grossIncome: NaN }).length).toBeGreaterThan(0);
