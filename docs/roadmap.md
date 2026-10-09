@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, phase 2 (survivor years and engine additions) and both "Before phase" lists. 837 tests. Last closed: "Before phase 3: adjustments" (tag `phase-before-3-done`).
 
-**In progress:** "Before phase 3: adjustments (2)", Michael's list of 2026-10-09 (below). Then phase 3.
+**In progress:** "Before phase 3: adjustments (2)" and "(3)", Michael's lists of 2026-10-09 (below), all built; to close with `/closeout` once reviewed. Then phase 3.
 
 ### Before phase 3: adjustments (2) (2026-10-09)
 
@@ -33,7 +33,7 @@ Pension: [x] "In the plan" lines up (the lump-sum hint moved under the row). Rot
 
 ### Before phase 3: adjustments (3) (2026-10-09)
 
-- [ ] Tax bracket visual (decided 2026-10-09): each bracket edge shows total income with the taxable-income figure beside it; a line under the chart bridges today's total income to taxable income (each deduction); the room label in total-income dollars, with the taxable room beside it. Why: the 22% edge at $177,065 of total income read as wrong next to the $100,800 + $32,200 a joint filer knows. The caption's "calculation above" fixed (it is below now).
+- [x] Tax bracket visual (decided 2026-10-09): each bracket edge shows total income with the taxable-income figure beside it; a line under the chart bridges today's total income to taxable income (each deduction); the room label in total-income dollars, with the taxable room beside it. Why: the 22% edge at $177,065 of total income read as wrong next to the $100,800 + $32,200 a joint filer knows. The caption's "calculation above" fixed (it is below now).
 - [x] "Plan to age" renamed "Life expectancy" (decided 2026-10-09); retirement age gets a one-line hint.
 - [x] Social Security estimated from earnings when a person has no Social Security row, in every calculator (decided 2026-10-09; reverses "no row = no benefit"). A PIA of $0 means no benefit. Changes results for saved households without a row.
 - [x] Copy summary: a blank retirement age said "retires at NaN" (now "retirement age not entered"; it also says retired at, and the life expectancy).

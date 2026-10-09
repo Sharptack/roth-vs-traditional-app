@@ -6,10 +6,14 @@
 // the real tax on the next dollar at each level, labelled where it changes, with IRMAA cliffs as
 // plain lines and a key under the chart with each cliff's amount (decided 2026-10-09). A switch
 // shows the next dollar as ordinary income or as capital gains. Renders
-// lib/rateProfile.js; no math of its own.
+// lib/rateProfile.js; no math of its own. The scale is total income; each bracket edge also shows
+// the taxable income it is at, and a line under the chart bridges today's total income to taxable
+// income (decided 2026-10-09: a joint filer knows 22% starts at $100,800 taxable, not $177,065 total).
 import { useMemo, useState } from 'react';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
 import { rateProfile } from '../lib/rateProfile.js';
+import { taxableIncomeBridge } from '../lib/taxCalculator.js';
+import { calculateYearTaxTotals } from '../lib/yearTax.js';
 
 const pct = (r, d = 1) => formatPercent(r, d);
 const SOURCES = [
@@ -65,11 +69,16 @@ export default function RateBuckets({ params, irmaa, ages }) {
   const marginal = runsOf(rows, step, today, 'bracket');
   const effective = runsOf(rows, step, today, 'nextRate');
 
-  // Income scale: $0, each bracket edge, today, the top; a label too close to one already placed
-  // is dropped (today's always stays).
-  const tickValues = [0, ...profile.edges.map((e) => e.income), top];
+  // Income scale: today, $0, each bracket edge (with its taxable income on a second line), the top;
+  // a label that would overlap one already placed is dropped (today's always stays).
+  const candidates = [{ v: today }, { v: 0 }, ...profile.edges.map((e) => ({ v: e.income, taxable: e.taxable })), { v: top }];
   const ticks = [];
-  for (const v of [today, ...tickValues]) if (!ticks.some((t) => Math.abs(y(t) - y(v)) < 18)) ticks.push(v);
+  const span = (t) => [y(t.v) - 13, y(t.v) + (t.taxable !== undefined ? 22 : 5)];
+  for (const t of candidates) {
+    const [a, b] = span(t);
+    if (!ticks.some((p) => { const [c, d] = span(p); return a < d && c < b; })) ticks.push(t);
+  }
+  const bridge = useMemo(() => taxableIncomeBridge(calculateYearTaxTotals(params).lines), [params]);
 
   const cliffs = rows.filter((r) => r.irmaaJump > 0.5);
   // Effective-rate labels: where the rate changes and the run is tall enough to read, or a spike;
@@ -169,12 +178,17 @@ export default function RateBuckets({ params, irmaa, ages }) {
 
         {/* the income scale, set apart on the left */}
         <line x1={SCALE_X + 14} x2={SCALE_X + 14} y1={Y0 - 8} y2={y(0)} className="rb-axis" />
-        {ticks.map((v) => (
+        {ticks.map(({ v, taxable }) => (
           <g key={`t${v}`}>
             <line x1={SCALE_X + 8} x2={SCALE_X + 14} y1={y(v)} y2={y(v)} className="rb-axis" />
             <text x={SCALE_X} y={y(v) + 5} textAnchor="end" className={v === today ? 'rb-tick rb-today-text' : 'rb-tick'}>
               {$(v)}
             </text>
+            {taxable !== undefined && (
+              <text x={SCALE_X} y={y(v) + 20} textAnchor="end" className="rb-sub">
+                taxable {$(taxable)}
+              </text>
+            )}
           </g>
         ))}
         <text x={SCALE_X} y={22} textAnchor="end" className="rb-head">Total income</text>
@@ -184,8 +198,9 @@ export default function RateBuckets({ params, irmaa, ages }) {
         {room !== null && nextEdge && (
           <g>
             <path d={`M${LX + BW + 10} ${yToday} V${y(nextEdge.from)}`} className="rb-room" />
-            <text x={LX + BW + 18} y={yToday - 22} className="rb-label rb-strong">{$(room)} of room</text>
-            <text x={LX + BW + 18} y={yToday - 7} className="rb-label rb-dim">before {pct(now.nextBracket, 0)}</text>
+            <text x={LX + BW + 18} y={yToday - 37} className="rb-label rb-strong">{$(now.roomIncome ?? room)} more income</text>
+            <text x={LX + BW + 18} y={yToday - 22} className="rb-label rb-dim">before {pct(now.nextBracket, 0)}</text>
+            <text x={LX + BW + 18} y={yToday - 7} className="rb-label rb-dim">({$(room)} taxable)</text>
           </g>
         )}
         <text x={(LX + RX + BW) / 2} y={y(0) + 30} textAnchor="middle" className="rb-sub">
@@ -205,12 +220,22 @@ export default function RateBuckets({ params, irmaa, ages }) {
           ))}
         </p>
       )}
+      <p className="rb-bridge">
+        <span className="dim">From total income to taxable income: </span>
+        {bridge.map((r, i) => (
+          <span key={r.key}>
+            {i === 0 ? '' : r.key === 'taxable' ? ' = ' : r.value < 0 ? ' − ' : ' + '}
+            <strong>{$(Math.abs(r.value))}</strong> {i === 0 ? 'total income' : r.key === 'taxable' ? 'taxable income' : r.label}
+          </span>
+        ))}
+        . The brackets apply to taxable income; the scale is total income.
+      </p>
       <figcaption className="hint">
         The left bucket is the bracket (the marginal rate). The right one is the effective marginal rate: what the next dollar
         really costs in federal income tax, counting
         everything it sets off: Social Security made taxable, gains pushed out of the 0% rate, deductions phasing out, the Net
         Investment Income Tax. Red lines are Medicare IRMAA tiers: one dollar over raises the premium two years later by the
-        amount in the key. Payroll tax is in the calculation above.
+        amount in the key. Payroll tax is in the calculation below.
       </figcaption>
     </figure>
   );

@@ -160,6 +160,24 @@ export function marginalSteps(params, source) {
   return { probe, rows, extraTax, rate: extraTax / probe, payroll, rateWithPayroll: (extraTax + payroll) / probe };
 }
 
+// From total income to taxable income, line by line (the bracket visual's bridge, decided
+// 2026-10-09), from a calculateYearTax result's lines: [{ key, label, value }], the subtractions
+// as negatives; the lines add up to the last one, taxable income. Lines that are $0 are left out.
+export function taxableIncomeBridge(lines) {
+  const rows = [{ key: 'total', label: 'Total income', value: lines.grossIncome }];
+  const less = (key, label, amount) => amount > 0.5 && rows.push({ key, label, value: -amount });
+  less('socialSecurity', 'Social Security not taxed', lines.socialSecurity - lines.taxableSocialSecurity);
+  less('pretax', 'Pre-tax contributions', lines.pretaxDeferrals);
+  less('seTax', 'half of self-employment tax', lines.selfEmploymentTaxDeduction);
+  less('deduction', lines.itemizing ? 'itemized deductions' : 'standard deduction', lines.standardDeduction);
+  less('qbi', 'QBI deduction', lines.qbiDeduction);
+  // Deductions larger than income: the part not used (taxable income stops at $0).
+  const sum = rows.reduce((a, r) => a + r.value, 0);
+  if (lines.taxableIncome - sum > 0.5) rows.push({ key: 'unused', label: 'deductions not used', value: lines.taxableIncome - sum });
+  rows.push({ key: 'taxable', label: 'Taxable income', value: lines.taxableIncome });
+  return rows;
+}
+
 // The "fill up the bracket" bar: taxable income stacked through the ordinary brackets, from the
 // bottom (the part sheltered by deductions) to the top of the bracket ABOVE the current one.
 //  segments: [{ rate, from, to, filled }] in taxable-income dollars; `filled` = how much of that

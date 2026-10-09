@@ -19,6 +19,8 @@ Two buckets on one income scale, filled to today's income and drawn on through t
 - **The marginal rate bucket** shows the bracket at each level of income, the part sheltered by deductions in grey at the bottom, the edge of each bracket to the dollar, and the room left in today's bracket.
 - **The effective marginal rate bucket** shows the real tax on the next dollar at each level, worked out by the tax engine: the Social Security "tax torpedo", gains pushed out of the 0% rate, deductions and credits phasing out, the 3.8% Net Investment Income Tax. Labels mark where it changes. Red lines are Medicare IRMAA tiers; the key under the chart gives each one's income and the yearly premium increase it brings two years later.
 
+The scale on the left is total income: everything received, before any deduction. The brackets themselves apply to taxable income, so each bracket edge also shows the taxable income it is at (for a married couple, the 22% bracket starts at $100,800 of taxable income, which can be well over $133,000 of total income once Pre-tax contributions, half of self-employment tax and the QBI deduction come off too). The room left in today's bracket is given both ways, and a line under the chart walks today's total income down to taxable income, deduction by deduction.
+
 Below today's line the buckets are the household's own income built up from $0 (a Pre-tax 401(k) stays at its full amount); above it, more of one kind of income. The switch chooses which: **ordinary income** (a Pre-tax withdrawal, a pension, a Roth conversion, more pay; payroll tax left out) or **capital gains** (a house sale, a taxable account sold off; the marginal bucket then shows the 0%, 15% and 20% capital-gains brackets).
 
 ## The calculation

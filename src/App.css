@@ -2551,3 +2551,9 @@ th.win .th-sub {
 .calc-row-details[open] > summary > span:first-child::before {
   content: '▾ ';
 }
+
+/* the bracket visual's bridge from total income to taxable income (decided 2026-10-09) */
+.rb-bridge {
+  margin: 4px 0 8px;
+  font-size: 0.9rem;
+}

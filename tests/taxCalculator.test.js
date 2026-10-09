@@ -93,3 +93,41 @@ describe('the effective marginal rate, step by step (2026, HAND CALC)', () => {
     expect(t.steps.rate).toBeCloseTo(t.marginal.incomeTax, 12);
   });
 });
+
+describe("the bracket visual's scale: total income and taxable income (2026-10-09, HAND CALC)", () => {
+  // Joint, 49, $125,000 of 1099 income, $12,000 Pre-tax 401(k) (Michael's example):
+  //  SE tax 125,000 x 0.9235 x 15.3% = 17,661.94; half 8,830.97
+  //  AGI 125,000 - 8,830.97 - 12,000 = 104,169.03; less 32,200 = 71,969.03
+  //  QBI: 20% x 116,169.03 = 23,233.81, held to 20% x 71,969.03 = 14,393.81
+  //  taxable 57,575.22; tax 2,480 + 12% x 32,775.22 = 6,413.03; room to 22%: 100,800 - 57,575.22
+  const params = {
+    filingStatus: 'mfj',
+    year: 2026,
+    people: [{ age: 49, wages: 0, selfEmploymentIncome: 125000 }],
+    pretaxDeferrals: 12000,
+    qbi: true,
+    income: {},
+  };
+  it('the bridge from total income to taxable income', async () => {
+    const { taxableIncomeBridge } = await import('../src/lib/taxCalculator.js');
+    const t = taxCalculatorResult(params);
+    expect(t.result.incomeTax).toBeCloseTo(6413.03, 1);
+    const rows = taxableIncomeBridge(t.result.lines);
+    expect(rows.map((r) => r.key)).toEqual(['total', 'pretax', 'seTax', 'deduction', 'qbi', 'taxable']);
+    const v = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    expect(v.seTax).toBeCloseTo(-8830.97, 1);
+    expect(v.qbi).toBeCloseTo(-14393.81, 1);
+    expect(v.taxable).toBeCloseTo(57575.22, 1);
+    expect(rows.slice(0, -1).reduce((a, r) => a + r.value, 0)).toBeCloseTo(v.taxable, 6);
+  });
+  it('each edge carries its taxable-income threshold; the room in both measures', async () => {
+    const { rateProfile } = await import('../src/lib/rateProfile.js');
+    const p = rateProfile(params);
+    const to22 = p.edges.find((e) => e.to === 0.22);
+    expect(to22.taxable).toBe(100800); // the 22% bracket starts at $100,800 of taxable income, joint
+    expect(p.edges.find((e) => e.to === 0.1).taxable).toBe(0);
+    expect(p.now.room).toBeCloseTo(43224.78, 1);
+    expect(p.now.roomIncome).toBe(to22.income - 125000); // more total income than taxable: the 20% QBI and half SE tax come off too
+    expect(p.now.roomIncome).toBeGreaterThan(p.now.room);
+  });
+});

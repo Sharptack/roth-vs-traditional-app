@@ -69,12 +69,14 @@ export function extraThroughTwoBrackets(params, source = 'ordinaryIncome') {
 }
 
 // -> { today, top, step, source, rows: [{ income, bracket, sheltered, nextRate, irmaaJump }],
-//      edges: [{ income, from, to }] (each bracket change to the dollar; -1 = sheltered), now }
+//      edges: [{ income, from, to, taxable }] (each bracket change to the dollar; -1 = sheltered;
+//      taxable: the taxable income there, the bracket's own threshold, decided 2026-10-09), now }
 //   income: total income (gross) at the bottom of the step; bracket: the ordinary bracket rate there
 //   (the capital-gains rate for source 'preferentialIncome'); sheltered: under the deductions;
 //   nextRate: the extra federal income tax over the step ÷ the step (payroll tax left out);
 //   irmaaJump: the rise in the yearly IRMAA surcharge over the step (0 without the irmaa option).
-//   now: today's { bracket, room (to the next bracket), nextRate (the next $100 of source) }.
+//   now: today's { bracket, room (to the next bracket, in taxable income), roomIncome (the same in
+//   total income, to the next edge on the scale; null past the last), nextRate (the next $100 of source) }.
 // options: source; steps (default 200) or step (dollars); irmaa: true with ages (each person's age);
 //   extra: how far above today to go (default: through the next two brackets).
 export function rateProfile(params, { source = 'ordinaryIncome', steps = DEFAULT_STEPS, step: fixedStep, irmaa = false, ages = [], extra } = {}) {
@@ -113,6 +115,7 @@ export function rateProfile(params, { source = 'ordinaryIncome', steps = DEFAULT
     if (r.lines.ordinaryGross <= r.lines.deductions && source !== 'preferentialIncome') return -1;
     return source === 'preferentialIncome' ? cgRate(r) : r.ordinaryBracketRate;
   };
+  const { at } = ladder(params, base, source); // taxable income as the brackets count it
   const edges = [];
   for (let i = 1; i < rows.length; i++) {
     const was = rows[i - 1].sheltered && source !== 'preferentialIncome' ? -1 : rows[i - 1].bracket;
@@ -125,7 +128,7 @@ export function rateProfile(params, { source = 'ordinaryIncome', steps = DEFAULT
       if (bracketAt(mid) === was) lo = mid;
       else hi = mid;
     }
-    edges.push({ income: Math.round(hi), from: was, to: is });
+    edges.push({ income: Math.round(hi), from: was, to: is, taxable: Math.round(at(calculateYearTaxTotals(paramsAt(hi)))) });
   }
   const room = source === 'preferentialIncome' ? base.bracketRoom.capitalGains : base.bracketRoom.ordinary;
   const probe = calculateYearTaxTotals(plus(params, source, 100));
@@ -136,6 +139,12 @@ export function rateProfile(params, { source = 'ordinaryIncome', steps = DEFAULT
     source,
     rows,
     edges,
-    now: { bracket: room.rate, room: room.room, nextBracket: room.nextRate, nextRate: (probe.incomeTax - base.incomeTax) / 100 },
+    now: {
+      bracket: room.rate,
+      room: room.room,
+      roomIncome: edges.some((e) => e.income > today) ? edges.find((e) => e.income > today).income - today : null,
+      nextBracket: room.nextRate,
+      nextRate: (probe.incomeTax - base.incomeTax) / 100,
+    },
   };
 }
