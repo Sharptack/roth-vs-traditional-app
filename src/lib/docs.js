@@ -31,9 +31,14 @@ export const DOCS_ARTICLES = [
     blurb: 'How each year is worked out: income over the years, withdrawal strategies, RMDs, dividends, returns, and whether the money lasts.',
   },
   {
+    slug: 'conversion',
+    title: 'The Roth conversion calculator',
+    blurb: 'A conversion this year: lifetime tax, the legacy and retirement income with and without it, its tax now and its effective rate.',
+  },
+  {
     slug: 'pension',
     title: 'The pension calculator',
-    blurb: 'Lump sum or monthly: the expected return on life expectancy, survivor benefits, and how long you live.',
+    blurb: 'Lump sum or monthly: the expected return on life expectancy, survivor benefits, how long you live, and which one the plan takes.',
   },
   {
     slug: 'rates',

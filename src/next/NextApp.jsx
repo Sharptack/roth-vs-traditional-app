@@ -100,6 +100,7 @@ export const CALCULATORS = [
     title: 'Roth conversion',
     blurb: 'A Roth conversion this year: its tax now and its effective rate, and lifetime tax, the legacy and retirement income with and without it.',
     ownTitle: 'Roth conversion inputs',
+    article: 'conversion',
   },
   {
     id: 'pension',

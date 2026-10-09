@@ -24,6 +24,10 @@ The table under the result shows the same return if the payments ran to exactly 
 
 The household's assumed return is after inflation, while a pension pays in the dollars of the day, so it is compared at the assumed return plus inflation (7% after 2.5% inflation is about 9.7%). The page also shows what the expected payments are worth today at that return, beside the lump sum offered, and the age at which the payments received add up to the lump sum (no interest).
 
+## In the plan
+
+The pension row holds both options: the monthly benefit and the lump sum offered. **In the plan** sets which one the rest of the app uses; the result page has a button to switch. Taken as a lump sum, the monthly benefit leaves every calculator, and the lump sum is rolled over to a Pre-tax IRA at the pension's start age (today, if that has passed), where the projection invests and withdraws it like any Pre-tax money. The comparison on this page is the same either way.
+
 ## What it leaves out
 
 Tax is left out because both options are taxed alike: a lump sum rolled into a Pre-tax account and a pension are both ordinary income when they are paid out. Not modeled: the plan's own financial strength, and the Pension Benefit Guaranty Corporation's limits on what it insures.

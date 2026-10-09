@@ -6,7 +6,7 @@ All dollar amounts are in today's dollars. The expected return is a return after
 
 ## Two ways to work
 
-- **Fill in everything first.** The inputs page holds every input in four groups: **Household** (the people and dependents), **Income and expenses** (income, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Each section is its own card. Fill it in, then open any calculator.
+- **Fill in everything first.** The inputs page (**Edit inputs** on the dashboard's Inputs card) holds every input in four blocks: **Household** (the people and dependents), **Income and expenses** (income, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Closed, each block shows a line per section, so the whole household reads at a glance; open one and each section inside it is a smaller block of its own. Signed in, the **Clients** card sits at the top, to switch households. Fill it in, then open any calculator.
 - **Start from one calculator.** Each calculator page has one inputs card on the left with only the inputs that calculator reads, its own section first. It edits the same household, so a change made there shows on the inputs page and in every other calculator. The **All inputs** link at the top of the card opens the full inputs page.
 
 A closed section still shows a one-line summary of what's in it, so you can check the household at a glance. On a calculator page, the bar between the inputs and the results tucks the inputs away to the left and widens the results; click it again to bring them back.
@@ -50,14 +50,14 @@ For the child tax credit. Enter each child with their age this year: a child und
 
 ## Income
 
-One row per source of income, added with **Add income**, each with whose it is and its type:
+One row per source of income, added with **Add income**, each with whose it is and its type. Closed, a row is one line, its type and amount (with its ages, if set), so every source shows at a glance; click it to open it. A new row opens.
 
-- **W-2 wages** and **1099 (self-employed)** income are earnings, a yearly amount. Earnings are what payroll tax, the retirement income number and the Social Security estimate are based on. Enter 1099 income as net earnings, after business expenses; self-employment tax replaces FICA on it, and half of that tax is deductible. 1099 income also gets the qualified business income (QBI) deduction: 20% of it (less half the self-employment tax), up to 20% of taxable income. Above $201,750 of taxable income ($403,500 joint) in 2026 it shrinks, and the app assumes a business with no employees or property, where it reaches $0 by $276,750 ($553,500 joint); from 2026 it is at least $400.
+- **W-2 wages** and **1099 (self-employed)** income are earnings, a yearly amount. Earnings are what payroll tax, the retirement income number and the Social Security estimate are based on. Enter 1099 income as net earnings, after business expenses; self-employment tax replaces FICA on it, and half of that tax is deductible. 1099 income also gets the qualified business income (QBI) deduction: 20% of it (less half the self-employment tax), up to 20% of taxable income. Above $201,750 of taxable income ($403,500 joint) in 2026 it shrinks, and the app assumes a business with no employees or property, where it reaches $0 by $276,750 ($553,500 joint); from 2026 it is at least $400. Each 1099 row asks **Qualifies for the QBI deduction?** (yes by default): most self-employment income does; a 1099 paid by a former employer, or what is really investment income, doesn't. Only the qualifying rows count.
 - **Social Security** (below): one row per person.
 - **Pension** (below): a monthly amount.
 - **Other**, a yearly amount, of one of four kinds: taxable as ordinary income (for example Pre-tax withdrawals); tax-exempt; interest, non-qualified dividends and short-term gains (ordinary rates, and investment income for the Net Investment Income Tax); or qualified dividends and long-term gains (the 0%, 15% and 20% rates, stacked on top of ordinary income).
 
-For yearly rows, **first age and last age** are the ages of the row's owner when it is received, both included. A blank first age means from now. A blank last age means until the owner retires, or for life for a row that starts at or after retirement (part-time work, an annuity).
+A yearly row runs from now until its owner retires, or for life when it starts at or after retirement. To change that, **Set start/end ages**: the ages of the row's owner when it is received, both included (part-time work in early retirement, a rental that ends). A blank start age means from now; a blank end age means until retirement, or for life for a row that starts at or after it.
 
 The tax and conversion calculators read the income received this year. The projection reads every row in the years its ages cover: earnings (taxed with payroll tax), ordinary income such as rent or an annuity, interest and qualified dividends, each taxed as its kind, and tax-exempt income as cash (it doesn't yet count toward Social Security taxability or IRMAA, as it does by law). Before retirement, income beyond today's paycheck is extra (see **Income above what is needed** in Assumptions); earnings that end before retirement are taken as lower spending, not drawn from savings. After the first death, the deceased's earnings stop and their other income goes on. Dividends from the taxable accounts are worked out from the accounts, not entered here.
 
@@ -81,6 +81,8 @@ The **monthly benefit** as the plan states it at its start (for a pension alread
 - the Roth vs. Pre-tax comparison, at the retirement-year snapshot (or its first year, when it starts later): one more source under the withdrawal, like Social Security, so it can raise the effective rate on the withdrawal.
 
 Like everything else, it is counted in today's dollars: a pension with no cost-of-living increase loses value each year at the inflation rate. For a couple, after the owner's death the survivor receives the survivor's share of it (see Survivor years).
+
+The row also holds the **lump sum offered** instead, if any, and **In the plan**: the monthly benefit (the default) or the lump sum. Taken as a lump sum, the pension pays nothing in any calculator; the lump sum is rolled over to the owner's Pre-tax IRA in the year they reach the start age (or is a Pre-tax account today, when that age has passed). The Roth comparison counts a later rollover as Pre-tax money today, worth the lump sum discounted at the return to its start. The pension calculator weighs the first pension row's two options either way.
 
 ## Contributions
 
@@ -139,11 +141,11 @@ Together they set the **retirement income number**, the after-tax income the hou
 Two calculators have an input only they read, shown first on their own page:
 
 - **Roth conversion:** the amount to convert this year.
-- **Pension:** the lump sum offered. The pension itself is the household's pension income row; the card shows it, and a change there changes it everywhere. A household without a pension gets an **Add a pension** button.
+- **Pension:** the household's first pension income row, with its lump sum and which one the plan takes; a change there changes it everywhere. A household without a pension gets an **Add a pension** button.
 
 ## Saving and sharing
 
-- **Start a new household** (on the inputs page) puts every input back to its default. **Undo** brings the household back, as long as nothing else was started since. A saved household is never changed by it.
+- **Clear inputs** (on the Clients card when signed in, else on the dashboard's Inputs card and the inputs page) empties the form for a new client: no people's ages, income, savings or spending; the assumptions keep their defaults. **Undo** brings the household back. A saved household is never changed by it until it is saved over.
 - **Saved households:** signed-in advisors can save the household under a short name, open it later, save changes over it, or save it as a new one. An "Unsaved changes" marker shows when the household on screen differs from the saved one. During testing, name households with initials or a nickname rather than a client's name.
 - **Copy link to this household** puts every input into a link. Tick **View only** and the link opens locked, with an **Edit a copy** button.
 - **Copy summary** copies the inputs and every calculator's headline, with the link, as plain text for an email or a note.
