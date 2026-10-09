@@ -539,3 +539,49 @@ describe('runProjection: income rows over their ages, and the surplus setting (2
     expect(rows[1].shortfall).toBe(0);
   });
 });
+
+// The Roth conversion calculator's lifetime view (decided 2026-10-09): a conversion in the first year.
+describe('runProjection: a conversion this year (convertNow, HAND CALC)', () => {
+  it('retired: the year\'s withdrawals pay its tax; the whole amount reaches Roth', () => {
+    // age 70, born 1956 (RMDs at 73), no age deductions, $200,000 Pre-tax, need $30,000, convert $20,000.
+    // W - tax(W + 20,000) = 30,000; taxable W + 20,000 - 16,100 = W + 3,900, in the 12% bracket:
+    //   tax = 1,240 + 12% x (W + 3,900 - 12,400) = 220 + 0.12 W -> 0.88 W = 30,220 -> W = 34,340.9091
+    //   (taxable 38,240.91; tax 4,340.9091). Without it: W = 31,613.6364, tax 1,613.6364 (above).
+    //   Pre-tax at the year end: 200,000 - 34,340.9091 - 20,000 = 145,659.0909; Roth 20,000.
+    const h = retiree({ age: 70, pretax: 200000 });
+    const [r] = runProjection(h, { need: 30000, endAge: 70, convertNow: 20000 }).rows;
+    expect(r.conversions).toBe(20000);
+    expect(r.withdrawals.pretax).toBeCloseTo(34340.9091, 3);
+    expect(r.totalTax).toBeCloseTo(4340.9091, 3);
+    expect(r.afterTaxIncome).toBeCloseTo(30000, 4);
+    expect(r.conversionTaxWithheld).toBe(0);
+    expect(r.endBalances.pretax).toBeCloseTo(145659.0909, 3);
+    expect(r.endBalances.roth).toBeCloseTo(20000, 6);
+    // no conversion after the first year
+    const rows = runProjection(h, { need: 30000, endAge: 71, convertNow: 20000 }).rows;
+    expect(rows[1].conversions).toBe(0);
+  });
+
+  it('working: its tax is held back from the conversion, so less reaches Roth', () => {
+    // age 50, retiring at 65, $100,000 W-2, $100,000 Pre-tax, return 0, convert $10,000.
+    //   tax without: taxable 83,900 -> 1,240 + 4,560 + 22% x 33,500 (7,370) = 13,170
+    //   tax with:    taxable 93,900 -> 1,240 + 4,560 + 22% x 43,500 (9,570) = 15,370; held back 2,200
+    //   Roth 10,000 - 2,200 = 7,800; Pre-tax 90,000; cash 100,000 - 7,650 - 13,170 = 79,180 (unchanged)
+    const h = retiree({ age: 50, pretax: 100000 });
+    h.people[0] = { ...h.people[0], retirementAge: 65, wages: 100000 };
+    const [r] = runProjection(h, { endAge: 50, convertNow: 10000 }).rows;
+    expect(r.incomeTax).toBeCloseTo(15370, 6);
+    expect(r.conversionTaxWithheld).toBeCloseTo(2200, 6);
+    expect(r.endBalances.roth).toBeCloseTo(7800, 6);
+    expect(r.endBalances.pretax).toBeCloseTo(90000, 6);
+    expect(r.afterTaxIncome).toBeCloseTo(79180, 6);
+    expect(r.surplus).toBe(0);
+  });
+
+  it('never more than the Pre-tax balance; none without one', () => {
+    const [r] = runProjection(retiree({ age: 70, pretax: 5000, roth: 100000 }), { need: 10000, endAge: 70, convertNow: 20000 }).rows;
+    expect(r.conversions + r.withdrawals.pretax).toBeLessThanOrEqual(5000 + 1e-6);
+    const [none] = runProjection(retiree({ age: 70, roth: 100000 }), { need: 10000, endAge: 70, convertNow: 20000 }).rows;
+    expect(none.conversions).toBe(0);
+  });
+});
