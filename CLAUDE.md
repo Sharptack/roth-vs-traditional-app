@@ -28,7 +28,8 @@ strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabas
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 1 and the switchover are done (2026-10-08); next is phase 2 (survivor years).
+- **Current step:** phase 1, the switchover and the "Before phase 2" fixes are done (2026-10-09); next is phase 2
+  (survivor years).
 - **Docs**: articles listed in `src/lib/docs.js`; each phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
   `index.html`; Netlify's form detection must be on).
 - Round one's plan (finished): https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45.
@@ -52,7 +53,7 @@ strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabas
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 759 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 774 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -131,6 +132,8 @@ Application/chrome.exe`. The calculators stay mounted (hidden) behind the Docs a
 (e.g. `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-09 — Before phase 2: inputs in four groups; Social Security and pensions as income rows (a pension counts in
+  every calculator); plan-to age per person; saved-household widget; page fixes. 774 tests.
 - 2026-10-08 (k) — The switchover: the calculators are the site at `#/`, old links redirect, the old calculator's code
   deleted, ARTICLE.md → `articles/roth.md` (updated to the Roth page). 759 tests (old-calculator tests removed).
 - 2026-10-08 (j) — Phase 1 steps (d) and (e): Start a new household, who can contribute, Compare a change, Use in the plan
