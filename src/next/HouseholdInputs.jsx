@@ -79,6 +79,7 @@ const SEX_OPTIONS = [
 const SS_MODE_OPTIONS = [
   { value: 'estimate', label: 'From earnings' },
   { value: 'pia', label: 'Enter the PIA' },
+  { value: 'receiving', label: 'Currently receiving' },
 ];
 
 // A labelled text input for what InputForm.jsx has no field for (a date, a percent).
@@ -304,15 +305,30 @@ export default function HouseholdInputs({
                   onChange={setRow('incomes', r.id, 'amount')}
                 />
               )}
-              <SelectInput
-                label="Claim at"
-                value={r.fromAge}
-                onChange={setRow('incomes', r.id, 'fromAge')}
-                options={CLAIM_AGE_OPTIONS}
-              />
+              {r.ssMode === 'receiving' && (
+                <CurrencyInput
+                  label="Monthly benefit now"
+                  value={r.amount}
+                  onChange={setRow('incomes', r.id, 'amount')}
+                />
+              )}
+              {r.ssMode !== 'receiving' && (
+                <SelectInput
+                  label="Claim at"
+                  value={r.fromAge}
+                  onChange={setRow('incomes', r.id, 'fromAge')}
+                  options={CLAIM_AGE_OPTIONS}
+                />
+              )}
               <p className="hint">
-                {r.ssMode === 'pia' ? "PIA: the monthly benefit at full retirement age, from the SSA statement, in today's dollars; the benefit at the claiming age, and any spousal benefit, are worked out from it." : "Estimated from this year's earnings; the PIA on the SSA statement is more precise."}{' '}
-                Claimed at retirement means at the retirement age, held within 62 to 70.
+                {r.ssMode === 'receiving' ? (
+                  "The monthly check as received today, before any Medicare premium is taken out, in today's dollars; it counts as is from this year on. Its PIA isn't known, so it adds no spousal benefit for a spouse."
+                ) : (
+                  <>
+                    {r.ssMode === 'pia' ? "PIA: the monthly benefit at full retirement age, from the SSA statement, in today's dollars; the benefit at the claiming age, and any spousal benefit, are worked out from it." : "Estimated from this year's earnings; the PIA on the SSA statement is more precise."}{' '}
+                    Claimed at retirement means at the retirement age, held within 62 to 70.
+                  </>
+                )}
               </p>
             </>
           );

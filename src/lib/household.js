@@ -221,7 +221,8 @@ export function validateHousehold(household) {
   if (ids.size !== people.length) errors.push('Each person needs a different id.');
   const whose = (i) => (i === 0 ? 'your' : "your spouse's");
   people.forEach((p, i) => {
-    const claim = p.socialSecurity?.claimAge;
+    // Already receiving (version 2): the claiming age is the age now, at any age.
+    const claim = p.socialSecurity?.mode === 'receiving' ? null : p.socialSecurity?.claimAge;
     if (claim !== null && claim !== undefined && (!isNum(claim) || claim < 62 || claim > 70)) {
       errors.push(`Choose ${whose(i)} Social Security claiming age (62–70), or leave it blank.`);
     }

@@ -151,7 +151,8 @@ export function socialSecuritySchedule(household) {
   });
   return people.map((p, i) => {
     const s = ss.people[i];
-    const claimAge = s.known ? Math.min(70, Math.max(62, p.socialSecurity.claimAge ?? p.retirementAge)) : s.claimingAge;
+    // Already receiving (version 2): from now, at any age; a version 1 known benefit: its claiming age.
+    const claimAge = p.socialSecurity.mode === 'receiving' ? ageOf(p) : s.known ? Math.min(70, Math.max(62, p.socialSecurity.claimAge ?? p.retirementAge)) : s.claimingAge;
     return {
       own: s.ownBenefit,
       ownStartAge: claimAge,

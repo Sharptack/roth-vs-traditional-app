@@ -9,7 +9,8 @@
 //   people[i] += { birthDate, ageEntry, sex, planToAge, socialSecurity: { mode, pia } }
 //                                          // from the person's Social Security row; mode 'pia': the
 //                                          // benefit is worked out from the PIA (socialSecurity.js
-//                                          // benefitFromPIA), spousal top-up included. No row: a PIA of 0
+//                                          // benefitFromPIA), spousal top-up included. No row: a PIA of 0.
+//                                          // mode 'receiving': the check now x 12 as a known benefit
 //   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge, qbi }]  // numbers; ages null when blank;
 //                                          // qbi (1099 rows): false when the business doesn't qualify for QBI
 //   people[i].qbiShare                     // the share of this year's 1099 earnings that qualifies (yearTax.js)
@@ -38,7 +39,7 @@
 import { parseNumber } from './formInputs.js';
 import { pensionFromValues } from './pensionCalculator.js';
 import { pensionIncomeInYear } from './pensionIncome.js';
-import { activePeople, isLegacyV2, migrateLegacyV2, parseBirthDate } from './householdValues.js';
+import { SS_MODES, activePeople, isLegacyV2, migrateLegacyV2, parseBirthDate } from './householdValues.js';
 import { validateHousehold } from './household.js';
 
 const blankAsZero = (text) => (String(text ?? '').trim() === '' ? 0 : parseNumber(text));
@@ -71,7 +72,7 @@ export function toHouseholdV2(input, year) {
       fromAge: blankAsNull(r.fromAge),
       toAge: blankAsNull(r.toAge),
       ...(r.type === '1099' && { qbi: r.qbi !== 'no' }),
-      ...(r.type === 'socialSecurity' && { ssMode: r.ssMode === 'pia' ? 'pia' : 'estimate' }),
+      ...(r.type === 'socialSecurity' && { ssMode: SS_MODES.includes(r.ssMode) ? r.ssMode : 'estimate' }),
       ...(r.type === 'pension' && {
         cola: Number(r.cola ?? 0) || 0,
         survivorShare: Number(r.survivorShare ?? 0) || 0,
@@ -107,7 +108,7 @@ export function toHouseholdV2(input, year) {
       incomes.filter((r) => r.owner === p.id && r.type === type && receivedAt(r, age) && keep(r)).reduce((a, r) => a + r.amount, 0);
     const selfEmployed = earned('1099');
     const ss = incomes.find((r) => r.owner === p.id && r.type === 'socialSecurity');
-    // The PIA as typed (blank = not entered: an error when "enter the PIA" is chosen).
+    // The PIA, or the monthly check now, as typed (blank = not entered: an error for those two).
     const piaTyped = ss && parseNumber(values.incomes.find((r) => r.id === ss.id)?.amount);
     return {
       id: p.id,
@@ -121,13 +122,20 @@ export function toHouseholdV2(input, year) {
       selfEmploymentIncome: selfEmployed,
       ...(selfEmployed > 0 && earned('1099', (r) => r.qbi) < selfEmployed && { qbiShare: earned('1099', (r) => r.qbi) / selfEmployed }),
       // No Social Security row: no benefit of their own (a PIA of 0); a spousal top-up can still come.
-      socialSecurity: {
-        mode: ss ? ss.ssMode : 'pia',
-        pia: ss ? (ss.ssMode === 'pia' ? piaTyped : null) : 0,
-        known: false, // version 1's "known annual benefit"; version 2 enters a PIA instead
-        benefit: NaN,
-        claimAge: ss ? ss.fromAge : null,
-      },
+      // Already receiving (decided 2026-10-09): version 1's known benefit, the check today x 12,
+      // from this year on (claimAge = the age now), with no claiming adjustment. Its PIA isn't
+      // known, so it gives the spouse no spousal top-up (socialSecurity.js). `received` = the monthly
+      // check as typed (checked by validateHouseholdV2; a blank one counts as $0 until entered).
+      socialSecurity:
+        ss?.ssMode === 'receiving'
+          ? { mode: 'receiving', pia: null, known: true, received: piaTyped, benefit: Number.isFinite(piaTyped) ? piaTyped * 12 : 0, claimAge: age }
+          : {
+              mode: ss ? ss.ssMode : 'pia',
+              pia: ss ? (ss.ssMode === 'pia' ? piaTyped : null) : 0,
+              known: false, // version 1's "known annual benefit"; version 2 enters a PIA or the check received
+              benefit: NaN,
+              claimAge: ss ? ss.fromAge : null,
+            },
     };
   });
 
@@ -280,6 +288,9 @@ export function validateHouseholdV2(household) {
     if (p.ageEntry === 'birthdate' && !parseBirthDate(p.birthDate)) errors.push(`Enter ${whose(p.id)} birthdate as a full date.`);
     if (p.socialSecurity.mode === 'pia' && (!isNum(p.socialSecurity.pia) || p.socialSecurity.pia < 0)) {
       errors.push(`Enter ${whose(p.id)} monthly Social Security benefit at full retirement age (PIA).`);
+    }
+    if (p.socialSecurity.mode === 'receiving' && (!isNum(p.socialSecurity.received) || p.socialSecurity.received < 0)) {
+      errors.push(`Enter ${whose(p.id)} monthly Social Security benefit as received now.`);
     }
     if (p.planToAge !== null && (!isNum(p.planToAge) || p.planToAge > 120)) errors.push(`Choose ${whose(p.id)} plan-to age (up to 120).`);
   }

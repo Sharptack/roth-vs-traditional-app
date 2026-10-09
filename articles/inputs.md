@@ -63,14 +63,15 @@ The tax and conversion calculators read the income received this year. The proje
 
 ### Social Security
 
-One row per person. A person with no Social Security row has no benefit of their own (a spousal benefit can still come from the other spouse's). Two ways to set the benefit:
+One row per person. A person with no Social Security row has no benefit of their own (a spousal benefit can still come from the other spouse's). Three ways to set the benefit:
 
 - **From earnings:** a simplified estimate from this year's earnings, treated as a lifetime average. It can overstate the benefit for someone who earned less earlier in their career. For a precise figure, use the person's statement from ssa.gov.
 - **Enter the PIA:** the benefit at full retirement age (the primary insurance amount), the monthly amount on the SSA statement, in today's dollars. The benefit at the chosen claiming age is worked out from it: reduced for each month before full retirement age, increased for each month after it, up to 70.
+- **Currently receiving:** for someone already collecting, the monthly check as received today (before any Medicare premium is taken out), in today's dollars. It counts as entered from this year on, at any age, with no adjustment for a claiming age. Because the PIA behind it isn't known, it adds no spousal benefit for the other spouse; it is taken to include any spousal benefit the person already receives.
 
-Either way, a married couple's spousal benefit is worked out from both people's benefits: up to half the other spouse's benefit at full retirement age, when that is more than their own.
+With an estimate or a PIA, a married couple's spousal benefit is worked out from both people's benefits: up to half the other spouse's benefit at full retirement age, when that is more than their own.
 
-**Claim at:** the age benefits start, 62 to 70. Left at "At retirement", benefits start at the retirement age (held within 62 to 70). Someone already claiming enters their age now. Once claimed, the benefit counts in the tax and conversion calculators this year (up to 85% of it is taxable, depending on other income), and in every year of the projection.
+**Claim at** (not asked when currently receiving): the age benefits start, 62 to 70. Left at "At retirement", benefits start at the retirement age (held within 62 to 70). Once claimed, the benefit counts in the tax and conversion calculators this year (up to 85% of it is taxable, depending on other income), and in every year of the projection.
 
 ### Pension
 

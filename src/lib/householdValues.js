@@ -23,8 +23,9 @@
 //                                          //  other: the same, with treatment (OTHER_INCOME_KINDS) its kind
 //                                          //  socialSecurity (one per person; none = no benefit): ssMode
 //                                          //   'estimate' (from earnings) | 'pia' (amount = the monthly
-//                                          //   benefit at full retirement age); fromAge = the claiming age,
-//                                          //   blank = at retirement
+//                                          //   benefit at full retirement age) | 'receiving' (amount = the
+//                                          //   monthly check as received now; fromAge unused); fromAge = the
+//                                          //   claiming age, blank = at retirement
 //                                          //  pension: amount = monthly at its start, fromAge = its start
 //                                          //   age, cola (decimal a year), survivorShare ('0' to '1'),
 //                                          //   lumpSum (the lump sum offered instead, '' = none) and
@@ -77,7 +78,8 @@ export const EMPLOYER_TYPES = ['none', 'match', 'flat'];
 export const EMPLOYER_DEFAULTS = { employer: 'none', matchRate: '1', matchUpTo: '0.04', employerAmount: '' };
 export const ACCOUNT_TYPES = ['pretax', 'roth', 'taxable'];
 export const LIABILITY_KINDS = ['mortgage', 'car', 'student', 'creditCard', 'other'];
-export const SS_MODES = ['estimate', 'pia'];
+// 'receiving': already receiving; amount = the monthly check today (decided 2026-10-09).
+export const SS_MODES = ['estimate', 'pia', 'receiving'];
 export const DEPENDENT_KINDS = ['child', 'other'];
 // A pension in the plan (decided 2026-10-09): its monthly payments, or its lump sum rolled over to a
 // Pre-tax IRA.

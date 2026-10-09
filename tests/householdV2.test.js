@@ -282,3 +282,43 @@ describe('the taxable accounts are the source of their own dividends (phase 2 st
     expect(own.existingYield).toBeCloseTo(0.02, 12);
   });
 });
+
+describe('Social Security already received (decided 2026-10-09, HAND CALC)', () => {
+  const receiving = (owner, monthly) => income(`s${owner}`, owner, 'socialSecurity', monthly, '', '', 'ordinary', { ssMode: 'receiving' });
+  it('the check as received, x 12, from this year on, with no claiming adjustment', () => {
+    // 75, retired at 65, receiving $2,000 a month: $24,000 this year (not adjusted for any claiming age)
+    const h = toHouseholdV2(v2({ people: [newPerson('p1', { age: '75', retirementAge: '65' })], incomes: [receiving('p1', '2000')] }), Y);
+    expect(h.people[0].socialSecurity).toMatchObject({ mode: 'receiving', known: true, benefit: 24000, claimAge: 75 });
+    expect(householdToYearTaxParams(h).income.socialSecurity).toBe(24000);
+    expect(validateHouseholdV2(h)).not.toContain('Enter your monthly Social Security benefit as received now.');
+  });
+
+  it('under 62 (a disability benefit): still from this year', () => {
+    const h = toHouseholdV2(v2({ people: [newPerson('p1', { age: '60', retirementAge: '60' })], incomes: [receiving('p1', '1500')] }), Y);
+    expect(householdToYearTaxParams(h).income.socialSecurity).toBe(18000);
+  });
+
+  it("a couple: the receiving spouse's PIA isn't known, so no spousal top-up either way", () => {
+    // p1 receiving $2,000/mo -> 24,000. p2 68 (born 1958, full retirement age 66 and 8 months), PIA
+    // $1,000 claimed at 68: 16 months late x 2/3% = 10.667% more -> $1,106.67/mo -> $13,280 a year.
+    // Total 37,280.
+    const h = toHouseholdV2(
+      couple({
+        people: [newPerson('p1', { age: '75', retirementAge: '65' }), newPerson('p2', { age: '68', retirementAge: '65' })],
+        incomes: [receiving('p1', '2000'), income('sp2', 'p2', 'socialSecurity', '1000', '68', '', 'ordinary', { ssMode: 'pia' })],
+      }),
+      Y,
+    );
+    expect(householdToYearTaxParams(h).income.socialSecurity).toBeCloseTo(37280, 6);
+  });
+
+  it('a blank amount asks for it', () => {
+    const h = toHouseholdV2(v2({ people: [newPerson('p1', { age: '75', retirementAge: '65' })], incomes: [receiving('p1', '')] }), Y);
+    expect(validateHouseholdV2(h)).toContain('Enter your monthly Social Security benefit as received now.');
+  });
+});
+
+it('already receiving at 75: no claiming-age error (the claim is the age now)', () => {
+  const h = toHouseholdV2(v2({ people: [newPerson('p1', { age: '75', retirementAge: '65' })], incomes: [income('s', 'p1', 'socialSecurity', '2000', '', '', 'ordinary', { ssMode: 'receiving' })] }), Y);
+  expect(validateHouseholdV2(h).filter((e) => e.includes('claiming age'))).toEqual([]);
+});

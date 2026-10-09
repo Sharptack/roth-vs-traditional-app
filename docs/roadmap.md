@@ -16,7 +16,7 @@ Tax calculator:
 - [x] The calculation block moves below the tax bracket visual (reverses the 2026-10-09 "above the chart").
 - [x] The "next $100" block becomes a short worked calculation of the effective marginal rate for the headline source (the $100, what it sets off, the extra tax, ÷ 100); the other sources' one-line rates stay below it (decided 2026-10-09).
 - [x] The bracket visual's "Total income" header larger, in line with the marginal and average rate headers.
-- [ ] Social Security "Currently receiving": a third choice beside the PIA and the estimate. The monthly check as received today, in today's dollars, with no claiming adjustment, from this year on (decided 2026-10-09). Its PIA isn't known, so it gives the spouse no spousal top-up. Why: a PIA entered for someone already receiving was adjusted for a claiming age, inflating the benefit.
+- [x] Social Security "Currently receiving": a third choice beside the PIA and the estimate. The monthly check as received today, in today's dollars, with no claiming adjustment, from this year on (decided 2026-10-09). Its PIA isn't known, so it gives the spouse no spousal top-up. Why: a PIA entered for someone already receiving was adjusted for a claiming age, inflating the benefit.
 
 Inputs:
 - [ ] The clients card starts collapsed and is renamed "Households".
