@@ -108,12 +108,16 @@ describe('toHouseholdV2', () => {
     expect(householdToYearTaxParams(single).income.socialSecurity).toBe(0);
   });
 
-  it("Social Security rows: each person's own; none = no benefit of their own; one per person", () => {
+  it("Social Security rows: each person's own; none = estimated from earnings (2026-10-09); one per person", () => {
     const h = toHouseholdV2(D, Y);
     expect(h.people[0].socialSecurity).toMatchObject({ mode: 'estimate', pia: null, claimAge: null });
-    const none = toHouseholdV2(v2({ incomes: [income('i1', 'p1', 'w2', '100000')] }), Y);
-    expect(none.people[0].socialSecurity).toMatchObject({ mode: 'pia', pia: 0 });
-    expect(householdToCompareInputs(none).earners[0].pia).toBe(0);
+    // no row: the same as an "estimate from earnings" row claimed at retirement (the default household)
+    const none = toHouseholdV2(v2({ incomes: [D.incomes[0]] }), Y);
+    expect(none.people[0].socialSecurity).toMatchObject({ mode: 'estimate', pia: null });
+    expect(householdToCompareInputs(none)).toEqual(householdToCompareInputs(h));
+    // a PIA of $0: no benefit of their own
+    const zero = toHouseholdV2(v2({ incomes: [D.incomes[0], income('s', 'p1', 'socialSecurity', '0', '', '', 'ordinary', { ssMode: 'pia' })] }), Y);
+    expect(householdToCompareInputs(zero).earners[0].pia).toBe(0);
     const two = toHouseholdV2(v2({ incomes: [...D.incomes, income('i3', 'p1', 'socialSecurity', '')] }), Y);
     expect(validateHouseholdV2(two)).toEqual(['Enter one Social Security row for you.']);
   });

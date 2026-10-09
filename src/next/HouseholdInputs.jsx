@@ -398,7 +398,7 @@ export default function HouseholdInputs({
           <p className="hint">
             One row per source; click a row to open it. Earnings and other income are yearly, from now
             until retirement unless start and end ages are set (both included; a row starting at or after
-            retirement runs for life). Social Security (one row each; without one, no benefit of their own)
+            retirement runs for life). Social Security (one row each; without one, estimated from earnings)
             and pensions are monthly.
           </p>
           <ul className="account-list">

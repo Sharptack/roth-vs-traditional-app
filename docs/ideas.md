@@ -17,6 +17,7 @@ Ideas not in the current roadmap. Read it when adding an idea or choosing what t
 
 - **Today's or future dollars:** a switch on every output between today's dollars (the default) and future, nominal dollars at the inflation assumption.
 - **Real estate (asked 2026-10-08):** a real estate option under assets and liabilities; a mortgage pay-off calculator that compares the home equity too; a calculator to compare buying a rental property.
+- **An itemized deductions calculator (asked 2026-10-09):** charitable donations first (the tax calculator should count them), then mortgage interest, state and local taxes with the SALT cap, medical costs over the floor; it adds up to the itemized total the inputs take today, compares it with the standard deduction, and shows when bunching gifts (or a donor-advised fund) pays. Pairs with QCDs and the charitable legacy goal.
 
 ## Advanced features (a later round)
 

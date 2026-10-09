@@ -9,7 +9,7 @@
 //   people[i] += { birthDate, ageEntry, sex, planToAge, socialSecurity: { mode, pia } }
 //                                          // from the person's Social Security row; mode 'pia': the
 //                                          // benefit is worked out from the PIA (socialSecurity.js
-//                                          // benefitFromPIA), spousal top-up included. No row: a PIA of 0.
+//                                          // benefitFromPIA), spousal top-up included. No row: estimated from earnings.
 //                                          // mode 'receiving': the check now x 12 as a known benefit
 //   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge, qbi }]  // numbers; ages null when blank;
 //                                          // qbi (1099 rows): false when the business doesn't qualify for QBI
@@ -126,7 +126,8 @@ export function toHouseholdV2(input, year) {
       wages: earned('w2'),
       selfEmploymentIncome: selfEmployed,
       ...(selfEmployed > 0 && earned('1099', (r) => r.qbi) < selfEmployed && { qbiShare: earned('1099', (r) => r.qbi) / selfEmployed }),
-      // No Social Security row: no benefit of their own (a PIA of 0); a spousal top-up can still come.
+      // No Social Security row: estimated from earnings (decided 2026-10-09; before, no benefit). A PIA
+      // of $0 is no benefit of their own; a spousal top-up can still come.
       // Already receiving (decided 2026-10-09): version 1's known benefit, the check today x 12,
       // from this year on (claimAge = the age now), with no claiming adjustment. Its PIA isn't
       // known, so it gives the spouse no spousal top-up (socialSecurity.js). `received` = the monthly
@@ -135,8 +136,8 @@ export function toHouseholdV2(input, year) {
         ss?.ssMode === 'receiving'
           ? { mode: 'receiving', pia: null, known: true, received: piaTyped, benefit: Number.isFinite(piaTyped) ? piaTyped * 12 : 0, claimAge: age }
           : {
-              mode: ss ? ss.ssMode : 'pia',
-              pia: ss ? (ss.ssMode === 'pia' ? piaTyped : null) : 0,
+              mode: ss ? ss.ssMode : 'estimate',
+              pia: ss?.ssMode === 'pia' ? piaTyped : null,
               known: false, // version 1's "known annual benefit"; version 2 enters a PIA or the check received
               benefit: NaN,
               claimAge: ss ? ss.fromAge : null,

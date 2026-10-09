@@ -65,7 +65,7 @@ The tax and conversion calculators read the income received this year. The proje
 
 ### Social Security
 
-One row per person. A person with no Social Security row has no benefit of their own (a spousal benefit can still come from the other spouse's). Three ways to set the benefit:
+One row per person. A person with no Social Security row has their benefit estimated from earnings, as **From earnings** below; to model no benefit of their own, enter a PIA of $0 (a spousal benefit can still come from the other spouse's). Three ways to set the benefit:
 
 - **From earnings:** a simplified estimate from this year's earnings, treated as a lifetime average. It can overstate the benefit for someone who earned less earlier in their career. For a precise figure, use the person's statement from ssa.gov.
 - **Enter the PIA:** the benefit at full retirement age (the primary insurance amount), the monthly amount on the SSA statement, in today's dollars. The benefit at the chosen claiming age is worked out from it: reduced for each month before full retirement age, increased for each month after it, up to 70.

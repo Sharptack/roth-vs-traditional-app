@@ -86,9 +86,11 @@ function incomeSummary(v) {
   );
   const two = hasSpouseV2(v);
   const whose = (r) => (two ? `${r.owner === 'p1' ? 'your' : "spouse's"} ` : '');
-  const ss = rows
-    .filter((r) => r.type === 'socialSecurity')
-    .map((r) => `${two ? (r.owner === 'p1' ? 'Your' : "Spouse's") + ' ' : ''}Social Security ${r.ssMode === 'pia' ? `${money(r.amount)}/mo PIA` : r.ssMode === 'receiving' ? `${money(r.amount)}/mo received` : 'estimated'}`);
+  // A person with no Social Security row: estimated from earnings (decided 2026-10-09).
+  const ssRows = activePeople(v).map((p) => rows.find((r) => r.owner === p.id && r.type === 'socialSecurity') ?? { owner: p.id, ssMode: 'estimate' });
+  const ss = ssRows.map(
+    (r) => `${two ? (r.owner === 'p1' ? 'Your' : "Spouse's") + ' ' : ''}Social Security ${r.ssMode === 'pia' ? `${money(r.amount)}/mo PIA` : r.ssMode === 'receiving' ? `${money(r.amount)}/mo received` : 'estimated'}`,
+  );
   const pensions = rows
     .filter((r) => r.type === 'pension')
     .map((r) => (r.election === 'lumpSum' ? `${whose(r)}pension taken as a ${money(r.lumpSum)} lump sum` : `${whose(r)}pension ${money(r.amount)}/mo from ${r.fromAge || '—'}`));

@@ -12,14 +12,20 @@ function personLines(p, year, label) {
     p.wages > 0 && `${formatCurrency(p.wages)} W-2`,
     p.selfEmploymentIncome > 0 && `${formatCurrency(p.selfEmploymentIncome)} 1099`,
   ].filter(Boolean);
-  const ss = p.socialSecurity.known
+  const ss = p.socialSecurity.mode === 'receiving'
+    ? `${formatCurrency(p.socialSecurity.benefit / 12)} per month, received now`
+    : p.socialSecurity.known
     ? `${formatCurrency(p.socialSecurity.benefit)} per year (entered)`
     : p.socialSecurity.mode === 'pia'
       ? `${formatCurrency(p.socialSecurity.pia)} per month at full retirement age (PIA, entered)`
-      : 'estimated';
-  const claim = p.socialSecurity.claimAge ? `, claimed at ${p.socialSecurity.claimAge}` : ', claimed at retirement';
+      : 'estimated from earnings';
+  const claim = p.socialSecurity.mode === 'receiving' ? '' : p.socialSecurity.claimAge ? `, claimed at ${p.socialSecurity.claimAge}` : ', claimed at retirement';
+  const age = year - p.birthYear;
+  // A blank retirement age (not entered) or one at or below the age now (already retired, 2026-10-09).
+  const retires = !Number.isFinite(p.retirementAge) ? 'retirement age not entered' : p.retirementAge <= age ? `retired at ${p.retirementAge}` : `retires at ${p.retirementAge}`;
+  const life = Number.isFinite(p.planToAge) ? `, life expectancy ${p.planToAge}` : '';
   return [
-    bullet(label, `age ${year - p.birthYear}, retires at ${p.retirementAge}`),
+    bullet(label, `age ${age}, ${retires}${life}`),
     bullet(`${label}, income`, income.length > 0 ? income.join(' + ') : '$0'),
     bullet(`${label}, Social Security`, ss + claim),
   ];

@@ -8,7 +8,7 @@ describe('the household as text', () => {
       '- Filing status: Single',
       '- You: age 35, retires at 65',
       '- You, income: $100,000 W-2',
-      '- You, Social Security: estimated, claimed at retirement',
+      '- You, Social Security: estimated from earnings, claimed at retirement',
       '- Future Contributions, you: $10,000 per year, Pre-tax, 401(k)',
       '- Existing Account: Pre-tax $100,000',
       '- Costs ending before retirement: $6,000 debt, $0 other, per year',
@@ -62,5 +62,19 @@ describe('the household as text', () => {
     expect(lines[0]).toBe('Client household (2026 tax rules)');
     expect(lines[1]).toBe('Link: https://example.test/?hh=1#/next');
     expect(lines[lines.length - 1]).toBe('- Tax calculator: 22.0% marginal · 11.0% effective ($10,970 federal income tax this year)');
+  });
+});
+
+describe('the household as text: ages (2026-10-09)', () => {
+  it('a blank retirement age, an already-retired person, the life expectancy; receiving Social Security', async () => {
+    const { toHouseholdV2 } = await import('../src/lib/householdV2.js');
+    const { DEFAULT_HOUSEHOLD_VALUES: D, newPerson } = await import('../src/lib/householdValues.js');
+    const blank = describeHousehold(toHouseholdV2({ ...D, people: [newPerson('p1', { age: '49', retirementAge: '', planToAge: '' })] }, 2026));
+    expect(blank).toContain('- You: age 49, retirement age not entered');
+    const retired = describeHousehold(
+      toHouseholdV2({ ...D, people: [newPerson('p1', { age: '75', retirementAge: '65' })], incomes: [{ ...D.incomes[1], ssMode: 'receiving', amount: '2500' }] }, 2026),
+    );
+    expect(retired).toContain('- You: age 75, retired at 65, life expectancy 95');
+    expect(retired).toContain('- You, Social Security: $2,500 per month, received now');
   });
 });
