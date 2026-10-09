@@ -469,3 +469,73 @@ describe('runProjection: each taxable account’s own dividend yield (HAND CALC)
     expect(r.taxableBasis).toBeCloseTo(101700 + 102550, 6);
   });
 });
+
+describe('runProjection: income rows over their ages, and the surplus setting (2026, HAND CALC)', () => {
+  const other = (treatment, amount, fromAge, toAge) => ({ id: 'x', owner: 'p1', type: 'other', treatment, amount, fromAge, toAge });
+
+  it('retired: rent counts as ordinary income and cash, so less is withdrawn', () => {
+    // 70, $500,000 Pre-tax, need $30,000, $20,000 of rent to 90. Cash = 20,000 + W - tax = 30,000;
+    // tax = 1,240 + 12% x (20,000 + W - 16,100 - 12,400) = 0.12 W + 220 -> 0.88 W = 10,220
+    // -> W = 11,613.6364, tax 1,613.6364 (taxable 15,513.64, in the 12% bracket)
+    const h = retiree({ age: 70, pretax: 500000 });
+    h.incomes = [other('ordinary', 20000, null, 90)];
+    const r = runProjection(h, { need: 30000, endAge: 70 }).rows[0];
+    expect(r.withdrawals.pretax).toBeCloseTo(10220 / 0.88, 4);
+    expect(r.totalTax).toBeCloseTo(1613.6364, 3);
+    expect(r.otherIncome).toBe(20000);
+    expect(r.afterTaxIncome).toBeCloseTo(30000, 4);
+  });
+
+  it('a row stops after its last age', () => {
+    const h = retiree({ age: 70, pretax: 500000 });
+    h.incomes = [other('ordinary', 20000, null, 70)];
+    const { rows } = runProjection(h, { need: 30000, endAge: 71 });
+    expect(rows.map((r) => r.otherIncome)).toEqual([20000, 0]);
+  });
+
+  // A worker, 40, single, wages $100,000 (a W-2 row with blank ages: until retirement at 65).
+  function worker(incomes, surplus) {
+    const h = retiree({ age: 40 });
+    h.people[0] = { ...h.people[0], retirementAge: 65, wages: 100000 };
+    h.incomes = [{ id: 'w', owner: 'p1', type: 'w2', amount: 100000, fromAge: null, toAge: null }, ...incomes];
+    if (surplus) h.assumptions.surplus = surplus;
+    return h;
+  }
+
+  it('working: income beyond the paycheck, after its tax, is saved (the default)', () => {
+    // $10,000 of rent: taxable 83,900 + 10,000 = 93,900, inside the 22% bracket -> tax 2,200;
+    // reinvested 7,800 in a taxable account (basis)
+    const r = runProjection(worker([other('ordinary', 10000, null, null)]), { endAge: 40 }).rows[0];
+    expect(r.surplus).toBeCloseTo(7800, 6);
+    expect(r.reinvested).toBeCloseTo(7800, 6);
+    expect(r.extraSpending).toBe(0);
+    expect(r.endBalances.taxable).toBeCloseTo(7800, 6);
+  });
+
+  it('or spent: spending rises in those years, nothing reinvested', () => {
+    const r = runProjection(worker([other('ordinary', 10000, null, null)], 'spend'), { endAge: 40 }).rows[0];
+    expect(r.surplus).toBeCloseTo(7800, 6);
+    expect(r.reinvested).toBe(0);
+    expect(r.extraSpending).toBeCloseTo(7800, 6);
+    expect(r.endBalances.taxable).toBe(0);
+  });
+
+  it('earnings rows over their ages: until retirement when blank; part-time work after it', () => {
+    // retiring at 42; part-time W-2 of $20,000 from 42 to 43
+    const h = worker([{ id: 'pt', owner: 'p1', type: 'w2', amount: 20000, fromAge: 42, toAge: 43 }]);
+    h.people[0].retirementAge = 42;
+    const { rows } = runProjection(h, { endAge: 44 });
+    expect(rows.map((r) => r.wages)).toEqual([100000, 100000, 20000, 20000, 0]);
+    expect(rows.map((r) => r.working[0])).toEqual([true, true, false, false, false]);
+  });
+
+  it('earnings that end before retirement: no surplus, nothing drawn', () => {
+    const h = worker([]);
+    h.incomes[0].toAge = 40;
+    const { rows } = runProjection(h, { endAge: 41 });
+    expect(rows.map((r) => r.wages)).toEqual([100000, 0]);
+    expect(rows[1].surplus).toBe(0);
+    expect(rows[1].withdrawals.total).toBe(0);
+    expect(rows[1].shortfall).toBe(0);
+  });
+});

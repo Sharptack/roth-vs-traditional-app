@@ -66,6 +66,17 @@
 // assumptions.retirementReturnRate once no one does (a couple: from the year the last retires, when the
 // Roth comparison takes its snapshot). Absent = returnRate throughout, as before.
 //
+// The rest of the household (phase 2 step f, decided 2026-10-08/09): a version 2 household's income rows
+// count in the years their ages cover (incomeRowCounts): earnings (W-2, 1099) and other income
+// (ordinary, interest, qualified dividends, tax-exempt). A blank first age is from now; a blank last
+// age is until the owner's retirement, or for life for a row that starts at or after it (part-time
+// work, an annuity). After the first death the deceased's earnings stop; their other income goes on.
+// Version 1 (no rows): each person's wages while working, as before.
+// Surplus (assumptions.surplus): once anyone has retired, cash above the need; while everyone works,
+// cash above what today's paycheck alone leaves (an RMD, income beyond the paycheck, after tax; a
+// drop in earnings is taken as lower spending, not drawn). 'save' (the default) reinvests it in a
+// taxable account; 'spend' spends it (spending rises in those years).
+//
 // Simplifications: spending is flat in today's dollars; earnings are flat (no raises); each return is
 // constant.
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
@@ -101,6 +112,15 @@ export function proportionalStrategy({ accounts, rmdByAccount, need, evaluate })
 
 // Per-person Social Security for the projection: when each part starts, and how much it is.
 // (Also the tax calculator's Social Security this year, socialSecurityInYear.)
+// Whether an income row counts at this age (see the header): a blank last age is until retirement,
+// or for life when the row starts at or after retirement.
+export function incomeRowCounts(row, age, retirementAge) {
+  if (row.fromAge !== null && row.fromAge !== undefined && age < row.fromAge) return false;
+  if (row.toAge !== null && row.toAge !== undefined) return age <= row.toAge;
+  const startsRetired = row.fromAge !== null && row.fromAge !== undefined && row.fromAge >= retirementAge;
+  return startsRetired || age < retirementAge;
+}
+
 export function socialSecuritySchedule(household) {
   const { year, people } = household;
   const ageOf = (p) => year - p.birthYear;
@@ -171,6 +191,9 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   const survivorSpending = assumptions.survivorSpending ?? DEFAULT_SURVIVOR_SPENDING;
   const dividendYield = assumptions.dividendYield ?? 0;
   const yieldOf = (a) => a.dividendYield ?? dividendYield;
+  const spendSurplus = assumptions.surplus === 'spend';
+  // Version 2: the income rows (earnings and other income) by their ages; version 1: none.
+  const incomeRows = Array.isArray(household.incomes) ? household.incomes : null;
   let deceased = -1; // the index of the person who has died, from the year after their death
   const plan =
     contributions ??
@@ -254,13 +277,32 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     let irmaa = null;
     let irmaaThisYear = 0;
 
-    const peopleThisYear = people
-      .map((p, i) => ({
-        age: assumptions.ageDeductions ? ages[i] : undefined,
-        wages: working[i] ? p.wages : 0,
-        selfEmploymentIncome: working[i] ? p.selfEmploymentIncome : 0,
-      }))
-      .filter((_, i) => alive[i]);
+    // Earnings this year: the rows by age (version 2), else the wages while working. paycheck: today's
+    // earnings while working, the base that income beyond the paycheck is measured against.
+    const counts = (r) => {
+      const i = people.findIndex((p) => p.id === r.owner);
+      return i >= 0 && incomeRowCounts(r, ages[i], people[i].retirementAge);
+    };
+    const earnings = (i, type) =>
+      incomeRows
+        ? incomeRows.filter((r) => r.owner === people[i].id && r.type === type && counts(r)).reduce((s, r) => s + r.amount, 0)
+        : working[i]
+          ? people[i][type === 'w2' ? 'wages' : 'selfEmploymentIncome']
+          : 0;
+    const earnersThisYear = (paycheckOnly) =>
+      people
+        .map((p, i) => ({
+          age: assumptions.ageDeductions ? ages[i] : undefined,
+          wages: paycheckOnly ? (working[i] ? p.wages : 0) : earnings(i, 'w2'),
+          selfEmploymentIncome: paycheckOnly ? (working[i] ? p.selfEmploymentIncome : 0) : earnings(i, '1099'),
+        }))
+        .filter((_, i) => alive[i]);
+    const peopleThisYear = earnersThisYear(false);
+    const paycheckPeople = earnersThisYear(true);
+    // Other income this year, by kind (it goes on after its owner's death).
+    const otherIncome = { ordinary: 0, interest: 0, qualified: 0, taxExempt: 0 };
+    for (const r of incomeRows ?? []) if (r.type === 'other' && counts(r)) otherIncome[r.treatment] = (otherIncome[r.treatment] ?? 0) + r.amount;
+    const otherIncomeTotal = otherIncome.ordinary + otherIncome.interest + otherIncome.qualified + otherIncome.taxExempt;
     // Each taxable account's qualified dividends this year, on what stays invested.
     const dividendsOf = (withdrawals) =>
       Object.fromEntries(
@@ -269,9 +311,11 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
           .map((a) => [a.id, Math.max(0, a.balance - (withdrawals[a.id] ?? 0)) * yieldOf(a)]),
       );
     const sum = (o) => Object.values(o).reduce((s, x) => s + x, 0);
-    const taxParams = (withdrawals, conversions = [], withDividends = true) => {
-      let ordinaryIncome = pension + conversions.reduce((s, c) => s + c.amount, 0);
-      let preferentialIncome = withDividends ? sum(dividendsOf(withdrawals)) : 0;
+    // paycheckOnly: today's earnings alone, no other income (the base for the surplus while working).
+    const taxParams = (withdrawals, conversions = [], { withDividends = true, paycheckOnly = false } = {}) => {
+      const other = paycheckOnly ? { ordinary: 0, interest: 0, qualified: 0 } : otherIncome;
+      let ordinaryIncome = pension + other.ordinary + conversions.reduce((s, c) => s + c.amount, 0);
+      let preferentialIncome = other.qualified + (withDividends ? sum(dividendsOf(withdrawals)) : 0);
       for (const a of accounts) {
         const w = withdrawals[a.id] ?? 0;
         if (!(w > 0)) continue;
@@ -282,9 +326,9 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         filingStatus: filingStatusThisYear,
         year, // today's law, in today's dollars
         calendarYear,
-        people: peopleThisYear,
+        people: paycheckOnly ? paycheckPeople : peopleThisYear,
         pretaxDeferrals,
-        income: { ordinaryIncome, preferentialIncome, socialSecurity },
+        income: { ordinaryIncome, investmentOrdinaryIncome: other.interest, preferentialIncome, socialSecurity },
         thresholdScale,
         rateShift: anyRetired ? rateShiftInRetirement : 0,
         qbi: Boolean(assumptions.qualifiedBusinessIncome), // QBI on 1099 earnings while working (qbi.js)
@@ -293,13 +337,15 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       };
     };
     // Totals only while solving; the row below runs the full engine once (marginal rates, room).
-    // withDividends false: the cash without the dividends' tax (while everyone works, the account pays it).
-    const evaluate = (withdrawals, conversions = [], full = false, withDividends = true) => {
-      const params = taxParams(withdrawals, conversions, withDividends);
+    // opts.withDividends false: the cash without the dividends' tax (while everyone works, the account
+    // pays it); opts.paycheckOnly: today's earnings alone, no other income.
+    const evaluate = (withdrawals, conversions = [], full = false, opts = {}) => {
+      const params = taxParams(withdrawals, conversions, opts);
       const tax = full ? calculateYearTax(params) : calculateYearTaxTotals(params);
       const withdrawn = Object.values(withdrawals).reduce((s, w) => s + w, 0);
-      const earned = peopleThisYear.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0);
-      return { tax, cash: earned + socialSecurity + pension + withdrawn - tax.totalTax - contributionCash - irmaaThisYear };
+      const earned = params.people.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0);
+      const other = opts.paycheckOnly ? 0 : otherIncomeTotal;
+      return { tax, cash: earned + other + socialSecurity + pension + withdrawn - tax.totalTax - contributionCash - irmaaThisYear };
     };
 
     const live = accounts.filter((a) => a.balance > 0);
@@ -353,15 +399,15 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     // While everyone works the dividends' tax comes out of the dividends (reinvested less), not the
     // paycheck: the year's cash leaves it out.
     const accountPaysDividendTax = !anyRetired && dividends > 0;
-    const cash = accountPaysDividendTax ? evaluate(withdrawals, conversions, false, false).cash : solved.cash;
+    const cash = accountPaysDividendTax ? evaluate(withdrawals, conversions, false, { withDividends: false }).cash : solved.cash;
     const dividendTax = accountPaysDividendTax ? cash - solved.cash : 0;
-    // Surplus to reinvest: once retired, cash above the need; while everyone works, the after-tax
-    // money from any RMD (cash with it minus cash without it), since the paycheck covers spending.
+    // Surplus: once retired, cash above the need; while everyone works, cash above what today's
+    // paycheck alone leaves (an RMD's or other income's after-tax money), since the paycheck covers
+    // spending. Saved (reinvested) or spent, by assumptions.surplus.
     const surplus = anyRetired
       ? Math.max(0, cash - needThisYear)
-      : rmdTotal > 0
-        ? Math.max(0, cash - evaluate({}, [], false, !accountPaysDividendTax).cash)
-        : 0;
+      : Math.max(0, cash - evaluate({}, [], false, { withDividends: false, paycheckOnly: true }).cash);
+    const reinvested = spendSurplus ? 0 : surplus;
     const shortfall = anyRetired && needThisYear - cash > 0.01 ? needThisYear - cash : 0;
     if (shortfall > 0 && runOutYear === null) runOutYear = calendarYear;
 
@@ -404,10 +450,10 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     people.forEach((p, i) => {
       if (employerMade[i] > 0) accountFor(p.id, 'pretax').balance += employerMade[i];
     });
-    if (surplus > 0.005) {
+    if (reinvested > 0.005) {
       const side = accountFor(people[survivorYear ? 1 - deceased : 0].id, 'taxable');
-      side.balance += surplus;
-      side.basis += surplus;
+      side.balance += reinvested;
+      side.basis += reinvested;
     }
     // A death this year (only the first, and not both at once): from the year end the deceased's
     // accounts are the survivor's, taxable ones with a step-up in basis.
@@ -457,7 +503,10 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       need: needThisYear,
       returnRate, // this year's return (before or after retirement)
       afterTaxIncome: cash, // after all tax and this year's contributions
-      surplus,
+      surplus, // cash above the need (above today's paycheck while everyone works)
+      reinvested: surplus > 0.005 ? reinvested : 0, // the surplus saved in a taxable account
+      extraSpending: spendSurplus && surplus > 0.005 ? surplus : 0, // the surplus spent
+      otherIncome: otherIncomeTotal, // the other income rows this year (rent, an annuity, ...)
       shortfall,
       dividends, // qualified dividends from the taxable accounts this year (in grossIncome and the tax)
       dividendTaxFromAccounts: dividendTax, // their tax when the accounts paid it (while everyone works)
