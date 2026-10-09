@@ -97,6 +97,7 @@ export const CALCULATORS = [
     title: 'Year-by-year projection',
     blurb: 'From today to the end age: income, taxes, RMDs and balances every year, and whether the money lasts.',
     ownTitle: 'Projection inputs',
+    article: 'projection',
   },
   {
     id: 'conversion',

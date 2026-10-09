@@ -682,7 +682,7 @@ export default function HouseholdInputs({
           {shown('dividendYield') && (
             <SelectInput
               label="Dividends on taxable accounts"
-              hint="Qualified dividends a taxable account pays each year, as part of the return (stock funds; a broad stock index fund pays about 1.3%). They are taxed every year, not only when sold: while working the account pays the tax and reinvests the rest; in retirement the year's withdrawals cover it. Used by the Roth comparison and the projection."
+              hint="Qualified dividends a taxable account pays each year, as part of the return (stock funds; a broad stock index fund pays about 1.3%). They are taxed every year, not only when sold: until anyone in the household retires, the account pays the tax and reinvests the rest; after that, the year's withdrawals cover it. Used by the Roth comparison and the projection."
               value={a.dividendYield}
               onChange={set('dividendYield')}
               options={[

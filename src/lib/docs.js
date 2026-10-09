@@ -26,6 +26,11 @@ export const DOCS_ARTICLES = [
     blurb: 'This year’s tax line by line, the three rates, and the two buckets: what each shows and how it is worked out.',
   },
   {
+    slug: 'projection',
+    title: 'The year-by-year projection',
+    blurb: 'How each year is worked out: income over the years, withdrawal strategies, RMDs, dividends, returns, and whether the money lasts.',
+  },
+  {
     slug: 'pension',
     title: 'The pension calculator',
     blurb: 'Lump sum or monthly: the expected return on life expectancy, survivor benefits, and how long you live.',
