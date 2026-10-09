@@ -285,8 +285,15 @@ export function householdToCompareInputs(household) {
   const yearsEach = people.map((p) => p.retirementAge - ageOf(p));
   const atLast = Boolean(assumptions.snapshotAtLastRetirement);
   const yearsToRetirement = atLast ? Math.max(...yearsEach) : Math.min(...yearsEach);
+  // A pension's lump sum rolled over later (version 2 household.rollovers) counts as Pre-tax money
+  // today at its value discounted at the return: grown to retirement, it is the lump sum grown from
+  // its start (or discounted back from it when it comes after retirement).
+  const rolledOver = (household.rollovers ?? []).reduce((acc, ro) => {
+    const owner = people.find((p) => p.id === ro.owner);
+    return owner ? acc + ro.amount / (1 + assumptions.returnRate) ** Math.max(0, ro.age - ageOf(owner)) : acc;
+  }, 0);
   const balanceOf = (type) =>
-    accounts.filter((a) => a.type === type).reduce((acc, a) => acc + a.balance, 0);
+    accounts.filter((a) => a.type === type).reduce((acc, a) => acc + a.balance, 0) + (type === 'pretax' ? rolledOver : 0);
   const taxable = accounts.filter((a) => a.type === 'taxable');
   const taxableTotal = balanceOf('taxable');
   const basisShare =

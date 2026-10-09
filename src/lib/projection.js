@@ -84,6 +84,10 @@
 // no withdrawal to pay it from, so the tax is held back from the conversion (less reaches Roth; the
 // row's conversionTaxWithheld).
 //
+// A pension taken as a lump sum (household.rollovers, decided 2026-10-09): rolled over to the owner's
+// Pre-tax account at the start of the year they reach the pension's start age (the survivor's, after
+// a death), after that year's RMD is set (it counts from the next year).
+//
 // Simplifications: spending is flat in today's dollars; earnings are flat (no raises); each return is
 // constant.
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
@@ -279,6 +283,13 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       if (required > 0) for (const a of own) rmdByAccount[a.id] = (required * a.balance) / total;
       rmdTotal += required;
     });
+
+    // A pension's lump sum rolled over this year (see the header).
+    for (const ro of household.rollovers ?? []) {
+      const i = people.findIndex((p) => p.id === ro.owner);
+      if (i < 0 || ages[i] !== ro.age || !(ro.amount > 0)) continue;
+      accountFor(people[alive[i] ? i : 1 - i].id, 'pretax').balance += ro.amount;
+    }
 
     // Medicare IRMAA this year (set by MAGI two years back; see the header). evaluate() subtracts it.
     const enrolled = assumptions.medicareIrmaa ? medicareEnrollees(ages.filter((_, i) => alive[i])) : 0;

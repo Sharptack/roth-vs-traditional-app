@@ -26,7 +26,9 @@
 //                                          //   benefit at full retirement age); fromAge = the claiming age,
 //                                          //   blank = at retirement
 //                                          //  pension: amount = monthly at its start, fromAge = its start
-//                                          //   age, cola (decimal a year), survivorShare ('0' to '1')
+//                                          //   age, cola (decimal a year), survivorShare ('0' to '1'),
+//                                          //   lumpSum (the lump sum offered instead, '' = none) and
+//                                          //   election (PENSION_ELECTIONS: which one the plan takes)
 //   contributions: [ { id, owner, tax: 'pretax' | 'roth' | 'taxable', account: '401k' | 'ira', amount,
 //                      employer: 'none' | 'match' | 'flat', matchRate, matchUpTo, employerAmount } ],
 //                                          // the employer's 401(k) contribution: a match ('1' = 100% of the
@@ -46,7 +48,8 @@
 //                  retirementReturnRate,   // the return once no one works, or 'same' (as returnRate)
 //                  surplus },              // income above the need: 'save' (reinvest it) or 'spend'
 //   calculators: { projection: { heirTaxRate, strategy }, conversion: { amount },
-//                  pension: { lumpSum } },   // the lump-sum offer for the household's first pension
+//                  pension: { lumpSum } },   // the lump-sum offer before it moved onto the pension row
+//                                          // (2026-10-09; moveLumpSumToRow), kept for older saves
 // }
 //
 // The defaults are version 1's (household.js PREVIEW_DEFAULT_VALUES), row by row.
@@ -76,6 +79,9 @@ export const ACCOUNT_TYPES = ['pretax', 'roth', 'taxable'];
 export const LIABILITY_KINDS = ['mortgage', 'car', 'student', 'creditCard', 'other'];
 export const SS_MODES = ['estimate', 'pia'];
 export const DEPENDENT_KINDS = ['child', 'other'];
+// A pension in the plan (decided 2026-10-09): its monthly payments, or its lump sum rolled over to a
+// Pre-tax IRA.
+export const PENSION_ELECTIONS = ['monthly', 'lumpSum'];
 
 export function newPerson(id, overrides = {}) {
   return {
@@ -94,7 +100,7 @@ export function newPerson(id, overrides = {}) {
 const ROW_TEMPLATES = {
   incomes: {
     prefix: 'i',
-    row: { owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes' },
+    row: { owner: 'p1', type: 'w2', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', lumpSum: '', election: 'monthly' },
   },
   contributions: {
     prefix: 'c',
@@ -154,7 +160,18 @@ export const BLANK_HOUSEHOLD_VALUES = {
 };
 
 // A new pension row (the pension calculator's "Add a pension"): the old example offer.
-export const NEW_PENSION = { amount: '1800', fromAge: '65', cola: '0', survivorShare: '0' };
+export const NEW_PENSION = { amount: '1800', fromAge: '65', cola: '0', survivorShare: '0', lumpSum: '300000', election: 'monthly' };
+
+// The lump-sum offer moved onto the pension row (decided 2026-10-09). Values from before it keep the
+// offer in calculators.pension.lumpSum: it goes onto the household's first pension row (the one the
+// pension calculator weighs) when that row has none.
+export function moveLumpSumToRow(values) {
+  const offer = String(values.calculators?.pension?.lumpSum ?? '').trim();
+  const people = activePeople(values);
+  const first = values.incomes.find((r) => r.type === 'pension' && people.some((p) => p.id === r.owner));
+  if (!offer || !first || String(first.lumpSum ?? '').trim() !== '') return values;
+  return updateRow(values, 'incomes', first.id, 'lumpSum', offer);
+}
 
 export function hasSpouseV2(values) {
   return values.filingStatus === 'mfj' && values.includeSpouse === 'yes';
@@ -309,8 +326,8 @@ function cleanPerson(raw, id) {
 const ROW_RULES = {
   incomes: {
     choices: { owner: OWNERS, type: INCOME_TYPES },
-    optional: { treatment: OTHER_INCOME_KINDS, ssMode: SS_MODES, qbi: ['yes', 'no'] },
-    text: ['amount', 'fromAge', 'toAge', 'cola', 'survivorShare'],
+    optional: { treatment: OTHER_INCOME_KINDS, ssMode: SS_MODES, qbi: ['yes', 'no'], election: PENSION_ELECTIONS },
+    text: ['amount', 'fromAge', 'toAge', 'cola', 'survivorShare', 'lumpSum'],
   },
   contributions: {
     choices: { owner: OWNERS, tax: CONTRIBUTION_TAX_TYPES, account: CONTRIBUTION_ACCOUNTS },
@@ -350,7 +367,7 @@ export function cleanHouseholdValues(input, year = new Date().getFullYear()) {
   const people = [cleanPerson(find('p1'), 'p1'), ...(find('p2') ? [cleanPerson(find('p2'), 'p2')] : [])];
   const accounts = cleanRows(raw.accounts, 'accounts');
   const calculators = isObject(raw.calculators) ? raw.calculators : {};
-  return {
+  return moveLumpSumToRow({
     version: HOUSEHOLD_VALUES_VERSION,
     filingStatus: oneOf(raw.filingStatus, ['single', 'mfj'], D.filingStatus),
     includeSpouse: oneOf(raw.includeSpouse, ['yes', 'no'], D.includeSpouse),
@@ -367,7 +384,7 @@ export function cleanHouseholdValues(input, year = new Date().getFullYear()) {
     calculators: Object.fromEntries(
       Object.entries(D.calculators).map(([name, defaults]) => [name, cleanGroup(calculators[name], defaults)]),
     ),
-  };
+  });
 }
 
 // ---- The first version 2 layout -> the current one ----

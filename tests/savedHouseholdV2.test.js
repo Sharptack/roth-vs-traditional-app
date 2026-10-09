@@ -8,7 +8,7 @@ import { upgradeHouseholdValues } from '../src/lib/householdUpgrade.js';
 import { V1_HOUSEHOLDS } from './fixtures/householdV1.js';
 import { YEAR, pinsFor, pinsForV2 } from './fixtures/householdPins.js';
 
-const row = (r) => ({ treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', ...r });
+const row = (r) => ({ treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', lumpSum: '', election: 'monthly', ...r });
 const couple = {
   ...setIncludeSpouse({ ...DEFAULT_HOUSEHOLD_VALUES, filingStatus: 'mfj' }, true),
   people: [
@@ -19,7 +19,7 @@ const couple = {
     row({ id: 'i1', owner: 'p1', type: 'w2', amount: '150,000' }),
     row({ id: 'i9', owner: 'p2', type: 'other', treatment: 'taxExempt', amount: '4000', fromAge: '55', toAge: '59' }),
     row({ id: 'i4', owner: 'p1', type: 'socialSecurity', ssMode: 'pia', amount: '3100', fromAge: '68' }),
-    row({ id: 'i6', owner: 'p2', type: 'pension', amount: '1500', fromAge: '60', survivorShare: '1' }),
+    row({ id: 'i6', owner: 'p2', type: 'pension', amount: '1500', fromAge: '60', survivorShare: '1', lumpSum: '300000' }),
   ],
   contributions: [
     { id: 'c1', owner: 'p1', tax: 'roth', account: '401k', amount: '24000', employer: 'match', matchRate: '0.5', matchUpTo: '0.06', employerAmount: '' },

@@ -35,7 +35,7 @@ describe('version 2 household values: defaults', () => {
     // one W-2 income row and a Social Security row (estimated, claimed at retirement), one Pre-tax
     // 401(k) contribution row, one Pre-tax account
     // (qbi: whether a 1099 row's business qualifies for QBI, new 2026-10-09: yes)
-    const blank = { treatment: 'ordinary', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes' };
+    const blank = { treatment: 'ordinary', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', lumpSum: '', election: 'monthly' };
     expect(D.incomes).toEqual([
       { id: 'i1', owner: 'p1', type: 'w2', amount: v1.grossIncome, ...blank },
       { id: 'i2', owner: 'p1', type: 'socialSecurity', amount: '', ...blank, fromAge: v1.claimAge },
@@ -61,7 +61,8 @@ describe('version 2 household values: defaults', () => {
     // no pension row; the lump-sum offer waits for one (a new pension row starts at the old example offer)
     const p = PENSION_DEFAULT_VALUES;
     expect(D.calculators.pension).toEqual({ lumpSum: p.penLumpSum });
-    expect(NEW_PENSION).toEqual({ amount: p.penMonthly, fromAge: p.penStartAge, cola: p.penCola, survivorShare: p.penSurvivor });
+    // (the lump sum on the row since 2026-10-09, taken monthly unless chosen)
+    expect(NEW_PENSION).toEqual({ amount: p.penMonthly, fromAge: p.penStartAge, cola: p.penCola, survivorShare: p.penSurvivor, lumpSum: p.penLumpSum, election: 'monthly' });
   });
 });
 
@@ -138,7 +139,7 @@ describe('spouse and rows', () => {
     expect(newRowId([{ id: 'i1' }, { id: 'i2' }], 'i')).toBe('i3');
     expect(newRowId([{ id: 'i2' }], 'i')).toBe('i3');
     let v = addRow(D, 'incomes', { owner: 'p2', type: '1099' });
-    expect(v.incomes[2]).toEqual({ id: 'i3', owner: 'p2', type: '1099', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes' });
+    expect(v.incomes[2]).toEqual({ id: 'i3', owner: 'p2', type: '1099', treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', lumpSum: '', election: 'monthly' });
     v = addRow(v, 'liabilities');
     expect(v.liabilities).toEqual([{ id: 'l1', kind: 'mortgage', balance: '', rate: '', payment: '' }]);
     v = updateRow(v, 'incomes', 'i3', 'amount', '30000');

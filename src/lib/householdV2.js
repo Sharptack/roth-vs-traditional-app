@@ -13,7 +13,12 @@
 //   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge, qbi }]  // numbers; ages null when blank;
 //                                          // qbi (1099 rows): false when the business doesn't qualify for QBI
 //   people[i].qbiShare                     // the share of this year's 1099 earnings that qualifies (yearTax.js)
-//   pensions: [{ owner, monthly, startAge, cola, survivorShare }]            // the pension rows (pensionIncome.js)
+//   pensions: [{ owner, monthly, startAge, cola, survivorShare }]            // the pension rows paid monthly
+//                                          // in the plan (pensionIncome.js); a row whose lump sum the plan
+//                                          // takes (election 'lumpSum', decided 2026-10-09) pays nothing:
+//   rollovers: [{ owner, age, amount }]    // its lump sum rolled over to a Pre-tax IRA at the pension's
+//                                          // start age (projection.js); one already due is a Pre-tax
+//                                          // account today (accounts, id 'lump-<row id>')
 //   contributionRows: [{ id, owner, tax, account, amount, employer }]   // employer: employerContributions.js
 //   liabilities: [{ id, kind, balance, rate, payment }]
 //   calculators.tax.taxExemptIncome                                         // carried, not used yet
@@ -67,10 +72,16 @@ export function toHouseholdV2(input, year) {
       toAge: blankAsNull(r.toAge),
       ...(r.type === '1099' && { qbi: r.qbi !== 'no' }),
       ...(r.type === 'socialSecurity' && { ssMode: r.ssMode === 'pia' ? 'pia' : 'estimate' }),
-      ...(r.type === 'pension' && { cola: Number(r.cola ?? 0) || 0, survivorShare: Number(r.survivorShare ?? 0) || 0 }),
+      ...(r.type === 'pension' && {
+        cola: Number(r.cola ?? 0) || 0,
+        survivorShare: Number(r.survivorShare ?? 0) || 0,
+        lumpSum: blankAsZero(r.lumpSum),
+        election: r.election === 'lumpSum' ? 'lumpSum' : 'monthly',
+      }),
     }));
-  const pensions = incomes
-    .filter((r) => r.type === 'pension')
+  const pensionRows = incomes.filter((r) => r.type === 'pension');
+  const pensions = pensionRows
+    .filter((r) => r.election !== 'lumpSum')
     .map((r) => ({ owner: r.owner, monthly: r.amount, startAge: r.fromAge, cola: r.cola, survivorShare: r.survivorShare }));
   const contributionRows = values.contributions
     .filter((r) => ids.has(r.owner))
@@ -149,14 +160,34 @@ export function toHouseholdV2(input, year) {
     };
   });
 
+  // A pension whose lump sum the plan takes: rolled over at its start age, or today if that has passed.
+  const ageNowOf = (owner) => year - people.find((p) => p.id === owner).birthYear;
+  const lumpSums = pensionRows.filter((r) => r.election === 'lumpSum' && r.lumpSum > 0);
+  const rollovers = lumpSums.filter((r) => r.fromAge > ageNowOf(r.owner)).map((r) => ({ owner: r.owner, age: r.fromAge, amount: r.lumpSum }));
+  const lumpAccounts = lumpSums
+    .filter((r) => !(r.fromAge > ageNowOf(r.owner)))
+    .map((r) => ({ id: `lump-${r.id}`, owner: r.owner, type: 'pretax', balance: r.lumpSum }));
+
   const proj = values.calculators.projection;
-  const firstPension = pensions[0];
+  // The pension calculator weighs the first pension row, whichever way the plan takes it; its lump
+  // sum is on the row (an older save: the calculator's own, moveLumpSumToRow).
+  const firstPensionRow = pensionRows[0];
+  const firstPension = firstPensionRow && {
+    owner: firstPensionRow.owner,
+    monthly: firstPensionRow.amount,
+    startAge: firstPensionRow.fromAge,
+    cola: firstPensionRow.cola,
+    survivorShare: firstPensionRow.survivorShare,
+    lumpSum: firstPensionRow.lumpSum > 0 ? firstPensionRow.lumpSum : blankAsZero(values.calculators.pension?.lumpSum),
+    election: firstPensionRow.election,
+  };
   return {
     version: 2,
     year,
     filingStatus: values.filingStatus,
     people,
-    accounts: values.accounts.map((acc) => ({
+    accounts: [
+      ...values.accounts.map((acc) => ({
       id: acc.id,
       owner: ids.has(acc.owner) ? acc.owner : 'p1',
       type: acc.type,
@@ -164,9 +195,12 @@ export function toHouseholdV2(input, year) {
       ...(acc.type === 'taxable' && { basisShare: Number(acc.basisShare ?? 0.5) }),
       // its own dividend yield (blank: the assumption; taxCalculator.js taxableAccountDividends)
       ...(acc.type === 'taxable' && String(acc.dividendYield ?? '').trim() !== '' && { dividendYield: Number(acc.dividendYield) }),
-    })),
+      })),
+      ...lumpAccounts,
+    ],
     incomes,
     pensions,
+    rollovers,
     contributionRows,
     liabilities: values.liabilities.map((l) => ({
       id: l.id,
@@ -195,8 +229,9 @@ export function toHouseholdV2(input, year) {
       pension: firstPension
         ? {
             owner: firstPension.owner,
+            election: firstPension.election,
             ...pensionFromValues({
-              penLumpSum: values.calculators.pension?.lumpSum,
+              penLumpSum: String(firstPension.lumpSum),
               penMonthly: String(firstPension.monthly),
               penStartAge: firstPension.startAge === null ? '' : String(firstPension.startAge),
               penCola: String(firstPension.cola),
@@ -255,6 +290,8 @@ export function validateHouseholdV2(household) {
   }
   for (const r of household.incomes) {
     if (r.type === 'pension' && !isNum(r.fromAge)) errors.push("Enter each pension's start age.");
+    if (r.type === 'pension' && (!isNum(r.lumpSum) || r.lumpSum < 0)) errors.push("A pension's lump sum can't be negative.");
+    if (r.type === 'pension' && r.election === 'lumpSum' && !(r.lumpSum > 0)) errors.push('Enter the lump sum offered to take it in the plan.');
     if (r.type === 'pension' && !(r.cola >= 0 && r.cola <= 0.1)) errors.push("A pension's yearly increase is 0% to 10%.");
     if (!isNum(r.amount) || r.amount < 0) errors.push("Income amounts can't be negative.");
     if ((r.fromAge !== null && !isNum(r.fromAge)) || (r.toAge !== null && !isNum(r.toAge))) errors.push('Enter income ages as whole numbers.');

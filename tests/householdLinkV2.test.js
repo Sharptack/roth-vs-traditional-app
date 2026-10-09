@@ -6,7 +6,7 @@ import { upgradeHouseholdValues } from '../src/lib/householdUpgrade.js';
 import { V1_HOUSEHOLDS } from './fixtures/householdV1.js';
 import { YEAR } from './fixtures/householdPins.js';
 
-const row = (r) => ({ treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', ...r });
+const row = (r) => ({ treatment: 'ordinary', amount: '', fromAge: '', toAge: '', ssMode: 'estimate', cola: '0', survivorShare: '0', qbi: 'yes', lumpSum: '', election: 'monthly', ...r });
 const couple = {
   ...setIncludeSpouse({ ...DEFAULT_HOUSEHOLD_VALUES, filingStatus: 'mfj' }, true),
   people: [
@@ -18,7 +18,7 @@ const couple = {
     row({ id: 'i2', owner: 'p2', type: '1099', amount: '40000' }),
     row({ id: 'i3', owner: 'p1', type: 'socialSecurity', ssMode: 'pia', amount: '3100', fromAge: '68' }),
     row({ id: 'i4', owner: 'p2', type: 'socialSecurity' }),
-    row({ id: 'i5', owner: 'p2', type: 'pension', amount: '2100', fromAge: '60', cola: '0.02', survivorShare: '0.5' }),
+    row({ id: 'i5', owner: 'p2', type: 'pension', amount: '2100', fromAge: '60', cola: '0.02', survivorShare: '0.5', lumpSum: '300000' }),
   ],
   contributions: [
     { id: 'c1', owner: 'p1', tax: 'roth', account: '401k', amount: '24000', employer: 'match', matchRate: '0.5', matchUpTo: '0.06', employerAmount: '' },
@@ -45,7 +45,8 @@ describe('version 2 share links', () => {
   it('stay a reasonable length for a two-person household with rows', () => {
     // five income rows (Social Security and a pension among them) and every field: well within what
     // browsers and chat apps carry
-    expect(householdLinkSearchV2(couple).length).toBeLessThan(3000);
+    // (3,500: rows carry the QBI and lump-sum fields since 2026-10-09)
+    expect(householdLinkSearchV2(couple).length).toBeLessThan(3500);
   });
 
   it('clean what comes back, like a saved household', () => {
