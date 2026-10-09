@@ -28,8 +28,8 @@ strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabas
   `docs/plan-doc-pending.md`; write the queue into the doc as soon as the connector is back. Its sections: the phases
   (0 to 11), "How the plan fits together" (decision calculators vs. the plan evaluators; what the projection must
   include), the decision tables and the open questions.
-- **Current step:** phase 2, steps (a) and (b) done (survivor years, 2026-10-09); next is (c), tax drag on taxable
-  accounts (steps in the plan doc).
+- **Current step:** phase 2, steps (a)–(c) done (survivor years, tax drag; 2026-10-09); next is (d), employer
+  contributions (a match percentage or a flat dollar amount, decided 2026-10-09; steps in the plan doc).
 - **Docs**: articles listed in `src/lib/docs.js`; each phase ends with its article. **Feedback:** "Send feedback" on every page, through Netlify Forms (the hidden form in
   `index.html`; Netlify's form detection must be on).
 - Round one's plan (finished): https://claude.ai/artifact/WGnaEb88G1i2n26rsBeT45.
@@ -53,7 +53,7 @@ strategies, Roth conversion and pension calculators, Medicare IRMAA, and Supabas
 ## Commands
 ```
 npm run dev       # dev server (port 5173 is allowed in Supabase's redirect URLs)
-npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 782 tests
+npm test          # vitest, 4 workers at a time (more ran the Windows laptop out of memory); 795 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/ (base './')
 ```
@@ -132,6 +132,8 @@ Application/chrome.exe`. The calculators stay mounted (hidden) behind the Docs a
 (e.g. `.next-app`). Set React inputs with the native value setter + an input event.
 
 ## Change log (one line per step; older entries in docs/history.md, details in git and the plan doc)
+- 2026-10-09 — Phase 2 (c): tax drag, qualified dividends on taxable accounts (assumptions.dividendYield, 1.3%) in the
+  projection and the Roth comparison (growTaxable). 795 tests.
 - 2026-10-09 — Phase 2 (a)+(b): survivor years in the engine and on the projection page; the end named by year for
   a couple (whenLabel). 782 tests.
 - 2026-10-09 — Before phase 2: inputs in four groups; Social Security and pensions as income rows (a pension counts in
