@@ -1267,6 +1267,8 @@ describe('Send feedback', () => {
     expect(html).toContain('<footer class="site-footer"><p class="feedback"><button type="button" class="link-button">Send feedback</button>');
     const { default: Feedback } = await import('../src/components/Feedback.jsx');
     expect(renderToStaticMarkup(<Feedback />)).not.toContain('<textarea');
+    // and the tab on the right edge (decided 2026-10-09)
+    expect(html).toContain('<button type="button" class="feedback-tab" aria-expanded="false">Feedback</button>');
   });
 });
 
