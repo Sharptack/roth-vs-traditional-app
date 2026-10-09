@@ -236,7 +236,7 @@ export default function HouseholdInputs({
               {personFields.has('sex') && (
                 <SelectInput
                   label="Biological sex"
-                  hint="Used only for life expectancy (SSA's period life table): the pension calculator, and from phase 2 the plan."
+                  hint="Used only for life expectancy (SSA's period life table), in the pension calculator. The plan itself runs to each person's plan-to age."
                   value={p.sex}
                   onChange={setPerson(p.id, 'sex')}
                   options={SEX_OPTIONS}
@@ -600,6 +600,15 @@ export default function HouseholdInputs({
                 { value: 'marginal', label: 'At the marginal rate (as the current calculator)' },
               ]}
               hint="A deduction that crosses a bracket edge saves the higher rate only on the part above the edge: $10,000 into the 22% bracket, a $20,000 deduction saves 22% on $10,000 and 12% on the rest, about 17%."
+            />
+          )}
+          {shown('survivorSpending') && spouse && (
+            <SelectInput
+              label="Spending after the first death"
+              hint="The survivor's spending each year, as a share of the couple's. The plan follows each person to their plan-to age; from the year after the first death the survivor files single."
+              value={a.survivorSpending}
+              onChange={set('survivorSpending')}
+              options={['0.6', '0.7', '0.75', '0.8', '0.9', '1'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}% of the couple's` }))}
             />
           )}
           {shown('strategy') && strategySelect()}

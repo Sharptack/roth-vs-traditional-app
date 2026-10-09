@@ -17,7 +17,20 @@ export const DEFAULT_HEIR_TAX_RATE = 0.24;
 //   averageEffectiveRate            lifetime income tax ÷ lifetime gross income
 //   highestTaxYear                  { year, amount } by income tax
 //   moneyLastsTo                    person 1's age in the last year with no shortfall (or the end age)
+//   endLabel, lastsLabel, runsOutLabel   when the last year, the last year with no shortfall, and the
+//                                   first short year fall, in words (whenLabel); the last two null
+//                                   when the money lasts
 //   firstRetirementYear             the first year anyone is retired (null if never)
+// When a projected year falls, in words: one person's age ("age 95"); for a couple the year and
+// the ages of those living ("2061 (you 95, your spouse 85)", "2071 (your spouse 95)"), since after
+// a death person 1's age no longer says when.
+export function whenLabel(row) {
+  if (row.ages.length === 1) return `age ${row.ages[0]}`;
+  const who = ['you', 'your spouse'];
+  const living = row.ages.map((a, i) => (row.alive?.[i] === false ? null : `${who[i]} ${a}`)).filter(Boolean);
+  return `${row.year} (${living.join(', ')})`;
+}
+
 export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE } = {}) {
   const sum = (pick, list = rows) => list.reduce((s, r) => s + pick(r), 0);
   const retired = rows.filter((r) => r.working.some((w) => !w));
@@ -26,7 +39,8 @@ export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE 
     year: null,
     amount: -Infinity,
   });
-  const firstShort = rows.find((r) => r.shortfall > 0);
+  const firstShortIndex = rows.findIndex((r) => r.shortfall > 0);
+  const firstShort = rows[firstShortIndex];
   const end = last.endBalances;
   return {
     totalTax: sum((r) => r.totalTax),
@@ -40,6 +54,10 @@ export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE 
     highestTaxYear: highest,
     moneyLastsTo: firstShort ? firstShort.ages[0] - 1 : last.ages[0],
     runsOut: Boolean(firstShort),
+    endLabel: whenLabel(last),
+    // (short from the first year: nothing lasts, so the label is the year before the plan)
+    lastsLabel: firstShort ? (firstShortIndex > 0 ? whenLabel(rows[firstShortIndex - 1]) : 'the start') : null,
+    runsOutLabel: firstShort ? whenLabel(firstShort) : null,
     firstRetirementYear: retired.length > 0 ? retired[0].year : null,
     heirTaxRate,
   };
@@ -81,7 +99,8 @@ export function projectionView(household, need) {
     const sum = summarizeProjection(runProjection(household, { endAge: own.endAge, strategy: s.strategy, need }).rows, {
       heirTaxRate: own.heirTaxRate,
     });
-    return { id: s.id, label: s.label, totalIncomeTax: sum.totalIncomeTax, totalIrmaa: sum.totalIrmaa, endingAfterTax: sum.endingAfterTax, moneyLastsTo: sum.moneyLastsTo, runsOut: sum.runsOut };
+    const { totalIncomeTax, totalIrmaa, endingAfterTax, moneyLastsTo, lastsLabel, runsOut } = sum;
+    return { id: s.id, label: s.label, totalIncomeTax, totalIrmaa, endingAfterTax, moneyLastsTo, lastsLabel, runsOut };
   });
   return {
     rows,

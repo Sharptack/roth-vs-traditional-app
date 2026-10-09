@@ -1269,3 +1269,34 @@ describe('Send feedback', () => {
     expect(renderToStaticMarkup(<Feedback />)).not.toContain('<textarea');
   });
 });
+
+describe('Survivor years on the projection page (phase 2)', () => {
+  it('a couple ten years apart: the band on the charts, shaded rows, who died and when', async () => {
+    const { default: ProjectionResult, firstDeath } = await import('../src/next/ProjectionResult.jsx');
+    const { default: HouseholdInputs } = await import('../src/next/HouseholdInputs.jsx');
+    const { previewResult } = await import('../src/next/NextApp.jsx');
+    const { projectionView } = await import('../src/lib/projectionSummary.js');
+    const { DEFAULT_HOUSEHOLD_VALUES: D, setIncludeSpouse, setPersonField } = await import('../src/lib/householdValues.js');
+    let values = setIncludeSpouse({ ...D, filingStatus: 'mfj' }, true);
+    values = setPersonField(values, 'p1', 'age', '60', '2026-10-09');
+    values = setPersonField(values, 'p2', 'age', '50', '2026-10-09');
+    const { household, result } = previewResult(values, 2026);
+    const view = projectionView(household, result.retirementNeed.target);
+    // You (60) reach 95 in 2061, when your spouse is 85; your spouse lives to 95 in 2071
+    expect(firstDeath(view.rows)).toEqual({ year: 2061, firstSurvivorYear: 2062, who: 0, age: 95 });
+    expect(view.rows.at(-1).year).toBe(2071);
+    const html = renderToStaticMarkup(<ProjectionResult view={view} />);
+    expect(html).toContain('Survivor years');
+    expect(html).toContain('class="chart-shade"');
+    expect(html).toContain('You at 95, in 2061');
+    expect((html.match(/survivor-row/g) ?? []).length).toBe(10);
+    expect(html).toContain('<td>— / 86</td>');
+    expect(html).not.toMatch(/NaN|Infinity/);
+    // the input shows for a couple only
+    const couple = renderToStaticMarkup(<HouseholdInputs values={values} onUpdate={() => {}} sections={['assumptions']} defaultOpen={['assumptions']} />);
+    expect(couple).toContain('Spending after the first death');
+    expect(couple).toContain('survivor spends 80%');
+    const single = renderToStaticMarkup(<HouseholdInputs values={D} onUpdate={() => {}} sections={['assumptions']} defaultOpen={['assumptions']} />);
+    expect(single).not.toContain('Spending after the first death');
+  });
+});

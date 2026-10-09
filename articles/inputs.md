@@ -32,6 +32,18 @@ Enter either one. Typing a birthdate fills in the age; typing an age clears the 
 
 **Plan-to age** (each person, 95 by default): the projection runs until the last of you reaches their plan-to age. **Biological sex** is used only for life expectancy, by the pension calculator for now.
 
+### Survivor years
+
+For a married couple entered separately, the plan follows each of you to your own plan-to age. Each person is counted through the year they reach it. From the year after the first death, the survivor:
+
+- files single, so the single brackets, standard deduction and thresholds apply (Social Security taxability, the Net Investment Income Tax, Medicare IRMAA). The year of death itself stays joint. Qualifying surviving spouse status, which needs a dependent child, is not modeled;
+- keeps the larger of the two Social Security benefits: their own (with any spousal benefit) or the deceased's, the deceased's from age 60;
+- receives the deceased's pensions at their survivor share, and their own in full; the deceased's earnings and contributions stop;
+- spends a share of what the couple spent (**Spending after the first death** in Assumptions, 80% by default);
+- owns the deceased's accounts. Pre-tax and Roth accounts roll over as the survivor's own, so required minimum distributions follow the survivor's age. Taxable accounts get a step-up in cost basis, so gains up to the death are never taxed.
+
+Only the first death is modeled; the survivor lives to their plan-to age. Two people with the same plan-to year have no survivor years. With different ages, the projection names each year by the year and the ages of those living, for example "2071 (your spouse 95)".
+
 ## Children and dependents
 
 For the child tax credit. Enter each child with their age this year: a child under 17 brings $2,200 off the tax in 2026, and up to $1,700 of it is paid out even when no tax is owed (15% of earned income over $2,500). Each other dependent brings $500, never paid out. The credit shrinks by $50 for each $1,000 of income over $200,000 ($400,000 joint), which adds 5 points to the rate on the next dollar in that range. Children count in every year of the projection until they turn 17; other dependents count this year only.
@@ -68,7 +80,7 @@ The **monthly benefit** as the plan states it at its start (for a pension alread
 - the projection, each year from its start;
 - the Roth vs. Pre-tax comparison, at the retirement-year snapshot (or its first year, when it starts later): one more source under the withdrawal, like Social Security, so it can raise the effective rate on the withdrawal.
 
-Like everything else, it is counted in today's dollars: a pension with no cost-of-living increase loses value each year at the inflation rate. The survivor's share is kept but not used yet: until the projection models each spouse's lifetime, the pension is paid in full throughout.
+Like everything else, it is counted in today's dollars: a pension with no cost-of-living increase loses value each year at the inflation rate. For a couple, after the owner's death the survivor receives the survivor's share of it (see Survivor years).
 
 ## Contributions
 
@@ -114,6 +126,7 @@ Together they set the **retirement income number**, the after-tax income the hou
 - **Tax rates in retirement (what-if):** points added to every ordinary bracket in retirement years. Current law has no scheduled change.
 - **Tax a Pre-tax contribution saves today:** across the whole contribution (a deduction that crosses a bracket edge saves the higher rate only on the part above it), or at the marginal rate.
 
+- **Spending after the first death** (a couple only): the survivor's spending as a share of the couple's, 80% by default (see Survivor years).
 - **Withdrawal strategy in retirement:** which accounts pay for spending each year (and any Roth conversions), in the projection and the Roth page's lifetime comparison.
 - **Tax rate for heirs** on inherited Pre-tax money, used only for the after-tax ending balance.
 

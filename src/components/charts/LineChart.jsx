@@ -33,6 +33,7 @@ export default function LineChart({
   includeZero = true,
   markers = true, // a dot on every point; off for long series (e.g. 60 projected years)
   yFloor, // optional: the axis never goes below this (e.g. 0 for balances, which can't be negative)
+  shadeFrom, // optional { x, label }: a light band from that x to the end (e.g. survivor years)
 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
@@ -77,6 +78,7 @@ export default function LineChart({
       : [firstX, ...roundTicks];
 
   const hoveredX = hoverIndex === null ? null : xPixels[hoverIndex];
+  const shadeLeft = shadeFrom ? xScale(shadeFrom.x) : null;
 
   return (
     <div className="chart-wrap">
@@ -103,6 +105,15 @@ export default function LineChart({
               </text>
               <text x={plotRight - 8} y={plotBottom - 8} textAnchor="end" className="chart-zone-label">
                 {zones.below.label}
+              </text>
+            </g>
+          )}
+          {shadeLeft !== null && (
+            <g>
+              <rect x={shadeLeft} y={plotTop} width={plotRight - shadeLeft} height={plotBottom - plotTop} className="chart-shade" />
+              <line x1={shadeLeft} x2={shadeLeft} y1={plotTop} y2={plotBottom} className="chart-shade-edge" />
+              <text x={shadeLeft + 6} y={plotTop + 12} className="chart-zone-label">
+                {shadeFrom.label}
               </text>
             </g>
           )}

@@ -51,14 +51,15 @@ export default function LifetimeComparison({ lifetime, household, result }) {
   const [tableOpen, setTableOpen] = useState(false);
   if (!lifetime) return null;
   const { roth, pretax, winner, difference: d, wealthGap, crossoverYear } = lifetime;
-  const endAge = roth.endAge;
+  const endAge = roth.endAge; // person 1's age in the last year (the engine's option)
+  const end = roth.summary.endLabel; // the same year in words: "age 95", or "2071 (your spouse 95)"
   const firstYearWinner = result.comparison.winner;
   const retiredYears = roth.rows.filter((r) => r.working.some((w) => !w)).map((r) => r.year);
   const taxEachYear = (rows) => rows.filter((r) => retiredYears.includes(r.year)).map((r) => r.totalTax);
   const rows = [
     ['Sustainable spending, after tax, a year', roth.sustainable, pretax.sustainable, d.sustainable, true],
     ['Lifetime tax (income and payroll)', roth.summary.totalTax, pretax.summary.totalTax, d.totalTax],
-    [`Ending balance at ${endAge}`, roth.summary.endingBalance.total, pretax.summary.endingBalance.total, roth.summary.endingBalance.total - pretax.summary.endingBalance.total],
+    [`Ending balance at ${end}`, roth.summary.endingBalance.total, pretax.summary.endingBalance.total, roth.summary.endingBalance.total - pretax.summary.endingBalance.total],
     [`Ending balance after tax for heirs`, roth.summary.endingAfterTax, pretax.summary.endingAfterTax, d.endingAfterTax],
   ];
   return (
@@ -77,7 +78,7 @@ export default function LifetimeComparison({ lifetime, household, result }) {
             ? 'About even'
             : `${VERDICT[winner]} supports ${$(Math.abs(d.sustainable))} a year more`}
         </strong>{' '}
-        of steady after-tax spending to age {endAge}.
+        of steady after-tax spending to {end}.
       </p>
       <p className="hint">
         Both scenarios cost the same take-home pay every working year and spend the same in retirement (the retirement
@@ -113,8 +114,8 @@ export default function LifetimeComparison({ lifetime, household, result }) {
           ))}
           <tr>
             <th scope="row">Money lasts to</th>
-            <td>{roth.summary.runsOut ? `age ${roth.summary.moneyLastsTo}` : endAge}</td>
-            <td>{pretax.summary.runsOut ? `age ${pretax.summary.moneyLastsTo}` : endAge}</td>
+            <td>{roth.summary.runsOut ? roth.summary.lastsLabel : 'the end'}</td>
+            <td>{pretax.summary.runsOut ? pretax.summary.lastsLabel : 'the end'}</td>
             <td />
           </tr>
         </tbody>
@@ -166,7 +167,7 @@ export default function LifetimeComparison({ lifetime, household, result }) {
       headingId="lifetime-table"
       className="lifetime-table-card"
       title="Show full table"
-      summary={`Every year to age ${endAge}, Roth or Pre-tax scenario`}
+      summary={`Every year to ${end}, Roth or Pre-tax scenario`}
       open={tableOpen}
       onToggle={() => setTableOpen(!tableOpen)}
     >

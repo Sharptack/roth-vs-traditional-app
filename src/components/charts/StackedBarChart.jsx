@@ -12,7 +12,8 @@ const GAP = 2; // surface gap between stacked segments
 // axis (e.g. total tax), a hover column with one tooltip per x, and a legend. Colors by series
 // order (palette.js), never by rank. Callers add a "Show the numbers" table as the fallback.
 //   x: [values]; stacks: [{ key, label, values }]; line: { key, label, values } (optional)
-export default function StackedBarChart({ x, stacks, line, formatX, formatY, formatYTick = formatY, xLabel, yLabel }) {
+//   shadeFrom: { x, label } (optional): a light band from that bar to the end (e.g. survivor years)
+export default function StackedBarChart({ x, stacks, line, shadeFrom, formatX, formatY, formatYTick = formatY, xLabel, yLabel }) {
   const [hover, setHover] = useState(null);
   const plotLeft = MARGIN.left;
   const plotRight = WIDTH - MARGIN.right;
@@ -29,11 +30,22 @@ export default function StackedBarChart({ x, stacks, line, formatX, formatY, for
   const cx = (i) => plotLeft + band * (i + 0.5);
   const labelEvery = Math.max(1, Math.ceil(x.length / 12));
   const color = (si) => stacks[si].color ?? SERIES_COLORS[si % SERIES_COLORS.length];
+  const shadeIndex = shadeFrom ? x.indexOf(shadeFrom.x) : -1;
+  const shadeLeft = shadeIndex >= 0 ? cx(shadeIndex) - band / 2 : null;
 
   return (
     <div className="chart-wrap">
       <div className="chart" style={{ aspectRatio: `${WIDTH} / ${HEIGHT}` }}>
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="chart-svg" preserveAspectRatio="xMidYMid meet">
+          {shadeLeft !== null && (
+            <g>
+              <rect x={shadeLeft} y={plotTop} width={plotRight - shadeLeft} height={plotBottom - plotTop} className="chart-shade" />
+              <line x1={shadeLeft} x2={shadeLeft} y1={plotTop} y2={plotBottom} className="chart-shade-edge" />
+              <text x={shadeLeft + 6} y={plotTop + 12} className="chart-zone-label">
+                {shadeFrom.label}
+              </text>
+            </g>
+          )}
           {yTicks.map((t) => (
             <g key={`grid-${t}`}>
               <line x1={plotLeft} x2={plotRight} y1={yScale(t)} y2={yScale(t)} className="chart-gridline" />

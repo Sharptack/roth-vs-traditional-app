@@ -50,14 +50,14 @@ export function pensionHeadlines(p, inputs, nominalReturn) {
 
 // The projection page (projectionView).
 export function projectionHeadlines(view) {
-  const { rows, summary: s, strategies, endAge } = view;
+  const { rows, summary: s, strategies } = view;
   const most = strategies.reduce((a, b) => (b.endingAfterTax > a.endingAfterTax ? b : a), strategies[0]);
   const peak = rows.reduce((a, b) => (b.endBalances.total > a.endBalances.total ? b : a), rows[0]);
   const retired = rows.filter((r) => r.working.some((w) => !w));
   return {
     funded: projectionTile(view).headline,
     strategies: most ? `Most left for heirs: ${most.label.toLowerCase()}` : '',
-    summary: `${$(s.totalTax)} lifetime tax · ${$(s.endingBalance.total)} left at ${endAge}`,
+    summary: `${$(s.totalTax)} lifetime tax · ${$(s.endingBalance.total)} left at ${s.endLabel}`,
     income: retired.length > 0 ? `${retired[0].year} to ${retired[retired.length - 1].year}` : '',
     balances: `Peak ${$(peak.endBalances.total)} in ${peak.year}`,
     table: `${rows.length} years, ${rows[0].year} to ${rows[rows.length - 1].year}`,

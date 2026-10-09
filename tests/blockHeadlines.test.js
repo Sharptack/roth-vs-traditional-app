@@ -49,7 +49,7 @@ describe('result block headlines', () => {
     const row = (year, working, total) => ({ year, working: [working], endBalances: { total } });
     const view = {
       rows: [row(2026, true, 100), row(2027, false, 300), row(2028, false, 200)],
-      summary: { totalTax: 5000, endingBalance: { total: 200 }, runsOut: false },
+      summary: { totalTax: 5000, endingBalance: { total: 200 }, runsOut: false, endLabel: 'age 95' },
       strategies: [
         { label: 'Proportional (every account alike)', endingAfterTax: 10 },
         { label: 'Fill the 12% bracket from Pre-tax', endingAfterTax: 20 },
@@ -62,7 +62,7 @@ describe('result block headlines', () => {
     expect(projectionHeadlines(view)).toEqual({
       funded: '150% funded',
       strategies: 'Most left for heirs: fill the 12% bracket from pre-tax',
-      summary: '$5,000 lifetime tax · $200 left at 95',
+      summary: '$5,000 lifetime tax · $200 left at age 95',
       income: '2027 to 2028', // the retired years
       balances: 'Peak $300 in 2027',
       table: '3 years, 2026 to 2028',

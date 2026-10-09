@@ -9,16 +9,29 @@ import { formatCurrency as $, formatPercent } from '../lib/format.js';
 import Blocks from './Blocks.jsx';
 
 // One color per source, the same in every chart (color follows the entity, never the position).
-const COLORS = { ss: 'var(--series-1)', pretax: 'var(--series-2)', taxable: 'var(--series-3)', roth: 'var(--series-4)' };
+const COLORS = { ss: 'var(--series-1)', pretax: 'var(--series-2)', taxable: 'var(--series-3)', roth: 'var(--series-4)', pension: 'var(--series-5)' };
+
+const WHO = ['You', 'Your spouse'];
+// Survivor years (phase 2): the year of the first death and who died, or null.
+export function firstDeath(rows) {
+  const i = rows.findIndex((r) => r.alive?.includes(false));
+  if (i < 1) return null;
+  const who = rows[i].alive.indexOf(false);
+  return { year: rows[i - 1].year, firstSurvivorYear: rows[i].year, who, age: rows[i - 1].ages[who] };
+}
+const deathNote = (d) => `${WHO[d.who]} at ${d.age}, in ${d.year}`;
 
 const short = (v) => (Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1000)}k`);
 
 // The table's columns: key ones always, the rest behind "Show all columns".
 const COLUMNS = [
   { key: 'year', label: 'Year', value: (r) => r.year, format: String, key1: true },
-  { key: 'age', label: 'Age', value: (r) => r.ages.join(' / '), format: String, key1: true },
+  // a person who has died shows a dash
+  { key: 'age', label: 'Age', value: (r) => r.ages.map((a, i) => (r.alive?.[i] === false ? '—' : a)).join(' / '), format: String, key1: true },
+  { key: 'filing', label: 'Filing status', value: (r) => (r.filingStatus === 'single' ? 'Single' : 'Joint'), format: String },
   { key: 'wages', label: 'Earnings', value: (r) => r.wages, key1: true },
   { key: 'ss', label: 'Social Security', value: (r) => r.socialSecurity, key1: true },
+  { key: 'pension', label: 'Pension', value: (r) => r.pension ?? 0 },
   { key: 'withdrawn', label: 'Withdrawn', value: (r) => r.withdrawals.total, key1: true },
   { key: 'rmd', label: 'RMD', value: (r) => r.rmd },
   { key: 'wPretax', label: 'From Pre-tax', value: (r) => r.withdrawals.pretax },
@@ -48,8 +61,14 @@ const COLUMNS = [
 export function YearTable({ rows }) {
   const [all, setAll] = useState(false);
   const cols = COLUMNS.filter((c) => all || c.key1);
+  const death = firstDeath(rows);
   return (
     <div>
+      {death && (
+        <p className="hint">
+          Shaded: survivor years, filing single, after the first death ({deathNote(death)}, by the plan-to ages).
+        </p>
+      )}
       <button type="button" className="link-button" onClick={() => setAll(!all)}>
         {all ? 'Show key columns only' : 'Show all columns'}
       </button>
@@ -66,7 +85,10 @@ export function YearTable({ rows }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.year} className={r.shortfall > 0 ? 'short-row' : undefined}>
+              <tr
+                key={r.year}
+                className={[r.alive?.includes(false) && 'survivor-row', r.shortfall > 0 && 'short-row'].filter(Boolean).join(' ') || undefined}
+              >
                 {cols.map((c) => (
                   <td key={c.key}>{(c.format ?? $)(c.value(r))}</td>
                 ))}
@@ -88,24 +110,27 @@ export default function ProjectionResult({ view }) {
       </section>
     );
   }
-  const { rows, summary: s, sustainable, need, funded, endAge } = view;
+  const { rows, summary: s, sustainable, need, funded } = view;
+  const end = s.endLabel; // "age 95", or for a couple "2071 (your spouse 95)"
   const retired = rows.filter((r) => r.working.some((w) => !w));
   const showIrmaa = view.strategies.some((st) => st.totalIrmaa > 0);
   const over = funded >= 1;
   const h = projectionHeadlines(view);
+  const death = firstDeath(rows);
+  const anyPension = retired.some((r) => r.pension > 0);
   const fundedBlock = (
       <>
         <div className="hero">
           <div className="hero-value">{Math.round(funded * 100)}%</div>
           <div className="hero-sub">
-            {over ? 'Funded' : 'Underfunded'}: the plan supports {$(sustainable)} a year after tax to age {endAge}; the
+            {over ? 'Funded' : 'Underfunded'}: the plan supports {$(sustainable)} a year after tax to {end}; the
             retirement income number is {$(need)}.
           </div>
         </div>
         <p className="hint">
           {s.runsOut
-            ? `At ${$(need)} a year the money runs out after age ${s.moneyLastsTo}.`
-            : `At ${$(need)} a year the money lasts to ${endAge}, with ${$(s.endingBalance.total)} left.`}{' '}
+            ? `At ${$(need)} a year the money runs out after ${s.lastsLabel}.`
+            : `At ${$(need)} a year the money lasts to ${end}, with ${$(s.endingBalance.total)} left.`}{' '}
           Sustainable spending is the highest steady after-tax income, in today&rsquo;s dollars, that lasts to the end age.
         </p>
       </>
@@ -121,7 +146,7 @@ export default function ProjectionResult({ view }) {
               <th scope="col">Strategy</th>
               <th scope="col">Lifetime income tax</th>
               {showIrmaa && <th scope="col">Medicare IRMAA</th>}
-              <th scope="col">After tax for heirs at {endAge}</th>
+              <th scope="col">After tax for heirs at the end</th>
               <th scope="col">Money lasts to</th>
             </tr>
           </thead>
@@ -140,7 +165,7 @@ export default function ProjectionResult({ view }) {
                     {$(st.endingAfterTax)}
                     {best && <span className="pill"> most left</span>}
                   </td>
-                  <td>{st.runsOut ? `age ${st.moneyLastsTo}` : endAge}</td>
+                  <td>{st.runsOut ? st.lastsLabel : 'the end'}</td>
                 </tr>
               );
             })}
@@ -167,8 +192,8 @@ export default function ProjectionResult({ view }) {
           <div className="calc-row"><span>After-tax income in retirement, all years</span><span>{$(s.retirementAfterTaxIncome)}</span></div>
           <div className="calc-row"><span>Average tax rate (income tax ÷ gross income)</span><span>{formatPercent(s.averageEffectiveRate)}</span></div>
           <div className="calc-row"><span>Highest-tax year</span><span>{s.highestTaxYear.year}: {$(s.highestTaxYear.amount)}</span></div>
-          <div className="calc-row"><span>Money lasts to</span><span>{s.runsOut ? `age ${s.moneyLastsTo}` : `${endAge} (the end age)`}</span></div>
-          <div className="calc-row total"><span>Ending balance at {endAge}</span><span>{$(s.endingBalance.total)}</span></div>
+          <div className="calc-row"><span>Money lasts to</span><span>{s.runsOut ? s.lastsLabel : `${end} (the end)`}</span></div>
+          <div className="calc-row total"><span>Ending balance at {end}</span><span>{$(s.endingBalance.total)}</span></div>
           <div className="calc-row sub"><span>Pre-tax / Roth / taxable</span><span>{$(s.endingBalance.pretax)} / {$(s.endingBalance.roth)} / {$(s.endingBalance.taxable)}</span></div>
           <div className="calc-row"><span>Ending balance after tax for heirs (Pre-tax at {formatPercent(s.heirTaxRate, 0)})</span><span>{$(s.endingAfterTax)}</span></div>
         </div>
@@ -183,11 +208,13 @@ export default function ProjectionResult({ view }) {
             x={retired.map((r) => r.year)}
             stacks={[
               { key: 'ss', label: 'Social Security', color: COLORS.ss, values: retired.map((r) => r.socialSecurity) },
+              ...(anyPension ? [{ key: 'pension', label: 'Pensions', color: COLORS.pension, values: retired.map((r) => r.pension) }] : []),
               { key: 'pretax', label: 'Pre-tax withdrawals', color: COLORS.pretax, values: retired.map((r) => r.withdrawals.pretax) },
               { key: 'taxable', label: 'Taxable withdrawals', color: COLORS.taxable, values: retired.map((r) => r.withdrawals.taxable) },
               { key: 'roth', label: 'Roth withdrawals', color: COLORS.roth, values: retired.map((r) => r.withdrawals.roth) },
             ]}
             line={{ key: 'tax', label: 'Total tax', values: retired.map((r) => r.totalTax) }}
+            shadeFrom={death ? { x: death.firstSurvivorYear, label: 'Survivor years' } : undefined}
             formatX={(v) => `${v}`}
             formatY={(v) => $(v)}
             formatYTick={short}
@@ -208,6 +235,7 @@ export default function ProjectionResult({ view }) {
           formatYTick={short}
           markers={false}
           yFloor={0}
+          shadeFrom={death ? { x: death.year, label: 'Survivor years' } : undefined}
           xLabel="Year (end of year)"
           yLabel="Balance (today's dollars)"
         />
@@ -222,7 +250,7 @@ export default function ProjectionResult({ view }) {
         { id: 'balances', title: 'Balances over time', summary: h.balances, content: balances },
         { id: 'table', title: 'Year by year', summary: h.table, content: <YearTable rows={rows} /> },
       ]}
-      disclaimer="Estimates only — not tax or financial advice. Today’s dollars at a constant after-inflation return; spending flat; earnings flat while working; withdrawals in proportion from every account once anyone retires, with RMDs as a floor; no survivor years or state tax. IRMAA tiers in today’s dollars, at this year’s amounts."
+      disclaimer="Estimates only — not tax or financial advice. Today’s dollars at a constant after-inflation return; spending flat; earnings flat while working; withdrawals by the chosen strategy once anyone retires, with RMDs as a floor; survivor years from the first plan-to age; no state tax. IRMAA tiers in today’s dollars, at this year’s amounts."
     />
   );
 }

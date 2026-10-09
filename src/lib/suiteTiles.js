@@ -50,7 +50,8 @@ export function projectionTile(view) {
   if (!view) return { headline: 'Needs inputs', detail: 'Fill in the household to project it.' };
   const pct = Math.round(view.funded * 100);
   return {
-    headline: view.summary.runsOut ? `Runs out at ${view.summary.moneyLastsTo + 1}` : `${pct}% funded`,
-    detail: `Supports ${formatCurrency(view.sustainable)}/yr after tax to age ${view.endAge}; the retirement income number is ${formatCurrency(view.need)}`,
+    // (the labels: "age 71", or for a couple "2047 (you 71, your spouse 69)")
+    headline: view.summary.runsOut ? `Runs out at ${view.summary.runsOutLabel}` : `${pct}% funded`,
+    detail: `Supports ${formatCurrency(view.sustainable)}/yr after tax to ${view.summary.endLabel}; the retirement income number is ${formatCurrency(view.need)}`,
   };
 }

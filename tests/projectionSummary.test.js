@@ -75,7 +75,17 @@ describe('projectionView and its tile', () => {
       expect(v.rows[v.rows.length - 1].ages[0]).toBe(Number(values.projEndAge ?? 95));
       expect(v.summary.heirTaxRate).toBe(Number(values.projHeirTaxRate ?? 0.24));
       const tile = projectionTile(v);
-      expect(tile.headline).toMatch(v.summary.runsOut ? /^Runs out at \d+$/ : /^\d+% funded$/);
+      expect(tile.headline).toMatch(v.summary.runsOut ? /^Runs out at (age \d+|\d{4} \(.+\))$/ : /^\d+% funded$/);
     }
+  });
+});
+
+describe('whenLabel: when a year falls, in words', () => {
+  it('one person: their age; a couple: the year and the ages of those living', async () => {
+    const { whenLabel } = await import('../src/lib/projectionSummary.js');
+    expect(whenLabel({ year: 2061, ages: [95] })).toBe('age 95');
+    expect(whenLabel({ year: 2061, ages: [95, 85], alive: [true, true] })).toBe('2061 (you 95, your spouse 85)');
+    expect(whenLabel({ year: 2071, ages: [105, 95], alive: [false, true] })).toBe('2071 (your spouse 95)');
+    expect(whenLabel({ year: 2071, ages: [95, 105], alive: [true, false] })).toBe('2071 (you 95)');
   });
 });

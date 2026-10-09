@@ -1808,6 +1808,18 @@ th.win .th-sub {
   opacity: 0.05;
 }
 
+/* a span of years marked on a chart (survivor years on the projection page) */
+.chart-shade {
+  fill: var(--text);
+  opacity: 0.045;
+}
+
+.chart-shade-edge {
+  stroke: var(--dim);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
 .chart-overlay-line {
   stroke: var(--text);
 }
@@ -1842,6 +1854,10 @@ th.win .th-sub {
 .projection-table th:nth-child(2),
 .projection-table td:nth-child(2) {
   text-align: left;
+}
+
+.projection-table .survivor-row td {
+  background: color-mix(in srgb, var(--text) 4.5%, transparent);
 }
 
 .projection-table .short-row td {
