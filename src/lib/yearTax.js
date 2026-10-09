@@ -260,6 +260,16 @@ const SOURCES = {
   socialSecurity: (p, d) => ({ ...p, income: { ...p.income, socialSecurity: (p.income?.socialSecurity ?? 0) + d } }),
 };
 
+// params with d more of one source (a SOURCES key), as the marginal probes add it.
+export function addIncome(params, source, d) {
+  return SOURCES[source](params, d);
+}
+
+// The probe these params' marginal rates are measured over (see MARGINAL_PROBE).
+export function marginalProbe(params) {
+  return params.children > 0 || params.otherDependents > 0 ? MARGINAL_PROBE_WITH_CREDITS : MARGINAL_PROBE;
+}
+
 function addToFirstPerson(people = [], key, d) {
   const list = people.length > 0 ? people : [{ wages: 0, selfEmploymentIncome: 0 }];
   return list.map((p, i) => (i === 0 ? { ...p, [key]: (p[key] ?? 0) + d } : p));
@@ -272,7 +282,7 @@ function addToFirstPerson(people = [], key, d) {
 // `incomeTax` leaves payroll tax out; `total` includes it (only wages and 1099 income pay it).
 export function calculateYearTax(params) {
   const r = core(params);
-  const probe = params.children > 0 || params.otherDependents > 0 ? MARGINAL_PROBE_WITH_CREDITS : MARGINAL_PROBE;
+  const probe = marginalProbe(params);
   const marginalRates = {};
   for (const [source, add] of Object.entries(SOURCES)) {
     const more = core(add(params, probe));

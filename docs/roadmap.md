@@ -8,7 +8,28 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, phase 2 (survivor years and engine additions) and both "Before phase" lists. 837 tests. Last closed: "Before phase 3: adjustments" (tag `phase-before-3-done`).
 
-**In progress:** nothing.
+**In progress:** "Before phase 3: adjustments (2)", Michael's list of 2026-10-09 (below). Then phase 3.
+
+### Before phase 3: adjustments (2) (2026-10-09)
+
+Tax calculator:
+- [x] The calculation block moves below the tax bracket visual (reverses the 2026-10-09 "above the chart").
+- [x] The "next $100" block becomes a short worked calculation of the effective marginal rate for the headline source (the $100, what it sets off, the extra tax, ÷ 100); the other sources' one-line rates stay below it (decided 2026-10-09).
+- [x] The bracket visual's "Total income" header larger, in line with the marginal and average rate headers.
+- [ ] Social Security "Currently receiving": a third choice beside the PIA and the estimate. The monthly check as received today, in today's dollars, with no claiming adjustment, from this year on (decided 2026-10-09). Its PIA isn't known, so it gives the spouse no spousal top-up. Why: a PIA entered for someone already receiving was adjusted for a claiming age, inflating the benefit.
+
+Inputs:
+- [ ] The clients card starts collapsed and is renamed "Households".
+- [ ] Accounts collapse to one line like income rows.
+- [ ] The cost basis field lines up on the calculators' input cards.
+- [ ] No "Retirement age must be after your current age" error: a retirement age at or below the current age means already retired (no earnings or contributions from this year, the retirement return, the Roth snapshot today); the age stays as entered (decided 2026-10-09).
+- [ ] "a year" in labels becomes "per year".
+
+Roth vs. Pre-tax:
+- [ ] The start/end ages link closes again after opening.
+- [ ] "Federal income tax on that" opens to show its calculation.
+
+Pension: "In the plan" lines up. Roth conversion: the "Tax paid each year" chart moves to its own block at the bottom (more charts may join it).
 
 **Next: phase 3, retirement spending.** Steps not yet set (set them here first). It must start with a spending input for a household already retired: the projection, the Roth comparison and the conversion page's lifetime view all need it.
 

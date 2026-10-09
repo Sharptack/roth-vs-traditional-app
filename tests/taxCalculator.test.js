@@ -51,3 +51,45 @@ describe('tax calculator (2026, HAND CALC)', () => {
     expect(run({ currentType: 'roth' }).result.lines.pretaxDeferrals).toBe(0);
   });
 });
+
+describe('the effective marginal rate, step by step (2026, HAND CALC)', () => {
+  const steps = (values) => run(values).steps;
+  const byKey = (s) => Object.fromEntries(s.rows.map((r) => [r.key, r.value]));
+
+  it('the next $100 withdrawn makes $85 of Social Security taxable: $185 at 12%', () => {
+    // age 70, withdrawals 30,000, SS 30,000: provisional income 30,000 + 15,000 = 45,000
+    // taxable SS = min(15,000, 4,500) + 85% x (45,000 - 34,000) = 4,500 + 9,350 = 13,850 (under 25,500)
+    // ordinary gross 43,850; deductions 16,100 + 2,050 + 6,000 = 24,150 -> taxable 19,700 (12%)
+    // +100 -> +85 taxable SS -> +185 taxable -> +22.20 tax -> 22.2%
+    const s = steps({ grossIncome: '0', currentAge: '70', retirementAge: '71', savings: '0', taxOrdinaryIncome: '30000', taxSocialSecurity: '30000' });
+    expect(s.rows.map((r) => r.key)).toEqual(['probe', 'socialSecurity', 'taxable', 'ordinaryTax', 'extraTax']);
+    const v = byKey(s);
+    expect(v.socialSecurity).toBeCloseTo(85, 9);
+    expect(v.taxable).toBeCloseTo(185, 9);
+    expect(v.ordinaryTax).toBeCloseTo(22.2, 9);
+    expect(s.rows.find((r) => r.key === 'ordinaryTax').label).toBe('Tax on $185 at 12%');
+    expect(s.rate).toBeCloseTo(0.222, 9);
+    expect(s.payroll).toBe(0);
+  });
+
+  it('the senior deduction phasing out: $6 of deduction lost per $100, $106 at 22%', () => {
+    // age 70, withdrawals 90,000: senior deduction 6,000 - 6% x (90,000 - 75,000) = 5,100
+    // deductions 16,100 + 2,050 + 5,100 = 23,250 -> taxable 66,750 (22%)
+    // +100 -> deduction -6 -> taxable +106 -> +23.32 -> 23.32%
+    const s = steps({ grossIncome: '0', currentAge: '70', retirementAge: '71', savings: '0', taxOrdinaryIncome: '90000' });
+    const v = byKey(s);
+    expect(v.deduction).toBeCloseTo(6, 9);
+    expect(v.taxable).toBeCloseTo(106, 9);
+    expect(s.extraTax).toBeCloseTo(23.32, 9);
+    expect(s.rate).toBeCloseTo(0.2332, 9);
+  });
+
+  it('wages: 22% income tax, 29.65% with payroll tax; matches the headline rate', () => {
+    // the default household: taxable 73,900 (22%); +100 wages -> +22 tax, +7.65 payroll
+    const t = run({});
+    expect(t.steps.rate).toBeCloseTo(0.22, 9);
+    expect(t.steps.payroll).toBeCloseTo(7.65, 9);
+    expect(t.steps.rateWithPayroll).toBeCloseTo(0.2965, 9);
+    expect(t.steps.rate).toBeCloseTo(t.marginal.incomeTax, 12);
+  });
+});

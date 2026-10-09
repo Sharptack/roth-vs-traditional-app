@@ -6,19 +6,18 @@ describe('result block headlines', () => {
   it('the tax calculator', () => {
     const t = {
       marginal: { incomeTax: 0.22 },
-      others: [{ incomeTax: 0.22 }, { incomeTax: 0.15 }, { incomeTax: 0.22 }],
+      steps: { probe: 100, extraTax: 22.2, rate: 0.222 },
       bar: { currentRate: 0.22, room: 12345 },
       result: { effectiveRate: 0.11, incomeTax: 10970, bracketRoom: { ordinary: { rate: 0.22, room: 12345 } } },
       irmaa: { enrolled: 1, tier: 2, total: 2000, premiumYear: 2028 },
     };
     expect(taxHeadlines(t)).toEqual({
       rates: '22% marginal · 22.0% EMTR',
-      others: '15.0% to 22.0% on the next $100', // lowest 15%, highest 22%
+      next: '$22.20 more tax on the next $100: 22.2%',
       buckets: '22% bracket, $12,345 of room',
       irmaa: 'Tier 2 of 5: $2,000 in 2028',
       calculation: '$10,970 federal income tax',
     });
-    expect(taxHeadlines({ ...t, others: [{ incomeTax: 0.12 }, { incomeTax: 0.12 }] }).others).toBe('12.0% on the next $100');
     expect(taxHeadlines({ ...t, irmaa: { ...t.irmaa, tier: 0 } }).irmaa).toBe('No surcharge in 2028');
     // no one 65 by then (or IRMAA left out): no headline, the block isn't shown
     expect(taxHeadlines({ ...t, irmaa: { ...t.irmaa, enrolled: 0 } }).irmaa).toBe('');

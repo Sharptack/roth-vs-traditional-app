@@ -1,6 +1,6 @@
 // The tax calculator's results (roadmap phase 2), as blocks: the marginal rate, the effective marginal
 // rate (EMTR) and the average tax rate with AGI and the total tax under them; the full calculation
-// (above the chart, decided 2026-10-09); the two buckets; the other sources' marginal rates; IRMAA.
+// (below the chart, decided 2026-10-09); the effective marginal rate worked out for the next $100; the two buckets; the other sources' marginal rates; IRMAA.
 // Renders lib/taxCalculator.js's taxCalculatorResult; no math of its own.
 import { useMemo } from 'react';
 import { taxHeadlines } from '../lib/blockHeadlines.js';
@@ -134,6 +134,56 @@ export function BracketBar({ bar, caption, notes = [] }) {
   );
 }
 
+// The effective marginal rate in a few lines (taxCalculator.js marginalSteps), then the same rate
+// for each other kind of income, one line each.
+function MarginalSteps({ steps, others, probe }) {
+  const sign = (row) => (row.kind === 'line' && row.value < 0 ? `− ${$(-row.value, 2)}` : row.kind === 'add' || row.kind === 'total' ? $(row.value, 2) : `+ ${$(row.value, 2)}`);
+  return (
+    <>
+      <div className="calc">
+        {steps.rows.map((row) => (
+          <div key={row.key} className={`calc-row ${row.kind === 'line' || row.kind === 'tax' ? 'sub' : row.kind === 'add' ? '' : 'total'}`}>
+            <span>{row.label}</span>
+            <span>{row.kind === 'result' ? $(row.value, 2) : sign(row)}</span>
+          </div>
+        ))}
+        <div className="calc-row total">
+          <span>
+            Effective marginal rate: {$(steps.extraTax, 2)} ÷ {$(steps.probe)}
+          </span>
+          <span>{pct(steps.rate)}</span>
+        </div>
+        {Math.abs(steps.payroll) > 0.005 && (
+          <div className="calc-row sub">
+            <span>With {$(steps.payroll, 2)} more payroll tax</span>
+            <span>{pct(steps.rateWithPayroll)}</span>
+          </div>
+        )}
+      </div>
+      <div className="calc-row heading">
+        <span>The next {probe} of other income</span>
+        <span />
+      </div>
+      <div className="calc">
+        {others.map((o) => (
+          <div className="calc-row" key={o.source}>
+            <span>{o.label}</span>
+            <span>
+              {pct(o.incomeTax)}
+              {Math.abs(o.total - o.incomeTax) > 1e-9 && <span className="dim"> ({pct(o.total)} with payroll)</span>}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="hint">
+        Each is the extra federal tax from {probe} more of that income alone, worked out the same way. They differ because
+        each kind is taxed differently: the next Pre-tax dollar can pull Social Security into tax with it, and gains can sit
+        in the 0% bracket.
+      </p>
+    </>
+  );
+}
+
 export default function TaxResult({ tax }) {
   const { result: r, marginal, others, rows, irmaa: i } = tax;
   const ages = useMemo(() => (tax.params.people ?? []).map((p) => p.age).filter(Number.isFinite), [tax.params]);
@@ -209,6 +259,12 @@ export default function TaxResult({ tax }) {
           ),
         },
         {
+          id: 'buckets',
+          title: 'Tax bracket visual',
+          summary: h.buckets,
+          content: <RateBuckets params={tax.params} irmaa={Boolean(i)} ages={ages} />,
+        },
+        {
           id: 'calculation',
           title: 'The calculation',
           summary: h.calculation,
@@ -220,35 +276,10 @@ export default function TaxResult({ tax }) {
           ),
         },
         {
-          id: 'buckets',
-          title: 'Tax bracket visual',
-          summary: h.buckets,
-          content: <RateBuckets params={tax.params} irmaa={Boolean(i)} ages={ages} />,
-        },
-        others.length > 0 && {
-          id: 'others',
-          title: `The next ${probe} of other income`,
-          summary: h.others,
-          content: (
-            <>
-              <div className="calc">
-                {others.map((o) => (
-                  <div className="calc-row" key={o.source}>
-                    <span>{o.label}</span>
-                    <span>
-                      {pct(o.incomeTax)}
-                      {Math.abs(o.total - o.incomeTax) > 1e-9 && <span className="dim"> ({pct(o.total)} with payroll)</span>}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <p className="hint">
-                Each is the extra federal tax from $100 more of that income alone. They differ because each kind is taxed
-                differently: the next Pre-tax dollar can pull Social Security into tax with it, and gains can sit in the 0%
-                bracket.
-              </p>
-            </>
-          ),
+          id: 'next',
+          title: `The next ${probe}: the effective marginal rate`,
+          summary: h.next,
+          content: <MarginalSteps steps={tax.steps} others={others} probe={probe} />,
         },
         h.irmaa && {
           id: 'irmaa',

@@ -1410,7 +1410,7 @@ describe('The rest of the household in the projection (phase 2 step f)', () => {
 });
 
 describe('The tax page (2026-10-09)', () => {
-  it('AGI and the tax paid under the rates, the calculation above the chart, IRMAA tiers in a key', async () => {
+  it('AGI and the tax paid under the rates, the calculation below the chart, IRMAA tiers in a key', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES: D, setPersonField } = await import('../src/lib/householdValues.js');
     const values = setPersonField(D, 'p1', 'age', '64', '2026-10-09');
@@ -1421,7 +1421,12 @@ describe('The tax page (2026-10-09)', () => {
     // payroll 7.65% × 100,000 = 7,650; total 18,620
     expect(html).toContain('Adjusted gross income (AGI)</span><strong>$90,000</strong>');
     expect(html).toContain('Total tax paid</span><strong>$18,620</strong>');
-    expect(html.indexOf('>The calculation<')).toBeLessThan(html.indexOf('>Tax bracket visual<'));
+    // the calculation below the chart (2026-10-09, reversed), then the next $100 worked out:
+    // 22% of $100 = $22.00, + $7.65 payroll -> 29.7% (29.65% at one decimal)
+    expect(html.indexOf('>The calculation<')).toBeGreaterThan(html.indexOf('>Tax bracket visual<'));
+    expect(html).toContain('>Tax on $100 at 22%</span><span>+ $22.00</span>');
+    expect(html).toContain('Effective marginal rate: $22.00 ÷ $100');
+    expect(html).toContain('With $7.65 more payroll tax');
     expect(html).toContain('Medicare IRMAA tiers:');
     expect(html).not.toContain('IRMAA +$'); // no longer labelled on the chart
   });

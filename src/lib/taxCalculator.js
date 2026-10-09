@@ -1,13 +1,14 @@
 // The tax calculator (roadmap phase 2, the suite's second calculator): one federal tax year for
 // the household, from the shared household inputs plus the calculator's own "This year's income".
 // Pure; the page (src/next/TaxCalculatorPage.jsx) renders what these return.
-import { calculateYearTax } from './yearTax.js';
+import { calculateYearTax, calculateYearTaxTotals, addIncome, marginalProbe } from './yearTax.js';
 import { yearTaxRows } from './yearTaxRows.js';
 import { checkContributionLimit } from './contributionLimits.js';
 import { dependentsInYear } from './dependents.js';
 import { irmaaFromThisYear } from './irmaa.js';
 import { getBrackets } from './taxCalculations.js';
 import { socialSecurityInYear } from './projection.js';
+import { formatCurrency as $0 } from './format.js';
 
 // The calculator's own form fields (stored in the household under calculators.tax).
 export const TAX_CALCULATOR_DEFAULT_VALUES = {
@@ -110,6 +111,7 @@ export function taxCalculatorResult(params, { irmaa = false } = {}) {
     result: r,
     rows,
     marginal: asRate(lead),
+    steps: marginalSteps(params, lead),
     others: Object.keys(SOURCE_LABELS)
       .filter((s) => s !== lead)
       .map(asRate),
@@ -118,6 +120,44 @@ export function taxCalculatorResult(params, { irmaa = false } = {}) {
       ? irmaaFromThisYear({ magi: r.lines.magi, filingStatus: params.filingStatus, year: params.year, ages: (params.people ?? []).map((p) => p.age).filter(Number.isFinite) })
       : null,
   };
+}
+
+// The effective marginal rate worked out in a few lines (decided 2026-10-09): the next $100 (or
+// $1,000, marginalProbe) of one source, what it sets off, the extra tax and the rate. Each row is
+// the change between the year as it is and the year with the probe added; rows that don't change
+// are left out (the first, the taxable-income and the result rows always show).
+// -> { probe, rows: [{ key, label, value, kind }], extraTax, rate, payroll, rateWithPayroll }
+//   kind: 'add' (income added), 'line' (a step in taxable income), 'total', 'tax', 'result'.
+export function marginalSteps(params, source) {
+  const probe = marginalProbe(params);
+  const a = calculateYearTaxTotals(params);
+  const b = calculateYearTaxTotals(addIncome(params, source, probe));
+  const d = (f) => f(b) - f(a);
+  const near0 = (x) => Math.abs(x) < 0.005;
+  const rows = [{ key: 'probe', label: `The next ${$0(probe)} of ${SOURCE_PHRASES[source]}`, value: probe, kind: 'add' }];
+  const line = (key, label, value) => !near0(value) && rows.push({ key, label, value, kind: 'line' });
+  line('adjustments', 'Less the deductible half of the extra self-employment tax', -d((r) => r.lines.adjustments));
+  line('socialSecurity', 'Social Security made taxable by it', d((r) => r.lines.taxableSocialSecurity));
+  // Social Security itself is in the probe but only its taxable part counts.
+  if (source === 'socialSecurity') rows[0].label += ' (only the taxable part counts)';
+  line('deduction', 'Deductions lost (the senior deduction phases out)', -d((r) => r.lines.standardDeduction));
+  line('qbi', 'QBI deduction (20% of the business income)', -d((r) => r.lines.qbiDeduction));
+  const taxable = d((r) => r.lines.taxableIncome);
+  rows.push({ key: 'taxable', label: 'Taxable income rises by', value: taxable, kind: 'total' });
+  const tax = (key, label, value) => !near0(value) && rows.push({ key, label, value, kind: 'tax' });
+  const ordinary = d((r) => r.ordinaryTax);
+  const ordTaxable = d((r) => r.lines.ordinaryTaxableIncome);
+  const rate = a.ordinaryBracketRate;
+  // "at 22%" only when the whole change is taxed at the current bracket (it didn't cross one).
+  const atRate = !near0(ordTaxable) && Math.abs(ordinary - ordTaxable * rate) < 0.01;
+  tax('ordinaryTax', atRate ? `Tax on ${$0(ordTaxable)} at ${Math.round(rate * 1000) / 10}%` : 'Ordinary income tax', ordinary);
+  tax('capitalGainsTax', source === 'preferentialIncome' ? 'Tax on long-term gains and qualified dividends' : 'Tax on gains and qualified dividends pushed into a higher rate', d((r) => r.capitalGainsTax));
+  tax('niit', 'Net investment income tax (3.8%)', d((r) => r.niit));
+  tax('credit', 'Child tax credit lost', -d((r) => r.lines.childTaxCredit));
+  const extraTax = d((r) => r.incomeTax);
+  rows.push({ key: 'extraTax', label: 'Extra federal income tax', value: extraTax, kind: 'result' });
+  const payroll = d((r) => r.payrollTax);
+  return { probe, rows, extraTax, rate: extraTax / probe, payroll, rateWithPayroll: (extraTax + payroll) / probe };
 }
 
 // The "fill up the bracket" bar: taxable income stacked through the ordinary brackets, from the

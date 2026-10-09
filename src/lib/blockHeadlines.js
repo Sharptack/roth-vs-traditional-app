@@ -6,13 +6,6 @@ import { pensionTile, projectionTile, taxTile } from './suiteTiles.js';
 
 const pct = (r) => formatPercent(r, 1);
 
-// "12.0% to 22.0%", or one rate when they are all the same.
-function rateRange(rates) {
-  const lo = Math.min(...rates);
-  const hi = Math.max(...rates);
-  return Math.abs(hi - lo) < 1e-9 ? pct(lo) : `${pct(lo)} to ${pct(hi)}`;
-}
-
 const bracketLine = (bar) => `the ${pct(bar.currentRate)} bracket, ${$(bar.room)} of room`;
 
 // The tax calculator (taxCalculatorResult).
@@ -20,7 +13,7 @@ export function taxHeadlines(t) {
   const i = t.irmaa;
   return {
     rates: taxTile(t).headline,
-    others: t.others.length > 0 ? `${rateRange(t.others.map((o) => o.incomeTax))} on the next ${t.params?.children > 0 || t.params?.otherDependents > 0 ? '$1,000' : '$100'}` : '',
+    next: `${$(t.steps.extraTax, 2)} more tax on the next ${$(t.steps.probe)}: ${pct(t.steps.rate)}`,
     buckets: `${formatPercent(t.result.bracketRoom.ordinary.rate, 0)} bracket, ${$(t.result.bracketRoom.ordinary.room)} of room`,
     irmaa: !i || i.enrolled === 0 ? '' : i.tier === 0 ? `No surcharge in ${i.premiumYear}` : `Tier ${i.tier} of 5: ${$(i.total)} in ${i.premiumYear}`,
     calculation: `${$(t.result.incomeTax)} federal income tax`,

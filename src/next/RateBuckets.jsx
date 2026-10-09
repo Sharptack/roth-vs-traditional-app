@@ -177,7 +177,7 @@ export default function RateBuckets({ params, irmaa, ages }) {
             </text>
           </g>
         ))}
-        <text x={SCALE_X} y={Y0 - 20} textAnchor="end" className="rb-sub">Total income</text>
+        <text x={SCALE_X} y={22} textAnchor="end" className="rb-head">Total income</text>
 
         {/* today: the line across both, the room, the next dollar */}
         <line x1={SCALE_X + 14} x2={RX + BW + 10} y1={yToday} y2={yToday} className="rb-today" />
