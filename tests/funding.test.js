@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ABOUT_EVEN, atRetirement, savingsWith, fundedStatus, lastRetirementYear, savingsNeeded, throughRetirement } from '../src/lib/funding.js';
+import { ABOUT_EVEN, applyRetirementAge, atRetirement, savingsWith, fundedStatus, lastRetirementYear, retirementAgeDetail, retirementAgeTable, savingsNeeded, throughRetirement } from '../src/lib/funding.js';
 import { runProjection } from '../src/lib/projection.js';
 import { toHouseholdV2 } from '../src/lib/householdV2.js';
 import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
@@ -182,5 +182,43 @@ describe('savingsNeeded on the default household (tax, Social Security, a Pre-ta
       expect(level(s.extra)).toBeGreaterThanOrEqual(measure === 'atRetirement' ? 1 : 1 - 1 / need); // (the search stops within $1)
       expect(level(s.extra - 3)).toBeLessThan(1);
     }
+  });
+});
+
+describe('Retirement age, each person on their own (phase 4 step e, HAND CALC)', () => {
+  it('the table: ages from after this year to 5 past the plan; both funded levels at each', () => {
+    // 60 now, planned 62: ages 61 to 67
+    const [t] = retirementAgeTable(saver(), 40000);
+    expect(t.personId).toBe('p1');
+    expect(t.ageNow).toBe(60);
+    expect(t.planned).toBe(62);
+    expect(t.rows.map((r) => r.age)).toEqual([61, 62, 63, 64, 65, 66, 67]);
+    // retiring at 61: one working year, 500,000 x 1.05 + 10,000 = 535,000 at 61
+    //   4%: 21,400 / 40,000 = 0.535
+    //   through 64, four years (an annuity due): 1 + 1/1.05 + 1/1.05^2 + 1/1.05^3 = 3.723248029
+    //   -> 535,000 / 3.723248029 = 143,691.74 a year -> 3.5923 (within $1)
+    const r61 = t.rows[0];
+    expect(r61.at.funded).toBeCloseTo(0.535, 9);
+    expect(r61.at.status).toBe('under');
+    expect(Math.abs(r61.through.funded * 40000 - 143691.74)).toBeLessThan(1.01);
+    // the planned age matches the plan as it stands
+    expect(t.rows[1].at.funded).toBeCloseTo(atRetirement(saver(), 40000).funded, 12);
+    expect(t.rows[1].through.funded).toBe(throughRetirement(saver(), 40000).funded);
+  });
+
+  it('the age picked: the savings needed there, as at the plan\'s own age', () => {
+    const d = retirementAgeDetail(saver(), 25000, 'p1', 62);
+    expect(d.savings.at.extra).toBe(25976); // as worked out above
+    // retiring at 63 instead: B = 500,000 x 1.05^3 + C (1.05^2 + 1.05 + 1) = 578,812.50 + 3.1525 C
+    //   4% of B = 25,000 -> B = 625,000 -> C = 46,187.50 / 3.1525 = 14,651.07 -> extra 4,651.07, up to 4,652
+    expect(retirementAgeDetail(saver(), 25000, 'p1', 63).savings.at.extra).toBe(4652);
+  });
+
+  it('a person already retired has no table; Use in the plan sets the age', () => {
+    const h = saver();
+    h.people.push({ ...h.people[0], id: 'p2', birthYear: Y - 70, retirementAge: 65 });
+    expect(retirementAgeTable(h, 40000).map((t) => t.personId)).toEqual(['p1']);
+    const values = { people: [{ id: 'p1', retirementAge: '65' }, { id: 'p2', retirementAge: '62' }] };
+    expect(applyRetirementAge(values, 'p2', 64).people).toEqual([{ id: 'p1', retirementAge: '65' }, { id: 'p2', retirementAge: '64' }]);
   });
 });

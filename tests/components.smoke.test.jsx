@@ -1530,6 +1530,35 @@ describe('Already retired (2026-10-09)', () => {
     expect(renderToStaticMarkup(<NextApp initialPage="funding" initialValues={retired} client={null} />)).toContain('Everyone in the household is retired already');
   });
 
+  it('phase 4 step e: the retirement-age table, an age picked, Use in the plan for it', async () => {
+    const { default: NextApp, previewResult } = await import('../src/next/NextApp.jsx');
+    const { default: FundingResult } = await import('../src/next/FundingResult.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const { fundingView, retirementAgeTable, retirementAgeDetail, applyRetirementAge } = await import('../src/lib/funding.js');
+    const values = { ...D, spending: { ...D.spending, method: 'budget', baseline: '200000' } };
+    const page = renderToStaticMarkup(<NextApp initialPage="funding" initialValues={values} client={null} />);
+    expect(page).toContain('Your retirement age');
+    expect(page).toContain('(the plan: 65)');
+    expect(page).toContain('>70</button>');
+    const r = previewResult(values, 2026);
+    const view = fundingView(r.household, r.spending.need);
+    const tables = retirementAgeTable(r.household, view.need);
+    // later retirement, better funded, on both measures
+    const rows = tables[0].rows;
+    expect(rows.map((x) => x.age)).toEqual([60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70]);
+    for (let i = 1; i < rows.length; i++) expect(rows[i].through.funded).toBeGreaterThan(rows[i - 1].through.funded);
+    const detail = retirementAgeDetail(r.household, view.need, 'p1', 68);
+    const html = renderToStaticMarkup(
+      <FundingResult view={view} ages={{ tables, pick: { personId: 'p1', age: 68 }, detail, onPick: () => {}, onUseAge: () => {} }} />,
+    );
+    expect(html).toContain('Your retirement at 68: savings needed for 100% funded');
+    expect(html).toContain('Use in the plan: retire at 68');
+    expect(html).not.toMatch(/NaN|Infinity/);
+    // applied: the plan's funded level is the table's at 68
+    const after = previewResult(applyRetirementAge(values, 'p1', 68), 2026);
+    expect(fundingView(after.household, after.spending.need).through.funded).toBe(rows[8].through.funded);
+  });
+
   it('phase 4: Use in the plan with no savings in the rows adds taxable rows, split by pay', async () => {
     const { previewResult } = await import('../src/next/NextApp.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');

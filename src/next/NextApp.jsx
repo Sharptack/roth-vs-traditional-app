@@ -26,7 +26,7 @@ import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
-import { applySavingsChoice, fundingView, savingsChoice } from '../lib/funding.js';
+import { applyRetirementAge, applySavingsChoice, fundingView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
 import FundingResult from './FundingResult.jsx';
 import { applySpendingChoice, legacyTradeoff, retirementSpendingView, spendingChoice } from '../lib/retirementSpending.js';
 import RetirementSpendingResult from './RetirementSpendingResult.jsx';
@@ -224,6 +224,18 @@ export default function NextApp({ initialPage, initialValues, client }) {
   const savingsPicks = useMemo(
     () => (page === 'funding' && funding && !funding.retired ? { through: savingsChoice(funding.savings.through), at: savingsChoice(funding.savings.at) } : null),
     [page, funding],
+  );
+  // Retirement age (step e, decided 2026-10-10): both funded levels at each age (its own page only);
+  // the savings needed only for the age picked.
+  const ageTables = useMemo(
+    () => (page === 'funding' && funding && !funding.retired ? retirementAgeTable(deferredRoth.household, funding.need) : null),
+    [page, funding, deferredRoth],
+  );
+  const [agePick, setAgePick] = useState(null);
+  const pickShown = agePick && ageTables?.some((t) => t.personId === agePick.personId && t.rows.some((r) => r.age === agePick.age)) ? agePick : null;
+  const ageDetail = useMemo(
+    () => (pickShown ? retirementAgeDetail(deferredRoth.household, funding.need, pickShown.personId, pickShown.age) : null),
+    [pickShown, deferredRoth, funding],
   );
   const spendingPick = useMemo(() => (page === 'spending' ? spendingChoice(deferredRoth.household, spendingView) : null), [page, deferredRoth, spendingView]);
   // The conversion over a lifetime (two projections, with and without it): its own page only.
@@ -546,6 +558,13 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   error={roth.spending.error}
                   choices={savingsPicks}
                   onUse={locked ? undefined : (choice) => setValues((v) => applySavingsChoice(v, deferredRoth.household, choice.extra))}
+                  ages={{
+                    tables: ageTables,
+                    pick: pickShown,
+                    onPick: (personId, age) => setAgePick({ personId, age }),
+                    detail: ageDetail,
+                    onUseAge: locked ? undefined : (personId, age) => setValues((v) => applyRetirementAge(v, personId, age)),
+                  }}
                 />
               )}
               {calculator.id === 'projection' && <ProjectionResult view={projection} error={roth.spending.error} />}

@@ -25,9 +25,84 @@ function savingsText(s, target) {
   return `Save ${$(s.total)} a year, ${change}.`;
 }
 
+const WHO = { p1: 'Your', p2: 'Your spouse’s' };
+
+// Retirement age (step e): a table per person still working, both funded levels at each age; the
+// age picked opens its savings needed and "Use in the plan".
+function RetirementAges({ tables, pick, onPick, detail, target, onUseAge }) {
+  return (
+    <>
+      <p>
+        Each person’s retirement age moved on its own, the other’s held: their earnings and savings stop then, and a Social Security
+        claim set to start at retirement moves with it. Pick an age for the savings needed there.
+      </p>
+      {tables.map((t) => (
+        <div key={t.personId} className="table-scroll">
+          <h3>
+            {WHO[t.personId] ?? 'Their'} retirement age <span className="dim">(the plan: {t.planned})</span>
+          </h3>
+          <table className="compare-table strategy-table">
+            <thead>
+              <tr>
+                <th scope="col">Retire at</th>
+                <th scope="col">Through retirement</th>
+                <th scope="col">At retirement (4%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {t.rows.map((r) => {
+                const picked = pick?.personId === t.personId && pick.age === r.age;
+                return (
+                  <tr key={r.age} className={r.age === t.planned || picked ? 'chosen-row' : undefined}>
+                    <th scope="row">
+                      <button type="button" className="link-button" aria-pressed={picked} onClick={() => onPick?.(t.personId, r.age)}>
+                        {r.age}
+                      </button>
+                      {r.age === t.planned && <span className="dim"> (the plan)</span>}
+                      {picked && r.age !== t.planned && <span className="dim"> (picked)</span>}
+                    </th>
+                    <td>
+                      {pct(r.through.funded)} <span className="dim">{FUNDED_STATUS_LABELS[r.through.status]}</span>
+                    </td>
+                    <td>
+                      {pct(r.at.funded)} <span className="dim">{FUNDED_STATUS_LABELS[r.at.status]}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      {detail && (
+        <div className="age-detail">
+          <h3>
+            {WHO[detail.personId] ?? 'Their'} retirement at {detail.age}: savings needed for {pct(target)} funded
+          </h3>
+          <p>
+            <strong>Through retirement</strong> ({pct(detail.through.funded)} today): {savingsText(detail.savings.through, target)}
+          </p>
+          <p>
+            <strong>At retirement (4%)</strong> ({pct(detail.at.funded)} today): {savingsText(detail.savings.at, target)}
+          </p>
+          {onUseAge && (
+            <div className="use-in-plan">
+              <button type="button" className="button" onClick={() => onUseAge(detail.personId, detail.age)}>
+                Use in the plan: {WHO[detail.personId] === 'Your' ? 'retire' : 'your spouse retires'} at {detail.age}
+              </button>
+              <p className="hint">Sets the retirement age only; the savings stay as they are.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 // error: why there is no view (the spending need's reason). choices: { through, at } from
 // lib/funding.js savingsChoice; onUse(choice) writes one into the plan (absent when locked).
-export default function FundingResult({ view, error, choices, onUse }) {
+// ages: { tables, pick, onPick, detail, onUseAge } for the retirement-age block (step e).
+export default function FundingResult({ view, error, choices, onUse, ages }) {
   if (!view) {
     return (
       <section className="card">
@@ -187,6 +262,12 @@ export default function FundingResult({ view, error, choices, onUse }) {
           title: 'Savings needed',
           summary: lead.reachable ? savingsText(lead, target) : 'Out of reach by saving more',
           content: savingsBlock,
+        },
+        ages?.tables?.length > 0 && {
+          id: 'ages',
+          title: 'Retirement age',
+          summary: ages.detail ? `Retiring at ${ages.detail.age}: ${pct(ages.detail.through.funded)} funded` : 'Funded levels retiring earlier or later',
+          content: <RetirementAges {...ages} target={target} />,
         },
         { id: 'atRetirement', title: 'At retirement, in detail', summary: `${$(at.income)} in ${at.year}`, content: detail },
       ]}

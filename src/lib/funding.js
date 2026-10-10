@@ -216,3 +216,53 @@ export function applySavingsChoice(values, household, extra) {
   });
   return next;
 }
+
+// Retirement age (phase 4 step e, decided 2026-10-10): each person's age moved on its own, the
+// other's held; their earnings, contributions and a Social Security claim "at retirement" follow it
+// (the projection reads the age each year). The table shows both funded levels at each age; the
+// savings needed are worked out only for the age picked (a full table costs ~1.7 s a person).
+export const AGE_SPAN = 5;
+
+// The household with one person's retirement age changed.
+export function withRetirementAge(household, personId, age) {
+  return { ...household, people: household.people.map((p) => (p.id === personId ? { ...p, retirementAge: age } : p)) };
+}
+
+// -> one entry per person still working: { personId, ageNow, planned, rows: [{ age, through, at }] }
+//    (through / at: { funded, status }), ages from 5 before the planned age (but after this year) to 5 after.
+export function retirementAgeTable(household, need) {
+  return household.people
+    .map((p) => ({ p, ageNow: household.year - p.birthYear }))
+    .filter(({ p, ageNow }) => p.retirementAge > ageNow)
+    .map(({ p, ageNow }) => {
+      const rows = [];
+      for (let age = Math.max(ageNow + 1, p.retirementAge - AGE_SPAN); age <= p.retirementAge + AGE_SPAN; age++) {
+        const h = withRetirementAge(household, p.id, age);
+        const { funded: tf, status: ts } = throughRetirement(h, need);
+        const { funded: af, status: as } = atRetirement(h, need);
+        rows.push({ age, through: { funded: tf, status: ts }, at: { funded: af, status: as } });
+      }
+      return { personId: p.id, ageNow, planned: p.retirementAge, rows };
+    });
+}
+
+// The picked age in full: the funded levels and the savings needed to the target for both measures.
+export function retirementAgeDetail(household, need, personId, age) {
+  const h = withRetirementAge(household, personId, age);
+  const target = household.calculators?.funding?.target ?? 1;
+  return {
+    personId,
+    age,
+    through: throughRetirement(h, need),
+    at: atRetirement(h, need),
+    savings: {
+      through: savingsNeeded(h, need, { measure: 'throughRetirement', target }),
+      at: savingsNeeded(h, need, { measure: 'atRetirement', target }),
+    },
+  };
+}
+
+// "Use in the plan" for a retirement age: the values with that person's retirement age set.
+export function applyRetirementAge(values, personId, age) {
+  return { ...values, people: values.people.map((p) => (p.id === personId ? { ...p, retirementAge: String(age) } : p)) };
+}
