@@ -154,6 +154,7 @@ export const CALCULATORS = [
     title: 'Pre-retirement funding',
     blurb: 'Is the household on track? What its assets will pay against the spending need, two ways, and the savings that close the gap.',
     ownTitle: 'Funding inputs',
+    article: 'funding',
   },
   {
     id: 'tax',

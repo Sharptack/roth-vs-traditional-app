@@ -36,6 +36,11 @@ export const DOCS_ARTICLES = [
     blurb: 'What the resources allow the household to spend each year with its legacy goal, the goal’s cost, a charitable legacy, and Use in the plan.',
   },
   {
+    slug: 'funding',
+    title: 'Pre-retirement funding',
+    blurb: 'Is the household on track? The two measures, the savings needed, retirement ages earlier or later, and room to spare.',
+  },
+  {
     slug: 'conversion',
     title: 'The Roth conversion calculator',
     blurb: 'A conversion this year: lifetime tax, the legacy and retirement income with and without it, its tax now and its effective rate.',
