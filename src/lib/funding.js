@@ -266,3 +266,49 @@ export function retirementAgeDetail(household, need, personId, age) {
 export function applyRetirementAge(values, personId, age) {
   return { ...values, people: values.people.map((p) => (p.id === personId ? { ...p, retirementAge: String(age) } : p)) };
 }
+
+// Overfunded (phase 4 step f): the earliest retirement age, one person's moved on its own, at which
+// a measure still reaches `target` × the need. A bisection on whole ages from the year after this
+// one to the planned age (funded rises with a later retirement). -> the age, or null when even the
+// planned age falls short.
+export function earliestRetirement(household, need, personId, { measure = 'throughRetirement', target = 1 } = {}) {
+  const p = household.people.find((x) => x.id === personId);
+  const ageNow = household.year - p.birthYear;
+  if (!(need > 0) || !(p.retirementAge > ageNow)) return null;
+  const run = measure === 'atRetirement' ? atRetirement : throughRetirement;
+  const meets = (age) => run(withRetirementAge(household, personId, age), need).funded >= target;
+  let hi = p.retirementAge;
+  if (!meets(hi)) return null;
+  let lo = ageNow; // retiring now isn't offered: the answer is above it
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (meets(mid)) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+}
+
+// What an overfunded plan has to spare (step f): null unless a measure is over, else {
+//   moreToSpend    through retirement: what the resources allow above the need, a year
+//   lessToSave     { through, at }: how much less could be saved a year and still reach the target
+//                  (from savingsNeeded; 0 when nothing can be cut)
+//   earliest       per person still working: { personId, planned, through, at } (ages, or null)
+// }
+export function overfundedView(household, view) {
+  if (view.retired || !(view.through.status === 'over' || view.at.status === 'over')) return null;
+  const { need, target } = view;
+  const less = (s) => (s.reachable && s.extra < 0 ? -s.extra : 0);
+  return {
+    couple: household.people.length > 1,
+    moreToSpend: Math.max(0, view.through.sustainable - need),
+    lessToSave: { through: less(view.savings.through), at: less(view.savings.at) },
+    earliest: household.people
+      .filter((p) => p.retirementAge > household.year - p.birthYear)
+      .map((p) => ({
+        personId: p.id,
+        planned: p.retirementAge,
+        through: earliestRetirement(household, need, p.id, { measure: 'throughRetirement', target }),
+        at: earliestRetirement(household, need, p.id, { measure: 'atRetirement', target }),
+      })),
+  };
+}

@@ -26,7 +26,7 @@ import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
-import { applyRetirementAge, applySavingsChoice, fundingView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
+import { applyRetirementAge, applySavingsChoice, fundingView, overfundedView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
 import FundingResult from './FundingResult.jsx';
 import { applySpendingChoice, legacyTradeoff, retirementSpendingView, spendingChoice } from '../lib/retirementSpending.js';
 import RetirementSpendingResult from './RetirementSpendingResult.jsx';
@@ -231,6 +231,8 @@ export default function NextApp({ initialPage, initialValues, client }) {
     () => (page === 'funding' && funding && !funding.retired ? retirementAgeTable(deferredRoth.household, funding.need) : null),
     [page, funding, deferredRoth],
   );
+  // Room to spare (step f): only when overfunded.
+  const spare = useMemo(() => (page === 'funding' && funding ? overfundedView(deferredRoth.household, funding) : null), [page, funding, deferredRoth]);
   const [agePick, setAgePick] = useState(null);
   const pickShown = agePick && ageTables?.some((t) => t.personId === agePick.personId && t.rows.some((r) => r.age === agePick.age)) ? agePick : null;
   const ageDetail = useMemo(
@@ -558,6 +560,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   error={roth.spending.error}
                   choices={savingsPicks}
                   onUse={locked ? undefined : (choice) => setValues((v) => applySavingsChoice(v, deferredRoth.household, choice.extra))}
+                  spare={spare}
                   ages={{
                     tables: ageTables,
                     pick: pickShown,

@@ -2492,6 +2492,11 @@ th.win .th-sub {
   margin: 0 0 10px;
 }
 
+/* More than one choice side by side (Pre-retirement funding's earlier retirement ages). */
+.use-in-plan .button + .button {
+  margin-left: 8px;
+}
+
 /* A choice of one, as joined buttons (the Roth page's full table: Roth or Pre-tax scenario). */
 .segmented {
   display: inline-flex;

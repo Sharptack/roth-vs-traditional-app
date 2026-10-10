@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ABOUT_EVEN, applyRetirementAge, atRetirement, savingsWith, fundedStatus, lastRetirementYear, retirementAgeDetail, retirementAgeTable, savingsNeeded, throughRetirement } from '../src/lib/funding.js';
+import { ABOUT_EVEN, applyRetirementAge, atRetirement, earliestRetirement, fundingView, overfundedView, savingsWith, fundedStatus, lastRetirementYear, retirementAgeDetail, retirementAgeTable, savingsNeeded, throughRetirement } from '../src/lib/funding.js';
 import { runProjection } from '../src/lib/projection.js';
 import { toHouseholdV2 } from '../src/lib/householdV2.js';
 import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
@@ -220,5 +220,35 @@ describe('Retirement age, each person on their own (phase 4 step e, HAND CALC)',
     expect(retirementAgeTable(h, 40000).map((t) => t.personId)).toEqual(['p1']);
     const values = { people: [{ id: 'p1', retirementAge: '65' }, { id: 'p2', retirementAge: '62' }] };
     expect(applyRetirementAge(values, 'p2', 64).people).toEqual([{ id: 'p1', retirementAge: '65' }, { id: 'p2', retirementAge: '64' }]);
+  });
+});
+
+describe('Overfunded: more to spend, less to save, earlier retirement (phase 4 step f, HAND CALC)', () => {
+  // 55 now, planned 62, the same Roth saver. Retiring at R after n = R - 55 working years:
+  //   B = 500,000 x 1.05^n + 10,000 x (1.05^n - 1) / 0.05
+  //   n = 3 (58): 578,812.50 + 31,525.00 = 610,337.50 -> 4% = 24,413.50 (97.7% of 25,000)
+  //   n = 4 (59): 607,753.13 + 43,101.25 = 650,854.38 -> 4% = 26,034.18 (104.1%)
+  //   n = 7 (62): 703,550.21 + 81,420.08 = 784,970.29 -> 4% = 31,398.81 (125.6%: overfunded)
+  const younger = () => ({ ...saver(), people: [{ ...saver().people[0], birthYear: Y - 55 }] });
+  it('the earliest age each measure still reaches the target', () => {
+    expect(earliestRetirement(younger(), 25000, 'p1', { measure: 'atRetirement' })).toBe(59);
+    // through retirement even at 56 (535,000 over nine years to 64 is $71,684 a year): the first age offered
+    expect(earliestRetirement(younger(), 25000, 'p1')).toBe(56);
+    // short at the planned age: none
+    expect(earliestRetirement(younger(), 40000, 'p1', { measure: 'atRetirement' })).toBe(null);
+  });
+
+  it('the view: more to spend, less to save, the earliest ages', () => {
+    const h = younger();
+    const view = fundingView(h, 25000);
+    expect(view.at.status).toBe('over');
+    const o = overfundedView(h, view);
+    expect(o.moreToSpend).toBeCloseTo(view.through.sustainable - 25000, 9);
+    // 4% of 625,000 = 25,000 is met saving nothing (703,550 grown alone): the whole $10,000 can go
+    expect(o.lessToSave.at).toBe(10000);
+    expect(o.couple).toBe(false);
+    expect(o.earliest).toEqual([{ personId: 'p1', planned: 62, through: 56, at: 59 }]);
+    // underfunded on both: nothing to spare
+    expect(overfundedView(h, fundingView(h, 400000))).toBe(null);
   });
 });

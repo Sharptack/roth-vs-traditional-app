@@ -99,10 +99,49 @@ function RetirementAges({ tables, pick, onPick, detail, target, onUseAge }) {
   );
 }
 
+// Room to spare (step f): an overfunded plan's choices, more to spend, less to save, earlier retirement.
+function Spare({ spare: o, need, target, onUseAge }) {
+  const who = (id) => (id === 'p1' ? 'You' : 'Your spouse');
+  return (
+    <>
+      <p>
+        <strong>Spend more:</strong> through retirement the resources allow {$(o.moreToSpend)} a year more than the {$(need)} need.{' '}
+        <a href={PAGES.spending}>Retirement spending</a> can put that into the plan.
+      </p>
+      <p>
+        <strong>Save less:</strong>{' '}
+        {o.lessToSave.through > 0 || o.lessToSave.at > 0
+          ? `${$(o.lessToSave.through)} a year less still reaches ${pct(target)} through retirement; ${$(o.lessToSave.at)} less for the 4% at retirement (Use in the plan under Savings needed).`
+          : `nothing: saving less would drop below ${pct(target)}.`}
+      </p>
+      {o.earliest.map((e) => (
+        <div key={e.personId}>
+          <p>
+            <strong>Retire earlier:</strong> {who(e.personId)} could retire at {e.through ?? '—'} and still reach {pct(target)} through
+            retirement, or at {e.at ?? '—'} for the 4% at retirement (the plan: {e.planned}{o.couple ? '; the other person’s age held' : ''}).
+          </p>
+          {onUseAge && (
+            <div className="use-in-plan">
+              {[...new Set([e.through, e.at])]
+                .filter((age) => age !== null && age < e.planned)
+                .map((age) => (
+                  <button key={age} type="button" className="button" onClick={() => onUseAge(e.personId, age)}>
+                    Use in the plan: {e.personId === 'p1' ? 'retire' : 'your spouse retires'} at {age}
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </>
+  );
+}
+
 // error: why there is no view (the spending need's reason). choices: { through, at } from
 // lib/funding.js savingsChoice; onUse(choice) writes one into the plan (absent when locked).
 // ages: { tables, pick, onPick, detail, onUseAge } for the retirement-age block (step e).
-export default function FundingResult({ view, error, choices, onUse, ages }) {
+// spare: lib/funding.js overfundedView (null unless overfunded).
+export default function FundingResult({ view, error, choices, onUse, ages, spare }) {
   if (!view) {
     return (
       <section className="card">
@@ -262,6 +301,12 @@ export default function FundingResult({ view, error, choices, onUse, ages }) {
           title: 'Savings needed',
           summary: lead.reachable ? savingsText(lead, target) : 'Out of reach by saving more',
           content: savingsBlock,
+        },
+        spare && {
+          id: 'spare',
+          title: 'Room to spare',
+          summary: `${$(spare.moreToSpend)} a year more to spend`,
+          content: <Spare spare={spare} need={need} target={target} onUseAge={ages?.onUseAge} />,
         },
         ages?.tables?.length > 0 && {
           id: 'ages',

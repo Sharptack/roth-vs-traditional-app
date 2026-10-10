@@ -1559,6 +1559,19 @@ describe('Already retired (2026-10-09)', () => {
     expect(fundingView(after.household, after.spending.need).through.funded).toBe(rows[8].through.funded);
   });
 
+  it('phase 4 step f: an overfunded household has room to spare', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const page = renderToStaticMarkup(<NextApp initialPage="funding" initialValues={D} client={null} />);
+    expect(page).toContain('Room to spare');
+    expect(page).toMatch(/You could retire at \d+ and still reach 100% through retirement/);
+    expect(page).toMatch(/Use in the plan: retire at \d+/);
+    expect(page).not.toMatch(/NaN|Infinity/);
+    // underfunded: no such block
+    const short = { ...D, spending: { ...D.spending, method: 'budget', baseline: '200000' } };
+    expect(renderToStaticMarkup(<NextApp initialPage="funding" initialValues={short} client={null} />)).not.toContain('Room to spare');
+  });
+
   it('phase 4: Use in the plan with no savings in the rows adds taxable rows, split by pay', async () => {
     const { previewResult } = await import('../src/next/NextApp.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
