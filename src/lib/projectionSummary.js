@@ -63,11 +63,35 @@ export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE 
   };
 }
 
+// The legacy goal (phase 3, decided 2026-10-09): at least `target` left at the end of the plan (the
+// second death), in today's dollars, measured either as the balance itself or after tax (Pre-tax
+// money at the heirs' rate, as endingAfterTax). legacy = { target, measure: 'balance' | 'afterTax',
+// heirTaxRate }; absent or a target of 0 = no goal.
+export function legacyValue(endBalances, { measure = 'balance', heirTaxRate = DEFAULT_HEIR_TAX_RATE } = {}) {
+  return measure === 'afterTax' ? endBalances.pretax * (1 - heirTaxRate) + endBalances.roth + endBalances.taxable : endBalances.total;
+}
+
+// legacyTarget(household, goal) -> the goal in dollars: { type: 'none' | 'amount' | 'share', amount,
+// share }. A share is of today's portfolio (every Existing Account).
+export function legacyTarget(household, { type = 'none', amount = 0, share = 0 } = {}) {
+  if (type === 'amount') return Math.max(0, amount || 0);
+  if (type === 'share') return Math.max(0, share || 0) * household.accounts.reduce((s, a) => s + (a.balance || 0), 0);
+  return 0;
+}
+
+// Whether the plan meets a spending need: no shortfall in any year, and the legacy goal (if any) left.
+export function meetsPlan(household, need, { legacy, ...options } = {}) {
+  const rows = runProjection(household, { ...options, need }).rows;
+  if (!rows.every((r) => r.shortfall === 0)) return false;
+  return !(legacy?.target > 0) || legacyValue(rows[rows.length - 1].endBalances, legacy) >= legacy.target;
+}
+
 // The highest steady after-tax spending (today's dollars) the plan supports through the end age
-// with no shortfall. Bisection on the need: a higher need can only run out sooner. Each step is a
-// whole projection, so it stops at $1 of precision.
+// with no shortfall and, with options.legacy, the legacy goal left at the end. Bisection on the
+// need: a higher need can only run out sooner and leave less. Each step is a whole projection, so it
+// stops at $1 of precision. 0 when even no spending can't meet the goal (meetsPlan(h, 0, …) says).
 export function sustainableSpending(household, options = {}) {
-  const lasts = (need) => runProjection(household, { ...options, need }).rows.every((r) => r.shortfall === 0);
+  const lasts = (need) => meetsPlan(household, need, options);
   let lo = 0;
   let hi = 50000;
   while (lasts(hi)) {
