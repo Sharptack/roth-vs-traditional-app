@@ -8,9 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, 2 (survivor years and engine additions), the "Before phase" lists, and phase 3 (retirement spending). 893 tests. Last closed: phase 3 (tag `phase-3-done`): the spending need from income or a budget, read by every calculator (already-retired households now get the projection and the conversion's lifetime view); the legacy goal (amount or share, balance or after tax) in sustainable spending; the Retirement spending page with Use in the plan and the trade-off chart; a charitable legacy (Pre-tax to charity first); the staged-spending design, decided.
 
-**In progress:** nothing.
-
-**Next: phase 4, pre-retirement funding.** Steps not yet set (set them here first); it starts from the two measures side by side (a 4% first-year withdrawal at retirement, and phase 3's sustainable spending with the legacy goal).
+**In progress: phase 4, pre-retirement funding** (started 2026-10-10; decisions and steps in the phase 4 section below). Now on step (a): income above the need in two settings (while working, spent by default; in retirement, saved).
 
 **Known gaps and open items:**
 - The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).
@@ -29,7 +27,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 - Survivor years: single from the year after the first death, the larger Social Security benefit, accounts roll to the survivor, spending 80% (an input).
 - A retirement age at or below the age now = already retired: no earnings or contributions from this year; a retiree's income row with no ages counts for life (earnings excepted). Each person's "plan to age" is now called life expectancy.
 - Social Security: no row = estimated from earnings (a PIA of $0 = none); "Currently receiving" = the monthly check, as is, from now.
-- Income above the need: save it (default) or spend it. Each taxable account is the only source of its dividends (1.3% qualified by default); an "Other: qualified dividends" row is outside money.
+- Income above the need: save it or spend it, set separately for the working years (spend by default) and retirement (save by default; decided 2026-10-10, built in phase 4 step a). Each taxable account is the only source of its dividends (1.3% qualified by default); an "Other: qualified dividends" row is outside money.
 - Employer money is always Pre-tax, held to the 415(c) limit. The return in retirement applies once no one works; the Roth comparison's snapshot is at the last retirement (no earlier than today).
 - A pension lump sum rolls to the owner's Pre-tax IRA at the pension's start age. A conversion's tax while anyone works comes out of the conversion; once retired, from withdrawals. Lifetime tax = federal income tax + IRMAA.
 - Each phase ends with its Docs article (`articles/`, listed in `src/lib/docs.js`).
@@ -118,6 +116,26 @@ For each: funded level = what the assets pay ÷ the need. Within 5% = about even
 **Speed:** measure 2 costs a sustainable-spending search per point (about 25 projections) and the savings solve searches over that; a few secant steps plus a final check should keep each solve under a second, to be measured.
 
 **Tests:** a hand-worked case with no tax and no Social Security; every solved amount, rerun, lands on its target.
+
+**Decided 2026-10-10 (Michael, the recommended options unless noted):**
+- **Measure 1 comes from the projection,** not the Roth page's card: in the year the last person retires, 4% of each account's balance at the start of that year, plus Social Security, pensions and other income rows (rent included), minus the tax on all of it (the one engine) and IRMAA. Reason: it is the household's actual plan (each person's own contribution type), the same plan measure 2 reads, and it avoids the Roth snapshot's gap on other income rows.
+- **The need is held fixed while solving savings needed:** the target is today's retirement spending need, even under the "Today's income" method, where saving more would otherwise lower it. Reason: a fixed number is clearer to explain, and the budget method behaves this way anyway.
+- **"Use in the plan" for both:** the savings needed (written into the contribution rows, spread in proportion to today's amounts) and each person's retirement age.
+- **Extra savings with no contribution rows go to a taxable account** (as savings over the IRS limit do).
+- **Income above the need: two settings** (Michael's own answer). While working, the default is **spend it**. In retirement (an RMD above the need, for example), the default stays **save it** in a taxable account. Each can be changed. Saved households pick up the new working-years default; version 1 households (and the pins) stay as before. This changes results for households with income beyond today's paycheck before retirement (now spent, no longer reinvested).
+
+**How the solves work:** with the need fixed, the savings needed for measure 2 is one search on the extra savings (bisection on whether the plan meets the target need with the goal left, `meetsPlan`), about 20 projections, not a sustainable-spending search per step. Measure 1 is a search the same way on the 4% figure at retirement. The extra savings is a flat amount a year in today's dollars, like the contribution rows, passed to the projection as its `contributions` override.
+
+**Steps (set 2026-10-10):**
+- (a) Income above the need in two settings (while working: spend by default; in retirement: save), the inputs and the articles updated.
+- (b) The two measures in the engine (`src/lib/funding.js`): measure 1 from the projection at the last retirement, measure 2 from sustainable spending with the legacy goal; funded level and status (under, about even within 5%, over). The hand-worked case (no tax, no Social Security).
+- (c) Savings needed for each measure: one household figure a year, spread across the rows (taxable with none, or over the limit), as dollars and as a share of household pay; each solved amount, rerun, lands on its target; the time measured.
+- (d) The Pre-retirement funding page (an Evaluation): the two measures side by side, the target (100% by default), savings needed, "Use in the plan" for the savings. A household already retired is sent to Retirement spending.
+- (e) Retirement age: each person's age moved on its own (their income and contributions stop then), the funded levels and savings needed at each, "Use in the plan" for an age.
+- (f) Overfunded: how much more could be spent, how much less saved, how much earlier retirement could come.
+- (g) The Docs article.
+
+**Status:** started 2026-10-10.
 
 ## Phase 5: Social Security calculator
 
