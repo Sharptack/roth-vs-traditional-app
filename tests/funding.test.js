@@ -55,6 +55,7 @@ describe('The two measures (HAND CALC, no tax, no Social Security)', () => {
     expect(m.withdrawals.total).toBeCloseTo(22870, 6);
     expect(m.totalTax).toBe(0);
     expect(m.income).toBeCloseTo(22870, 6);
+    expect(m.otherIncome).toBeCloseTo(0, 6);
     expect(m.need).toBe(40000);
     expect(m.funded).toBeCloseTo(0.57175, 9);
     expect(m.status).toBe('under');

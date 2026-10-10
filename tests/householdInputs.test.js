@@ -116,7 +116,7 @@ describe('the inputs each calculator reads', () => {
   it('the inputs page: four groups, every household section once; the calculator-only sections are not on it', () => {
     expect(INPUT_GROUPS.map((g) => g.title)).toEqual(['Household', 'Income and expenses', 'Assets and liabilities', 'Assumptions']);
     expect(ALL_SECTION_IDS).toEqual(['household', 'dependents', 'income', 'contributions', 'spending', 'legacy', 'deductions', 'accounts', 'liabilities', 'assumptions']);
-    expect(INPUT_SECTIONS.map((s) => s.id).filter((id) => !ALL_SECTION_IDS.includes(id))).toEqual(['projection', 'conversion', 'pension']);
+    expect(INPUT_SECTIONS.map((s) => s.id).filter((id) => !ALL_SECTION_IDS.includes(id))).toEqual(['projection', 'conversion', 'funding', 'pension']);
     expect(CALCULATOR_INPUTS.roth.titles).toEqual({ contributions: 'Future Contributions' });
   });
 

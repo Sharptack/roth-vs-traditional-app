@@ -13,6 +13,8 @@ import { runProjection } from './projection.js';
 import { legacyOption, meetsPlan, sustainableSpending } from './projectionSummary.js';
 import { strategyById } from './strategies.js';
 import { WITHDRAWAL_RATE } from './constants.js';
+import { everyoneRetired } from './spendingNeed.js';
+import { addRow } from './householdValues.js';
 
 export const ABOUT_EVEN = 0.05; // to tune (roadmap)
 
@@ -45,8 +47,9 @@ function fourPercentOnceRetired(planStrategy) {
 
 // Measure 1. options.savings: { contributions, taxableSavings }, the projection's overrides
 // (savingsWith; absent = the plan's own).
-// -> { year, ages, balances (at the start of the year), income (after tax), need (that year's),
-//      funded, status }
+// -> { year, ages, balances (at the start of the year), withdrawals, totalTax, irmaa, income (after
+//      tax), otherIncome (Social Security, pensions and other income rows: income + tax + IRMAA −
+//      the withdrawals), need (that year's), funded, status }
 export function atRetirement(household, need, { savings } = {}) {
   const { strategy } = planOptions(household);
   const year = lastRetirementYear(household);
@@ -63,6 +66,7 @@ export function atRetirement(household, need, { savings } = {}) {
     totalTax: row.totalTax,
     irmaa: row.irmaa,
     income: row.afterTaxIncome,
+    otherIncome: row.afterTaxIncome + row.totalTax + (row.irmaa ?? 0) - row.withdrawals.total,
     need: row.need,
     funded,
     status: fundedStatus(funded),
@@ -158,4 +162,57 @@ export function savingsNeeded(household, need, { measure = 'atRetirement', targe
     else lo = mid;
   }
   return result(Math.ceil(hi));
+}
+
+// Everything the Pre-retirement funding page shows (phase 4 step d), from the household and the
+// spending need. Through retirement leads (decided 2026-10-10); the 4% at retirement beside it.
+// -> { retired: true } when everyone is retired already (the page sends them to Retirement
+//    spending), or { retired: false, need, target, through, at, savings: { through, at } }
+//    (savingsNeeded for each measure, to the target).
+export function fundingView(household, need) {
+  if (everyoneRetired(household)) return { retired: true };
+  const target = household.calculators?.funding?.target ?? 1;
+  return {
+    retired: false,
+    need,
+    target,
+    through: throughRetirement(household, need),
+    at: atRetirement(household, need),
+    savings: {
+      through: savingsNeeded(household, need, { measure: 'throughRetirement', target }),
+      at: savingsNeeded(household, need, { measure: 'atRetirement', target }),
+    },
+  };
+}
+
+// "Use in the plan" for a savings figure (decided 2026-10-10): null when there is nothing to
+// change (out of reach, or within $1 of the plan), else { extra, total }.
+export function savingsChoice(solved) {
+  if (!solved?.reachable || Math.abs(solved.extra) < 1) return null;
+  return { extra: solved.extra, total: solved.total };
+}
+
+// The values with the plan's savings changed by `extra` a year, as savingsWith spreads it: each
+// contribution row of a person still working scaled in proportion, rounded up to the dollar (so the
+// plan lands at or above the target); with no savings in the rows, a taxable row for each person
+// with pay, split by pay. The household (toHouseholdV2 of these values) says who is working.
+export function applySavingsChoice(values, household, extra) {
+  const working = new Set(household.people.filter((p) => household.year - p.birthYear < p.retirementAge).map((p) => p.id));
+  const counts = (r) => working.has(r.owner);
+  const amount = (r) => Number(r.amount) || 0;
+  const planned = values.contributions.filter(counts).reduce((s, r) => s + amount(r), 0);
+  if (planned > 0) {
+    const scale = Math.max(0, (planned + extra) / planned);
+    return { ...values, contributions: values.contributions.map((r) => (counts(r) ? { ...r, amount: String(Math.ceil(amount(r) * scale - 1e-9)) } : r)) };
+  }
+  if (!(extra > 0)) return values;
+  const people = household.people.filter((p) => working.has(p.id));
+  const pay = people.map((p) => (p.wages || 0) + (p.selfEmploymentIncome || 0));
+  const payTotal = pay.reduce((s, x) => s + x, 0);
+  let next = values;
+  people.forEach((p, i) => {
+    const share = payTotal > 0 ? pay[i] / payTotal : 1 / people.length;
+    if (share > 0) next = addRow(next, 'contributions', { owner: p.id, tax: 'taxable', amount: String(Math.ceil(extra * share - 1e-9)) });
+  });
+  return next;
 }

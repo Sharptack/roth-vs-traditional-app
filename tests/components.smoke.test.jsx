@@ -1492,6 +1492,56 @@ describe('Already retired (2026-10-09)', () => {
     expect(home).toMatch(/\$[\d,]+\/yr after tax/);
   });
 
+  it('phase 4: the Pre-retirement funding page, Use in the plan for the savings, and its tile', async () => {
+    const { default: NextApp, previewResult } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const { fundingView, savingsChoice, applySavingsChoice } = await import('../src/lib/funding.js');
+    // a $200,000 budget: underfunded on both measures with today's $10,000 a year
+    const values = { ...D, spending: { ...D.spending, method: 'budget', baseline: '200000' } };
+    const page = renderToStaticMarkup(<NextApp initialPage="funding" initialValues={values} client={null} />);
+    expect(page).toContain('<h1>Pre-retirement funding</h1>');
+    expect(page).toContain('Is the household on track?');
+    expect(page).toContain('Through retirement');
+    expect(page).toContain('At retirement (4%)');
+    expect(page).toContain('Underfunded');
+    expect(page).toMatch(/Use in the plan: save \$[\d,]+ a year/);
+    expect(page).toContain('Target funded level');
+    expect(page).not.toMatch(/NaN|Infinity/);
+    // Use in the plan, applied (through retirement): the plan, rerun, lands on the 100% target
+    const r = previewResult(values, 2026);
+    const view = fundingView(r.household, r.spending.need);
+    expect(view.through.status).toBe('under');
+    const choice = savingsChoice(view.savings.through);
+    const applied = applySavingsChoice(values, r.household, choice.extra);
+    expect(applied.contributions[0].amount).toBe(String(choice.total)); // one row: it takes it all
+    const after = previewResult(applied, 2026);
+    const rerun = fundingView(after.household, after.spending.need);
+    expect(rerun.through.funded).toBeGreaterThanOrEqual(1 - 1 / after.spending.need);
+    expect(rerun.through.funded).toBeLessThan(1.001);
+    // a 120% target asks for more
+    const higher = { ...values, calculators: { ...values.calculators, funding: { target: '1.2' } } };
+    const rh = previewResult(higher, 2026);
+    expect(fundingView(rh.household, rh.spending.need).savings.through.extra).toBeGreaterThan(choice.extra);
+    const home = renderToStaticMarkup(<NextApp initialPage="home" initialValues={values} client={null} />);
+    expect(home).toContain('href="#/funding"');
+    expect(home).toMatch(/\d+% funded · Underfunded/);
+    // everyone retired: sent to Retirement spending
+    const retired = { ...D, people: D.people.map((p) => ({ ...p, age: '70', retirementAge: '65' })), spending: { ...D.spending, baseline: '60000' } };
+    expect(renderToStaticMarkup(<NextApp initialPage="funding" initialValues={retired} client={null} />)).toContain('Everyone in the household is retired already');
+  });
+
+  it('phase 4: Use in the plan with no savings in the rows adds taxable rows, split by pay', async () => {
+    const { previewResult } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const { applySavingsChoice } = await import('../src/lib/funding.js');
+    const values = { ...D, contributions: [] };
+    const r = previewResult(values, 2026);
+    const applied = applySavingsChoice(values, r.household, 5000.2);
+    expect(applied.contributions).toHaveLength(1);
+    expect(applied.contributions[0]).toMatchObject({ owner: 'p1', tax: 'taxable', amount: '5001' });
+    expect(previewResult(applied, 2026).household.futureContributions.taxableSavings).toEqual([{ owner: 'p1', amount: 5001 }]);
+  });
+
   it('phase 3 step e: a charitable legacy, in the sentence and the wealth figures', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');

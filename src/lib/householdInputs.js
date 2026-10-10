@@ -244,6 +244,7 @@ export const INPUT_SECTIONS = [
     summary: (v) => `${strategyLabel(v)} · heirs taxed at ${Math.round(Number(v.calculators.projection.heirTaxRate ?? 0) * 100)}%`,
   },
   { id: 'conversion', title: 'Conversion', summary: (v) => `Convert ${money(v.calculators.conversion.amount)} this year` },
+  { id: 'funding', title: 'Funding target', summary: (v) => `Savings needed to reach ${pct(v.calculators.funding?.target ?? '1')} funded` },
   {
     id: 'pension',
     title: 'Pension offer',
@@ -309,6 +310,11 @@ export const CALCULATOR_INPUTS = {
     sections: ['legacy', 'spending', 'projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
+  // Pre-retirement funding (phase 4): the target, then the savings and retirement ages it weighs.
+  funding: {
+    sections: ['funding', 'household', 'contributions', 'income', 'spending', 'legacy', 'projection', 'dependents', 'deductions', 'accounts', 'assumptions'],
+    fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
+  },
   conversion: {
     sections: ['conversion', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
@@ -339,6 +345,7 @@ const SECTION_DATA = {
   assumptions: (v) => [v.assumptions, v.calculators.projection],
   projection: (v) => v.calculators.projection,
   conversion: (v) => v.calculators.conversion,
+  funding: (v) => v.calculators.funding,
   pension: (v) => [v.calculators.pension, v.incomes.filter((r) => r.type === 'pension')],
 };
 

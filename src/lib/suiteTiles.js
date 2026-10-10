@@ -67,3 +67,16 @@ export function projectionTile(view) {
     detail: `Supports ${formatCurrency(view.sustainable)}/yr after tax to ${view.summary.endLabel}; the retirement income number is ${formatCurrency(view.need)}`,
   };
 }
+
+// Pre-retirement funding (phase 4): the funded level through retirement (it leads, decided
+// 2026-10-10), with the 4% at retirement beside it.
+export const FUNDED_STATUS_LABELS = { under: 'Underfunded', even: 'About even', over: 'Overfunded' };
+export function fundingTile(view) {
+  if (!view) return { headline: 'Needs inputs', detail: 'Fill in the household to work it out.' };
+  if (view.retired) return { headline: 'Already retired', detail: 'See Retirement spending for what the resources allow.' };
+  const pct = (x) => `${Math.round(x * 100)}%`;
+  return {
+    headline: `${pct(view.through.funded)} funded · ${FUNDED_STATUS_LABELS[view.through.status]}`,
+    detail: `Through retirement; 4% at retirement: ${pct(view.at.funded)} (${FUNDED_STATUS_LABELS[view.at.status].toLowerCase()})`,
+  };
+}

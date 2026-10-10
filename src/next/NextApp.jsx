@@ -25,7 +25,9 @@ import { projectionView } from '../lib/projectionSummary.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
-import { conversionTile, pensionTile, projectionTile, rothTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
+import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
+import { applySavingsChoice, fundingView, savingsChoice } from '../lib/funding.js';
+import FundingResult from './FundingResult.jsx';
 import { applySpendingChoice, legacyTradeoff, retirementSpendingView, spendingChoice } from '../lib/retirementSpending.js';
 import RetirementSpendingResult from './RetirementSpendingResult.jsx';
 import { conversionResult } from '../lib/conversionCalculator.js';
@@ -93,6 +95,7 @@ const conversionOf = (household) =>
   conversionResult(householdToYearTaxParams(household), household.calculators.conversion.amount, irmaaOf(household));
 const projectionOf = (r) => (r.spending.need !== null ? projectionView(r.household, r.spending.need) : null);
 const spendingOf = (r) => (r.spending.need !== null ? retirementSpendingView(r.household, r.spending.need) : null);
+const fundingOf = (r) => (r.spending.need !== null ? fundingView(r.household, r.spending.need) : null);
 // The homepage shows every calculator's tile; a calculator page shows only its own result; the
 // inputs page shows none.
 const isHome = (page) => page === 'home';
@@ -144,6 +147,13 @@ export const CALCULATORS = [
     blurb: 'What the household’s resources allow it to spend each year, with a legacy goal, against the spending need.',
     ownTitle: 'Retirement spending inputs',
     article: 'spending',
+  },
+  {
+    id: 'funding',
+    group: 'evaluations',
+    title: 'Pre-retirement funding',
+    blurb: 'Is the household on track? What its assets will pay against the spending need, two ways, and the savings that close the gap.',
+    ownTitle: 'Funding inputs',
   },
   {
     id: 'tax',
@@ -209,6 +219,12 @@ export default function NextApp({ initialPage, initialValues, client }) {
   // "Use in the plan" on Retirement spending (decided 2026-10-10): the budget that spends what the resources allow.
   // The trade-off chart: several sustainable-spending searches, so only on its own page.
   const tradeoff = useMemo(() => (page === 'spending' && spendingView ? legacyTradeoff(deferredRoth.household, spendingView.need) : null), [page, deferredRoth, spendingView]);
+  const funding = useMemo(() => (shownOn(page, 'funding') ? fundingOf(deferredRoth) : null), [deferredRoth, page]);
+  // "Use in the plan" for the savings needed (decided 2026-10-10): one per measure.
+  const savingsPicks = useMemo(
+    () => (page === 'funding' && funding && !funding.retired ? { through: savingsChoice(funding.savings.through), at: savingsChoice(funding.savings.at) } : null),
+    [page, funding],
+  );
   const spendingPick = useMemo(() => (page === 'spending' ? spendingChoice(deferredRoth.household, spendingView) : null), [page, deferredRoth, spendingView]);
   // The conversion over a lifetime (two projections, with and without it): its own page only.
   const conversionOverLife = useMemo(() => {
@@ -240,10 +256,11 @@ export default function NextApp({ initialPage, initialValues, client }) {
     tax: taxTile(parts.tax),
     projection: projectionTile(parts.projection),
     spending: spendingTile(parts.spending),
+    funding: fundingTile(parts.funding),
     conversion: conversionTile(parts.conversion),
     pension: pensionTile(parts.pension, pensionInputs),
   });
-  const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView }) : null;
+  const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView, funding }) : null;
   // For Copy summary: every calculator's headline, working out on demand what this page skipped.
   const summaryTiles = () => {
     const all = tilesOf({
@@ -252,6 +269,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
       pension: pension ?? (pensionInputs && pensionResult(pensionInputs)),
       projection: projection ?? projectionOf(roth),
       spending: spendingView ?? spendingOf(roth),
+      funding: funding ?? fundingOf(roth),
     });
     return CALCULATORS.map((c) => ({ title: c.title, ...all[c.id] }));
   };
@@ -520,6 +538,14 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   choice={spendingPick}
                   tradeoff={tradeoff}
                   onUse={locked || !spendingPick ? undefined : () => setValues((v) => applySpendingChoice(v, spendingPick))}
+                />
+              )}
+              {calculator.id === 'funding' && (
+                <FundingResult
+                  view={funding}
+                  error={roth.spending.error}
+                  choices={savingsPicks}
+                  onUse={locked ? undefined : (choice) => setValues((v) => applySavingsChoice(v, deferredRoth.household, choice.extra))}
                 />
               )}
               {calculator.id === 'projection' && <ProjectionResult view={projection} error={roth.spending.error} />}

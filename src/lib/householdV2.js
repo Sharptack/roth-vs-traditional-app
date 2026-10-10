@@ -263,6 +263,8 @@ export function toHouseholdV2(input, year) {
         taxExemptIncome: thisYear('taxExempt'),
       },
       conversion: { amount: blankAsZero(values.calculators.conversion.amount) },
+      // Pre-retirement funding (phase 4): the funded level savings needed is solved to (1 = 100%).
+      funding: { target: Number(values.calculators.funding?.target) > 0 ? Number(values.calculators.funding.target) : 1 },
       pension: firstPension
         ? {
             owner: firstPension.owner,

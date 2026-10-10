@@ -130,6 +130,7 @@ export function upgradeHouseholdValues(values, year) {
     calculators: {
       projection: { endAge: v.projEndAge, heirTaxRate: v.projHeirTaxRate, strategy: v.projStrategy },
       conversion: { amount: v.convAmount },
+      funding: { target: '1' }, // new in phase 4
       pension: {
         lumpSum: v.penLumpSum,
         monthly: v.penMonthly,

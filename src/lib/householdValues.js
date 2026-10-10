@@ -56,7 +56,8 @@
 //                  surplus,                // income above the need in retirement: 'save' (reinvest it) or 'spend'
 //                  surplusWorking },       // the same while everyone works ('spend' by default)
 //   calculators: { projection: { heirTaxRate, strategy }, conversion: { amount },
-//                  pension: { lumpSum } },   // the lump-sum offer before it moved onto the pension row
+//                  pension: { lumpSum },
+//                  funding: { target } },   // Pre-retirement funding's target funded level, '1' = 100%   // the lump-sum offer before it moved onto the pension row
 //                                          // (2026-10-09; moveLumpSumToRow), kept for older saves
 // }
 //
@@ -154,6 +155,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
     projection: { heirTaxRate: '0.24', strategy: 'proportional' },
     conversion: { amount: '50000' },
     pension: { lumpSum: '300000' },
+    funding: { target: '1' }, // the funded level savings needed is solved to (phase 4), '1' = 100%
   },
 };
 

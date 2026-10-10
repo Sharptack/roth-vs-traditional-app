@@ -52,6 +52,8 @@ import { STRATEGIES } from '../lib/strategies.js';
 const labelOptions = (labels, keys = Object.keys(labels)) => keys.map((value) => ({ value, label: labels[value] }));
 
 const COLA_OPTIONS = ['0', '0.01', '0.02', '0.025', '0.03'].map((v) => ({ value: v, label: v === '0' ? 'None' : `${Number(v) * 100}%` }));
+// Pre-retirement funding's target (decided 2026-10-10): 80% to 150%, 100% by default.
+const FUNDING_TARGETS = ['0.8', '0.9', '1', '1.1', '1.2', '1.25', '1.5'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%${v === '1' ? ' (meets the need)' : ''}` }));
 const SURVIVOR_OPTIONS = [
   { value: '0', label: 'None' },
   { value: '0.5', label: '50%' },
@@ -954,6 +956,16 @@ export default function HouseholdInputs({
         {strategySelect()}
         {heirSelect()}
       </>
+    ),
+
+    funding: () => (
+      <SelectInput
+        label="Target funded level"
+        hint="The funded level the savings needed is worked out to: 100% meets the spending need exactly. Above 100% is a cushion, since the plan assumes the same return every year."
+        value={values.calculators.funding?.target ?? '1'}
+        onChange={setGroup('calculators.funding', 'target')}
+        options={FUNDING_TARGETS}
+      />
     ),
 
     conversion: () => (
