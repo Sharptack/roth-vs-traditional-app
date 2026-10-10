@@ -37,6 +37,55 @@ export function retirementSpendingView(household, need) {
   };
 }
 
+// A round step for the chart's goals: 1, 2, 2.5 or 5 times a power of ten, at or above `raw`.
+function niceStep(raw) {
+  const p = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 2.5, 5, 10].map((m) => m * p).find((s) => s >= raw);
+}
+
+// The trade-off (phase 3 step d): spending against the legacy goal, by the goal's measure.
+// legacyTradeoff(household, need) -> null when nothing can be left, or {
+//   points        [{ goal, spending }]: round steps from no goal to just past the range's end (what
+//                 is left spending the need, or the goal if larger; without either, a quarter of
+//                 the most), with the household's own goal among them
+//   atNeed        what is left at the end spending the need (null when the need runs out)
+//   maxLegacy     the most the plan can leave (at no spending)
+//   per100k       what each $100,000 more for heirs costs a year, at the household's goal (from the
+//                 last two points when $100,000 more is out of reach)
+//   goal          the household's goal (0 = none)
+// }
+export function legacyTradeoff(household, need) {
+  const own = household.calculators?.projection ?? {};
+  const options = { endAge: own.endAge, strategy: strategyById(own.strategy) };
+  const measure = { measure: household.legacy?.measure ?? 'balance', heirTaxRate: own.heirTaxRate };
+  const endValue = (n) => {
+    const rows = runProjection(household, { ...options, need: n }).rows;
+    return rows.every((r) => r.shortfall === 0) ? legacyValue(rows[rows.length - 1].endBalances, measure) : null;
+  };
+  const maxLegacy = endValue(0);
+  if (!(maxLegacy > 0)) return null;
+  const at = (goal) => sustainableSpending(household, { ...options, legacy: goal > 0 ? { target: goal, ...measure } : null });
+  const goal = legacyOption(household)?.target ?? 0;
+  const atNeed = need > 0 ? endValue(need) : null;
+  const end = Math.min(maxLegacy, Math.max(atNeed ?? 0, goal) || maxLegacy / 4);
+  const step = niceStep(end / 5);
+  const grid = [];
+  for (let g = 0; g < maxLegacy; g += step) {
+    grid.push(g);
+    if (g >= end) break;
+  }
+  const goals = [...new Set([...grid, ...(goal < maxLegacy ? [goal] : [])])].sort((a, b) => a - b);
+  const points = goals.map((g) => ({ goal: g, spending: at(g) }));
+  const mine = points.find((p) => p.goal === goal);
+  let per100k;
+  if (mine && goal + 100000 < maxLegacy) per100k = mine.spending - at(goal + 100000);
+  else {
+    const [a, b] = points.slice(-2);
+    per100k = b && b.goal > a.goal ? ((a.spending - b.spending) / (b.goal - a.goal)) * 100000 : null;
+  }
+  return { points, atNeed, maxLegacy, per100k, goal };
+}
+
 // "Use in the plan" (decided 2026-10-10): the budget that gives `spending` as the retirement need.
 // The budget is today's spending, so for a household still working it is worked back through the
 // costs that end and the lifestyle: spending ÷ lifestyle + the costs; already retired, as is.

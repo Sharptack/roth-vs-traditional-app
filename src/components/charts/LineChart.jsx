@@ -25,6 +25,7 @@ export default function LineChart({
   series,
   xTicks,
   formatX,
+  formatXTick = formatX, // optional: shorter x tick labels than the tooltip's (e.g. "$250k" for "$250,000 left")
   formatY,
   formatYTick = formatY,
   xLabel,
@@ -137,7 +138,7 @@ export default function LineChart({
 
           {labelTicks.map((x) => (
             <text key={`xtick-${x}`} x={xScale(x)} y={plotBottom + 20} className="chart-tick chart-tick-x" textAnchor="middle">
-              {formatX(x)}
+              {formatXTick(x)}
             </text>
           ))}
 

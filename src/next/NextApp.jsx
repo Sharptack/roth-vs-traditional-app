@@ -26,7 +26,7 @@ import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, pensionTile, projectionTile, rothTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
-import { applySpendingChoice, retirementSpendingView, spendingChoice } from '../lib/retirementSpending.js';
+import { applySpendingChoice, legacyTradeoff, retirementSpendingView, spendingChoice } from '../lib/retirementSpending.js';
 import RetirementSpendingResult from './RetirementSpendingResult.jsx';
 import { conversionResult } from '../lib/conversionCalculator.js';
 import { conversionLifetime } from '../lib/conversionLifetime.js';
@@ -206,6 +206,8 @@ export default function NextApp({ initialPage, initialValues, client }) {
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
   const spendingView = useMemo(() => (shownOn(page, 'spending') ? spendingOf(deferredRoth) : null), [deferredRoth, page]);
   // "Use in the plan" on Retirement spending (decided 2026-10-10): the budget that spends what the resources allow.
+  // The trade-off chart: several sustainable-spending searches, so only on its own page.
+  const tradeoff = useMemo(() => (page === 'spending' && spendingView ? legacyTradeoff(deferredRoth.household, spendingView.need) : null), [page, deferredRoth, spendingView]);
   const spendingPick = useMemo(() => (page === 'spending' ? spendingChoice(deferredRoth.household, spendingView) : null), [page, deferredRoth, spendingView]);
   // The conversion over a lifetime (two projections, with and without it): its own page only.
   const conversionOverLife = useMemo(() => {
@@ -514,6 +516,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   view={spendingView}
                   error={roth.spending.error}
                   choice={spendingPick}
+                  tradeoff={tradeoff}
                   onUse={locked || !spendingPick ? undefined : () => setValues((v) => applySpendingChoice(v, spendingPick))}
                 />
               )}

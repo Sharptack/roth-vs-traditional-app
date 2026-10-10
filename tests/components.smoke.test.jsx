@@ -1471,6 +1471,11 @@ describe('Already retired (2026-10-09)', () => {
     const withGoal = renderToStaticMarkup(<NextApp initialPage="spending" initialValues={goal} client={null} />);
     expect(withGoal).toContain('leaving the $1,000,000 legacy goal');
     expect(withGoal).toMatch(/costs <strong>\$[\d,]+ per year<\/strong>/);
+    // the trade-off chart (step d): the sentence, the chart and the goal's row in the table
+    expect(withGoal).toContain('Spending against legacy');
+    expect(withGoal).toMatch(/Each <strong>\$100,000 more<\/strong> left costs about <strong>\$[\d,]+ per year<\/strong>/);
+    expect(withGoal).toContain('(the goal)');
+    expect(withGoal).toContain('<svg');
     // the projection reads the same goal
     expect(renderToStaticMarkup(<NextApp initialPage="projection" initialValues={goal} client={null} />)).toContain('leaving the $1,000,000 legacy goal');
     // Use in the plan, applied: the plan's need is now what the resources allow (to the dollar)

@@ -1,7 +1,7 @@
 // Retirement spending (phase 3 step c): the page's figures and "Use in the plan". Hand math in the
 // comments, worked out before running.
 import { describe, expect, it } from 'vitest';
-import { applySpendingChoice, budgetFor, retirementSpendingView, spendingChoice } from '../src/lib/retirementSpending.js';
+import { applySpendingChoice, budgetFor, legacyTradeoff, retirementSpendingView, spendingChoice } from '../src/lib/retirementSpending.js';
 import { legacyOption } from '../src/lib/projectionSummary.js';
 import { budgetNeed } from '../src/lib/spendingNeed.js';
 
@@ -57,6 +57,51 @@ describe('retirementSpendingView (HAND CALC, the step b annuity case)', () => {
     const v = retirementSpendingView(retiree({ legacy: { type: 'amount', amount: 1200000 } }), 150000);
     expect(v.sustainable).toBe(0);
     expect(v.reachable).toBe(false);
+  });
+});
+
+describe('legacyTradeoff: spending against the goal (phase 3 step d, HAND CALC)', () => {
+  // No tax, Roth only: a straight line, spending = 349,722.44 − 0.3021034 × goal
+  //   (0.05 / 0.16550625 = 0.3021034). The most left (no spending): 1,000,000 × 1.157625 = 1,157,625.
+  //   Left spending a $150,000 need: 1,157,625 − 150,000 × 1.05 × 3.1525 = 1,157,625 − 496,518.75 = 661,106.25
+  //   ((1.05³ − 1) / 0.05 = 3.1525). Range end: the larger of that and the goal = 661,106.25;
+  //   661,106.25 / 5 = 132,221 → steps of 200,000: 0, 200k, 400k, 600k, 800k (the first past the end),
+  //   with the $500,000 goal. Spending: 349,722.44; 289,301.76; 228,881.08; 198,670.74; 168,460.40;
+  //   108,039.72. Each $100,000: 30,210.34.
+  const near = (t, expected) =>
+    expected.forEach((s, i) => {
+      expect(t.points[i].spending).toBeGreaterThan(s - 1.51);
+      expect(t.points[i].spending).toBeLessThan(s + 0.51);
+    });
+
+  it('the points, what is left spending the need, the most, and the cost of each $100,000', () => {
+    const t = legacyTradeoff(retiree({ legacy: { type: 'amount', amount: 500000 } }), 150000);
+    expect(t.maxLegacy).toBeCloseTo(1157625, 2);
+    expect(t.atNeed).toBeCloseTo(661106.25, 2);
+    expect(t.goal).toBe(500000);
+    expect(t.points.map((p) => p.goal)).toEqual([0, 200000, 400000, 500000, 600000, 800000]);
+    near(t, [349722.44, 289301.76, 228881.08, 198670.74, 168460.4, 108039.72]);
+    expect(t.per100k).toBeCloseTo(30210.34, -1);
+  });
+
+  it('no goal: the same steps without it, measured from $0', () => {
+    const t = legacyTradeoff(retiree(), 150000);
+    expect(t.points.map((p) => p.goal)).toEqual([0, 200000, 400000, 600000, 800000]);
+    expect(t.per100k).toBeCloseTo(30210.34, -1);
+  });
+
+  it('a need that runs out: the range runs to the goal, or to a quarter of the most', () => {
+    // $400,000 a year is more than the $349,722 the money allows: nothing is left spending it.
+    // Range end = the goal, 500,000 → steps of 100,000 (500,000 / 5): 0 to 500k.
+    const t = legacyTradeoff(retiree({ legacy: { type: 'amount', amount: 500000 } }), 400000);
+    expect(t.atNeed).toBeNull();
+    expect(t.points.map((p) => p.goal)).toEqual([0, 100000, 200000, 300000, 400000, 500000]);
+    // neither: a quarter of the most, 289,406.25 / 5 = 57,881 → steps of 100,000: 0 to 300k
+    expect(legacyTradeoff(retiree(), 400000).points.map((p) => p.goal)).toEqual([0, 100000, 200000, 300000]);
+  });
+
+  it('nothing to leave: no chart', () => {
+    expect(legacyTradeoff(retiree({ roth: 0 }), 150000)).toBeNull();
   });
 });
 
