@@ -10,13 +10,15 @@
 //                       which stay invested)
 import { runProjection } from './projection.js';
 import { strategyById } from './strategies.js';
+import { afterTaxEnding } from './projectionSummary.js';
 
 const DEFAULT_HEIR_TAX_RATE = 0.24;
 
 const anyRetired = (r) => r.working.some((w, i) => r.alive[i] && !w);
 
-// One run's totals. heirTaxRate: the heirs' rate on inherited Pre-tax money.
-export function conversionTotals(rows, heirTaxRate = DEFAULT_HEIR_TAX_RATE) {
+// One run's totals. heirTaxRate: the heirs' rate on inherited Pre-tax money; charityShare: the share
+// of what is left that goes to charity, Pre-tax first (projectionSummary.js afterTaxEnding).
+export function conversionTotals(rows, heirTaxRate = DEFAULT_HEIR_TAX_RATE, charityShare = 0) {
   const sum = (f) => rows.reduce((s, r) => s + f(r), 0);
   const end = rows[rows.length - 1].endBalances;
   return {
@@ -24,7 +26,7 @@ export function conversionTotals(rows, heirTaxRate = DEFAULT_HEIR_TAX_RATE) {
     irmaa: sum((r) => r.irmaa),
     lifetimeTax: sum((r) => r.incomeTax + r.irmaa),
     legacy: end.total,
-    legacyAfterTax: end.pretax * (1 - heirTaxRate) + end.roth + end.taxable,
+    legacyAfterTax: afterTaxEnding(end, { heirTaxRate, charityShare }),
     retirementIncome: sum((r) => (anyRetired(r) ? r.withdrawals.total + r.socialSecurity + r.pension + (r.otherIncome ?? 0) + r.wages : 0)),
   };
 }
@@ -36,10 +38,11 @@ export function conversionTotals(rows, heirTaxRate = DEFAULT_HEIR_TAX_RATE) {
 export function conversionLifetime(household, need, amount) {
   const own = household.calculators?.projection ?? {};
   const heirTaxRate = own.heirTaxRate ?? DEFAULT_HEIR_TAX_RATE;
+  const charityShare = household.legacy?.charityShare ?? 0;
   const options = { need, endAge: own.endAge, strategy: strategyById(own.strategy) };
   const run = (convertNow) => {
     const p = runProjection(household, { ...options, convertNow });
-    return { ...p, totals: conversionTotals(p.rows, heirTaxRate) };
+    return { ...p, totals: conversionTotals(p.rows, heirTaxRate, charityShare) };
   };
   const without = run(0);
   const withIt = run(amount);
@@ -47,6 +50,7 @@ export function conversionLifetime(household, need, amount) {
   return {
     amount,
     heirTaxRate,
+    charityShare,
     without,
     with: withIt,
     difference,

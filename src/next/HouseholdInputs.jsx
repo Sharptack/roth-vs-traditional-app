@@ -749,7 +749,7 @@ export default function HouseholdInputs({
     // The legacy goal (phase 3): what is left at the end of the plan, read by Retirement spending
     // and the projection's sustainable spending.
     legacy: () => {
-      const l = values.legacy ?? { type: 'none', amount: '', share: '0.5', measure: 'balance' };
+      const l = values.legacy ?? { type: 'none', amount: '', share: '0.5', measure: 'balance', charityShare: '0' };
       const set = (field) => setGroup('legacy', field);
       return (
         <>
@@ -790,6 +790,13 @@ export default function HouseholdInputs({
               hint="After tax counts Pre-tax money at the heirs' tax rate (Withdrawals); Roth and taxable money count in full."
             />
           )}
+          <SelectInput
+            label="To charity"
+            hint="The share of what is left that goes to charity, from Pre-tax money first (the charity named beneficiary of the Pre-tax accounts): a charity owes no tax on it, so that Pre-tax money counts in full. Used in every after-tax figure for what is left."
+            value={l.charityShare ?? '0'}
+            onChange={set('charityShare')}
+            options={['0', '0.1', '0.25', '0.5', '0.75', '1'].map((v) => ({ value: v, label: v === '0' ? 'None' : `${Math.round(Number(v) * 100)}%` }))}
+          />
         </>
       );
     },

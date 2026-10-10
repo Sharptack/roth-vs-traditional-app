@@ -259,9 +259,10 @@ export const INPUT_SECTIONS = [
 export function legacySummary(legacy) {
   const l = legacy ?? {};
   const after = l.measure === 'afterTax' ? ', after tax' : '';
-  if (l.type === 'amount') return `${money(l.amount)} left at the end of the plan${after}`;
-  if (l.type === 'share') return `${pct(l.share)} of today's portfolio left at the end of the plan${after}`;
-  return 'None: spend it all';
+  const charity = Number(l.charityShare) > 0 ? ` · ${pct(l.charityShare)} to charity` : '';
+  if (l.type === 'amount') return `${money(l.amount)} left at the end of the plan${after}${charity}`;
+  if (l.type === 'share') return `${pct(l.share)} of today's portfolio left at the end of the plan${after}${charity}`;
+  return `None: spend it all${charity}`;
 }
 
 const strategyLabel = (v) => (STRATEGIES.find((s) => s.id === v.calculators.projection.strategy) ?? STRATEGIES[0]).label;

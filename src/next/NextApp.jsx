@@ -230,6 +230,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
     return compareLifetime(deferredRoth.household, deferredRoth.result, {
       endAge: own.endAge,
       heirTaxRate: own.heirTaxRate,
+      charityShare: deferredRoth.household.legacy?.charityShare ?? 0,
       strategy: strategyById(own.strategy),
     });
   }, [deferredRoth, page]);

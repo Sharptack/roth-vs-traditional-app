@@ -154,11 +154,31 @@ export default function RetirementSpendingResult({ view, error, choice, onUse, t
       money costs.
     </p>
   );
+  // A charitable legacy (step e): the effect in a sentence.
+  const c = view.charity;
+  const charityNote = c && (
+    <p className="note">
+      {Math.round(c.share * 100)}% of what is left goes to charity, from Pre-tax money first: at {$(sustainable)} per year that is{' '}
+      {$(c.toCharity)}, of which {$(c.pretaxUntaxed)} is Pre-tax money passing untaxed, sparing {$(c.taxSpared)} of heirs&rsquo; tax.
+      That favors Pre-tax money: every after-tax figure for what is left counts it, so the Roth vs. Pre-tax lifetime comparison and
+      the withdrawal strategies lean further toward keeping Pre-tax money.
+    </p>
+  );
   return (
     <Blocks
       blocks={[
         { id: 'allow', title: 'What the resources allow', summary: h.allow, className: 'key-card', content: allow },
-        { id: 'legacy', title: 'The legacy goal', summary: h.legacy, content: legacyBlock },
+        {
+          id: 'legacy',
+          title: 'The legacy goal',
+          summary: h.legacy,
+          content: (
+            <>
+              {legacyBlock}
+              {charityNote}
+            </>
+          ),
+        },
         tradeoff && {
           id: 'tradeoff',
           title: 'Spending against legacy',

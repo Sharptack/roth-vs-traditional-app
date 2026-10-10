@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { runProjection } from '../src/lib/projection.js';
-import { meetsPlan, legacyTarget, summarizeProjection, sustainableSpending } from '../src/lib/projectionSummary.js';
+import { afterTaxEnding, meetsPlan, legacyTarget, summarizeProjection, sustainableSpending } from '../src/lib/projectionSummary.js';
 
 const Y = 2026;
 function retiree({ age, pretax = 0, roth = 0, taxable = 0, basisShare = 0, returnRate = 0 }) {
@@ -114,6 +114,36 @@ describe('sustainable spending with a legacy goal (phase 3 step b, HAND CALC)', 
     expect(legacyTarget(h, { type: 'share', share: 0.5 })).toBe(250000); // 50% of 500,000
     expect(legacyTarget(h, { type: 'none', amount: 250000 })).toBe(0);
     expect(legacyTarget(h)).toBe(0);
+  });
+});
+
+describe('afterTaxEnding: a charitable legacy, Pre-tax first (phase 3 step e, HAND CALC)', () => {
+  // $600,000 Pre-tax, $300,000 Roth, $100,000 taxable = $1,000,000; heirs at 24%.
+  const end = { pretax: 600000, roth: 300000, taxable: 100000, total: 1000000 };
+  it('no charity: Pre-tax at the heirs\' rate, as before', () => {
+    // 1,000,000 − 0.24 × 600,000 = 856,000
+    expect(afterTaxEnding(end, { heirTaxRate: 0.24 })).toBeCloseTo(856000, 6);
+  });
+  it('25% to charity: its $250,000 comes from Pre-tax, untaxed', () => {
+    // taxed Pre-tax 600,000 − 250,000 = 350,000; 1,000,000 − 84,000 = 916,000
+    // (heirs 750,000 − 84,000 = 666,000; charity 250,000)
+    expect(afterTaxEnding(end, { heirTaxRate: 0.24, charityShare: 0.25 })).toBeCloseTo(916000, 6);
+  });
+  it('75% to charity: $750,000 covers all the Pre-tax money, so no tax at all', () => {
+    expect(afterTaxEnding(end, { heirTaxRate: 0.24, charityShare: 0.75 })).toBeCloseTo(1000000, 6);
+  });
+  it('the legacy goal measured after tax counts the charity\'s part in full', async () => {
+    const { legacyValue } = await import('../src/lib/projectionSummary.js');
+    expect(legacyValue(end, { measure: 'afterTax', heirTaxRate: 0.24, charityShare: 0.25 })).toBeCloseTo(916000, 6);
+    expect(legacyValue(end, { measure: 'balance', heirTaxRate: 0.24, charityShare: 0.25 })).toBe(1000000);
+  });
+  it('the summary and the conversion\'s legacy use it', async () => {
+    const { conversionTotals } = await import('../src/lib/conversionLifetime.js');
+    // 66, $500,000 Pre-tax at 10%, 3 years: ending Pre-tax 550,394.75 (above); all of it to charity → untaxed
+    const rows = runProjection(retiree({ age: 66, pretax: 500000, returnRate: 0.1 }), { need: 30000, endAge: 68 }).rows;
+    expect(summarizeProjection(rows, { heirTaxRate: 0.24, charityShare: 1 }).endingAfterTax).toBeCloseTo(550394.75, 2);
+    expect(conversionTotals(rows, 0.24, 1).legacyAfterTax).toBeCloseTo(550394.75, 2);
+    expect(conversionTotals(rows, 0.24).legacyAfterTax).toBeCloseTo(550394.75 * 0.76, 2);
   });
 });
 

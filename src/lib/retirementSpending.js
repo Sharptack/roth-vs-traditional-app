@@ -1,7 +1,7 @@
 // Retirement spending (roadmap phase 3 step c): what the household's resources allow it to spend
 // each year, with the legacy goal left at the second death, against the spending need. A plan
 // evaluator; its "Use in the plan" writes the figure back as the budget (decided 2026-10-10). Pure.
-import { legacyOption, legacyValue, meetsPlan, summarizeProjection, sustainableSpending, whenLabel } from './projectionSummary.js';
+import { heirsOf, legacyOption, legacyValue, meetsPlan, summarizeProjection, sustainableSpending, whenLabel } from './projectionSummary.js';
 import { runProjection } from './projection.js';
 import { strategyById } from './strategies.js';
 import { budgetNeed, everyoneRetired } from './spendingNeed.js';
@@ -15,15 +15,21 @@ import { budgetNeed, everyoneRetired } from './spendingNeed.js';
 //   withoutGoal          sustainable spending with no goal (the goal's cost = withoutGoal − sustainable)
 //   endingValue          what is left at the end at that spending, by the goal's measure
 //   endLabel             when the plan ends, in words ("age 95", "2071 (your spouse 95)")
+//   charity              with a share to charity (step e): { share, toCharity, pretaxUntaxed, taxSpared }
+//                        at that spending: the charity's dollars, the Pre-tax money it takes untaxed,
+//                        and the heirs' tax that spares; null without one
 // }
 export function retirementSpendingView(household, need) {
   const own = household.calculators?.projection ?? {};
   const options = { endAge: own.endAge, strategy: strategyById(own.strategy) };
   const legacy = legacyOption(household);
-  const measure = { measure: household.legacy?.measure ?? 'balance', heirTaxRate: own.heirTaxRate };
+  const measure = { measure: household.legacy?.measure ?? 'balance', ...heirsOf(household) };
   const sustainable = sustainableSpending(household, { ...options, legacy });
   const withoutGoal = legacy ? sustainableSpending(household, options) : sustainable;
   const rows = runProjection(household, { ...options, need: sustainable }).rows;
+  const end = rows[rows.length - 1].endBalances;
+  const { heirTaxRate, charityShare } = heirsOf(household);
+  const toCharity = charityShare * end.total;
   return {
     need,
     sustainable,
@@ -33,7 +39,11 @@ export function retirementSpendingView(household, need) {
     withoutGoal,
     endingValue: legacyValue(rows[rows.length - 1].endBalances, measure),
     endLabel: whenLabel(rows[rows.length - 1]),
-    summary: summarizeProjection(rows, { heirTaxRate: own.heirTaxRate }),
+    charity:
+      charityShare > 0
+        ? { share: charityShare, toCharity, pretaxUntaxed: Math.min(end.pretax, toCharity), taxSpared: heirTaxRate * Math.min(end.pretax, toCharity) }
+        : null,
+    summary: summarizeProjection(rows, heirsOf(household)),
   };
 }
 
@@ -57,7 +67,7 @@ function niceStep(raw) {
 export function legacyTradeoff(household, need) {
   const own = household.calculators?.projection ?? {};
   const options = { endAge: own.endAge, strategy: strategyById(own.strategy) };
-  const measure = { measure: household.legacy?.measure ?? 'balance', heirTaxRate: own.heirTaxRate };
+  const measure = { measure: household.legacy?.measure ?? 'balance', ...heirsOf(household) };
   const endValue = (n) => {
     const rows = runProjection(household, { ...options, need: n }).rows;
     return rows.every((r) => r.shortfall === 0) ? legacyValue(rows[rows.length - 1].endBalances, measure) : null;

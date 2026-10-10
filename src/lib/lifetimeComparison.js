@@ -9,7 +9,7 @@
 // tax, money lasting and ending wealth are one outcome seen three ways, so they are shown, not
 // blended into the verdict. The winner uses the app's usual 0.5% "about even" rule (winnerOf).
 import { runProjection } from './projection.js';
-import { summarizeProjection, sustainableSpending } from './projectionSummary.js';
+import { afterTaxEnding, summarizeProjection, sustainableSpending } from './projectionSummary.js';
 import { winnerOf } from './compare.js';
 
 // The two scenarios' contributions, one per saver, from the Roth calculator's result.
@@ -25,8 +25,9 @@ export function lifetimeContributions(household, compareResult) {
   };
 }
 
-// After-tax wealth in a row: Pre-tax at the heirs' rate, Roth and taxable in full (step-up).
-const afterTaxWealth = (row, heirTaxRate) => row.endBalances.pretax * (1 - heirTaxRate) + row.endBalances.roth + row.endBalances.taxable;
+// After-tax wealth in a row: Pre-tax at the heirs' rate (less any charity's part, Pre-tax first),
+// Roth and taxable in full (step-up).
+const afterTaxWealth = (row, heirs) => afterTaxEnding(row.endBalances, heirs);
 
 // -> { need, roth, pretax: { rows, summary, sustainable }, winner, difference, wealthGap, crossoverYear }
 //   difference: Roth minus Pre-tax for sustainable spending, lifetime tax, ending after-tax wealth.
@@ -34,19 +35,20 @@ const afterTaxWealth = (row, heirTaxRate) => row.endBalances.pretax * (1 - heirT
 //   crossoverYear: the first year the leader changes (null if it never does).
 //   strategy (optional): the withdrawal strategy both runs use (default: proportional) — the
 //   comparison generalized to scenario x strategy (phase 7).
-export function compareLifetime(household, compareResult, { heirTaxRate = 0.24, endAge, retirementRateShift, strategy } = {}) {
+export function compareLifetime(household, compareResult, { heirTaxRate = 0.24, charityShare = 0, endAge, retirementRateShift, strategy } = {}) {
+  const heirs = { heirTaxRate, charityShare };
   const need = compareResult.retirementNeed.target;
   const plans = lifetimeContributions(household, compareResult);
   const run = (contributions) => {
     const options = { endAge, contributions, retirementRateShift, ...(strategy && { strategy }) };
     const p = runProjection(household, { ...options, need });
-    return { ...p, summary: summarizeProjection(p.rows, { heirTaxRate }), sustainable: sustainableSpending(household, options) };
+    return { ...p, summary: summarizeProjection(p.rows, heirs), sustainable: sustainableSpending(household, options) };
   };
   const roth = run(plans.roth);
   const pretax = run(plans.pretax);
   const wealthGap = roth.rows.map((r, i) => ({
     year: r.year,
-    value: afterTaxWealth(r, heirTaxRate) - afterTaxWealth(pretax.rows[i], heirTaxRate),
+    value: afterTaxWealth(r, heirs) - afterTaxWealth(pretax.rows[i], heirs),
   }));
   const lead = (v) => (Math.abs(v) < 0.5 ? 0 : Math.sign(v));
   let crossoverYear = null;

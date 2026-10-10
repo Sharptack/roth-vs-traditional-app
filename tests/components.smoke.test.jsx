@@ -1490,6 +1490,22 @@ describe('Already retired (2026-10-09)', () => {
     expect(home).toMatch(/\$[\d,]+\/yr after tax/);
   });
 
+  it('phase 3 step e: a charitable legacy, in the sentence and the wealth figures', async () => {
+    const { default: NextApp } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const values = { ...D, legacy: { ...D.legacy, type: 'amount', amount: '1000000', charityShare: '0.5' } };
+    const page = renderToStaticMarkup(<NextApp initialPage="spending" initialValues={values} client={null} />);
+    expect(page).toMatch(/50% of what is left goes to charity, from Pre-tax money first/);
+    expect(page).toMatch(/sparing \$[\d,]+ of heirs/);
+    expect(page).toContain('To charity');
+    const proj = renderToStaticMarkup(<NextApp initialPage="projection" initialValues={values} client={null} />);
+    expect(proj).toContain('50% to charity, Pre-tax first');
+    const conv = renderToStaticMarkup(<NextApp initialPage="conversion" initialValues={values} client={null} />);
+    expect(conv).toContain('50% to charity, Pre-tax first, untaxed');
+    const inputs = renderToStaticMarkup(<NextApp initialPage="inputs" initialValues={values} client={null} />);
+    expect(inputs).toContain('50% to charity');
+  });
+
   it('phase 3: the budget method on the Roth page walks from the budget', async () => {
     const { default: NextApp } = await import('../src/next/NextApp.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');

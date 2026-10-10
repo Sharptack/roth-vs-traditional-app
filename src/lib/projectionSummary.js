@@ -31,7 +31,23 @@ export function whenLabel(row) {
   return `${row.year} (${living.join(', ')})`;
 }
 
-export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE } = {}) {
+// What is left at the end after tax (phase 3 step e, decided 2026-10-10): Roth and taxable money in
+// full (heirs get a step-up on taxable accounts), Pre-tax money at the heirs' rate, except what goes
+// to charity, which owes no tax on it. charityShare: the share of what is left that goes to charity,
+// taken from Pre-tax money first (the charity named beneficiary of the Pre-tax accounts).
+//   value = total − heirTaxRate × max(0, Pre-tax − charityShare × total)
+export function afterTaxEnding(end, { heirTaxRate = DEFAULT_HEIR_TAX_RATE, charityShare = 0 } = {}) {
+  if (!(charityShare > 0)) return end.pretax * (1 - heirTaxRate) + end.roth + end.taxable;
+  const total = end.pretax + end.roth + end.taxable;
+  return total - heirTaxRate * Math.max(0, end.pretax - Math.min(1, charityShare) * total);
+}
+
+// The heirs' tax rate and the charity's share for a household (its after-tax figures read these).
+export function heirsOf(household) {
+  return { heirTaxRate: household.calculators?.projection?.heirTaxRate ?? DEFAULT_HEIR_TAX_RATE, charityShare: household.legacy?.charityShare ?? 0 };
+}
+
+export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE, charityShare = 0 } = {}) {
   const sum = (pick, list = rows) => list.reduce((s, r) => s + pick(r), 0);
   const retired = rows.filter((r) => r.working.some((w) => !w));
   const last = rows[rows.length - 1];
@@ -49,7 +65,7 @@ export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE 
     irmaaYears: rows.filter((r) => r.irmaa > 0).length,
     retirementAfterTaxIncome: sum((r) => r.afterTaxIncome, retired),
     endingBalance: end,
-    endingAfterTax: end.pretax * (1 - heirTaxRate) + end.roth + end.taxable,
+    endingAfterTax: afterTaxEnding(end, { heirTaxRate, charityShare }),
     averageEffectiveRate: sum((r) => r.grossIncome) > 0 ? sum((r) => r.incomeTax) / sum((r) => r.grossIncome) : 0,
     highestTaxYear: highest,
     moneyLastsTo: firstShort ? firstShort.ages[0] - 1 : last.ages[0],
@@ -60,6 +76,7 @@ export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE 
     runsOutLabel: firstShort ? whenLabel(firstShort) : null,
     firstRetirementYear: retired.length > 0 ? retired[0].year : null,
     heirTaxRate,
+    charityShare,
   };
 }
 
@@ -67,8 +84,8 @@ export function summarizeProjection(rows, { heirTaxRate = DEFAULT_HEIR_TAX_RATE 
 // second death), in today's dollars, measured either as the balance itself or after tax (Pre-tax
 // money at the heirs' rate, as endingAfterTax). legacy = { target, measure: 'balance' | 'afterTax',
 // heirTaxRate }; absent or a target of 0 = no goal.
-export function legacyValue(endBalances, { measure = 'balance', heirTaxRate = DEFAULT_HEIR_TAX_RATE } = {}) {
-  return measure === 'afterTax' ? endBalances.pretax * (1 - heirTaxRate) + endBalances.roth + endBalances.taxable : endBalances.total;
+export function legacyValue(endBalances, { measure = 'balance', heirTaxRate = DEFAULT_HEIR_TAX_RATE, charityShare = 0 } = {}) {
+  return measure === 'afterTax' ? afterTaxEnding(endBalances, { heirTaxRate, charityShare }) : endBalances.total;
 }
 
 // legacyTarget(household, goal) -> the goal in dollars: { type: 'none' | 'amount' | 'share', amount,
@@ -84,7 +101,7 @@ export function legacyOption(household) {
   const goal = household.legacy ?? { type: 'none' };
   const target = legacyTarget(household, goal);
   if (!(target > 0)) return null;
-  return { target, measure: goal.measure, heirTaxRate: household.calculators?.projection?.heirTaxRate };
+  return { target, measure: goal.measure, ...heirsOf(household) };
 }
 
 // Whether the plan meets a spending need: no shortfall in any year, and the legacy goal (if any) left.
@@ -125,14 +142,12 @@ export function projectionView(household, need) {
   const own = household.calculators?.projection ?? {};
   const options = { endAge: own.endAge, strategy: strategyById(own.strategy) };
   const { rows, runOutYear, endAge } = runProjection(household, { ...options, need });
-  const summary = summarizeProjection(rows, { heirTaxRate: own.heirTaxRate });
+  const summary = summarizeProjection(rows, heirsOf(household));
   // With a legacy goal (phase 3), sustainable spending leaves it at the end; none = as before.
   const legacy = legacyOption(household);
   const sustainable = sustainableSpending(household, { ...options, legacy });
   const strategies = STRATEGIES.map((s) => {
-    const sum = summarizeProjection(runProjection(household, { endAge: own.endAge, strategy: s.strategy, need }).rows, {
-      heirTaxRate: own.heirTaxRate,
-    });
+    const sum = summarizeProjection(runProjection(household, { endAge: own.endAge, strategy: s.strategy, need }).rows, heirsOf(household));
     const { totalIncomeTax, totalIrmaa, endingAfterTax, moneyLastsTo, lastsLabel, runsOut } = sum;
     return { id: s.id, label: s.label, totalIncomeTax, totalIrmaa, endingAfterTax, moneyLastsTo, lastsLabel, runsOut };
   });

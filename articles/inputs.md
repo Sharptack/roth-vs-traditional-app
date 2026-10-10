@@ -133,6 +133,8 @@ What the household wants to leave at the end of the plan (the second death, for 
 
 With a goal set, sustainable spending is the most the household can spend each year that never falls short and still leaves the goal: on the Retirement spending page and in the projection's funded status.
 
+**To charity:** the share of what is left that goes to charity (none by default, up to all of it). It is taken from Pre-tax money first, as when a charity is named beneficiary of the Pre-tax accounts: a charity owes no tax on Pre-tax money, so that money counts in full, while heirs pay their rate on the rest. Every after-tax figure for what is left uses it (the projection's lifetime summary and withdrawal strategies, the Roth page's lifetime comparison, the conversion's legacy, a goal measured after tax), so the larger the charity's share, the more Pre-tax money is favored. For $600,000 Pre-tax, $300,000 Roth and $100,000 taxable, with heirs at 24%: $856,000 after tax with nothing to charity; with 25% to charity, its $250,000 comes from Pre-tax untaxed and heirs pay 24% on the other $350,000, so $916,000.
+
 ## Assumptions
 
 - **Expected annual investment return,** after inflation, the same for every account.

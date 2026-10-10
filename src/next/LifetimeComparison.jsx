@@ -141,7 +141,7 @@ export default function LifetimeComparison({ lifetime, household, result }) {
         yLabel="After-tax wealth gap"
       />
       <p className="hint">
-        After-tax wealth: balances with Pre-tax money at the heirs&rsquo; {Math.round(roth.summary.heirTaxRate * 100)}%
+        After-tax wealth: balances with Pre-tax money at the heirs&rsquo; {Math.round(roth.summary.heirTaxRate * 100)}%{roth.summary.charityShare > 0 ? `, less the ${Math.round(roth.summary.charityShare * 100)}% to charity (Pre-tax first, untaxed),` : ''}
         rate.{' '}
         {crossoverYear ? `The leader changes in ${crossoverYear}.` : 'The leader never changes.'}
       </p>

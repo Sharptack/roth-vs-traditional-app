@@ -480,6 +480,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > defa
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.16106,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 6963858.647582,
         "firstRetirementYear": 2056,
@@ -502,6 +503,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > defa
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.127854,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 7536428.203529,
         "firstRetirementYear": 2056,
@@ -630,6 +632,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > defa
     "strategy": "proportional",
     "summary": {
       "averageEffectiveRate": 0.16106,
+      "charityShare": 0,
       "endLabel": "age 95",
       "endingAfterTax": 6963858.647582,
       "firstRetirementYear": 2056,
@@ -1141,6 +1144,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjC
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.121025,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 5123287.300632,
         "firstRetirementYear": 2046,
@@ -1163,6 +1167,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjC
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.110109,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 5082804.558233,
         "firstRetirementYear": 2046,
@@ -1291,6 +1296,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjC
     "strategy": "convert12",
     "summary": {
       "averageEffectiveRate": 0.121025,
+      "charityShare": 0,
       "endLabel": "age 95",
       "endingAfterTax": 5123287.300632,
       "firstRetirementYear": 2046,
@@ -1802,6 +1808,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjM
       "runOutYear": 2048,
       "summary": {
         "averageEffectiveRate": 0.099817,
+        "charityShare": 0,
         "endLabel": "2071 (you 95, your spouse 93)",
         "endingAfterTax": 0,
         "firstRetirementYear": 2038,
@@ -1824,6 +1831,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjM
       "runOutYear": 2047,
       "summary": {
         "averageEffectiveRate": 0.108798,
+        "charityShare": 0,
         "endLabel": "2071 (you 95, your spouse 93)",
         "endingAfterTax": 0,
         "firstRetirementYear": 2038,
@@ -1952,6 +1960,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjM
     "strategy": "fill12",
     "summary": {
       "averageEffectiveRate": 0.108798,
+      "charityShare": 0,
       "endLabel": "2071 (you 95, your spouse 93)",
       "endingAfterTax": 0,
       "firstRetirementYear": 2038,
@@ -2456,6 +2465,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjO
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.100004,
+        "charityShare": 0,
         "endLabel": "2059 (you 95, your spouse 99)",
         "endingAfterTax": 8167535.104063,
         "firstRetirementYear": 2028,
@@ -2478,6 +2488,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjO
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.104903,
+        "charityShare": 0,
         "endLabel": "2059 (you 95, your spouse 99)",
         "endingAfterTax": 8102976.152608,
         "firstRetirementYear": 2028,
@@ -2606,6 +2617,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjO
     "strategy": "convert22",
     "summary": {
       "averageEffectiveRate": 0.100364,
+      "charityShare": 0,
       "endLabel": "2059 (you 95, your spouse 99)",
       "endingAfterTax": 8167484.739859,
       "firstRetirementYear": 2028,
@@ -3110,6 +3122,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjS
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.147143,
+        "charityShare": 0,
         "endLabel": "2081 (you 95, your spouse 93)",
         "endingAfterTax": 12029334.876272,
         "firstRetirementYear": 2051,
@@ -3132,6 +3145,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjS
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.118118,
+        "charityShare": 0,
         "endLabel": "2081 (you 95, your spouse 93)",
         "endingAfterTax": 12783254.001161,
         "firstRetirementYear": 2051,
@@ -3260,6 +3274,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjS
     "strategy": "proportional",
     "summary": {
       "averageEffectiveRate": 0.147143,
+      "charityShare": 0,
       "endLabel": "2081 (you 95, your spouse 93)",
       "endingAfterTax": 12029334.876272,
       "firstRetirementYear": 2051,
@@ -3764,6 +3779,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > oldP
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.116076,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 11637761.73542,
         "firstRetirementYear": 2056,
@@ -3786,6 +3802,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > oldP
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.059758,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 12896848.019802,
         "firstRetirementYear": 2056,
@@ -3914,6 +3931,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > oldP
     "strategy": "proportional",
     "summary": {
       "averageEffectiveRate": 0.059758,
+      "charityShare": 0,
       "endLabel": "age 95",
       "endingAfterTax": 12896848.019802,
       "firstRetirementYear": 2056,
@@ -4425,6 +4443,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
       "runOutYear": 2036,
       "summary": {
         "averageEffectiveRate": 0.072294,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 0,
         "firstRetirementYear": 2031,
@@ -4447,6 +4466,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
       "runOutYear": 2036,
       "summary": {
         "averageEffectiveRate": 0.07533,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 0,
         "firstRetirementYear": 2031,
@@ -4575,6 +4595,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
     "strategy": "fill22",
     "summary": {
       "averageEffectiveRate": 0.072284,
+      "charityShare": 0,
       "endLabel": "age 95",
       "endingAfterTax": 0,
       "firstRetirementYear": 2031,
@@ -5054,6 +5075,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.146531,
+        "charityShare": 0,
         "endLabel": "age 100",
         "endingAfterTax": 112567.271881,
         "firstRetirementYear": 2036,
@@ -5076,6 +5098,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.143985,
+        "charityShare": 0,
         "endLabel": "age 100",
         "endingAfterTax": 44509.20312,
         "firstRetirementYear": 2036,
@@ -5204,6 +5227,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
     "strategy": "conventional",
     "summary": {
       "averageEffectiveRate": 0.143985,
+      "charityShare": 0,
       "endLabel": "age 100",
       "endingAfterTax": 44509.20312,
       "firstRetirementYear": 2036,
@@ -5695,6 +5719,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.163169,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 8766087.387867,
         "firstRetirementYear": 2056,
@@ -5717,6 +5742,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.128455,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 9386262.738867,
         "firstRetirementYear": 2056,
@@ -5845,6 +5871,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
     "strategy": "proportional",
     "summary": {
       "averageEffectiveRate": 0.163169,
+      "charityShare": 0,
       "endLabel": "age 95",
       "endingAfterTax": 8766087.387867,
       "firstRetirementYear": 2056,
@@ -6356,6 +6383,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.101138,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 9641523.527703,
         "firstRetirementYear": 2056,
@@ -6378,6 +6406,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
       "runOutYear": null,
       "summary": {
         "averageEffectiveRate": 0.083099,
+        "charityShare": 0,
         "endLabel": "age 95",
         "endingAfterTax": 10471090.652379,
         "firstRetirementYear": 2056,
@@ -6506,6 +6535,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
     "strategy": "convert24",
     "summary": {
       "averageEffectiveRate": 0.101138,
+      "charityShare": 0,
       "endLabel": "age 95",
       "endingAfterTax": 9641523.527703,
       "firstRetirementYear": 2056,

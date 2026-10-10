@@ -60,6 +60,31 @@ describe('retirementSpendingView (HAND CALC, the step b annuity case)', () => {
   });
 });
 
+describe('a charitable legacy (phase 3 step e, HAND CALC)', () => {
+  // Pre-tax only, $98,000 at 0%, 66 to 68 (3 years), a $38,000 goal after tax, heirs at 24%.
+  //   No charity: $50,000 must be left (38,000 / 0.76): W = 48,000 / 3 = 16,000, under the $16,100
+  //   standard deduction, so $16,000 a year after tax.
+  //   All to charity: the $38,000 left goes untaxed, so only $38,000 must be left: W = 60,000 / 3 = 20,000;
+  //   tax 10% × (20,000 − 16,100) = 390 → $19,610 a year. Heirs' tax spared: 0.24 × 38,000 = 9,120.
+  const pretaxOnly = (charityShare) => {
+    const h = retiree({ legacy: { type: 'amount', amount: 38000, measure: 'afterTax', charityShare } });
+    return { ...h, accounts: [{ id: 'a1', owner: 'p1', type: 'pretax', balance: 98000 }], assumptions: { ...h.assumptions, returnRate: 0 } };
+  };
+  it('no charity: $16,000 a year', () => {
+    const v = retirementSpendingView(pretaxOnly(0), 15000);
+    within(v.sustainable, 16000);
+    expect(v.charity).toBeNull();
+  });
+  it('all to charity: $19,610 a year, the charity taking $38,000 of Pre-tax money untaxed', () => {
+    const v = retirementSpendingView(pretaxOnly(1), 15000);
+    within(v.sustainable, 19610);
+    expect(v.charity.share).toBe(1);
+    expect(v.charity.toCharity).toBeCloseTo(38000, -1);
+    expect(v.charity.pretaxUntaxed).toBeCloseTo(38000, -1);
+    expect(v.charity.taxSpared).toBeCloseTo(9120, -1);
+  });
+});
+
 describe('legacyTradeoff: spending against the goal (phase 3 step d, HAND CALC)', () => {
   // No tax, Roth only: a straight line, spending = 349,722.44 − 0.3021034 × goal
   //   (0.05 / 0.16550625 = 0.3021034). The most left (no spending): 1,000,000 × 1.157625 = 1,157,625.

@@ -50,7 +50,7 @@ function Lifetime({ lifetime: l }) {
           without={wo.legacy}
           sub={
             <>
-              After the heirs&rsquo; {heirs}% tax on Pre-tax money: {$(w.legacyAfterTax)} with, {$(wo.legacyAfterTax)} without (
+              After the heirs&rsquo; {heirs}% tax on Pre-tax money{l.charityShare > 0 ? ` (${Math.round(l.charityShare * 100)}% to charity, Pre-tax first, untaxed)` : ''}: {$(w.legacyAfterTax)} with, {$(wo.legacyAfterTax)} without (
               <strong className={d.legacyAfterTax > 0.5 ? 'better' : undefined}>{signed(d.legacyAfterTax)}</strong>)
             </>
           }

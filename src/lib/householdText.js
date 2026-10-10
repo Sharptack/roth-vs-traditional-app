@@ -64,6 +64,7 @@ export function describeHousehold(household) {
     const what = goal.type === 'amount' ? formatCurrency(goal.amount) : `${formatPercent(goal.share, 0)} of today's portfolio`;
     lines.push(bullet('Legacy goal', `${what} left at the end of the plan${goal.measure === 'afterTax' ? ', after tax' : ''}`));
   }
+  if (goal?.charityShare > 0) lines.push(bullet('To charity', `${formatPercent(goal.charityShare, 0)} of what is left, Pre-tax money first`));
   lines.push(
     bullet('Costs ending before retirement', `${formatCurrency(spending.debtPaymentsEnding)} debt, ${formatCurrency(spending.otherExpensesEnding)} other, per year`),
     bullet('Retirement lifestyle', `${formatPercent(spending.retirementLifestyle, 0)} of today's spending`),

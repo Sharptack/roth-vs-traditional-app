@@ -202,7 +202,7 @@ export default function ProjectionResult({ view, error }) {
           <div className="calc-row"><span>Money lasts to</span><span>{s.runsOut ? s.lastsLabel : `${end} (the end)`}</span></div>
           <div className="calc-row total"><span>Ending balance at {end}</span><span>{$(s.endingBalance.total)}</span></div>
           <div className="calc-row sub"><span>Pre-tax / Roth / taxable</span><span>{$(s.endingBalance.pretax)} / {$(s.endingBalance.roth)} / {$(s.endingBalance.taxable)}</span></div>
-          <div className="calc-row"><span>Ending balance after tax for heirs (Pre-tax at {formatPercent(s.heirTaxRate, 0)})</span><span>{$(s.endingAfterTax)}</span></div>
+          <div className="calc-row"><span>Ending balance after tax for heirs (Pre-tax at {formatPercent(s.heirTaxRate, 0)}{s.charityShare > 0 ? `; ${formatPercent(s.charityShare, 0)} to charity, Pre-tax first` : ''})</span><span>{$(s.endingAfterTax)}</span></div>
         </div>
         <p className="hint">
           All in today&rsquo;s dollars. Heirs pay no tax on Roth money, and inherited taxable accounts get a step-up in

@@ -246,6 +246,8 @@ export function toHouseholdV2(input, year) {
       amount: blankAsZero(values.legacy?.amount),
       share: blankAsZero(values.legacy?.share),
       measure: values.legacy?.measure === 'afterTax' ? 'afterTax' : 'balance',
+      // Of what is left, the share to charity, Pre-tax money first (step e, decided 2026-10-10).
+      charityShare: Math.min(1, Math.max(0, blankAsZero(values.legacy?.charityShare) || 0)),
     },
     calculators: {
       tax: {
