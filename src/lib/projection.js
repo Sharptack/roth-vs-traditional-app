@@ -184,7 +184,8 @@ export function socialSecurityInYear(household, t) {
 //   need             the after-tax spending need once anyone has retired (today's dollars); the
 //                    Roth calculator's retirement income number.
 //   strategy         defaults to proportionalStrategy.
-//   contributions    optional override, one entry per saver: [{ owner, amount, type: 'pretax' | 'roth' }],
+//   contributions    optional override, one entry per saver: [{ owner, amount, type: 'pretax' | 'roth' | 'taxable' }]
+//                    ('taxable': straight to a taxable account as basis, no IRS limit),
 //                    or [{ owner, takeHomeCost, rate, type }] (phase 6: the Roth and Pre-tax scenarios at
 //                    the SAME take-home cost, split each year at that year's limit by splitAtTakeHome, so
 //                    a Pre-tax saver over the limit invests the tax saved in a taxable account).
@@ -272,7 +273,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         made.push({ owner: c.owner, type: c.type, toAccount: split.toAccount, excess: split.excessToTaxable });
         continue;
       }
-      const limit = checkContributionLimit(c.amount, accountTypeOf(c.owner), year, ages[i]).limit;
+      // type 'taxable' (phase 4's extra savings with no contribution rows): all of it to a taxable account.
+      const limit = c.type === 'taxable' ? 0 : checkContributionLimit(c.amount, accountTypeOf(c.owner), year, ages[i]).limit;
       const toAccount = Math.min(c.amount, limit);
       made.push({ owner: c.owner, type: c.type, toAccount, excess: c.amount - toAccount });
     }

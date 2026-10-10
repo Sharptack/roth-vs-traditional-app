@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { ABOUT_EVEN, atRetirement, fundedStatus, lastRetirementYear, throughRetirement } from '../src/lib/funding.js';
+import { ABOUT_EVEN, atRetirement, contributionsWith, fundedStatus, lastRetirementYear, savingsNeeded, throughRetirement } from '../src/lib/funding.js';
 import { runProjection } from '../src/lib/projection.js';
+import { toHouseholdV2 } from '../src/lib/householdV2.js';
+import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
 
 const Y = 2026;
 
@@ -84,5 +86,93 @@ describe('The two measures (HAND CALC, no tax, no Social Security)', () => {
   it('a need of $0 has no funded level', () => {
     expect(atRetirement(saver(), 0).funded).toBe(null);
     expect(throughRetirement(saver(), 0).status).toBe(null);
+  });
+});
+
+describe('contributionsWith: the extra savings spread across the rows', () => {
+  it('in proportion to today\'s amounts; less, down to none', () => {
+    const h = saver();
+    h.people.push({ ...h.people[0], id: 'p2' });
+    h.futureContributions.contributions = [{ owner: 'p1', amount: 10000 }, { owner: 'p2', amount: 5000, currentType: 'pretax' }];
+    // 15,000 + 6,000 = 21,000: x 1.4 each
+    expect(contributionsWith(h, 6000)).toEqual([
+      { owner: 'p1', amount: 14000, type: 'roth' },
+      { owner: 'p2', amount: 7000, type: 'pretax' },
+    ]);
+    expect(contributionsWith(h, -20000).map((c) => c.amount)).toEqual([0, 0]);
+  });
+
+  it('no savings in the rows: to a taxable account, split by pay', () => {
+    const h = saver();
+    h.futureContributions.contributions = [{ owner: 'p1', amount: 0 }];
+    h.people = [{ ...h.people[0], wages: 60000 }, { ...h.people[0], id: 'p2', wages: 40000 }];
+    expect(contributionsWith(h, 10000)).toEqual([
+      { owner: 'p1', amount: 0, type: 'roth' },
+      { owner: 'p1', amount: 6000, type: 'taxable' },
+      { owner: 'p2', amount: 4000, type: 'taxable' },
+    ]);
+  });
+});
+
+describe('savingsNeeded (HAND CALC, no tax: Roth, and taxable money at 0% gains)', () => {
+  // Saving C a year for two years at 5%: B = 500,000 x 1.05^2 + 1.05 C + C = 551,250 + 2.05 C at 62.
+  // (Over the Roth 401(k) limit the excess goes to a taxable account; its gains stay in the 0%
+  // capital-gains bracket, under the standard deduction even, so nothing is taxed either way.)
+  it('measure 1: 4% of B = the need', () => {
+    // need 25,000 -> B = 625,000 -> C = 73,750 / 2.05 = 35,975.61 -> extra 25,975.61, up to 25,976
+    const s = savingsNeeded(saver(), 25000, { measure: 'atRetirement' });
+    expect(s.reachable).toBe(true);
+    expect(s.extra).toBe(25976);
+    expect(s.planned).toBe(10000);
+    expect(s.total).toBe(35976);
+    expect(s.pay).toBe(100000);
+    expect(s.extraShareOfPay).toBeCloseTo(0.25976, 9);
+    expect(s.totalShareOfPay).toBeCloseTo(0.35976, 9);
+    // rerun: lands on the target; a dollar less doesn't
+    expect(atRetirement(saver(), 25000, { contributions: contributionsWith(saver(), s.extra) }).funded).toBeGreaterThanOrEqual(1);
+    expect(atRetirement(saver(), 25000, { contributions: contributionsWith(saver(), s.extra - 1) }).funded).toBeLessThan(1);
+  });
+
+  it('measure 2: sustainable spending = the need', () => {
+    // need 250,000 for three years (an annuity due): B = 250,000 x 2.859410431 = 714,852.61
+    //   -> C = 163,602.61 / 2.05 = 79,806.15 -> extra 69,806.15
+    const s = savingsNeeded(saver(), 250000, { measure: 'throughRetirement' });
+    expect(Math.abs(s.extra - 69806.15)).toBeLessThan(1.5);
+    const rerun = throughRetirement(saver(), 250000, { contributions: contributionsWith(saver(), s.extra) });
+    expect(rerun.sustainable).toBeGreaterThan(250000 - 1);
+    expect(throughRetirement(saver(), 250000, { contributions: contributionsWith(saver(), s.extra - 2) }).sustainable).toBeLessThan(250000);
+  });
+
+  it('a target other than 100%', () => {
+    // 80% of 25,000 = 20,000 -> B = 500,000: met saving nothing (551,250 at C = 0) -> extra -10,000
+    expect(savingsNeeded(saver(), 25000, { target: 0.8 }).extra).toBe(-10000);
+    // 120% -> 30,000 -> B = 750,000 -> C = 198,750 / 2.05 = 96,951.22 -> extra 86,951.22, up to 86,952
+    expect(savingsNeeded(saver(), 25000, { target: 1.2 }).extra).toBe(86952);
+  });
+
+  it('already retired: met, or out of reach (no working years to save in)', () => {
+    const h = saver();
+    h.people[0].retirementAge = 60; // 4% of 500,000 = 20,000
+    expect(savingsNeeded(h, 15000).extra).toBe(-10000);
+    const out = savingsNeeded(h, 40000);
+    expect(out.reachable).toBe(false);
+    expect(out.extra).toBe(null);
+    expect(savingsNeeded(h, 0)).toBe(null);
+  });
+});
+
+describe('savingsNeeded on the default household (tax, Social Security, a Pre-tax 401(k))', () => {
+  // The phase's test: each solved amount, rerun, lands on its target (and a few dollars less doesn't).
+  it('each measure, rerun, lands on its target', () => {
+    const h = toHouseholdV2(DEFAULT_HOUSEHOLD_VALUES, 2026);
+    const need = 120000; // above what today's savings support on either measure
+    for (const [measure, run] of [['atRetirement', atRetirement], ['throughRetirement', throughRetirement]]) {
+      const s = savingsNeeded(h, need, { measure });
+      expect(s.reachable).toBe(true);
+      expect(s.extra).toBeGreaterThan(-s.planned);
+      const level = (extra) => run(h, need, { contributions: contributionsWith(h, extra) }).funded;
+      expect(level(s.extra)).toBeGreaterThanOrEqual(measure === 'atRetirement' ? 1 : 1 - 1 / need); // (the search stops within $1)
+      expect(level(s.extra - 3)).toBeLessThan(1);
+    }
   });
 });
