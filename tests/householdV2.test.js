@@ -4,6 +4,7 @@ import { DEFAULT_HOUSEHOLD_VALUES, setIncludeSpouse, newPerson } from '../src/li
 import { PREVIEW_DEFAULT_VALUES, householdToCompareInputs, toHousehold } from '../src/lib/household.js';
 import { householdToYearTaxParams, taxCalculatorResult } from '../src/lib/taxCalculator.js';
 import { householdToPensionInputs } from '../src/lib/pensionCalculator.js';
+import { compareRothVsTraditional } from '../src/lib/compare.js';
 
 const Y = 2026;
 const D = DEFAULT_HOUSEHOLD_VALUES;
@@ -152,7 +153,8 @@ describe('toHouseholdV2', () => {
   it('adds up each person\'s Roth and Pre-tax contributions, with their own types (HAND CALC)', () => {
     // p1: Roth 401(k) 15,000 + 5,000 = 20,000 (the household's type: Roth, 401(k))
     // p2: Pre-tax IRA 6,000 (their own type and account type)
-    // a taxable 10,000 row isn't Roth vs. Pre-tax: left out; total savings 26,000
+    // a taxable 10,000 row isn't Roth vs. Pre-tax: out of the comparison's savings (26,000), but
+    // savings to a taxable account all the same (phase 4, decided 2026-10-10)
     const h = toHouseholdV2(
       couple({
         contributions: [
@@ -171,10 +173,25 @@ describe('toHouseholdV2', () => {
         { owner: 'p1', amount: 20000 },
         { owner: 'p2', amount: 6000, currentType: 'pretax', accountType: 'ira' },
       ],
+      taxableSavings: [{ owner: 'p1', amount: 10000 }],
     });
     expect(householdToCompareInputs(h).savings).toBe(26000);
+    expect(householdToCompareInputs(h).taxableSavings).toBe(10000);
     expect(h.contributionRows).toHaveLength(4);
     expect(validateHouseholdV2(h)).toEqual([]);
+  });
+
+  it('savings to a taxable account lower the top-down need by the same amount, times the lifestyle (phase 4)', () => {
+    const base = D.contributions;
+    const withTaxable = v2({ contributions: [...base, contribution('c9', 'p1', 'taxable', '401k', '5000')] });
+    const need = (values) => compareRothVsTraditional(householdToCompareInputs(toHouseholdV2(values, Y))).retirementNeed;
+    const before = need(D);
+    const after = need(withTaxable);
+    expect(before.lifestyleFactor).toBe(after.lifestyleFactor);
+    expect(before.target - after.target).toBeCloseTo(5000 * after.lifestyleFactor, 6);
+    expect(after.breakdown.taxableSavings).toBe(5000);
+    expect(before.breakdown.taxableSavings).toBeUndefined();
+    expect(toHouseholdV2(D, Y).futureContributions.taxableSavings).toEqual([]);
   });
 
   it('a person with no contributions saves $0; a spouse taken out takes their rows, not their accounts', () => {

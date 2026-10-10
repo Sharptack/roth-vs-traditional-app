@@ -158,6 +158,7 @@ function RetirementNumberMath({ result }) {
           <Row label="Debt payments that will end" value={minus(b.debtPayments)} kind="sub" />
           <Row label="Other expenses that will end" value={minus(b.otherExpenses)} kind="sub" />
           <Row label="Savings for retirement" value={minus(b.savings)} kind="sub" />
+          {b.taxableSavings > 0 && <Row label="Savings to a taxable account" value={minus(b.taxableSavings)} kind="sub" />}
           <Row
             label={adjusted ? 'Spending today' : 'Retirement income number'}
             value={$(beforeLifestyleAdjustment)}

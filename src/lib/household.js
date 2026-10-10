@@ -317,6 +317,8 @@ export function householdToCompareInputs(household) {
     // The budget method (version 2, phase 3): the budget in place of take-home minus savings.
     ...(spending.method === 'budget' && { baselineExpenses: spending.baselineExpenses }),
     savings: fc.contributions.reduce((acc, c) => acc + c.amount, 0),
+    // Savings to a taxable account (version 2, phase 4): in the top-down need only.
+    ...((fc.taxableSavings ?? []).length > 0 && { taxableSavings: fc.taxableSavings.reduce((acc, c) => acc + c.amount, 0) }),
     currentType: fc.currentType,
     accountType: fc.accountType,
     knowsSocialSecurity: p1.socialSecurity.known,

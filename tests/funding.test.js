@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ABOUT_EVEN, atRetirement, contributionsWith, fundedStatus, lastRetirementYear, savingsNeeded, throughRetirement } from '../src/lib/funding.js';
+import { ABOUT_EVEN, atRetirement, savingsWith, fundedStatus, lastRetirementYear, savingsNeeded, throughRetirement } from '../src/lib/funding.js';
 import { runProjection } from '../src/lib/projection.js';
 import { toHouseholdV2 } from '../src/lib/householdV2.js';
 import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
@@ -89,28 +89,35 @@ describe('The two measures (HAND CALC, no tax, no Social Security)', () => {
   });
 });
 
-describe('contributionsWith: the extra savings spread across the rows', () => {
-  it('in proportion to today\'s amounts; less, down to none', () => {
+describe('savingsWith: the extra savings spread across the rows', () => {
+  it('in proportion to today\x27s amounts, taxable rows included; less, down to none', () => {
     const h = saver();
     h.people.push({ ...h.people[0], id: 'p2' });
     h.futureContributions.contributions = [{ owner: 'p1', amount: 10000 }, { owner: 'p2', amount: 5000, currentType: 'pretax' }];
-    // 15,000 + 6,000 = 21,000: x 1.4 each
-    expect(contributionsWith(h, 6000)).toEqual([
-      { owner: 'p1', amount: 14000, type: 'roth' },
-      { owner: 'p2', amount: 7000, type: 'pretax' },
-    ]);
-    expect(contributionsWith(h, -20000).map((c) => c.amount)).toEqual([0, 0]);
+    h.futureContributions.taxableSavings = [{ owner: 'p1', amount: 5000 }];
+    // 20,000 + 8,000 = 28,000: x 1.4 each
+    expect(savingsWith(h, 8000)).toEqual({
+      contributions: [
+        { owner: 'p1', amount: 14000, type: 'roth' },
+        { owner: 'p2', amount: 7000, type: 'pretax' },
+      ],
+      taxableSavings: [{ owner: 'p1', amount: 7000 }],
+    });
+    const none = savingsWith(h, -30000);
+    expect([...none.contributions, ...none.taxableSavings].map((c) => c.amount)).toEqual([0, 0, 0]);
   });
 
   it('no savings in the rows: to a taxable account, split by pay', () => {
     const h = saver();
     h.futureContributions.contributions = [{ owner: 'p1', amount: 0 }];
     h.people = [{ ...h.people[0], wages: 60000 }, { ...h.people[0], id: 'p2', wages: 40000 }];
-    expect(contributionsWith(h, 10000)).toEqual([
-      { owner: 'p1', amount: 0, type: 'roth' },
-      { owner: 'p1', amount: 6000, type: 'taxable' },
-      { owner: 'p2', amount: 4000, type: 'taxable' },
-    ]);
+    expect(savingsWith(h, 10000)).toEqual({
+      contributions: [{ owner: 'p1', amount: 0, type: 'roth' }],
+      taxableSavings: [
+        { owner: 'p1', amount: 6000 },
+        { owner: 'p2', amount: 4000 },
+      ],
+    });
   });
 });
 
@@ -129,8 +136,8 @@ describe('savingsNeeded (HAND CALC, no tax: Roth, and taxable money at 0% gains)
     expect(s.extraShareOfPay).toBeCloseTo(0.25976, 9);
     expect(s.totalShareOfPay).toBeCloseTo(0.35976, 9);
     // rerun: lands on the target; a dollar less doesn't
-    expect(atRetirement(saver(), 25000, { contributions: contributionsWith(saver(), s.extra) }).funded).toBeGreaterThanOrEqual(1);
-    expect(atRetirement(saver(), 25000, { contributions: contributionsWith(saver(), s.extra - 1) }).funded).toBeLessThan(1);
+    expect(atRetirement(saver(), 25000, { savings: savingsWith(saver(), s.extra) }).funded).toBeGreaterThanOrEqual(1);
+    expect(atRetirement(saver(), 25000, { savings: savingsWith(saver(), s.extra - 1) }).funded).toBeLessThan(1);
   });
 
   it('measure 2: sustainable spending = the need', () => {
@@ -138,9 +145,9 @@ describe('savingsNeeded (HAND CALC, no tax: Roth, and taxable money at 0% gains)
     //   -> C = 163,602.61 / 2.05 = 79,806.15 -> extra 69,806.15
     const s = savingsNeeded(saver(), 250000, { measure: 'throughRetirement' });
     expect(Math.abs(s.extra - 69806.15)).toBeLessThan(1.5);
-    const rerun = throughRetirement(saver(), 250000, { contributions: contributionsWith(saver(), s.extra) });
+    const rerun = throughRetirement(saver(), 250000, { savings: savingsWith(saver(), s.extra) });
     expect(rerun.sustainable).toBeGreaterThan(250000 - 1);
-    expect(throughRetirement(saver(), 250000, { contributions: contributionsWith(saver(), s.extra - 2) }).sustainable).toBeLessThan(250000);
+    expect(throughRetirement(saver(), 250000, { savings: savingsWith(saver(), s.extra - 2) }).sustainable).toBeLessThan(250000);
   });
 
   it('a target other than 100%', () => {
@@ -170,7 +177,7 @@ describe('savingsNeeded on the default household (tax, Social Security, a Pre-ta
       const s = savingsNeeded(h, need, { measure });
       expect(s.reachable).toBe(true);
       expect(s.extra).toBeGreaterThan(-s.planned);
-      const level = (extra) => run(h, need, { contributions: contributionsWith(h, extra) }).funded;
+      const level = (extra) => run(h, need, { savings: savingsWith(h, extra) }).funded;
       expect(level(s.extra)).toBeGreaterThanOrEqual(measure === 'atRetirement' ? 1 : 1 - 1 / need); // (the search stops within $1)
       expect(level(s.extra - 3)).toBeLessThan(1);
     }

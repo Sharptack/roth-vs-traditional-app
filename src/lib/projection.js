@@ -190,12 +190,15 @@ export function socialSecurityInYear(household, t) {
 //                    the SAME take-home cost, split each year at that year's limit by splitAtTakeHome, so
 //                    a Pre-tax saver over the limit invests the tax saved in a taxable account).
 //                    Default: the household's Future Contributions as entered.
+//   taxableSavings   optional override of the savings to a taxable account, [{ owner, amount }] (phase 4,
+//                    decided 2026-10-10): each person's while they work, as basis, whatever the
+//                    contributions. Default: the household's (futureContributions.taxableSavings; none in version 1).
 //   endAge           person 1's age in the last projected year (default household.assumptions.endAge or 95).
 //   retirementRateShift  added to every ordinary bracket rate in the years anyone is retired (a tax-law
 //                    what-if: "rates 3 points higher in retirement"); default: the household's
 //                    assumptions.retirementRateShift, else 0.
 //   convertNow       a Roth conversion in the first projected year, in dollars (see the header).
-export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, endAge, retirementRateShift, convertNow = 0 } = {}) {
+export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0 } = {}) {
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
   // The household's own what-if (assumptions.retirementRateShift) unless a caller sets one.
   const rateShiftInRetirement = retirementRateShift ?? assumptions.retirementRateShift ?? 0;
@@ -216,9 +219,10 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   // Version 2: the income rows (earnings and other income) by their ages; version 1: none.
   const incomeRows = Array.isArray(household.incomes) ? household.incomes : null;
   let deceased = -1; // the index of the person who has died, from the year after their death
-  const plan =
-    contributions ??
-    fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount, type: c.currentType ?? fc.currentType }));
+  const plan = [
+    ...(contributions ?? fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount, type: c.currentType ?? fc.currentType }))),
+    ...(taxableSavings ?? fc.taxableSavings ?? []).map((c) => ({ owner: c.owner, amount: c.amount, type: 'taxable' })),
+  ];
   // Each saver's account type (their own, else the household's) sets their IRS limit.
   const accountTypeOf = (owner) => fc.contributions.find((c) => c.owner === owner)?.accountType ?? fc.accountType;
 

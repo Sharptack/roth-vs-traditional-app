@@ -15,6 +15,9 @@
 //                                            Absent = the top-down number, unchanged.
 //   savings                                — annual retirement savings, also the
 //                                            contribution amount compared
+//   taxableSavings                         — OPTIONAL (phase 4): savings a year to a taxable account,
+//                                            subtracted from take-home pay in the top-down need like
+//                                            `savings`, but not part of the comparison. Absent = 0.
 //   currentType ('pretax' | 'roth')        — what `savings` currently is
 //   accountType ('401k' | 'ira')           — for the contribution-limit check
 //   knowsSocialSecurity (bool), socialSecurityBenefit — known benefit if any
@@ -399,7 +402,8 @@ export function compareRothVsTraditional(inputs) {
   // lifestyle factor scales it for people who expect to spend more (or less) in
   // retirement than they do today, e.g. because their earnings will rise.
   // The budget method (phase 3, spendingNeed.js): the budget in place of take-home minus savings.
-  const topDownRaw = afterTaxCurrentIncome - debtPayments - otherExpenses - savings;
+  const taxableSavings = Math.max(0, inputs.taxableSavings ?? 0);
+  const topDownRaw = afterTaxCurrentIncome - debtPayments - otherExpenses - savings - taxableSavings;
   const fromBudget =
     'baselineExpenses' in inputs
       ? budgetNeed({
@@ -797,6 +801,7 @@ export function compareRothVsTraditional(inputs) {
         debtPayments,
         otherExpenses,
         savings,
+        ...(taxableSavings > 0 && { taxableSavings }),
         currentType,
       },
     },

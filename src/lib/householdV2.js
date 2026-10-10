@@ -178,6 +178,12 @@ export function toHouseholdV2(input, year) {
       ...(first && first.account !== accountType && { accountType: first.account }),
     };
   });
+  // Savings to a taxable account (phase 4, decided 2026-10-10): one entry per person with any, while
+  // they work. Savings in the top-down need and a taxable balance in the projection; not part of the
+  // Roth vs. Pre-tax comparison.
+  const taxableSavings = people
+    .map((p) => ({ owner: p.id, amount: retiredNow(p) ? 0 : contributionRows.filter((r) => r.owner === p.id && r.tax === 'taxable').reduce((a, r) => a + r.amount, 0) }))
+    .filter((c) => c.amount > 0);
 
   // A pension whose lump sum the plan takes: rolled over at its start age, or today if that has passed.
   const ageNowOf = (owner) => year - people.find((p) => p.id === owner).birthYear;
@@ -228,7 +234,7 @@ export function toHouseholdV2(input, year) {
       rate: blankAsZero(l.rate),
       payment: blankAsZero(l.payment),
     })),
-    futureContributions: { currentType, accountType, contributions },
+    futureContributions: { currentType, accountType, contributions, taxableSavings },
     deductions: { itemized: blankAsZero(values.deductions?.itemized) },
     // Children with their age this year (the age reached this calendar year); other dependents.
     dependents: (values.dependents ?? []).map((d) => ({ kind: d.kind, age: d.kind === 'child' ? blankAsNull(d.age) : null })),

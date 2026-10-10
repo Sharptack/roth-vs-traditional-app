@@ -43,15 +43,16 @@ function fourPercentOnceRetired(planStrategy) {
   };
 }
 
-// Measure 1. options.contributions: the projection's override (savings needed, phase 4 step c).
+// Measure 1. options.savings: { contributions, taxableSavings }, the projection's overrides
+// (savingsWith; absent = the plan's own).
 // -> { year, ages, balances (at the start of the year), income (after tax), need (that year's),
 //      funded, status }
-export function atRetirement(household, need, { contributions } = {}) {
+export function atRetirement(household, need, { savings } = {}) {
   const { strategy } = planOptions(household);
   const year = lastRetirementYear(household);
   // Projected only to that year (person 1's age then).
   const endAge = year - household.people[0].birthYear;
-  const { rows } = runProjection(household, { need, strategy: fourPercentOnceRetired(strategy), contributions, endAge });
+  const { rows } = runProjection(household, { need, strategy: fourPercentOnceRetired(strategy), ...savings, endAge });
   const row = rows.find((r) => r.year === year) ?? rows[rows.length - 1];
   const funded = row.need > 0 ? row.afterTaxIncome / row.need : null;
   return {
@@ -69,8 +70,8 @@ export function atRetirement(household, need, { contributions } = {}) {
 }
 
 // Measure 2. -> { sustainable, need, funded, status }
-export function throughRetirement(household, need, { contributions } = {}) {
-  const sustainable = sustainableSpending(household, { ...planOptions(household), legacy: legacyOption(household), contributions });
+export function throughRetirement(household, need, { savings } = {}) {
+  const sustainable = sustainableSpending(household, { ...planOptions(household), legacy: legacyOption(household), ...savings });
   const funded = need > 0 ? sustainable / need : null;
   return { sustainable, need, funded, status: fundedStatus(funded) };
 }
@@ -80,30 +81,33 @@ export function householdPay(household) {
   return household.people.reduce((s, p) => s + (p.wages || 0) + (p.selfEmploymentIncome || 0), 0);
 }
 
-// The plan's savings a year: the contribution rows' total.
+// The plan's savings a year: the contribution rows' total, savings to a taxable account included.
 export function plannedSavings(household) {
-  return household.futureContributions.contributions.reduce((s, c) => s + (c.amount || 0), 0);
+  const fc = household.futureContributions;
+  return [...fc.contributions, ...(fc.taxableSavings ?? [])].reduce((s, c) => s + (c.amount || 0), 0);
 }
 
-// The projection's contributions with `extra` dollars a year more (negative = less, to none), as
-// decided 2026-10-10: spread across the contribution rows in proportion to today's amounts (amounts
-// over a row's IRS limit go to a taxable account, as always). With no savings in the rows, the extra
-// goes to a taxable account, split between the people by their pay (each saves until their own
-// retirement; with no pay, evenly).
-export function contributionsWith(household, extra) {
+// The plan's savings with `extra` dollars a year more (negative = less, to none), as the projection's
+// overrides { contributions, taxableSavings } (decided 2026-10-10): spread across the contribution
+// rows, taxable ones included, in proportion to today's amounts (amounts over a row's IRS limit go to
+// a taxable account, as always). With no savings in the rows, the extra goes to a taxable account,
+// split between the people by their pay (each saves until their own retirement; with no pay, evenly).
+export function savingsWith(household, extra) {
   const fc = household.futureContributions;
-  const rows = fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount || 0, type: c.currentType ?? fc.currentType }));
+  const contributions = fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount || 0, type: c.currentType ?? fc.currentType }));
+  const taxable = (fc.taxableSavings ?? []).map((c) => ({ owner: c.owner, amount: c.amount || 0 }));
   const total = plannedSavings(household);
   if (total > 0) {
     const scale = Math.max(0, (total + extra) / total);
-    return rows.map((r) => ({ ...r, amount: r.amount * scale }));
+    const scaled = (list) => list.map((c) => ({ ...c, amount: c.amount * scale }));
+    return { contributions: scaled(contributions), taxableSavings: scaled(taxable) };
   }
-  if (!(extra > 0)) return rows;
+  if (!(extra > 0)) return { contributions, taxableSavings: taxable };
   const pay = household.people.map((p) => (p.wages || 0) + (p.selfEmploymentIncome || 0));
   const payTotal = pay.reduce((s, x) => s + x, 0);
   const share = (i) => (payTotal > 0 ? pay[i] / payTotal : 1 / pay.length);
-  const added = household.people.map((p, i) => ({ owner: p.id, amount: extra * share(i), type: 'taxable' })).filter((c) => c.amount > 0);
-  return [...rows, ...added];
+  const added = household.people.map((p, i) => ({ owner: p.id, amount: extra * share(i) })).filter((c) => c.amount > 0);
+  return { contributions, taxableSavings: added };
 }
 
 const MAX_EXTRA = 10000000; // past this, more savings is taken as no answer
@@ -127,8 +131,8 @@ export function savingsNeeded(household, need, { measure = 'atRetirement', targe
   const legacy = legacyOption(household);
   const meets =
     measure === 'atRetirement'
-      ? (extra) => atRetirement(household, need, { contributions: contributionsWith(household, extra) }).funded >= target
-      : (extra) => meetsPlan(household, target * need, { ...options, legacy, contributions: contributionsWith(household, extra) });
+      ? (extra) => atRetirement(household, need, { savings: savingsWith(household, extra) }).funded >= target
+      : (extra) => meetsPlan(household, target * need, { ...options, legacy, ...savingsWith(household, extra) });
   const planned = plannedSavings(household);
   const pay = householdPay(household);
   const result = (extra) => ({

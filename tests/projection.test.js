@@ -543,6 +543,26 @@ describe('runProjection: income rows over their ages, and the surplus setting (2
     expect(flipped[1].endBalances.taxable).toBeCloseTo(7800, 6);
   });
 
+  it('savings to a taxable account (phase 4, decided 2026-10-10): basis while working, out of the cash', () => {
+    // $5,000 a year to a taxable account, return 0, no dividends: 5,000 then 10,000, all basis;
+    // the year's cash $5,000 lower than without it (paid out of the paycheck), the tax the same
+    const h = worker([]);
+    const without = runProjection(h, { endAge: 41 }).rows;
+    h.futureContributions = { ...h.futureContributions, taxableSavings: [{ owner: 'p1', amount: 5000 }] };
+    const { rows } = runProjection(h, { endAge: 41 });
+    expect(rows.map((r) => r.endBalances.taxable)).toEqual([5000, 10000]);
+    expect(rows[1].taxableBasis).toBe(10000);
+    expect(rows[0].contributions.taxable).toBe(5000);
+    expect(rows[0].totalTax).toBeCloseTo(without[0].totalTax, 9);
+    expect(without[0].afterTaxIncome - rows[0].afterTaxIncome).toBeCloseTo(5000, 9);
+    // kept whatever contributions override the plan's (the Roth comparison's scenarios), and overridable
+    expect(runProjection(h, { endAge: 41, contributions: [{ owner: 'p1', amount: 1000, type: 'roth' }] }).rows[1].endBalances.taxable).toBe(10000);
+    expect(runProjection(h, { endAge: 41, taxableSavings: [] }).rows[1].endBalances.taxable).toBe(0);
+    // and stop at retirement
+    h.people[0].retirementAge = 41;
+    expect(runProjection(h, { endAge: 41 }).rows[1].contributions.taxable).toBe(0);
+  });
+
   it('earnings rows over their ages: until retirement when blank; part-time work after it', () => {
     // retiring at 42; part-time W-2 of $20,000 from 42 to 43
     const h = worker([{ id: 'pt', owner: 'p1', type: 'w2', amount: 20000, fromAge: 42, toAge: 43 }]);
