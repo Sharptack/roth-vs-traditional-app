@@ -51,7 +51,7 @@ RMDs start at 72, 73 or 75, by birth year (75 for anyone born in 1960 or later),
 
 ## Income above what is needed
 
-Some years bring in more than spending, tax and savings use: an RMD larger than the need, rent or part-time work, Social Security plus a pension. Before retirement it is income beyond today's paycheck, after its tax. The **Income above what is needed** assumption decides what happens to it: **save it** (the default) reinvests it in a taxable account; **spend it** raises spending in those years. The year table shows each year's amount.
+Some years bring in more than spending, tax and savings use: an RMD larger than the need, rent or part-time work, Social Security plus a pension. Before retirement it is income beyond today's paycheck, after its tax. Two assumptions decide what happens to it, one for the working years and one for retirement: **save it** reinvests it in a taxable account; **spend it** raises spending in those years. While anyone works, the default is to spend it (the household lives on what comes in); once anyone has retired, the default is to save it. The year table shows each year's amount.
 
 ## What it leaves out
 

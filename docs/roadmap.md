@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, 2 (survivor years and engine additions), the "Before phase" lists, and phase 3 (retirement spending). 893 tests. Last closed: phase 3 (tag `phase-3-done`): the spending need from income or a budget, read by every calculator (already-retired households now get the projection and the conversion's lifetime view); the legacy goal (amount or share, balance or after tax) in sustainable spending; the Retirement spending page with Use in the plan and the trade-off chart; a charitable legacy (Pre-tax to charity first); the staged-spending design, decided.
 
-**In progress: phase 4, pre-retirement funding** (started 2026-10-10; decisions and steps in the phase 4 section below). Now on step (a): income above the need in two settings (while working, spent by default; in retirement, saved).
+**In progress: phase 4, pre-retirement funding** (started 2026-10-10; decisions and steps in the phase 4 section below). Step (a) done (income above the need in two settings). Now on step (b): the two measures in the engine (`src/lib/funding.js`).
 
 **Known gaps and open items:**
 - The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).
@@ -135,7 +135,7 @@ For each: funded level = what the assets pay ÷ the need. Within 5% = about even
 - (f) Overfunded: how much more could be spent, how much less saved, how much earlier retirement could come.
 - (g) The Docs article.
 
-**Status:** started 2026-10-10.
+**Status:** started 2026-10-10. Step (a) done 2026-10-10 (894 tests, local, unpushed): two settings in Assumptions, "Income above what is needed, while working" (spend it by default) and "in retirement" (save it by default); `assumptions.surplusWorking` in the projection (absent = as `surplus`, so version 1 households and the pins are unchanged); saved and upgraded households get the new working-years default. Articles: inputs, projection.
 
 ## Phase 5: Social Security calculator
 

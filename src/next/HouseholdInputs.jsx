@@ -917,9 +917,22 @@ export default function HouseholdInputs({
               ]}
             />
           )}
+          {shown('surplusWorking') && (
+            <RadioGroup
+              legend="Income above what is needed, while working"
+              name={`${formId}-surplusWorking`}
+              value={a.surplusWorking ?? 'spend'}
+              onChange={set('surplusWorking')}
+              options={[
+                { value: 'spend', label: 'Spend it' },
+                { value: 'save', label: 'Save it' },
+              ]}
+              hint="Before retirement the household lives on today's paycheck, so income beyond it (rent, a second job, an RMD), after its tax, is extra. Spent, spending rises in those years; saved, it is reinvested in a taxable account. The projection shows each year's."
+            />
+          )}
           {shown('surplus') && (
             <RadioGroup
-              legend="Income above what is needed"
+              legend="Income above what is needed, in retirement"
               name={`${formId}-surplus`}
               value={a.surplus ?? 'save'}
               onChange={set('surplus')}
@@ -927,7 +940,7 @@ export default function HouseholdInputs({
                 { value: 'save', label: 'Save it' },
                 { value: 'spend', label: 'Spend it' },
               ]}
-              hint="Some years bring in more than spending, tax and savings use: an RMD larger than the need, rent or part-time work, Social Security plus a pension; before retirement, income beyond today's paycheck. Saved, it is reinvested in a taxable account; spent, spending rises in those years. The projection shows each year's."
+              hint="Some years bring in more than spending and tax use: an RMD larger than the need, rent or part-time work, Social Security plus a pension. Saved, it is reinvested in a taxable account; spent, spending rises in those years. The projection shows each year's."
             />
           )}
           {shown('strategy') && strategySelect()}

@@ -520,6 +520,29 @@ describe('runProjection: income rows over their ages, and the surplus setting (2
     expect(r.endBalances.taxable).toBe(0);
   });
 
+  it('two settings (phase 4, decided 2026-10-10): spent while working, saved in retirement', () => {
+    // Retiring at 41; $10,000 of rent to 41; no need, return 0.
+    //   40, working: rent after its 22% tax = 7,800 beyond the paycheck -> spent (surplusWorking)
+    //   41, retired: rent 10,000, under the 16,100 standard deduction -> no tax; cash 10,000 above a
+    //   need of 0 -> saved (surplus): taxable 10,000 at the year end
+    const h = worker([other('ordinary', 10000, null, 41)]);
+    h.people[0].retirementAge = 41;
+    h.assumptions = { ...h.assumptions, surplusWorking: 'spend', surplus: 'save' };
+    const { rows } = runProjection(h, { endAge: 41 });
+    expect(rows[0].extraSpending).toBeCloseTo(7800, 6);
+    expect(rows[0].reinvested).toBe(0);
+    expect(rows[1].totalTax).toBe(0);
+    expect(rows[1].reinvested).toBeCloseTo(10000, 6);
+    expect(rows[1].extraSpending).toBe(0);
+    expect(rows[1].endBalances.taxable).toBeCloseTo(10000, 6);
+    // and the other way round
+    h.assumptions = { ...h.assumptions, surplusWorking: 'save', surplus: 'spend' };
+    const flipped = runProjection(h, { endAge: 41 }).rows;
+    expect(flipped[0].reinvested).toBeCloseTo(7800, 6);
+    expect(flipped[1].extraSpending).toBeCloseTo(10000, 6);
+    expect(flipped[1].endBalances.taxable).toBeCloseTo(7800, 6);
+  });
+
   it('earnings rows over their ages: until retirement when blank; part-time work after it', () => {
     // retiring at 42; part-time W-2 of $20,000 from 42 to 43
     const h = worker([{ id: 'pt', owner: 'p1', type: 'w2', amount: 20000, fromAge: 42, toAge: 43 }]);

@@ -53,7 +53,8 @@
 //                  survivorSpending,       // survivorSpending: a couple's spending after the first death, '0.8' = 80%
 //                  dividendYield,          // qualified dividends a taxable account pays a year, '0.013' = 1.3%
 //                  retirementReturnRate,   // the return once no one works, or 'same' (as returnRate)
-//                  surplus },              // income above the need: 'save' (reinvest it) or 'spend'
+//                  surplus,                // income above the need in retirement: 'save' (reinvest it) or 'spend'
+//                  surplusWorking },       // the same while everyone works ('spend' by default)
 //   calculators: { projection: { heirTaxRate, strategy }, conversion: { amount },
 //                  pension: { lumpSum } },   // the lump-sum offer before it moved onto the pension row
 //                                          // (2026-10-09; moveLumpSumToRow), kept for older saves
@@ -146,7 +147,8 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
     survivorSpending: '0.8',
     dividendYield: '0.013', // a broad stock index fund (decided 2026-10-09)
     retirementReturnRate: 'same',
-    surplus: 'save', // decided 2026-10-08
+    surplus: 'save', // in retirement, decided 2026-10-08
+    surplusWorking: 'spend', // while working, decided 2026-10-10
   },
   calculators: {
     projection: { heirTaxRate: '0.24', strategy: 'proportional' },

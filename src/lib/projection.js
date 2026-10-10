@@ -75,7 +75,9 @@
 // Surplus (assumptions.surplus): once anyone has retired, cash above the need; while everyone works,
 // cash above what today's paycheck alone leaves (an RMD, income beyond the paycheck, after tax; a
 // drop in earnings is taken as lower spending, not drawn). 'save' (the default) reinvests it in a
-// taxable account; 'spend' spends it (spending rises in those years).
+// taxable account; 'spend' spends it (spending rises in those years). While everyone works,
+// assumptions.surplusWorking decides instead (phase 4, decided 2026-10-10; absent = as surplus, as
+// before). Version 2 households: spent while working, saved in retirement, by default.
 //
 // A conversion this year (option convertNow, the Roth conversion calculator's lifetime view, decided
 // 2026-10-09): that many dollars move from the Pre-tax accounts (pro rata by balance) to Roth in the
@@ -208,7 +210,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   const survivorSpending = assumptions.survivorSpending ?? DEFAULT_SURVIVOR_SPENDING;
   const dividendYield = assumptions.dividendYield ?? 0;
   const yieldOf = (a) => a.dividendYield ?? dividendYield;
-  const spendSurplus = assumptions.surplus === 'spend';
+  const spendSurplusRetired = assumptions.surplus === 'spend';
+  const spendSurplusWorking = (assumptions.surplusWorking ?? assumptions.surplus) === 'spend';
   // Version 2: the income rows (earnings and other income) by their ages; version 1: none.
   const incomeRows = Array.isArray(household.incomes) ? household.incomes : null;
   let deceased = -1; // the index of the person who has died, from the year after their death
@@ -456,10 +459,11 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const dividendTax = accountPaysDividendTax ? cash - solved.cash : 0;
     // Surplus: once retired, cash above the need; while everyone works, cash above what today's
     // paycheck alone leaves (an RMD's or other income's after-tax money), since the paycheck covers
-    // spending. Saved (reinvested) or spent, by assumptions.surplus.
+    // spending. Saved (reinvested) or spent, by assumptions.surplus (surplusWorking while everyone works).
     const surplus = anyRetired
       ? Math.max(0, cash - needThisYear)
       : Math.max(0, cash - evaluate({}, [], false, { withDividends: false, paycheckOnly: true }).cash);
+    const spendSurplus = anyRetired ? spendSurplusRetired : spendSurplusWorking;
     const reinvested = spendSurplus ? 0 : surplus;
     const shortfall = anyRetired && needThisYear - cash > 0.01 ? needThisYear - cash : 0;
     if (shortfall > 0 && runOutYear === null) runOutYear = calendarYear;

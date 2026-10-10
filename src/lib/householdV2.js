@@ -287,8 +287,10 @@ export function toHouseholdV2(input, year) {
       taxSavedAcrossContribution: a.taxSavedBasis === 'average',
       retirementRateShift: Number(a.retirementRateShift ?? 0) || 0,
       medicareIrmaa: a.medicareIrmaa === 'yes',
-      // Income above the need (projection.js): saved in a taxable account (the default) or spent.
+      // Income above the need (projection.js): in retirement saved in a taxable account (the default)
+      // or spent; while everyone works spent (the default) or saved (decided 2026-10-10).
       surplus: a.surplus === 'spend' ? 'spend' : 'save',
+      surplusWorking: a.surplusWorking === 'save' ? 'save' : 'spend',
       survivorSpending: Number.isFinite(Number(a.survivorSpending)) && String(a.survivorSpending).trim() !== '' ? Number(a.survivorSpending) : 0.8,
       // Tax drag (phase 2): the qualified dividends a taxable account pays a year (projection.js, compare.js).
       dividendYield: Number(a.dividendYield) >= 0 && String(a.dividendYield ?? '').trim() !== '' ? Number(a.dividendYield) : 0.013,

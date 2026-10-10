@@ -125,6 +125,7 @@ export function upgradeHouseholdValues(values, year) {
       dividendYield: '0.013', // new in version 2 (tax drag, phase 2)
       retirementReturnRate: 'same', // new in version 2 (phase 2): no change
       surplus: 'save', // new in version 2 (phase 2): as version 1 reinvested it
+      surplusWorking: 'spend', // new in phase 4 (decided 2026-10-10), the version 2 default
     },
     calculators: {
       projection: { endAge: v.projEndAge, heirTaxRate: v.projHeirTaxRate, strategy: v.projStrategy },

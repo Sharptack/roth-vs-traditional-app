@@ -1396,17 +1396,19 @@ describe('The rest of the household in the projection (phase 2 step f)', () => {
     // $15,000 a year of rent from 35 to 95
     const rent = { id: 'i3', owner: 'p1', type: 'other', treatment: 'ordinary', amount: '15000', fromAge: '', toAge: '95' };
     const values = { ...D, incomes: [...D.incomes.map((r) => ({ ...r })), { ...D.incomes[0], ...rent }] };
-    const saved = projectionView(...(({ household, result }) => [household, result.retirementNeed.target])(previewResult(values, 2026)));
-    // working: the rent after its tax is beyond the paycheck, saved
+    const saveValues = { ...values, assumptions: { ...values.assumptions, surplusWorking: 'save' } };
+    const saved = projectionView(...(({ household, result }) => [household, result.retirementNeed.target])(previewResult(saveValues, 2026)));
+    // working: the rent after its tax is beyond the paycheck, saved when chosen
     expect(saved.rows[0].otherIncome).toBe(15000);
     expect(saved.rows[0].reinvested).toBeGreaterThan(10000);
-    const spendValues = { ...values, assumptions: { ...values.assumptions, surplus: 'spend' } };
-    const spent = projectionView(...(({ household, result }) => [household, result.retirementNeed.target])(previewResult(spendValues, 2026)));
+    // spent while working by default (decided 2026-10-10)
+    const spent = projectionView(...(({ household, result }) => [household, result.retirementNeed.target])(previewResult(values, 2026)));
     expect(spent.rows[0].extraSpending).toBeCloseTo(saved.rows[0].reinvested, 6);
     expect(spent.rows[0].reinvested).toBe(0);
     expect(renderToStaticMarkup(<ProjectionResult view={spent} />)).not.toMatch(/NaN|Infinity/);
     const html = renderToStaticMarkup(<HouseholdInputs values={D} onUpdate={() => {}} sections={['assumptions']} defaultOpen={['assumptions']} />);
-    expect(html).toContain('Income above what is needed');
+    expect(html).toContain('Income above what is needed, while working');
+    expect(html).toContain('Income above what is needed, in retirement');
   });
 });
 

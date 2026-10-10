@@ -48,11 +48,13 @@ describe('version 2 household values: defaults', () => {
     // (the budget method is new in phase 3, off by default)
     expect(D.spending).toEqual({ debtPayments: v1.debtPayments, otherExpenses: v1.otherExpenses, retirementLifestyle: v1.retirementLifestyle, method: 'income', baseline: '' });
     // survivor years' spending, the dividend yield, the return in retirement and the surplus setting are new in version 2 (phase 2)
-    const { survivorSpending, dividendYield, retirementReturnRate, surplus, ...shared } = D.assumptions;
+    // (the working-years surplus setting is new in phase 4)
+    const { survivorSpending, dividendYield, retirementReturnRate, surplus, surplusWorking, ...shared } = D.assumptions;
     expect(survivorSpending).toBe('0.8');
     expect(dividendYield).toBe('0.013');
     expect(retirementReturnRate).toBe('same');
     expect(surplus).toBe('save');
+    expect(surplusWorking).toBe('spend');
     for (const k of Object.keys(shared)) expect(D.assumptions[k]).toBe(v1[k]);
     expect(D.calculators.projection).toEqual({
       heirTaxRate: PROJECTION_DEFAULT_VALUES.projHeirTaxRate,
