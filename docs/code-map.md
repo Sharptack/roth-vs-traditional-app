@@ -40,7 +40,7 @@ after-tax difference), `portfolioTax.js`, `blend.js`, `rateSteps.js`, `growthCal
 (`runProjection`: the year loop, strategy seam, `convertNow`), `strategies.js`, `projectionSummary.js` (sustainable
 spending, `projectionView`), `spendingNeed.js` (the spending need every calculator reads: top-down or the budget), `retirementSpending.js` (the
 Retirement spending page: what the resources allow with the legacy goal; "Use in the plan"),
-`lifetimeComparison.js`, `conversionLifetime.js`, `suiteTiles.js`, `blockHeadlines.js`.
+`funding.js` (Pre-retirement funding: the two measures, funded status), `lifetimeComparison.js`, `conversionLifetime.js`, `suiteTiles.js`, `blockHeadlines.js`.
 
 ## UI
 - `src/App.jsx`: the shell (hash routes from `src/lib/route.js`; NextApp always mounted; Docs and Visualization lazy;

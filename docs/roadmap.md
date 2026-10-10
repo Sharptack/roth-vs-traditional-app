@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, 2 (survivor years and engine additions), the "Before phase" lists, and phase 3 (retirement spending). 893 tests. Last closed: phase 3 (tag `phase-3-done`): the spending need from income or a budget, read by every calculator (already-retired households now get the projection and the conversion's lifetime view); the legacy goal (amount or share, balance or after tax) in sustainable spending; the Retirement spending page with Use in the plan and the trade-off chart; a charitable legacy (Pre-tax to charity first); the staged-spending design, decided.
 
-**In progress: phase 4, pre-retirement funding** (started 2026-10-10; decisions and steps in the phase 4 section below). Step (a) done (income above the need in two settings). Now on step (b): the two measures in the engine (`src/lib/funding.js`).
+**In progress: phase 4, pre-retirement funding** (started 2026-10-10; decisions and steps in the phase 4 section below). Step (a) done (income above the need in two settings). Steps (a) and (b) done. Now on step (c): savings needed for each measure.
 
 **Known gaps and open items:**
 - The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).
@@ -135,7 +135,7 @@ For each: funded level = what the assets pay ÷ the need. Within 5% = about even
 - (f) Overfunded: how much more could be spent, how much less saved, how much earlier retirement could come.
 - (g) The Docs article.
 
-**Status:** started 2026-10-10. Step (a) done 2026-10-10 (894 tests, local, unpushed): two settings in Assumptions, "Income above what is needed, while working" (spend it by default) and "in retirement" (save it by default); `assumptions.surplusWorking` in the projection (absent = as `surplus`, so version 1 households and the pins are unchanged); saved and upgraded households get the new working-years default. Articles: inputs, projection.
+**Status:** started 2026-10-10. Step (a) done 2026-10-10 (894 tests, local, unpushed): two settings in Assumptions, "Income above what is needed, while working" (spend it by default) and "in retirement" (save it by default); `assumptions.surplusWorking` in the projection (absent = as `surplus`, so version 1 households and the pins are unchanged); saved and upgraded households get the new working-years default. Articles: inputs, projection. Step (b) done 2026-10-10 (900 tests, local, unpushed): `src/lib/funding.js`: `atRetirement` (measure 1: the projection run to the last retirement with the plan's strategy while anyone works and 4% of each account once no one does, so that year's tax, Social Security, pensions, other income and IRMAA are the projection's own; against that year's need), `throughRetirement` (measure 2: sustainable spending with the legacy goal), `fundedStatus` (under, about even within 5%, over), `lastRetirementYear`. Hand-worked: Roth only, $500,000 + $10,000 a year at 5% for two years = $571,750 at 62: 4% = $22,870 against $40,000 (57.2%); three years to 64 as an annuity due, $199,953.81. A couple's years before the last retirement match the plan exactly. Default household (35, need $65,380): $1.71 million in 2056 pays $90,517 after tax (138%); through retirement $133,401 (204%); 14 ms and 164 ms. Nothing reads it yet (the page is step d).
 
 ## Phase 5: Social Security calculator
 
