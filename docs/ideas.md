@@ -5,7 +5,9 @@ Ideas not in the current roadmap. Read it when adding an idea or choosing what t
 ## Later release
 
 - **Inherited accounts, both sides:** accounts the client has inherited (the 10-year rule, yearly minimums when the original owner had started RMDs, the stretch for eligible beneficiaries, the IRS Single Life Table), and heirs taxed over 10 years on what the household leaves in place of today's flat heirs' rate.
-- **Staged spending, built:** from phase 3's design.
+- **Staged spending, built:** from phase 3's design (`docs/staged-spending-design.md`, decided 2026-10-10): flat or the smile (Blanchett's curve, with a strength setting), and one-off and repeating extra expenses.
+- **Health care before Medicare (Michael, 2026-10-10: a later rollout):** each person's insurance from retirement to 65, with ACA premium tax credits that depend on MAGI (so Roth conversions and withdrawals change the real premium; pairs with the conversion planner).
+- **Long-term care (Michael, 2026-10-10: a later rollout):** a late-life cost for the last years of each life, and long-term care insurance (premiums and benefits).
 - **Life tables in the projection:** random lifespans, once Monte Carlo exists.
 - **Simplified free versions** of each calculator, sharing `src/lib` and the household shape, storing nothing on a server; with round one's two questions (does the full version move behind the login; one site or two). The public calculator is replaced at the switchover (end of phase 1); simplified versions are built from the new version.
 - **The simplified Roth calculator (Michael's vision, 2026-10-09):** standalone, not tied to households, one vertical column of collapsible blocks: the inputs (one block, a dropdown per category), the rates, the breakdown, then the charts and the year-by-year table.
