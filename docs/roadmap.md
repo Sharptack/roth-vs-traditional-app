@@ -4,22 +4,28 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 ## Current status
 
-*Rewritten (not appended to) at each `/closeout`. Last: 2026-10-09.*
+*Rewritten (not appended to) at each `/closeout`. Last: 2026-10-10.*
 
-**Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, phase 2 (survivor years and engine additions) the "Before phase 2" list and all three "Before phase 3" lists. 855 tests. Last closed: "Before phase 3: adjustments (2) and (3)" (tag `phase-before-3b-done`): the EMTR worked out on the tax page, the bracket visual in total and taxable income, Social Security "Currently receiving" and estimated by default, already-retired households, life expectancy, collapsing accounts, "per year".
+**Done:** round one; round 2 phases 0 (inputs, calculators, blocks), 1 (calculator updates), the switchover, 2 (survivor years and engine additions), the "Before phase" lists, and phase 3 (retirement spending). 893 tests. Last closed: phase 3 (tag `phase-3-done`): the spending need from income or a budget, read by every calculator (already-retired households now get the projection and the conversion's lifetime view); the legacy goal (amount or share, balance or after tax) in sustainable spending; the Retirement spending page with Use in the plan and the trade-off chart; a charitable legacy (Pre-tax to charity first); the staged-spending design, decided.
 
-**In progress: phase 3, retirement spending** (started 2026-10-09; steps set in the phase 3 section below). Steps (a) to (e) and (g) done (local, unpushed); step (f), the staged-spending design, is written and decided (`docs/staged-spending-design.md`). Next: `/closeout`.
+**In progress:** nothing.
+
+**Next: phase 4, pre-retirement funding.** Steps not yet set (set them here first); it starts from the two measures side by side (a 4% first-year withdrawal at retirement, and phase 3's sustainable spending with the legacy goal).
 
 **Known gaps and open items:**
+- The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).
 - The Roth comparison's retirement snapshot leaves out other income rows such as rent (the pension is in).
 - Tax-exempt income isn't yet in Social Security taxability or IRMAA.
 - One contribution type per person (see Open questions). The Roth catch-up rule is stated on the Roth page but not applied to the numbers.
 - Only the first death is modeled; the survivor lives to their life expectancy. Social Security "Currently receiving" has no known PIA, so it gives a spouse no spousal top-up.
+- Staged spending is designed (`docs/staged-spending-design.md`) but not built (Later release).
 
 **Decisions later phases build on** (details in the archive):
 - Today's dollars everywhere; fixed thresholds shrink at the inflation input (2.5%) via `thresholdScale`. Results change only by a decided change; the v1 pins change by additions only.
 - Rate terms: marginal = the bracket, average tax rate = tax ÷ income, effective marginal rate = the tax on the next dollar. The Roth comparison pairs marginal today with the effective rate on the withdrawal. Bracket charts show total income with the taxable figure beside it.
-- Decision calculators vs. plan evaluators (below); "Use in the plan" writes a choice back (Roth/Pre-tax trial, pension lump sum). The Dashboard groups them as Decisions and Evaluations.
+- Decision calculators vs. plan evaluators (below); "Use in the plan" writes a choice back (Roth/Pre-tax trial, pension lump sum, retirement spending). The Dashboard groups them as Decisions and Evaluations.
+- The spending need: one function (`spendingNeed.js`), from today's income (default) or the budget; everyone retired = the budget. Use in the plan writes spending back as the budget, worked back through the costs that end and the lifestyle.
+- The legacy goal (none by default) applies to every sustainable-spending figure on the evaluators; after-tax figures for what is left use `afterTaxEnding` (heirs' rate; a charity's share from Pre-tax first).
 - Survivor years: single from the year after the first death, the larger Social Security benefit, accounts roll to the survivor, spending 80% (an input).
 - A retirement age at or below the age now = already retired: no earnings or contributions from this year; a retiree's income row with no ages counts for life (earnings excepted). Each person's "plan to age" is now called life expectancy.
 - Social Security: no row = estimated from earnings (a PIA of $0 = none); "Currently receiving" = the monthly check, as is, from now.
@@ -32,7 +38,6 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 | Phase | What ships | Done when |
 | --- | --- | --- |
-| 3. What your resources allow you to spend | Sustainable spending with a legacy goal; spending flat for now; a written design for staged spending. | A hand-worked case spends down to exactly the legacy goal. |
 | 4. Pre-retirement funding | The spending need against the assets' first-year 4% income and against sustainable spending; savings needed; retirement age. | Each solved savings amount, rerun, lands on its target. |
 | 5. Social Security | Benefits by claiming age from each full-retirement-age benefit, lifetime totals, break-even ages, the spouse-by-spouse grid, a discount rate, the chance of being alive by age. | Hand-worked reductions, credits and survivor benefits match. |
 | 6. Year-by-year planner | A new page: click a year to add a Roth conversion or change a contribution, and see what that change is worth. | A change alters only that year and later; its value matches a full rerun. |
@@ -42,7 +47,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 | 10. Household plans | One household's facts with several saved plans, switching between them and comparing them in every calculator. | Two plans of one household open side by side with every difference marked. |
 | 11. Liabilities and debt pay-off | A debt pay-off calculator for every debt (the mortgage included): pay off early or invest, the order to pay debts off, and payoff dates flowing into the retirement income number and the projection. | A hand-worked amortization matches, and the payoff year changes the spending need from that year on. |
 
-The finished phases (0, 1, 2, the switchover and the "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
+The finished phases (0, 1, 2, 3, the switchover and the "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
 
 ## How the plan fits together
 
@@ -66,7 +71,7 @@ A decision calculator runs the plan once per option and writes the chosen one ba
 | Pension: lump sum or monthly | Pension (phase 1) | Yes, the pension row | Built (before phase 3) |
 | Debts: pay off early or invest | Debt pay-off (phase 11) | No | Phase 11 |
 | Which accounts to draw first | The projection's strategy comparison | Yes, an input | Already there |
-| How much to spend, and the legacy goal | Retirement spending (phase 3), guardrails (phase 9) | The flat retirement income number | Phases 3 and 9 |
+| How much to spend, and the legacy goal | Retirement spending (phase 3), guardrails (phase 9) | Yes: spending from income or the budget, and the legacy goal | Built (phase 3); guardrails phase 9 |
 
 ### What the projection includes
 
@@ -82,7 +87,7 @@ The projection has to carry every part of the household, so the plan evaluators 
 | RMDs and IRMAA | Yes | — |
 | Roth conversions | As whole-plan strategies | Year by year: phase 6 |
 | Debt payments | Only "payments that end", before retirement | Each debt to its payoff date, before and after retirement: phase 11 |
-| Spending | The flat retirement income number | Legacy goal: phase 3; guardrails: phase 9; staged spending: later |
+| Spending | Flat, from income or the budget, with the legacy goal (phase 3) | Guardrails: phase 9; staged spending: later (designed) |
 | Survivor years | Yes | — |
 | Tax drag on taxable accounts; returns before and after retirement | Yes | — |
 | The return each year | Constant | Random paths: phase 8 |
@@ -92,39 +97,6 @@ The projection has to carry every part of the household, so the plan evaluators 
 ### Year-by-year and Monte Carlo: one plan
 
 Both run the same plan from the same inputs and assumptions; only the returns differ. The year-by-year projection is the plan at a constant return, readable line by line. Monte Carlo (phase 8) reruns that exact plan over many random return paths and reports how often it works. With no volatility, Monte Carlo reproduces the year-by-year exactly (a test). Both pages show the same plan (by name, once phase 10 exists) and link to each other; the guardrails (phase 9) are spending rules applied inside the same paths.
-
-## Phase 3: What your resources allow you to spend
-
-The question is less "how much do I spend?" than "how much do my resources allow me to spend?" The projection already answers a version of it (sustainable spending); phase 3 adds a legacy goal and gives the answer its own calculator page, Retirement spending.
-
-**The legacy goal:** the household spends the most it can while still leaving at least the goal at the second death. Options for setting it: a dollar amount in today's dollars, a share of today's portfolio, or none. Both measures are offered, starting with the balance itself; the after-tax amount (Pre-tax money taxed at the heirs' rate) follows for more robust planning.
-
-**The page shows:**
-
-- What the resources allow: sustainable spending through the plan, with the legacy goal met.
-- Against today's lifestyle: that figure beside the retirement income number, and the difference.
-- The trade-off: a chart of spending against legacy (for example, each $100,000 more for heirs costs $X a year of spending), so the goal can be adjusted with the cost in view.
-
-**Spending stays flat to start** (with phase 2's 80% after the first death). Staged spending is designed in this phase and built later: the design write-up covers spending that falls with age (the research on the "retirement spending smile"), one-off and repeating extra expenses, health care before Medicare and long-term care, health costs rising faster than prices, and a bottom-up budget feeding the base. It is agreed with Michael before anything is built.
-
-**Engine:** the sustainable-spending search gains the legacy goal as a second condition: no shortfall in any year and at least the goal left at the end.
-
-**A charitable legacy.** The legacy goal can be split between heirs and charity. A charity owes no tax on Pre-tax money it inherits, so Pre-tax money is worth its full balance there, while heirs pay tax on it. The larger the charitable share, the more Pre-tax is favored, both in the Roth vs. Pre-tax comparison and in deciding which accounts to spend first. The page shows that effect in a sentence and in the wealth figures.
-
-**Tests:** a hand-worked case with no tax and only Roth money, where spending with a legacy goal follows the annuity formula with a final balance.
-
-**The spending need, top-down or bottom-up (decided 2026-10-09, Michael).** Both methods estimate what the household spends today, after tax. Top-down (today's method): take-home pay minus savings. Bottom-up: a budget, for now one number, "Baseline expenses per year" (later an itemized budget calculator fills it). Retirement spending follows from either the same way: today's spending, minus the costs that end by retirement, times the lifestyle factor; for a household already retired it is the budget as is. A select, "Base retirement spending on: Today's income / My budget", picks the method: today's income by default (so no results change); fixed to the budget, which is then required, when everyone is retired. Explicit rather than "a budget, if entered, wins", so a budget can be entered without changing the plan. One pure function, `spendingNeed(household)`, returns the need, its method and both estimates where they can be worked out; every calculator reads it (the projection, the conversion lifetime view, the Roth comparison's retirement income number, the Retirement spending page) instead of working it out itself. Reason: a household already retired has no top-down figure, and some households only have a budget number. The Retirement spending page compares the spending need with what the assets can generate as income; the gap between the top-down figure and the budget belongs to the budget calculator (Michael, 2026-10-09; in `docs/ideas.md`). "Use in the plan" on the page writes the sustainable figure into the plan's spending (Michael, 2026-10-09). How it is written (decided 2026-10-10, Michael): it sets the budget method; for a household still working the budget is worked back from the retirement figure (sustainable ÷ lifestyle + the costs that end), since the budget is today's spending; for a household already retired it is the sustainable figure as is. The spending that succeeds in 50% of Monte Carlo paths is phase 9 (after phase 8), not this phase; phase 3's figure is the same search at the constant return.
-
-**Steps (set 2026-10-09):**
-- (a) The spending need: the baseline-expenses input and the method select; `spendingNeed(household)` read by every calculator; a household already retired gets its projection and conversion lifetime view.
-- (b) The legacy goal in the engine: a dollar amount, a share of today's portfolio, or none; the balance measure, then after tax (Pre-tax at the heirs' rate). The hand-worked annuity test.
-- (c) The Retirement spending page (an Evaluation): what the resources allow beside the spending need, and the difference; "Use in the plan".
-- (d) The trade-off chart: spending against legacy ("each $100,000 more for heirs costs $X per year").
-- (e) A charitable legacy: the goal split between heirs and charity, Pre-tax at full value to charity; the effect in a sentence and in the wealth figures.
-- (f) The staged-spending design write-up, agreed with Michael before anything is built.
-- (g) The Docs article.
-
-**Status:** started 2026-10-09. Step (a) done 2026-10-09 (868 tests, local, unpushed). Spending in the inputs: "Base retirement spending on" Today's income / The budget, and "Baseline expenses per year (after tax)" shown for the budget. With everyone retired, the method choice, the costs that end and the lifestyle are hidden, and the budget is the spending as entered. `src/lib/spendingNeed.js` (`spendingNeed`, `budgetNeed`); the Roth comparison takes `baselineExpenses` in place of take-home minus savings and returns `retirementNeed.method` and `.topDown` (v1 pins: those two keys added, nothing else changed). The projection and the conversion lifetime view read the spending need, not the Roth result, so a household already retired gets both once its budget is entered; until then they ask for it. The Roth page's "How is this calculated?" walks from the budget under that method. Articles updated: inputs (Spending), roth, conversion. Step (b) done 2026-10-10 (873 tests, local, unpushed): the legacy goal in the engine (`projectionSummary.js`). `sustainableSpending` takes `legacy: { target, measure, heirTaxRate }` and requires no shortfall in any year and at least the target left at the end of the plan (the second death); `legacyValue` measures the end as the balance or after tax (Pre-tax at the heirs' rate); `legacyTarget` turns a dollar amount or a share of today's portfolio into dollars; `meetsPlan` says whether a spending level works (a goal out of reach even at $0 of spending gives 0). Hand-worked: Roth only, $1,000,000 at 5% for 3 years, a $500,000 goal: $198,670.73 a year, ending at $500,000; no goal $349,722.44; each $100,000 for heirs costs $30,210.36 a year. Nothing reads the goal yet (the page and its inputs are step c), so no results change. Step (c) done 2026-10-10 (881 tests, local, unpushed): the Retirement spending page (#/spending, an Evaluation; `src/lib/retirementSpending.js`, `src/next/RetirementSpendingResult.jsx`). A "Legacy goal" section in Income and expenses (after Spending): nothing set (the default), an amount, or a share of today's portfolio (10% to 200%), measured as the balance or after tax (the heirs' rate under Withdrawals). The page leads with what the resources allow (per year after tax, to the end of the plan, leaving the goal) beside the spending need and the difference; a second block gives what the goal costs a year (against spending with no goal) and what is left; a goal out of reach even at $0 of spending says so. "Use in the plan" sets the budget method with the budget worked back (as decided), rounded down to the dollar, so the plan's need lands at or just under the figure (tested). Also decided in building (Claude, following "every evaluator reads the same plan"): the projection's sustainable spending and funded status leave the goal too, and say so; with no goal (the default) nothing changes (v1 pins: `legacy: null` added only). Example: the default household with a $1,000,000 goal: $126,442 a year against a $65,380 need; the goal costs $6,959 a year. Articles: inputs (Legacy goal), projection; the page's own article is step (g). Step (d) done 2026-10-10 (885 tests, local, unpushed): the trade-off block, "Spending against legacy" (`legacyTradeoff`): each $100,000 more for heirs costs $X a year at the household's goal; what the plan leaves spending the planned amount, and the most it can leave (spending nothing); a line of spending against the goal (round steps from $0 to just past the larger of what is left spending the need and the goal; the goal is a point of its own), with the figures in a table below. The range was first 90% of the most that can be left, which for a 35-year-old ($13.8 million) hid every plausible goal in one corner. Hand-worked: the Roth case, a straight line at $30,210.34 per $100,000. About 0.3 s for the default household. LineChart gained `formatXTick`. Step (e) done 2026-10-10 (893 tests, local, unpushed): a charitable legacy. Decided 2026-10-10 (Michael, the recommended options): the charity's part is a share of what is left ("To charity" in the Legacy goal section: none, 10%, 25%, 50%, 75%, all), taken from Pre-tax money first (the charity named beneficiary of the Pre-tax accounts), not a slice of every account. One function, `afterTaxEnding` (`projectionSummary.js`): total − heirs' rate × max(0, Pre-tax − share × total); with no share it is the old formula exactly (v1 pins: `charityShare: 0` added only). Used by every after-tax figure for what is left: the projection's lifetime summary and strategy comparison, the Roth page's lifetime comparison, the conversion's legacy after tax, the legacy goal measured after tax. The Retirement spending page says it in a sentence (the charity's dollars, the Pre-tax money passing untaxed, the heirs' tax spared, and that Pre-tax money is favored); the wealth labels name it. Hand-worked: $600,000 / $300,000 / $100,000 at 24%: $856,000; 25% to charity $916,000; 75% $1,000,000; and a spending case ($98,000 Pre-tax, a $38,000 after-tax goal: $16,000 a year, $19,610 with all to charity). Open: the Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable-spending figures (it does count the charity in after-tax wealth). Step (f) written 2026-10-10: `docs/staged-spending-design.md` (spending = the base × its shape at that age + the extra expenses; three editable phases with a research setting from Blanchett 2014; one-off and repeating expenses; health care before Medicare; long-term care; health costs rising faster than prices; the budget feeding the base; how each fits the engine and pages; a build order), with seven decisions for Michael at its end. Decided 2026-10-10 (Michael): two options, flat (the default) or the smile, a smooth curve with one adjustment (how strongly spending falls: half, the research, one and a half); the youngest living person's age drives it (the youngest sets the length of the plan); the survivor share scales the curve, extras kept whole; health care is not modeled separately (the smile's late rise covers it); health care before Medicare and long-term care go to a later rollout (`docs/ideas.md`); extra expenses while anyone works come from that year's paycheck surplus first, then the portfolio. The curve is Blanchett's 2013 equation 1 (Morningstar, "Estimating the True Cost of Retirement", p. 15), read from the paper itself: change = 0.00008 × age² − 0.0125 × age − 0.0066 × ln(target) + 0.546; at $100,000 it reaches 74.6% by 85, close to his 2014 article's $74,146 at 84. The curve starts at retirement, at whatever age, and applies only in retirement; working years keep the other methods (Michael, 2026-10-10). The formula uses the actual age, so a retirement before about 63 rises a little at first (+2.5% a year at 55). The design is updated to match; nothing built (staged spending stays in Later release until scheduled). Step (g) done 2026-10-10: the Docs article "Retirement spending" (`articles/spending.md`), linked from the page.
 
 ## Phase 4: Pre-retirement funding
 

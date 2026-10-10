@@ -33,7 +33,7 @@ read when adding one or choosing what to build), `docs/history.md` (round one).
 ## Commands
 ```
 npm run dev       # dev server, port 5173
-npm test          # vitest (4 workers); 855 tests
+npm test          # vitest (4 workers); 893 tests
 npm run lint      # ESLint with the React hooks rules
 npm run build     # static site -> dist/
 ```
