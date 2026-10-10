@@ -1,6 +1,6 @@
 # Staged spending: design (phase 3 step f)
 
-Written 2026-10-10. Michael's decisions the same day are folded in below; the remaining open point is at the end.
+Written 2026-10-10. Michael's decisions the same day are folded in below; nothing is left open.
 Today spending in retirement is one flat figure in today's dollars (80% of it after the first death). This is how it
 changes with age and events, and how that fits the engine, the inputs and the pages already built.
 
@@ -34,7 +34,7 @@ Equation 1 gives nearly the same depth, 74.6% at 85 for $100,000; it puts the lo
 **The adjustment: how strongly spending falls,** as a multiple of the research curve's yearly change: **half**, **the
 research** (the default once the smile is chosen) and **one and a half**. One number an advisor can explain: "we
 assume spending falls half as fast as the average retiree's". The level as a share of the base, from equation 1, the
-change applied each year from 65:
+change applied each year from retirement at 65:
 
 | Base | Strength | 70 | 75 | 80 | 85 | 90 | 95 on |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -47,9 +47,10 @@ change applied each year from 65:
 **Rules:**
 - **Whose age:** the youngest living person's (decided 2026-10-10: the youngest sets the length of the plan). After
   the first death, the survivor's.
-- **When it starts:** from the first retirement year, and not before 65. The study's data covers 60 to 90, and below
-  about 63 equation 1 gives rising spending (+2.5% a year at 55), which the data doesn't support. Someone retiring at
-  58 is flat to 65, then follows the curve. This is the one point still open (below).
+- **When it starts** (decided 2026-10-10): at retirement, the first year anyone is retired, at whatever age. The
+  curve applies only in retirement; working years keep the other methods (the paycheck is the budget). The formula
+  uses the actual age, so someone retiring before about 63 sees spending rise a little at first (+2.5% a year at 55,
+  +0.8% at 60), which is equation 1 below the study's 60-to-90 data; the page's chart will show it.
 - **When it stops:** at 95 the level holds, as in the study (too little data beyond).
 - **The spending target** in the formula is the base, fixed for the plan, as in the study.
 - **Survivor share** (decided 2026-10-10: as proposed): the 80% after the first death scales the curve's result.
@@ -108,11 +109,6 @@ calculator on the ideas list fills that one number. Its lines could later be tag
 1. The schedule in the engine (flat by default, no change) and the smile with its strength setting.
 2. Extra expenses (one-off, repeating), paycheck first while working.
 3. The spending chart on the Retirement spending page, the projection's spending columns, and the article.
-
-## Still open
-
-- **The curve before 65:** flat until 65 (proposed, above), or follow equation 1 from the first retirement year at any
-  age (spending would rise slightly in the late fifties and early sixties)?
 
 Sources: Blanchett, "Estimating the True Cost of Retirement", Morningstar, 2013 (equation 1, page 15);
 Blanchett, "Exploring the Retirement Consumption Puzzle", *Journal of Financial Planning*, May 2014.
