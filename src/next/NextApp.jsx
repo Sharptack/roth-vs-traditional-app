@@ -143,6 +143,7 @@ export const CALCULATORS = [
     title: 'Retirement spending',
     blurb: 'What the household’s resources allow it to spend each year, with a legacy goal, against the spending need.',
     ownTitle: 'Retirement spending inputs',
+    article: 'spending',
   },
   {
     id: 'tax',
