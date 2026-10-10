@@ -552,6 +552,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > defa
   "projection": {
     "endAge": 95,
     "funded": 2.04039,
+    "legacy": null,
     "need": 65380,
     "runOutYear": null,
     "strategies": [
@@ -1212,6 +1213,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjC
   "projection": {
     "endAge": 95,
     "funded": 1.334333,
+    "legacy": null,
     "need": 143036,
     "runOutYear": null,
     "strategies": [
@@ -1872,6 +1874,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjM
   "projection": {
     "endAge": 95,
     "funded": 0.653183,
+    "legacy": null,
     "need": 166968,
     "runOutYear": 2047,
     "strategies": [
@@ -2525,6 +2528,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjO
   "projection": {
     "endAge": 95,
     "funded": 1.678381,
+    "legacy": null,
     "need": 102592.5,
     "runOutYear": null,
     "strategies": [
@@ -3178,6 +3182,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > mfjS
   "projection": {
     "endAge": 95,
     "funded": 1.961167,
+    "legacy": null,
     "need": 123567.41015,
     "runOutYear": null,
     "strategies": [
@@ -3831,6 +3836,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > oldP
   "projection": {
     "endAge": 95,
     "funded": 2.30933,
+    "legacy": null,
     "need": 62692.5,
     "runOutYear": null,
     "strategies": [
@@ -4491,6 +4497,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
   "projection": {
     "endAge": 95,
     "funded": 0.667078,
+    "legacy": null,
     "need": 99782.3984,
     "runOutYear": 2036,
     "strategies": [
@@ -5119,6 +5126,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > sing
   "projection": {
     "endAge": 100,
     "funded": 1.003888,
+    "legacy": null,
     "need": 96867.65568,
     "runOutYear": null,
     "strategies": [
@@ -5759,6 +5767,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
   "projection": {
     "endAge": 95,
     "funded": 2.300884,
+    "legacy": null,
     "need": 65380,
     "runOutYear": null,
     "strategies": [
@@ -6419,6 +6428,7 @@ exports[`version 1 households: every calculator, pinned (round 2 phase 0) > spou
   "projection": {
     "endAge": 95,
     "funded": 2.267734,
+    "legacy": null,
     "need": 69910,
     "runOutYear": null,
     "strategies": [

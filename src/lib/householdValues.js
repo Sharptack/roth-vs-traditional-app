@@ -45,6 +45,9 @@
 //   spending: { debtPayments, otherExpenses, retirementLifestyle,   // the costs that end at retirement
 //               method, baseline },        // phase 3: retirement spending from 'income' (take-home minus
 //                                          // savings) or 'budget' (baseline: today's spending, after tax)
+//   legacy: { type, amount, share, measure },   // phase 3: the legacy goal at the second death: type 'none' |
+//                                          // 'amount' (today's dollars) | 'share' (of today's portfolio);
+//                                          // measure 'balance' | 'afterTax' (Pre-tax at the heirs' rate)
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedBasis, retirementRateShift, medicareIrmaa,
 //                  survivorSpending,       // survivorSpending: a couple's spending after the first death, '0.8' = 80%
 //                  dividendYield,          // qualified dividends a taxable account pays a year, '0.013' = 1.3%
@@ -131,6 +134,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
   dependents: [],
   deductions: { itemized: '' },
   spending: { debtPayments: '6000', otherExpenses: '0', retirementLifestyle: '1', method: 'income', baseline: '' },
+  legacy: { type: 'none', amount: '', share: '0.5', measure: 'balance' },
   assumptions: {
     returnRate: '0.07',
     inflationRate: '0.025',
@@ -389,6 +393,7 @@ export function cleanHouseholdValues(input, year = new Date().getFullYear()) {
     dependents: cleanRows(raw.dependents, 'dependents'),
     deductions: cleanGroup(raw.deductions, D.deductions),
     spending: cleanGroup(raw.spending, D.spending),
+    legacy: cleanGroup(raw.legacy, D.legacy),
     assumptions: cleanGroup(raw.assumptions, D.assumptions),
     calculators: Object.fromEntries(
       Object.entries(D.calculators).map(([name, defaults]) => [name, cleanGroup(calculators[name], defaults)]),

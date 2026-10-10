@@ -240,6 +240,13 @@ export function toHouseholdV2(input, year) {
       method: values.spending.method === 'budget' ? 'budget' : 'income',
       baselineExpenses: blankAsNull(values.spending.baseline),
     },
+    // The legacy goal (phase 3; projectionSummary.js legacyTarget / legacyValue).
+    legacy: {
+      type: ['amount', 'share'].includes(values.legacy?.type) ? values.legacy.type : 'none',
+      amount: blankAsZero(values.legacy?.amount),
+      share: blankAsZero(values.legacy?.share),
+      measure: values.legacy?.measure === 'afterTax' ? 'afterTax' : 'balance',
+    },
     calculators: {
       tax: {
         ordinaryIncome: thisYear('ordinary') + pensionsThisYear,
@@ -335,6 +342,9 @@ export function validateHouseholdV2(household) {
   if (!isNum(household.deductions.itemized) || household.deductions.itemized < 0) errors.push("Itemized deductions can't be negative.");
   const baseline = household.spending.baselineExpenses;
   if (baseline != null && !(isNum(baseline) && baseline >= 0)) errors.push("Baseline expenses can't be negative.");
+  const goal = household.legacy;
+  if (goal?.type === 'amount' && !(isNum(goal.amount) && goal.amount >= 0)) errors.push("The legacy goal can't be negative.");
+  if (goal?.type === 'share' && !(isNum(goal.share) && goal.share >= 0 && goal.share <= 3)) errors.push('Choose the legacy goal as a share of today’s portfolio.');
   for (const d of household.dependents) {
     if (d.kind === 'child' && !(isNum(d.age) && d.age >= 0 && d.age <= 30)) errors.push("Enter each child's age (0 to 30).");
   }

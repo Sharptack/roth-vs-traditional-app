@@ -46,6 +46,18 @@ export function pensionTile(p, inputs) {
 }
 
 // Projection: funded status, and how long the money lasts.
+// Retirement spending (phase 3): what the resources allow, against the spending need.
+export function spendingTile(view) {
+  if (!view) return { headline: 'Needs inputs', detail: 'Fill in the household to work it out.' };
+  if (!view.reachable) return { headline: 'Legacy goal out of reach', detail: `Even spending nothing leaves less than ${formatCurrency(view.legacy.target)}` };
+  const d = view.difference;
+  const gap = Math.abs(d) < 1 ? 'Exactly' : `${formatCurrency(Math.abs(d))} ${d > 0 ? 'above' : 'below'}`;
+  return {
+    headline: `${formatCurrency(view.sustainable)}/yr after tax`,
+    detail: `${gap} the ${formatCurrency(view.need)} spending need${view.legacy.target > 0 ? `, leaving ${formatCurrency(view.legacy.target)}` : ''}`,
+  };
+}
+
 export function projectionTile(view) {
   if (!view) return { headline: 'Needs inputs', detail: 'Fill in the household to project it.' };
   const pct = Math.round(view.funded * 100);

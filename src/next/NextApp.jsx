@@ -25,7 +25,9 @@ import { projectionView } from '../lib/projectionSummary.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
-import { conversionTile, pensionTile, projectionTile, rothTile, taxTile } from '../lib/suiteTiles.js';
+import { conversionTile, pensionTile, projectionTile, rothTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
+import { applySpendingChoice, retirementSpendingView, spendingChoice } from '../lib/retirementSpending.js';
+import RetirementSpendingResult from './RetirementSpendingResult.jsx';
 import { conversionResult } from '../lib/conversionCalculator.js';
 import { conversionLifetime } from '../lib/conversionLifetime.js';
 import { householdToPensionInputs, pensionResult } from '../lib/pensionCalculator.js';
@@ -90,6 +92,7 @@ const taxOf = (household) => taxCalculatorResult(householdToYearTaxParams(househ
 const conversionOf = (household) =>
   conversionResult(householdToYearTaxParams(household), household.calculators.conversion.amount, irmaaOf(household));
 const projectionOf = (r) => (r.spending.need !== null ? projectionView(r.household, r.spending.need) : null);
+const spendingOf = (r) => (r.spending.need !== null ? retirementSpendingView(r.household, r.spending.need) : null);
 // The homepage shows every calculator's tile; a calculator page shows only its own result; the
 // inputs page shows none.
 const isHome = (page) => page === 'home';
@@ -133,6 +136,13 @@ export const CALCULATORS = [
     blurb: 'From today to the end age: income, taxes, RMDs and balances every year, and whether the money lasts.',
     ownTitle: 'Projection inputs',
     article: 'projection',
+  },
+  {
+    id: 'spending',
+    group: 'evaluations',
+    title: 'Retirement spending',
+    blurb: 'What the household’s resources allow it to spend each year, with a legacy goal, against the spending need.',
+    ownTitle: 'Retirement spending inputs',
   },
   {
     id: 'tax',
@@ -194,6 +204,9 @@ export default function NextApp({ initialPage, initialValues, client }) {
   // beat behind while typing (useDeferredValue) instead of blocking each keystroke.
   const deferredRoth = useDeferredValue(roth);
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
+  const spendingView = useMemo(() => (shownOn(page, 'spending') ? spendingOf(deferredRoth) : null), [deferredRoth, page]);
+  // "Use in the plan" on Retirement spending (decided 2026-10-10): the budget that spends what the resources allow.
+  const spendingPick = useMemo(() => (page === 'spending' ? spendingChoice(deferredRoth.household, spendingView) : null), [page, deferredRoth, spendingView]);
   // The conversion over a lifetime (two projections, with and without it): its own page only.
   const conversionOverLife = useMemo(() => {
     if (page !== 'conversion' || deferredRoth.spending.need === null) return null;
@@ -222,10 +235,11 @@ export default function NextApp({ initialPage, initialValues, client }) {
     roth: rothTile(roth.result),
     tax: taxTile(parts.tax),
     projection: projectionTile(parts.projection),
+    spending: spendingTile(parts.spending),
     conversion: conversionTile(parts.conversion),
     pension: pensionTile(parts.pension, pensionInputs),
   });
-  const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection }) : null;
+  const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView }) : null;
   // For Copy summary: every calculator's headline, working out on demand what this page skipped.
   const summaryTiles = () => {
     const all = tilesOf({
@@ -233,6 +247,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
       conversion: conversion ?? conversionOf(h),
       pension: pension ?? (pensionInputs && pensionResult(pensionInputs)),
       projection: projection ?? projectionOf(roth),
+      spending: spendingView ?? spendingOf(roth),
     });
     return CALCULATORS.map((c) => ({ title: c.title, ...all[c.id] }));
   };
@@ -494,6 +509,14 @@ export default function NextApp({ initialPage, initialValues, client }) {
                 </>
               )}
               {calculator.id === 'tax' && <TaxResult tax={tax} />}
+              {calculator.id === 'spending' && (
+                <RetirementSpendingResult
+                  view={spendingView}
+                  error={roth.spending.error}
+                  choice={spendingPick}
+                  onUse={locked || !spendingPick ? undefined : () => setValues((v) => applySpendingChoice(v, spendingPick))}
+                />
+              )}
               {calculator.id === 'projection' && <ProjectionResult view={projection} error={roth.spending.error} />}
               {calculator.id === 'conversion' && <ConversionResult
                   conversion={conversion}

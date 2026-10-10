@@ -79,6 +79,14 @@ export function legacyTarget(household, { type = 'none', amount = 0, share = 0 }
   return 0;
 }
 
+// The legacy option (phase 3) the sustainable-spending search takes, from the household's goal (null = none).
+export function legacyOption(household) {
+  const goal = household.legacy ?? { type: 'none' };
+  const target = legacyTarget(household, goal);
+  if (!(target > 0)) return null;
+  return { target, measure: goal.measure, heirTaxRate: household.calculators?.projection?.heirTaxRate };
+}
+
 // Whether the plan meets a spending need: no shortfall in any year, and the legacy goal (if any) left.
 export function meetsPlan(household, need, { legacy, ...options } = {}) {
   const rows = runProjection(household, { ...options, need }).rows;
@@ -118,7 +126,9 @@ export function projectionView(household, need) {
   const options = { endAge: own.endAge, strategy: strategyById(own.strategy) };
   const { rows, runOutYear, endAge } = runProjection(household, { ...options, need });
   const summary = summarizeProjection(rows, { heirTaxRate: own.heirTaxRate });
-  const sustainable = sustainableSpending(household, options);
+  // With a legacy goal (phase 3), sustainable spending leaves it at the end; none = as before.
+  const legacy = legacyOption(household);
+  const sustainable = sustainableSpending(household, { ...options, legacy });
   const strategies = STRATEGIES.map((s) => {
     const sum = summarizeProjection(runProjection(household, { endAge: own.endAge, strategy: s.strategy, need }).rows, {
       heirTaxRate: own.heirTaxRate,
@@ -134,6 +144,7 @@ export function projectionView(household, need) {
     need,
     sustainable,
     funded: need > 0 ? sustainable / need : null,
+    legacy, // the goal ({ target, measure, heirTaxRate }) or null
     strategy: STRATEGIES.find((s) => s.id === own.strategy)?.id ?? STRATEGIES[0].id,
     strategies,
   };

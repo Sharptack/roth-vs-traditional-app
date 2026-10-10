@@ -3,7 +3,7 @@
 //
 //   #/                 the homepage: the household in brief and a tile per calculator
 //   #/inputs           the inputs page
-//   #/roth, #/tax, #/projection, #/conversion, #/pension   the calculators
+//   #/roth, #/tax, #/projection, #/spending, #/conversion, #/pension   the calculators
 //   #/docs[/<article>[/<heading>]]   the Docs section (lib/docs.js)
 //   #/scenarios        the Visualization page
 //
@@ -19,6 +19,7 @@ export const PAGES = {
   roth: '#/roth',
   tax: '#/tax',
   projection: '#/projection',
+  spending: '#/spending',
   conversion: '#/conversion',
   pension: '#/pension',
 };

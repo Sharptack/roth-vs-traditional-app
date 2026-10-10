@@ -4,7 +4,7 @@ The projection follows the household from this year to the end of the plan, one 
 
 ## What the page shows
 
-- **Funded status:** the highest steady after-tax income the plan supports every year to the end of the plan (**sustainable spending**), against the retirement income number from the household's spending inputs. Above 100% the plan is overfunded; below, the money runs out early at the planned spending.
+- **Funded status:** the highest steady after-tax income the plan supports every year to the end of the plan (**sustainable spending**), against the retirement income number from the household's spending inputs. Above 100% the plan is overfunded; below, the money runs out early at the planned spending. With a legacy goal set (on the inputs page), sustainable spending also leaves the goal at the end of the plan, so it is lower.
 - **Compare withdrawal strategies:** every strategy run at the retirement income number, with its lifetime income tax, Medicare IRMAA surcharges, after-tax ending wealth and how long the money lasts.
 - **Lifetime summary:** total tax, the average tax rate over the whole plan, the year with the highest tax, and the ending balances. After-tax ending wealth counts Pre-tax money at the heirs' tax rate (an assumption) and Roth and taxable money in full, since heirs get a step-up in basis on taxable accounts.
 - **Income by source in retirement** and **balances over time**, as charts.

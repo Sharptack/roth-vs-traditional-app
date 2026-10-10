@@ -127,6 +127,12 @@ Together they set the **retirement income number**, the after-tax income the hou
 
 With everyone already retired there is no take-home pay to start from, so the budget is the retirement income number as entered; the costs that end and the lifestyle setting no longer apply and are hidden. Until it is entered, the projection and the conversion's lifetime view ask for it.
 
+## Legacy goal
+
+What the household wants to leave at the end of the plan (the second death, for a couple), for heirs or charity: **nothing set** (the default: spend it all), **an amount** in today's dollars, or **a share of today's portfolio** (of every Existing Account's balance today). **Measured as** the balance itself, or **after tax**, where Pre-tax money counts at the heirs' tax rate (under Withdrawals) and Roth and taxable money count in full.
+
+With a goal set, sustainable spending is the most the household can spend each year that never falls short and still leaves the goal: on the Retirement spending page and in the projection's funded status.
+
 ## Assumptions
 
 - **Expected annual investment return,** after inflation, the same for every account.

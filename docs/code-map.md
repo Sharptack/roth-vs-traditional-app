@@ -38,7 +38,8 @@ after-tax difference), `portfolioTax.js`, `blend.js`, `rateSteps.js`, `growthCal
 ## Calculators (`src/lib/`)
 `taxCalculator.js`, `conversionCalculator.js`, `pensionCalculator.js`, `irmaa.js`, `rmd.js`, `projection.js`
 (`runProjection`: the year loop, strategy seam, `convertNow`), `strategies.js`, `projectionSummary.js` (sustainable
-spending, `projectionView`), `spendingNeed.js` (the spending need every calculator reads: top-down or the budget),
+spending, `projectionView`), `spendingNeed.js` (the spending need every calculator reads: top-down or the budget), `retirementSpending.js` (the
+Retirement spending page: what the resources allow with the legacy goal; "Use in the plan"),
 `lifetimeComparison.js`, `conversionLifetime.js`, `suiteTiles.js`, `blockHeadlines.js`.
 
 ## UI

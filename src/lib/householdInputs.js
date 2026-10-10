@@ -207,6 +207,11 @@ export const INPUT_SECTIONS = [
     },
   },
   {
+    id: 'legacy',
+    title: 'Legacy goal',
+    summary: (v) => legacySummary(v.legacy),
+  },
+  {
     id: 'assumptions',
     title: 'Assumptions',
     summary: (v) => {
@@ -250,12 +255,21 @@ export const INPUT_SECTIONS = [
   },
 ];
 
+// The legacy goal in a line (phase 3): 'None', '$500,000 left', '25% of today's portfolio left, after tax'.
+export function legacySummary(legacy) {
+  const l = legacy ?? {};
+  const after = l.measure === 'afterTax' ? ', after tax' : '';
+  if (l.type === 'amount') return `${money(l.amount)} left at the end of the plan${after}`;
+  if (l.type === 'share') return `${pct(l.share)} of today's portfolio left at the end of the plan${after}`;
+  return 'None: spend it all';
+}
+
 const strategyLabel = (v) => (STRATEGIES.find((s) => s.id === v.calculators.projection.strategy) ?? STRATEGIES[0]).label;
 
 // The inputs page: four groups, each holding its sections (decided 2026-10-08).
 export const INPUT_GROUPS = [
   { id: 'household', title: 'Household', sections: ['household', 'dependents'] },
-  { id: 'income', title: 'Income and expenses', sections: ['income', 'contributions', 'spending', 'deductions'] },
+  { id: 'income', title: 'Income and expenses', sections: ['income', 'contributions', 'spending', 'legacy', 'deductions'] },
   { id: 'assets', title: 'Assets and liabilities', sections: ['accounts', 'liabilities'] },
   { id: 'assumptions', title: 'Assumptions', sections: ['assumptions'] },
 ];
@@ -288,6 +302,11 @@ export const CALCULATOR_INPUTS = {
     sections: ['projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
+  // Retirement spending (phase 3): the legacy goal and spending first, then what the plan reads.
+  spending: {
+    sections: ['legacy', 'spending', 'projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
+    fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
+  },
   conversion: {
     sections: ['conversion', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
@@ -314,6 +333,7 @@ const SECTION_DATA = {
   liabilities: (v) => v.liabilities,
   deductions: (v) => v.deductions,
   spending: (v) => v.spending,
+  legacy: (v) => v.legacy,
   assumptions: (v) => [v.assumptions, v.calculators.projection],
   projection: (v) => v.calculators.projection,
   conversion: (v) => v.calculators.conversion,

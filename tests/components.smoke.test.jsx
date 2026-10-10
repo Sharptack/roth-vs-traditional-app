@@ -1079,7 +1079,7 @@ describe('NextApp', () => {
     }
     expect(page).toContain('<strong>Existing Accounts:</strong> Pre-tax $100,000');
     expect(page).toContain('class="collapsible card collapsible-card inputs-assumptions"');
-    expect((page.match(/mini-block/g) ?? []).length).toBe(8);
+    expect((page.match(/mini-block/g) ?? []).length).toBe(9); // with the legacy goal (phase 3)
     // income rows: closed, one line each
     expect(page).toContain('<span>W-2 wages · $100,000 per year</span>');
     expect(page).toContain('<span>Social Security · estimated from earnings</span>');
@@ -1091,7 +1091,7 @@ describe('NextApp', () => {
     for (const label of ['+ Add other income types', 'Lump sum offered', 'Project to age', 'Convert to Roth this year']) {
       expect(page, label).not.toContain(label);
     }
-    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(12);
+    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(13); // with the legacy goal (phase 3)
     expect(page).toContain('Open a calculator');
     expect(page).toContain('href="#/pension"');
     expect(page).not.toContain('suite-tile-headline');
@@ -1455,6 +1455,34 @@ describe('Already retired (2026-10-09)', () => {
     expect(inputs).toContain('Baseline expenses per year (after tax)');
     expect(inputs).not.toContain('Base retirement spending on');
     expect(inputs).toContain('Spending $60,000 per year');
+  });
+
+  it('phase 3: the Retirement spending page, with and without a legacy goal, and its tile', async () => {
+    const { default: NextApp, previewResult } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const { retirementSpendingView, spendingChoice, applySpendingChoice } = await import('../src/lib/retirementSpending.js');
+    const plain = renderToStaticMarkup(<NextApp initialPage="spending" initialValues={D} client={null} />);
+    expect(plain).toContain('<h1>Retirement spending</h1>');
+    expect(plain).toContain('What the resources allow');
+    expect(plain).toContain('No legacy goal is set');
+    expect(plain).toContain('Use in the plan: spend');
+    expect(plain).not.toMatch(/NaN|Infinity/);
+    const goal = { ...D, legacy: { ...D.legacy, type: 'amount', amount: '1000000' } };
+    const withGoal = renderToStaticMarkup(<NextApp initialPage="spending" initialValues={goal} client={null} />);
+    expect(withGoal).toContain('leaving the $1,000,000 legacy goal');
+    expect(withGoal).toMatch(/costs <strong>\$[\d,]+ per year<\/strong>/);
+    // the projection reads the same goal
+    expect(renderToStaticMarkup(<NextApp initialPage="projection" initialValues={goal} client={null} />)).toContain('leaving the $1,000,000 legacy goal');
+    // Use in the plan, applied: the plan's need is now what the resources allow (to the dollar)
+    const r = previewResult(goal, 2026);
+    const view = retirementSpendingView(r.household, r.spending.need);
+    const after = previewResult(applySpendingChoice(goal, spendingChoice(r.household, view)), 2026);
+    expect(after.spending.method).toBe('budget');
+    expect(after.spending.need).toBeLessThanOrEqual(view.sustainable);
+    expect(after.spending.need).toBeGreaterThan(view.sustainable - 1);
+    const home = renderToStaticMarkup(<NextApp initialPage="home" initialValues={goal} client={null} />);
+    expect(home).toContain('href="#/spending"');
+    expect(home).toMatch(/\$[\d,]+\/yr after tax/);
   });
 
   it('phase 3: the budget method on the Roth page walks from the budget', async () => {

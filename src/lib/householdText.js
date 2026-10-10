@@ -58,6 +58,12 @@ export function describeHousehold(household) {
   if (spending.method === 'budget' || everyoneRetired(household)) {
     lines.push(bullet('Retirement spending based on', spending.baselineExpenses == null ? 'the budget (not entered)' : `the budget, ${formatCurrency(spending.baselineExpenses)} per year`));
   }
+  // The legacy goal (phase 3), when one is set.
+  const goal = household.legacy;
+  if (goal?.type === 'amount' || goal?.type === 'share') {
+    const what = goal.type === 'amount' ? formatCurrency(goal.amount) : `${formatPercent(goal.share, 0)} of today's portfolio`;
+    lines.push(bullet('Legacy goal', `${what} left at the end of the plan${goal.measure === 'afterTax' ? ', after tax' : ''}`));
+  }
   lines.push(
     bullet('Costs ending before retirement', `${formatCurrency(spending.debtPaymentsEnding)} debt, ${formatCurrency(spending.otherExpensesEnding)} other, per year`),
     bullet('Retirement lifestyle', `${formatPercent(spending.retirementLifestyle, 0)} of today's spending`),

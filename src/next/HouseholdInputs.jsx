@@ -746,6 +746,54 @@ export default function HouseholdInputs({
       );
     },
 
+    // The legacy goal (phase 3): what is left at the end of the plan, read by Retirement spending
+    // and the projection's sustainable spending.
+    legacy: () => {
+      const l = values.legacy ?? { type: 'none', amount: '', share: '0.5', measure: 'balance' };
+      const set = (field) => setGroup('legacy', field);
+      return (
+        <>
+          <RadioGroup
+            legend="Leave at the end of the plan"
+            name={`${formId}-legacy-type`}
+            value={l.type}
+            onChange={set('type')}
+            options={[
+              { value: 'none', label: 'Nothing set' },
+              { value: 'amount', label: 'An amount' },
+              { value: 'share', label: "A share of today's portfolio" },
+            ]}
+            hint="For heirs (or charity), at the end of the plan: the second death for a couple. Spending is then the most that still leaves it."
+          />
+          {l.type === 'amount' && (
+            <CurrencyInput label="Legacy goal (today's dollars)" value={l.amount} onChange={set('amount')} />
+          )}
+          {l.type === 'share' && (
+            <SelectInput
+              label="Share of today's portfolio"
+              hint="Of every Existing Account's balance today, in today's dollars."
+              value={l.share}
+              onChange={set('share')}
+              options={['0.1', '0.25', '0.5', '0.75', '1', '1.5', '2'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%` }))}
+            />
+          )}
+          {l.type !== 'none' && (
+            <RadioGroup
+              legend="Measured as"
+              name={`${formId}-legacy-measure`}
+              value={l.measure}
+              onChange={set('measure')}
+              options={[
+                { value: 'balance', label: 'The balance' },
+                { value: 'afterTax', label: 'After tax' },
+              ]}
+              hint="After tax counts Pre-tax money at the heirs' tax rate (Withdrawals); Roth and taxable money count in full."
+            />
+          )}
+        </>
+      );
+    },
+
     assumptions: () => {
       const a = values.assumptions;
       const set = (field) => setGroup('assumptions', field);

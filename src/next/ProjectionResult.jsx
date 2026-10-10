@@ -128,15 +128,17 @@ export default function ProjectionResult({ view, error }) {
         <div className="hero">
           <div className="hero-value">{Math.round(funded * 100)}%</div>
           <div className="hero-sub">
-            {over ? 'Funded' : 'Underfunded'}: the plan supports {$(sustainable)} per year after tax to {end}; the
-            retirement income number is {$(need)}.
+            {over ? 'Funded' : 'Underfunded'}: the plan supports {$(sustainable)} per year after tax to {end}
+            {view.legacy && <>, leaving the {$(view.legacy.target)} legacy goal{view.legacy.measure === 'afterTax' ? ' after tax' : ''}</>}; the retirement
+            income number is {$(need)}.
           </div>
         </div>
         <p className="hint">
           {s.runsOut
             ? `At ${$(need)} per year the money runs out after ${s.lastsLabel}.`
             : `At ${$(need)} per year the money lasts to ${end}, with ${$(s.endingBalance.total)} left.`}{' '}
-          Sustainable spending is the highest steady after-tax income, in today&rsquo;s dollars, that lasts to the end age.
+          Sustainable spending is the highest steady after-tax income, in today&rsquo;s dollars, that lasts to the end age
+          {view.legacy ? ' and leaves the legacy goal (Retirement spending weighs it).' : '.'}
         </p>
       </>
   );
