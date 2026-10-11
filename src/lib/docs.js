@@ -51,6 +51,11 @@ export const DOCS_ARTICLES = [
     blurb: 'Lump sum or monthly: the expected return on life expectancy, survivor benefits, how long you live, and which one the plan takes.',
   },
   {
+    slug: 'social-security',
+    title: 'The Social Security calculator',
+    blurb: 'When to claim: benefits at each age from 62 to 70, spousal and survivor benefits, lifetime totals, what each age does to the plan, break-even ages and the chance of reaching them.',
+  },
+  {
     slug: 'rates',
     title: 'Tax rates: marginal, average and effective marginal',
     blurb: 'The marginal rate, the average tax rate and the effective marginal rate (EMTR): what each one means.',

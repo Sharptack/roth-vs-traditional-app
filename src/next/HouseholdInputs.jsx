@@ -276,7 +276,7 @@ export default function HouseholdInputs({
               {personFields.has('sex') && (
                 <SelectInput
                   label="Biological sex"
-                  hint="Used only for the pension calculator's survival odds (SSA's period life table). The plan itself runs to each person's life expectancy above."
+                  hint="Used only for survival odds (SSA's period life table): the pension and Social Security calculators. The plan itself runs to each person's life expectancy above."
                   value={p.sex}
                   onChange={setPerson(p.id, 'sex')}
                   options={SEX_OPTIONS}

@@ -289,7 +289,7 @@ const WITHOUT_PROJECTION = ASSUMPTION_FIELDS.filter((f) => f !== 'strategy' && f
 
 // The inputs each calculator reads: its sections (its own first), for the household and the
 // assumptions the fields it reads (all of them when not listed), and section titles of its own.
-// Sex is read only by the pension calculator (the plan runs to each person's plan-to age).
+// Sex is read only by the pension and Social Security calculators (survival odds) (the plan runs to each person's plan-to age).
 const FOR_PLAN = ['age', 'retirementAge', 'planToAge'];
 export const CALCULATOR_INPUTS = {
   roth: {

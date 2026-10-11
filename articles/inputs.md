@@ -32,7 +32,7 @@ Enter either one. Typing a birthdate fills in the age; typing an age clears the 
 
 Someone already retired keeps the age they retired at (65 for a 75-year-old who retired at 65): a retirement age at or below the age now means retired. They have no earnings or contributions from this year on, the return in retirement applies once no one works, and the Roth comparison's snapshot comes no earlier than today. With everyone retired and no earnings this year, the Roth vs. Pre-tax page has nothing to compare and says so; the Roth conversion calculator is the one for money already saved.
 
-**Life expectancy** (each person, 95 by default; called the plan-to age before 2026-10-09): how long the plan has to last. The projection runs until the last of you reaches theirs. Retirement age is when that person stops working; life expectancy is when the plan ends for them. **Biological sex** is used only for the pension calculator's survival odds (SSA's life table) for now.
+**Life expectancy** (each person, 95 by default; called the plan-to age before 2026-10-09): how long the plan has to last. The projection runs until the last of you reaches theirs. Retirement age is when that person stops working; life expectancy is when the plan ends for them. **Biological sex** is used only for survival odds (SSA's life table): the pension calculator's, and the Social Security calculator's chance of being alive at each age.
 
 ### Survivor years
 
