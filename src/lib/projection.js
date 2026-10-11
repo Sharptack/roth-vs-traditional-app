@@ -37,8 +37,13 @@
 // (the survivor lives to the end age). The year of death stays joint; from the next year:
 //   - filing status single (brackets, deductions, SS taxability, NIIT, IRMAA all follow it);
 //     qualifying surviving spouse status (needs a dependent child) is not modeled
-//   - Social Security: the larger of the survivor's own benefit (with any spousal top-up) and the
-//     deceased's own, the deceased's from the survivor's age 60 (phase 5 refines the survivor rules)
+//   - Social Security (SSA survivor rules, phase 5, decided 2026-10-10; socialSecurityClaiming.js):
+//     the spousal top-up ends; the survivor keeps their own benefit plus the excess of the survivor
+//     benefit over it, from the later of the year after the death and their own claiming age (never
+//     before 60). The survivor benefit: the deceased's benefit with delayed credits (at least 82.5%
+//     of their PIA after an early claim; their PIA plus credits earned if they died before
+//     claiming), reduced if started before survivor full retirement age. A deceased whose PIA isn't
+//     known (a benefit entered as an amount, or already receiving) passes on that amount.
 //   - the deceased's pensions continue at their survivor share; their wages and contributions stop
 //   - spending: the need x assumptions.survivorSpending (default 80%)
 //   - at the end of the year of death the deceased's accounts become the survivor's (a spousal
@@ -95,6 +100,7 @@
 import { calculateYearTax, calculateYearTaxTotals } from './yearTax.js';
 import { calculateEmploymentTaxes } from './ficaTax.js';
 import { estimateHouseholdSocialSecurity } from './socialSecurity.js';
+import { SURVIVOR_EARLIEST_AGE, survivorAdjustmentFactor, survivorBenefitMonthly } from './socialSecurityClaiming.js';
 import { checkContributionLimit } from './contributionLimits.js';
 import { requiredMinimumDistribution } from './rmd.js';
 import { solveMonotonicIncreasing } from './solver.js';
@@ -108,8 +114,6 @@ import { IRMAA_LOOKBACK_YEARS } from '../data/irmaa.js';
 export const DEFAULT_END_AGE = 95;
 // Spending in survivor years, as a share of the couple's (assumptions.survivorSpending).
 export const DEFAULT_SURVIVOR_SPENDING = 0.8;
-// The earliest age a survivor benefit is paid.
-const SURVIVOR_BENEFIT_AGE = 60;
 
 // v1 strategy: proportional. The same fraction k of every account's start-of-year balance, with
 // each Pre-tax account's RMD as a floor, k solved so after-tax cash meets the need.
@@ -164,6 +168,8 @@ export function socialSecuritySchedule(household) {
       ownStartAge: claimAge,
       topUp: s.spousalTopUp ?? 0,
       topUpStartAge: s.spousalStartAge ?? Infinity,
+      // The PIA when known (entered or estimated), for the survivor benefit; null otherwise.
+      pia: s.known ? null : s.pia,
     };
   });
 }
@@ -219,6 +225,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   // Version 2: the income rows (earnings and other income) by their ages; version 1: none.
   const incomeRows = Array.isArray(household.incomes) ? household.incomes : null;
   let deceased = -1; // the index of the person who has died, from the year after their death
+  let survivorSS = { annual: 0, startAge: Infinity }; // the survivor benefit, set at the death
   const plan = [
     ...(contributions ?? fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount, type: c.currentType ?? fc.currentType }))),
     ...(taxableSavings ?? fc.taxableSavings ?? []).map((c) => ({ owner: c.owner, amount: c.amount, type: 'taxable' })),
@@ -260,8 +267,10 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const ssOf = (i) => (ages[i] >= ss[i].ownStartAge ? ss[i].own : 0) + (ages[i] >= ss[i].topUpStartAge ? ss[i].topUp : 0);
     let socialSecurity;
     if (survivorYear) {
+      // Their own (the spousal top-up ends) plus the excess of the survivor benefit over it.
       const s = 1 - deceased;
-      socialSecurity = Math.max(ssOf(s), ages[s] >= SURVIVOR_BENEFIT_AGE ? ss[deceased].own : 0);
+      const ownNow = ages[s] >= ss[s].ownStartAge ? ss[s].own : 0;
+      socialSecurity = ownNow + (ages[s] >= survivorSS.startAge ? Math.max(0, survivorSS.annual - ownNow) : 0);
     } else socialSecurity = people.reduce((acc, _, i) => acc + ssOf(i), 0);
     // today's dollars (pensionIncome.js)
     const pension = pensionIncomeInYear(household, t, { deceased: survivorYear ? people[deceased].id : null });
@@ -526,6 +535,19 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       const dying = people.map((_, i) => ages[i] >= lastYearAlive[i]);
       if (dying.filter(Boolean).length === 1) {
         deceased = dying.indexOf(true);
+        const s = 1 - deceased;
+        const startAge = Math.max(ages[s] + 1, ss[s].ownStartAge, SURVIVOR_EARLIEST_AGE);
+        const monthly = Number.isFinite(ss[deceased].pia)
+          ? survivorBenefitMonthly({
+              deceasedPia: ss[deceased].pia,
+              deceasedBirthYear: people[deceased].birthYear,
+              deceasedClaimAge: ss[deceased].ownStartAge,
+              deathAge: ages[deceased],
+              survivorBirthYear: people[s].birthYear,
+              survivorStartAge: startAge,
+            })
+          : (ss[deceased].own / 12) * survivorAdjustmentFactor(startAge, people[s].birthYear);
+        survivorSS = { annual: monthly * 12, startAge };
         for (const a of accounts) {
           if (a.owner !== people[deceased].id) continue;
           a.owner = people[1 - deceased].id;

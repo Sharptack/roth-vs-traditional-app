@@ -284,6 +284,41 @@ describe('runProjection: survivor years (2026, HAND CALC)', () => {
     expect(own.map((r) => r.socialSecurity)).toEqual([22000, 12000]);
   });
 
+  // SSA survivor rules (phase 5, decided 2026-10-10). p1 80 (born 1946, full retirement age 66), PIA
+  // 2,000, claimed at 62: 48 months early = 20% + 5% -> 75% -> 1,500 a month (18,000 a year).
+  const withPia = (h, p2ClaimAge) => {
+    h.people[0].socialSecurity = { mode: 'pia', known: false, pia: 2000, claimAge: 62 };
+    h.people[1].socialSecurity = { mode: 'pia', known: false, pia: 600, claimAge: p2ClaimAge };
+    return h;
+  };
+  it('Social Security, SSA survivor rules: the 82.5% floor after an early claim (HAND CALC)', () => {
+    // p2 66 (born 1960, FRA 67), PIA 600, claimed at 62: 70% -> 420 a month (5,040 a year).
+    // p2's spousal top-up: (1,000 - 600) x 65% (60 months early, from p2's 62) = 260 a month (3,120).
+    // Year 0 (both alive): 18,000 + 5,040 + 3,120 = 26,160.
+    // Year 1 (p2 67, past survivor FRA 66y8m): survivor = PIA 2,000 limited to max(1,500, 82.5% x 2,000
+    // = 1,650) = 1,650 a month = 19,800 a year; p2's own 5,040 plus the excess 14,760 = 19,800.
+    // (The phase 2 rule gave the larger of 8,160 and 18,000: 18,000.)
+    const rows = runProjection(withPia(couple({}), 62), { need: 0, endAge: 82 }).rows;
+    expect(rows.map((r) => r.socialSecurity)).toEqual([
+      expect.closeTo(26160, 6),
+      expect.closeTo(19800, 6),
+      expect.closeTo(19800, 6),
+    ]);
+  });
+  it('Social Security, SSA survivor rules: a younger survivor starts it at their own claiming age, reduced (HAND CALC)', () => {
+    // p2 60 (born 1966, FRA 67, survivor FRA 67 = 804 months), PIA 600, claims at 62.
+    // Year 0 (p2 60): p1's 18,000 only. Year 1 (p2 61): nothing yet (survivor benefit from the
+    // later of 61 and the claiming age 62). Year 2 (p2 62): own 70% x 600 = 420 a month (5,040);
+    // survivor 60 months before survivor FRA: 28.5% x 60/84 = 20.357% off -> 79.643% x 2,000
+    // = 1,592.857 a month (under the 1,650 limit) = 19,114.29 a year; total 19,114.29.
+    const rows = runProjection(withPia(couple({ age2: 60 }), 62), { need: 0, endAge: 82 }).rows;
+    expect(rows.map((r) => r.socialSecurity)).toEqual([
+      expect.closeTo(18000, 6),
+      0,
+      expect.closeTo(19114.2857, 3),
+    ]);
+  });
+
   it("pensions: the deceased's continues at its survivor share, the survivor's in full", () => {
     // p1: $2,000 a month from 65, 50% to the survivor; p2: $1,000 a month from 65, no survivor share.
     // Both started, no COLA, inflation 0: 24,000 + 12,000 = 36,000; then 12,000 + 12,000 = 24,000
