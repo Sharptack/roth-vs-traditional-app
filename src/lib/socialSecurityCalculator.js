@@ -3,7 +3,10 @@
 // ages, and for a couple the grid of every pair. Gross benefits (tax stays in the other
 // calculators), in today's dollars, to each person's plan-to age. Pure; the math is
 // socialSecurityLifetime.js and socialSecurityClaiming.js.
-import { DEFAULT_END_AGE, socialSecuritySchedule } from './projection.js';
+import { DEFAULT_END_AGE, runProjection, socialSecuritySchedule } from './projection.js';
+import { heirsOf, legacyOption, sustainableSpending } from './projectionSummary.js';
+import { conversionTotals } from './conversionLifetime.js';
+import { strategyById } from './strategies.js';
 import { breakEvenAge, claimingGrid, lifetimeBenefits, openClaimAges } from './socialSecurityLifetime.js';
 import { getFullRetirementAgeMonths } from './socialSecurity.js';
 import { addRow, updateRow } from './householdValues.js';
@@ -76,4 +79,35 @@ export function applyClaimAge(values, personId, age) {
   const row = values.incomes.find((r) => r.owner === personId && r.type === 'socialSecurity');
   if (row) return updateRow(values, 'incomes', row.id, 'fromAge', String(age));
   return addRow(values, 'incomes', { owner: personId, type: 'socialSecurity', ssMode: 'estimate', amount: '', fromAge: String(age), toAge: '' });
+}
+
+// The plan effect (phase 5 step e, decided 2026-10-10): for each person's open claiming age, the
+// other's held as in the plan, the whole plan rerun: sustainable spending (with the legacy goal, as
+// the evaluators), and at the spending need the lifetime tax (federal income tax + IRMAA) and what
+// is left for heirs after tax. Someone already receiving has no rows.
+// -> [{ id, rows: [{ claimAge, inPlan, sustainable, lifetimeTax, legacyAfterTax }] }]
+export function claimingPlanEffect(household, need) {
+  const own = household.calculators?.projection ?? {};
+  const options = { endAge: own.endAge, strategy: strategyById(own.strategy) };
+  const legacy = legacyOption(household);
+  const { heirTaxRate, charityShare } = heirsOf(household);
+  const people = claimingPeople(household);
+  return people.map((p, i) => {
+    if (p.receiving !== undefined) return { id: p.id, rows: [] };
+    const rows = openClaimAges(p, household.year).map((claimAge) => {
+      const h = {
+        ...household,
+        people: household.people.map((x, j) => (j === i ? { ...x, socialSecurity: { ...x.socialSecurity, claimAge } } : x)),
+      };
+      const totals = conversionTotals(runProjection(h, { ...options, need }).rows, heirTaxRate, charityShare);
+      return {
+        claimAge,
+        inPlan: claimAge === p.planClaimAge,
+        sustainable: sustainableSpending(h, { ...options, legacy }),
+        lifetimeTax: totals.lifetimeTax,
+        legacyAfterTax: totals.legacyAfterTax,
+      };
+    });
+    return { id: p.id, rows };
+  });
 }

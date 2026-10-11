@@ -78,3 +78,31 @@ describe('applyClaimAge (Use in the plan)', () => {
     expect(next.incomes[0]).toMatchObject({ owner: 'p2', type: 'socialSecurity', ssMode: 'estimate', fromAge: '68' });
   });
 });
+
+describe('claimingPlanEffect (HAND CALC)', async () => {
+  const { claimingPlanEffect } = await import('../src/lib/socialSecurityCalculator.js');
+  const { toHouseholdV2 } = await import('../src/lib/householdV2.js');
+  // One person, 66 (born 1960), retired at 60, life expectancy 80, PIA 1,000, no savings.
+  const D = DEFAULT_HOUSEHOLD_VALUES;
+  const values = {
+    ...D,
+    people: D.people.map((p) => ({ ...p, age: '66', retirementAge: '60', planToAge: '80' })),
+    incomes: [{ id: 'i1', owner: 'p1', type: 'socialSecurity', ssMode: 'pia', amount: '1000', fromAge: '66', toAge: '' }],
+    contributions: [],
+    accounts: [{ ...D.accounts[0], balance: '0' }],
+  };
+  const h = toHouseholdV2(values, 2026);
+  it('claiming at 66: 93.333% x 1,000 x 12 = 11,200 a year, untaxed (half is 5,600, under 25,000): ~11,200 sustainable', () => {
+    const [mine] = claimingPlanEffect(h, 0);
+    expect(mine.rows.map((r) => r.claimAge)).toEqual([66, 67, 68, 69, 70]);
+    const at66 = mine.rows[0];
+    expect(at66.inPlan).toBe(true);
+    expect(at66.sustainable).toBeGreaterThan(11199);
+    expect(at66.sustainable).toBeLessThanOrEqual(11200);
+    expect(at66.lifetimeTax).toBe(0);
+  });
+  it('claiming at 67 or later: nothing this year, so no steady spending is sustainable', () => {
+    const [mine] = claimingPlanEffect(h, 0);
+    for (const r of mine.rows.slice(1)) expect(r.sustainable).toBe(0);
+  });
+});

@@ -1,7 +1,8 @@
 // The Social Security calculator's results (phase 5): the household's lifetime benefits under the
 // plan's claiming ages and the best pair, each person's table by claiming age, break-even ages, and
 // for a couple the grid of every pair. Renders lib/socialSecurityCalculator.js's view; no math of
-// its own. onUse(personId, age): "Use in the plan" (absent: view only).
+// its own. effect: claimingPlanEffect's rows (the plan rerun at each age; null while not worked out).
+// onUse(personId, age): "Use in the plan" (absent: view only).
 import { useState } from 'react';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
 import { socialSecurityHeadlines } from '../lib/blockHeadlines.js';
@@ -17,7 +18,7 @@ const ageText = (a) => {
   return months % 12 ? `${years} and ${months} months` : `${years}`;
 };
 
-export default function SocialSecurityResult({ view, onUse }) {
+export default function SocialSecurityResult({ view, effect, onUse }) {
   const [picked, setPicked] = useState(null); // a grid cell's claiming ages
   if (!view) {
     return (
@@ -87,6 +88,9 @@ export default function SocialSecurityResult({ view, onUse }) {
 
   const personBlock = (t, i) => {
     const p = people[i];
+    const fx = effect?.[i]?.rows ?? null;
+    const fxOf = (age) => fx?.find((r) => r.claimAge === age);
+    const bestFx = fx && fx.length > 0 ? fx.reduce((b, r) => (r.sustainable > b.sustainable ? r : b)) : null;
     if (t.receiving) {
       return {
         id: `person-${p.id}`,
@@ -108,6 +112,8 @@ export default function SocialSecurityResult({ view, onUse }) {
                 <th scope="col">Per month</th>
                 <th scope="col">{couple ? `${whose[p.id]} own, to ${p.planToAge}` : `Lifetime, to ${p.planToAge}`}</th>
                 {couple && <th scope="col">Household ({totalWord})</th>}
+                {fx && <th scope="col">Spending the plan supports</th>}
+                {fx && <th scope="col">Lifetime tax</th>}
                 {onUse && <th scope="col"><span className="sr-only">Use</span></th>}
               </tr>
             </thead>
@@ -118,6 +124,8 @@ export default function SocialSecurityResult({ view, onUse }) {
                   <td>{$(r.monthly)}</td>
                   <td>{$(r.ownTotal)}</td>
                   {couple && <td>{$(r.householdTotal)}</td>}
+                  {fx && <td className="nowrap">{fxOf(r.claimAge) ? <>{$(fxOf(r.claimAge).sustainable)}{fxOf(r.claimAge) === bestFx ? ' ▲' : ''}</> : '—'}</td>}
+                  {fx && <td>{fxOf(r.claimAge) ? $(fxOf(r.claimAge).lifetimeTax) : '—'}</td>}
                   {onUse && (
                     <td>
                       {!r.inPlan && (
@@ -136,6 +144,15 @@ export default function SocialSecurityResult({ view, onUse }) {
             ★ the most for the household{couple ? `, with ${WHO[people[1 - i].id].toLowerCase()} claiming as the plan does` : ''}.
             {couple && ' The household column includes spousal and survivor benefits.'}
           </p>
+          {fx ? (
+            <p className="hint">
+              The plan rerun at each age{couple ? `, ${WHO[people[1 - i].id].toLowerCase()} as the plan has it` : ''}: the steady spending after tax it supports
+              through life expectancy (with the legacy goal, if any; ▲ the most), and the lifetime federal income tax and IRMAA at the
+              spending need. Taxes, withdrawals and the portfolio included, unlike the benefit totals.
+            </p>
+          ) : (
+            <p className="hint">The plan&rsquo;s spending at each age appears once the spending need is worked out.</p>
+          )}
           {t.breakEvens.length > 0 && (
             <div className="calc">
               {t.breakEvens.map((b) => (

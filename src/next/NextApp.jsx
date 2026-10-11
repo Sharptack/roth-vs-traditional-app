@@ -27,7 +27,7 @@ import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
-import { applyClaimAge, socialSecurityView } from '../lib/socialSecurityCalculator.js';
+import { applyClaimAge, claimingPlanEffect, socialSecurityView } from '../lib/socialSecurityCalculator.js';
 import SocialSecurityResult from './SocialSecurityResult.jsx';
 import { applyRetirementAge, applySavingsChoice, fundingView, overfundedView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
 import FundingResult from './FundingResult.jsx';
@@ -100,16 +100,15 @@ const projectionOf = (r) => (r.spending.need !== null ? projectionView(r.househo
 const spendingOf = (r) => (r.spending.need !== null ? retirementSpendingView(r.household, r.spending.need) : null);
 // Social Security (phase 5): needs each person's age and retirement age, and an entered benefit
 // where one is chosen (the form shows the errors meanwhile).
-const socialSecurityOf = (household) => {
-  const ready = household.people.every(
+const socialSecurityReady = (household) =>
+  household.people.every(
     (p) =>
       Number.isFinite(p.birthYear) &&
       Number.isFinite(p.retirementAge) &&
       (p.socialSecurity.mode !== 'pia' || Number.isFinite(p.socialSecurity.pia)) &&
       (p.socialSecurity.mode !== 'receiving' || Number.isFinite(p.socialSecurity.received)),
   );
-  return ready ? socialSecurityView(household) : null;
-};
+const socialSecurityOf = (household) => (socialSecurityReady(household) ? socialSecurityView(household) : null);
 const fundingOf = (r) => (r.spending.need !== null ? fundingView(r.household, r.spending.need) : null);
 // The homepage shows every calculator's tile; a calculator page shows only its own result; the
 // inputs page shows none.
@@ -238,6 +237,15 @@ export default function NextApp({ initialPage, initialValues, client }) {
   // The projection runs many whole projections (sustainable spending), so it follows the inputs a
   // beat behind while typing (useDeferredValue) instead of blocking each keystroke.
   const deferredRoth = useDeferredValue(roth);
+  // Social Security's plan effect: a sustainable-spending search per claiming age (about a second
+  // for a couple, measured 2026-10-10), so it follows the inputs a beat behind too.
+  const claimingEffect = useMemo(
+    () =>
+      page === 'socialSecurity' && deferredRoth.spending.need !== null && socialSecurityReady(deferredRoth.household)
+        ? claimingPlanEffect(deferredRoth.household, deferredRoth.spending.need)
+        : null,
+    [page, deferredRoth],
+  );
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
   const spendingView = useMemo(() => (shownOn(page, 'spending') ? spendingOf(deferredRoth) : null), [deferredRoth, page]);
   // "Use in the plan" on Retirement spending (decided 2026-10-10): the budget that spends what the resources allow.
@@ -604,7 +612,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   lifetimeError={roth.spending.error}
                 />}
               {calculator.id === 'socialSecurity' && (
-                <SocialSecurityResult view={socialSecurity} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
+                <SocialSecurityResult view={socialSecurity} effect={claimingEffect} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
               )}
               {calculator.id === 'pension' && (
                 <PensionResult
