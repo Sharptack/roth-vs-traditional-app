@@ -15,6 +15,7 @@ Ideas not in the current roadmap. Read it when adding an idea or choosing what t
 - **A designed PDF report** for the signed-in version.
 - **A bottom-up budget calculator** feeding base spending: itemized lines (mortgage, utilities, groceries…) that fill the "Baseline expenses per year" input from phase 3, and the top-down figure (take-home minus savings) beside the budget with the gap and where it likely comes from (irregular costs: travel, car replacement, home repairs, gifts). Michael, 2026-10-09.
 - **Optional:** TypeScript for new files.
+- **Social Security from the earnings record (asked 2026-10-08; moved out of phase 5 on 2026-10-10):** estimate the PIA from the earnings history, with quick options (a range of years and an average income over it, instead of every year's amount): the wage-indexed AIME over the top 35 years, then the bend points; "Use in the plan" writes the PIA into the household.
 - **An advanced options page** (its own round, later): see Advanced features below.
 
 - **Today's or future dollars:** a switch on every output between today's dollars (the default) and future, nominal dollars at the inflation assumption.

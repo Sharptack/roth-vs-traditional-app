@@ -8,9 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 3, the switchover, the "Before phase" lists, and phase 4 (pre-retirement funding). 918 tests. Last closed: phase 4 (tag `phase-4-done`): the Pre-retirement funding page (#/funding): through retirement (sustainable spending with the legacy goal) and the 4% at the last retirement (from the projection), funded levels and status; savings needed for each measure to a target (80% to 150%), with Use in the plan; a retirement-age table per person with Use in the plan; room to spare when overfunded (more to spend, less to save, the earliest retirement). Also: income above the need is spent while working and saved in retirement by default; taxable contribution rows now count as savings.
 
-**In progress:** nothing.
-
-**Next: phase 5, the Social Security calculator.** Steps not yet set (set them here first).
+**In progress: phase 5, the Social Security calculator.** Decisions and steps set 2026-10-10 (in the phase 5 section below). Next step: (a).
 
 **Known gaps and open items:**
 - The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).
@@ -121,7 +119,22 @@ Taxes on benefits stay in the other calculators.
 
 **Tests:** hand-worked reductions and credits at each claiming age, one break-even age, a survivor benefit after an early claim, one grid cell rebuilt from its three streams.
 
-**Benefit estimator (asked 2026-10-08):** estimate future benefits from the earnings record, with quick options: a range of years and an average income over it, instead of every year's amount.
+**Decided 2026-10-10 (Michael, the recommended options):**
+- **The projection's survivor years switch to the SSA survivor rules** (as planned since phase 2): the deceased's benefit with any delayed credits (at least 82.5% of their PIA if they claimed early; their PIA, or PIA plus the credits earned, if they died before claiming), reduced if the survivor starts it before their survivor full retirement age (71.5% at 60). Reason: one set of rules on the calculator and in the plan. Results change for couples whose plan has survivor years (today: the larger of the two own benefits, from 60, unreduced).
+- **The survivor benefit starts at the later of the year after the death and the survivor's own claiming age in the plan** (never before 60). Reason: it follows the plan's choices and can be checked by hand.
+- **The benefit estimator from an earnings record moves to `docs/ideas.md`** (asked 2026-10-08). Reason: a real AIME needs the wage-index history and 35-year averaging, a step of its own; phase 5 works from the PIA (entered, or today's rough estimate).
+- **The plan effect, per person:** for each person's claiming age 62 to 70 (the other's held as in the plan), the plan's sustainable spending and lifetime tax from the projection, as the other decision calculators do. The 81-cell grid stays gross benefits. Speed measured.
+
+**Also settled (defaults, no question needed):** claiming ages in whole years (as the household stores them); a person "Currently receiving" has a fixed claim, so only the other spouse's ages vary; the best grid cell is the largest household total at the chosen discount rate; "Use in the plan" writes the claiming ages (one person's from their table, both from a grid cell).
+
+**Steps (set 2026-10-10):**
+- (a) The claiming engine (`src/lib/socialSecurityClaiming.js`): each person's own benefit at each claiming age 62 to 70 from the PIA, the spousal benefit for a pair of ages, the survivor benefit (delayed credits, the 82.5% floor, the survivor reduction, survivor full retirement age by birth year). Hand-worked reductions and credits at each claiming age, a survivor benefit after an early claim.
+- (b) Lifetime benefits: each person's streams year by year to the plan-to ages (own, spousal, survivor after the first death), the discount rate (0% by default), break-even ages (62 vs. 67 vs. 70), the couple's grid with the best cell. One break-even age and one grid cell rebuilt from its three streams, by hand.
+- (c) The projection's survivor years on the new rules (a decided results change); the projection article updated.
+- (d) The Social Security page (#/social-security, a Decision): each person's table by claiming age, break-even ages, the grid, the discount rate, "Use in the plan" for the claiming ages; on the Dashboard.
+- (e) The plan effect: sustainable spending and lifetime tax at each person's claiming age; the time measured.
+- (f) The chance of being alive at each age (SSA period life table, by sex), charted beside the plan-to ages and the break-even ages.
+- (g) The Docs article.
 
 ## Phase 6: Year-by-year planner
 
