@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
 import { socialSecurityHeadlines } from '../lib/blockHeadlines.js';
 import Blocks from './Blocks.jsx';
+import LineChart from '../components/charts/LineChart.jsx';
 
 export const WHO = { p1: 'You', p2: 'Your spouse' };
 const whose = { p1: 'Your', p2: 'Your spouse’s' };
@@ -18,7 +19,8 @@ const ageText = (a) => {
   return months % 12 ? `${years} and ${months} months` : `${years}`;
 };
 
-export default function SocialSecurityResult({ view, effect, onUse }) {
+// survival: survivalView's chance of being alive at each age (null: no chart).
+export default function SocialSecurityResult({ view, effect, survival, onUse }) {
   const [picked, setPicked] = useState(null); // a grid cell's claiming ages
   if (!view) {
     return (
@@ -231,12 +233,84 @@ export default function SocialSecurityResult({ view, effect, onUse }) {
     ),
   };
 
+  // The chart's markers: each person's life expectancy in the plan, and their widest break-even
+  // (the first open age vs. 70), merged when both people share one.
+  const refLines = [];
+  if (survival) {
+    survival.reach.forEach((r, i) => {
+      const who = couple ? `${WHO[people[i].id]}: ` : '';
+      const widest = r.marks.filter((m) => m.kind === 'breakEven').at(-1);
+      if (widest) {
+        const same = refLines.find((l) => l.kind === 'breakEven' && Math.abs(l.x - widest.age) < 0.05);
+        if (same) same.label = `Break-even ${widest.label}`;
+        else refLines.push({ kind: 'breakEven', x: widest.age, label: `${who}break-even ${widest.label}` });
+      }
+      refLines.push({ kind: 'planTo', x: people[i].planToAge, label: `${who}life expectancy ${people[i].planToAge}` });
+    });
+  }
+  const sexWord = (sex) => (sex === 'male' ? 'men' : sex === 'female' ? 'women' : 'men and women averaged');
+  const aliveBlock = survival && {
+    id: 'alive',
+    title: 'The chance of being alive at each age',
+    summary: survival.reach
+      .map((r, i) => {
+        const m = r.marks.find((x) => x.kind === 'planTo');
+        return `${couple ? `${WHO[r.id]}: ` : ''}${formatPercent(m.chance, 0)} chance of reaching ${people[i].planToAge}`;
+      })
+      .join(' · '),
+    content: (
+      <>
+        <LineChart
+          series={survival.series.map((s) => ({ key: s.id, label: couple ? WHO[s.id] : 'You', points: s.points }))}
+          xTicks={survival.ages}
+          formatX={(a) => `Age ${a}`}
+          formatXTick={(a) => `${a}`}
+          formatY={(y) => formatPercent(y, 0)}
+          xLabel="Age"
+          yLabel="Chance of being alive"
+          markers={false}
+          yFloor={0}
+          yCeil={1}
+          refLines={refLines}
+        />
+        <table className="compare-table strategy-table">
+          <thead>
+            <tr>
+              {couple && <th scope="col">Who</th>}
+              <th scope="col">Reaching</th>
+              <th scope="col">Age</th>
+              <th scope="col">Chance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {survival.reach.flatMap((r) =>
+              r.marks.map((m) => (
+                <tr key={`${r.id}-${m.kind}-${m.label}`}>
+                  {couple && <th scope="row">{WHO[r.id]}</th>}
+                  <td>{m.kind === 'planTo' ? 'Life expectancy in the plan' : `Break-even, claiming at ${m.label}`}</td>
+                  <td>{ageText(m.age)}</td>
+                  <td>{formatPercent(m.chance, 0)}</td>
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+        <p className="hint">
+          From SSA&rsquo;s period life table ({people.map((p) => `${couple ? `${WHO[p.id].toLowerCase()}: ` : ''}${sexWord(p.sex)}`).join(', ')}), from each
+          person&rsquo;s age now. A later claim pays off only for someone alive past the break-even age; a survivor benefit can carry it
+          further for a couple.{people.some((p) => p.sex !== 'male' && p.sex !== 'female') && ' Enter sex on the inputs page for the table by sex.'}
+        </p>
+      </>
+    ),
+  };
+
   return (
     <Blocks
       blocks={[
         { id: 'plan', title: 'Lifetime Social Security', summary: h.plan, className: 'key-card', content: summary },
         ...tables.map(personBlock),
         gridBlock,
+        aliveBlock,
       ]}
       disclaimer="Estimates only — not tax or financial advice. Gross benefits in today’s dollars. SSA’s rules for reductions, delayed credits, spousal and survivor benefits; not modeled: the earnings test, benefits for children or ex-spouses."
     />

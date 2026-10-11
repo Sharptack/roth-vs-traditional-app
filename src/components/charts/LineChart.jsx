@@ -34,7 +34,9 @@ export default function LineChart({
   includeZero = true,
   markers = true, // a dot on every point; off for long series (e.g. 60 projected years)
   yFloor, // optional: the axis never goes below this (e.g. 0 for balances, which can't be negative)
+  yCeil, // optional: the axis never goes above this (e.g. 1 for a chance)
   shadeFrom, // optional { x, label }: a light band from that x to the end (e.g. survivor years)
+  refLines = [], // optional [{ x, label }]: dashed vertical markers, labels stacked down from the top (e.g. break-even ages)
 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
@@ -56,9 +58,10 @@ export default function LineChart({
   const allY = series.flatMap((s) => s.points.map((p) => p.y));
   const yRawMin = includeZero ? Math.min(...allY, 0) : Math.min(...allY);
   const yRawMax = includeZero ? Math.max(...allY, 0) : Math.max(...allY);
-  const [yPadMinRaw, yPadMax] = padDomain(yRawMin, yRawMax, 0.15);
+  const [yPadMinRaw, yPadMaxRaw] = padDomain(yRawMin, yRawMax, 0.15);
+  const yPadMax = yCeil === undefined ? yPadMaxRaw : Math.min(yCeil, yPadMaxRaw);
   const yPadMin = yFloor === undefined ? yPadMinRaw : Math.max(yFloor, yPadMinRaw);
-  const yTicksList = niceTicks(yPadMin, yPadMax, 5).filter((t) => yFloor === undefined || t >= yFloor);
+  const yTicksList = niceTicks(yPadMin, yPadMax, 5).filter((t) => (yFloor === undefined || t >= yFloor) && (yCeil === undefined || t <= yCeil));
   const yDomainMin = Math.min(yPadMin, yTicksList[0]);
   const yDomainMax = Math.max(yPadMax, yTicksList[yTicksList.length - 1]);
   const yScale = linearScale([yDomainMin, yDomainMax], [plotBottom, plotTop]);
@@ -156,6 +159,20 @@ export default function LineChart({
               {yLabel}
             </text>
           )}
+
+          {refLines.map((r, i) => (
+            <g key={`ref-${i}`}>
+              <line x1={xScale(r.x)} x2={xScale(r.x)} y1={plotTop} y2={plotBottom} className="chart-ref-line" />
+              <text
+                x={xScale(r.x) + (xScale(r.x) > (plotLeft + plotRight) / 2 ? -4 : 4)}
+                y={plotTop + 12 + i * 14}
+                textAnchor={xScale(r.x) > (plotLeft + plotRight) / 2 ? 'end' : 'start'}
+                className="chart-zone-label"
+              >
+                {r.label}
+              </text>
+            </g>
+          ))}
 
           {hoveredX !== null && (
             <line x1={hoveredX} x2={hoveredX} y1={plotTop} y2={plotBottom} className="chart-crosshair" />

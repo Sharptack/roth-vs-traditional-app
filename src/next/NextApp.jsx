@@ -27,7 +27,7 @@ import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
-import { applyClaimAge, claimingPlanEffect, socialSecurityView } from '../lib/socialSecurityCalculator.js';
+import { applyClaimAge, claimingPlanEffect, socialSecurityView, survivalView } from '../lib/socialSecurityCalculator.js';
 import SocialSecurityResult from './SocialSecurityResult.jsx';
 import { applyRetirementAge, applySavingsChoice, fundingView, overfundedView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
 import FundingResult from './FundingResult.jsx';
@@ -230,6 +230,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
   const pensionInputs = useMemo(() => (h.calculators.pension ? householdToPensionInputs(h) : null), [h]);
   const pension = useMemo(() => (shownOn(page, 'pension') && pensionInputs ? pensionResult(pensionInputs) : null), [pensionInputs, page]);
   const socialSecurity = useMemo(() => (shownOn(page, 'socialSecurity') ? socialSecurityOf(h) : null), [h, page]);
+  const survival = useMemo(() => (page === 'socialSecurity' && socialSecurity ? survivalView(socialSecurity) : null), [page, socialSecurity]);
   const pretaxBalance = h.accounts.filter((a) => a.type === 'pretax').reduce((sum, a) => sum + (a.balance || 0), 0);
   // A lump sum is invested in retirement: the return after retirement (version 1: the one return).
   const realReturn = h.assumptions.retirementReturnRate ?? h.assumptions.returnRate;
@@ -612,7 +613,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   lifetimeError={roth.spending.error}
                 />}
               {calculator.id === 'socialSecurity' && (
-                <SocialSecurityResult view={socialSecurity} effect={claimingEffect} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
+                <SocialSecurityResult view={socialSecurity} effect={claimingEffect} survival={survival} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
               )}
               {calculator.id === 'pension' && (
                 <PensionResult

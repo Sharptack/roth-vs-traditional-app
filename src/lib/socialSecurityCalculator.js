@@ -10,6 +10,8 @@ import { strategyById } from './strategies.js';
 import { breakEvenAge, claimingGrid, lifetimeBenefits, openClaimAges } from './socialSecurityLifetime.js';
 import { getFullRetirementAgeMonths } from './socialSecurity.js';
 import { addRow, updateRow } from './householdValues.js';
+import { deathRates, survival } from './lifeTable.js';
+import { LIFE_TABLE } from '../data/lifeTable.js';
 
 // Each person as the lifetime functions take them, with the plan's claiming age.
 //   pia: entered, or estimated from earnings (0 = none of their own); receiving: the monthly check.
@@ -110,4 +112,31 @@ export function claimingPlanEffect(household, need) {
     });
     return { id: p.id, rows };
   });
+}
+
+// The chance of being alive at each age (phase 5 step f): SSA's period life table by sex (lifeTable.js;
+// sex not entered = the two averaged), from each person's age now. One age axis for both: from the
+// older person's age now to 105. reach: each person's chance of reaching their break-even ages
+// and their life expectancy in the plan.
+// -> { ages, series: [{ id, points: [{ x, y }] }], reach: [{ id, marks: [{ kind, age, chance, label }] }] }
+export function survivalView(view, table = LIFE_TABLE) {
+  const { year, people, tables } = view;
+  const now = people.map((p) => year - p.birthYear);
+  const qs = people.map((p) => deathRates(table, p.sex));
+  const chance = (i, age) => (age <= now[i] ? 1 : survival(qs[i], now[i], Math.round((age - now[i]) * 12)));
+  const start = Math.max(...now);
+  const ages = Array.from({ length: Math.max(1, 105 - start + 1) }, (_, k) => start + k);
+  return {
+    ages,
+    series: people.map((p, i) => ({ id: p.id, points: ages.map((x) => ({ x, y: chance(i, x) })) })),
+    reach: people.map((p, i) => ({
+      id: p.id,
+      marks: [
+        ...(tables[i].breakEvens ?? [])
+          .filter((b) => b.age !== null)
+          .map((b) => ({ kind: 'breakEven', age: b.age, chance: chance(i, b.age), label: `${b.lateAge} vs. ${b.earlyAge}` })),
+        { kind: 'planTo', age: p.planToAge, chance: chance(i, p.planToAge), label: 'life expectancy in the plan' },
+      ],
+    })),
+  };
 }

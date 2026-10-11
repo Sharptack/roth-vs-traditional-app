@@ -106,3 +106,29 @@ describe('claimingPlanEffect (HAND CALC)', async () => {
     for (const r of mine.rows.slice(1)) expect(r.sustainable).toBe(0);
   });
 });
+
+describe('survivalView (HAND CALC on a made-up table)', async () => {
+  const { survivalView } = await import('../src/lib/socialSecurityCalculator.js');
+  // A table where everyone has a 10% chance of dying each year from 60 on (0 before; none past 119).
+  const qs = Array.from({ length: 120 }, (_, a) => (a >= 60 ? 0.1 : 0));
+  const table = { male: qs, female: qs };
+  const v = socialSecurityView(household());
+  const s = survivalView(v, table);
+  it('one age axis from the older person’s age now (A, 66) to 105', () => {
+    expect(s.ages[0]).toBe(66);
+    expect(s.ages.at(-1)).toBe(105);
+  });
+  it('A (66 now) at 70: 0.9^4 = 0.6561; B (64 now) at 70: 0.9^6 = 0.531441', () => {
+    expect(s.series[0].points.find((p) => p.x === 70).y).toBeCloseTo(0.6561, 10);
+    expect(s.series[1].points.find((p) => p.x === 70).y).toBeCloseTo(0.531441, 10);
+    expect(s.series[0].points[0].y).toBe(1); // alive now
+  });
+  it('the chance of reaching each mark: A’s life expectancy 80 = 0.9^14', () => {
+    const planTo = s.reach[0].marks.find((m) => m.kind === 'planTo');
+    expect(planTo.age).toBe(80);
+    expect(planTo.chance).toBeCloseTo(0.9 ** 14, 10);
+    // a break-even age in months: B's 64 vs 67 break-even age, from B's 64
+    const be = s.reach[1].marks.find((m) => m.kind === 'breakEven');
+    expect(be.chance).toBeCloseTo(0.9 ** (Math.round((be.age - 64) * 12) / 12), 10);
+  });
+});

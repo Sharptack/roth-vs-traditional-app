@@ -2584,3 +2584,10 @@ th.win .th-sub {
 .nowrap {
   white-space: nowrap;
 }
+
+/* Reference markers on a line chart (the Social Security survival chart, phase 5). */
+.chart-ref-line {
+  stroke: var(--dim);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
