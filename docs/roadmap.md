@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 3, the switchover, the "Before phase" lists, and phase 4 (pre-retirement funding). 918 tests. Last closed: phase 4 (tag `phase-4-done`): the Pre-retirement funding page (#/funding): through retirement (sustainable spending with the legacy goal) and the 4% at the last retirement (from the projection), funded levels and status; savings needed for each measure to a target (80% to 150%), with Use in the plan; a retirement-age table per person with Use in the plan; room to spare when overfunded (more to spend, less to save, the earliest retirement). Also: income above the need is spent while working and saved in retirement by default; taxable contribution rows now count as savings.
 
-**In progress: phase 5, the Social Security calculator.** Decisions and steps set 2026-10-10 (in the phase 5 section below). Done: (a) the claiming engine, (b) lifetime benefits, break-even ages and the grid, (c) the projection on the SSA survivor rules (results change for couples with survivor years, as decided). Next step: (d).
+**In progress: phase 5, the Social Security calculator.** Decisions and steps set 2026-10-10 (in the phase 5 section below). Done: (a) the claiming engine, (b) lifetime benefits, break-even ages and the grid, (c) the projection on the SSA survivor rules (results change for couples with survivor years, as decided), (d) the page (#/social-security) with "Use in the plan" for claiming ages. Next step: (e).
 
 **Known gaps and open items:**
 - The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).
@@ -65,7 +65,7 @@ A decision calculator runs the plan once per option and writes the chosen one ba
 | --- | --- | --- | --- |
 | Retirement age, each person | Pre-retirement funding (phase 4) | Yes, an input | Built (phase 4) |
 | Roth or Pre-tax contributions | Roth vs. Pre-tax (phases 1 and 7) | Yes, the contribution rows | Built as a trial (phase 1) |
-| Social Security claiming age, each person | Social Security (phase 5) | Yes, an input | Phase 5 |
+| Social Security claiming age, each person | Social Security (phase 5) | Yes, an input | Built (phase 5) |
 | Roth conversions | Roth conversion (this year), the planner (phase 6), Roth vs. Pre-tax with conversions (phase 7) | Only as a whole-plan withdrawal strategy | Phase 6 (year by year), phase 7 (its rule) |
 | Pension: lump sum or monthly | Pension (phase 1) | Yes, the pension row | Built (before phase 3) |
 | Debts: pay off early or invest | Debt pay-off (phase 11) | No | Phase 11 |

@@ -8,6 +8,7 @@
 //   #/next/projection  the year-by-year projection (phases 4-5)
 //   #/next/conversion  the single-year Roth conversion calculator
 //   #/next/pension     the pension calculator (lump sum vs. monthly benefit)
+//   #/social-security  the Social Security calculator (when to claim; phase 5)
 // Each calculator page has one inputs card with only the inputs it reads (householdInputs.js
 // CALCULATOR_INPUTS), editing the same household, and a link to the inputs page.
 // State is its own; the current calculator's inputs are not shared or touched.
@@ -25,7 +26,9 @@ import { projectionView } from '../lib/projectionSummary.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
-import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
+import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
+import { applyClaimAge, socialSecurityView } from '../lib/socialSecurityCalculator.js';
+import SocialSecurityResult from './SocialSecurityResult.jsx';
 import { applyRetirementAge, applySavingsChoice, fundingView, overfundedView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
 import FundingResult from './FundingResult.jsx';
 import { applySpendingChoice, legacyTradeoff, retirementSpendingView, spendingChoice } from '../lib/retirementSpending.js';
@@ -95,6 +98,18 @@ const conversionOf = (household) =>
   conversionResult(householdToYearTaxParams(household), household.calculators.conversion.amount, irmaaOf(household));
 const projectionOf = (r) => (r.spending.need !== null ? projectionView(r.household, r.spending.need) : null);
 const spendingOf = (r) => (r.spending.need !== null ? retirementSpendingView(r.household, r.spending.need) : null);
+// Social Security (phase 5): needs each person's age and retirement age, and an entered benefit
+// where one is chosen (the form shows the errors meanwhile).
+const socialSecurityOf = (household) => {
+  const ready = household.people.every(
+    (p) =>
+      Number.isFinite(p.birthYear) &&
+      Number.isFinite(p.retirementAge) &&
+      (p.socialSecurity.mode !== 'pia' || Number.isFinite(p.socialSecurity.pia)) &&
+      (p.socialSecurity.mode !== 'receiving' || Number.isFinite(p.socialSecurity.received)),
+  );
+  return ready ? socialSecurityView(household) : null;
+};
 const fundingOf = (r) => (r.spending.need !== null ? fundingView(r.household, r.spending.need) : null);
 // The homepage shows every calculator's tile; a calculator page shows only its own result; the
 // inputs page shows none.
@@ -131,6 +146,13 @@ export const CALCULATORS = [
     blurb: 'The return the lump sum would have to earn to match the monthly benefit.',
     ownTitle: 'Pension inputs',
     article: 'pension',
+  },
+  {
+    id: 'socialSecurity',
+    group: 'decisions',
+    title: 'Social Security: when to claim',
+    blurb: 'Lifetime benefits for every claiming age from 62 to 70, break-even ages, and for a couple every pair of ages, with spousal and survivor benefits.',
+    ownTitle: 'Social Security inputs',
   },
   {
     id: 'projection',
@@ -208,6 +230,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
   // The pension calculator needs a pension income row (none: nothing to work out).
   const pensionInputs = useMemo(() => (h.calculators.pension ? householdToPensionInputs(h) : null), [h]);
   const pension = useMemo(() => (shownOn(page, 'pension') && pensionInputs ? pensionResult(pensionInputs) : null), [pensionInputs, page]);
+  const socialSecurity = useMemo(() => (shownOn(page, 'socialSecurity') ? socialSecurityOf(h) : null), [h, page]);
   const pretaxBalance = h.accounts.filter((a) => a.type === 'pretax').reduce((sum, a) => sum + (a.balance || 0), 0);
   // A lump sum is invested in retirement: the return after retirement (version 1: the one return).
   const realReturn = h.assumptions.retirementReturnRate ?? h.assumptions.returnRate;
@@ -274,8 +297,9 @@ export default function NextApp({ initialPage, initialValues, client }) {
     funding: fundingTile(parts.funding),
     conversion: conversionTile(parts.conversion),
     pension: pensionTile(parts.pension, pensionInputs),
+    socialSecurity: socialSecurityTile(parts.socialSecurity),
   });
-  const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView, funding }) : null;
+  const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView, funding, socialSecurity }) : null;
   // For Copy summary: every calculator's headline, working out on demand what this page skipped.
   const summaryTiles = () => {
     const all = tilesOf({
@@ -285,6 +309,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
       projection: projection ?? projectionOf(roth),
       spending: spendingView ?? spendingOf(roth),
       funding: funding ?? fundingOf(roth),
+      socialSecurity: socialSecurity ?? socialSecurityOf(h),
     });
     return CALCULATORS.map((c) => ({ title: c.title, ...all[c.id] }));
   };
@@ -578,6 +603,9 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   lifetime={conversionOverLife}
                   lifetimeError={roth.spending.error}
                 />}
+              {calculator.id === 'socialSecurity' && (
+                <SocialSecurityResult view={socialSecurity} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
+              )}
               {calculator.id === 'pension' && (
                 <PensionResult
                   pension={pension}

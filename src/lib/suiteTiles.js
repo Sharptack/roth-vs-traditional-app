@@ -80,3 +80,18 @@ export function fundingTile(view) {
     detail: `Through retirement; 4% at retirement: ${pct(view.at.funded)} (${FUNDED_STATUS_LABELS[view.at.status].toLowerCase()})`,
   };
 }
+
+// Social Security (phase 5): the claiming ages that pay the household the most, against the plan's.
+export function socialSecurityTile(view) {
+  if (!view) return { headline: 'Needs inputs', detail: 'Fill in each person’s age and Social Security.' };
+  const who = { p1: 'you', p2: 'your spouse' };
+  const { people, plan, tables, grid } = view;
+  const best = grid ? grid.best : tables[0].best ? { claimAges: [tables[0].best.claimAge], discountedTotal: tables[0].best.householdTotal } : null;
+  if (!best) return { headline: 'Already receiving', detail: `${formatCurrency(plan.discountedTotal)} over the plan` };
+  const ages = people.map((p, i) => (people.length === 2 ? `${who[p.id]} ${best.claimAges[i] ?? 'now'}` : `${best.claimAges[i]}`)).join(', ');
+  const more = best.discountedTotal - plan.discountedTotal;
+  return {
+    headline: people.length === 2 ? `Most: ${ages}` : `Most at ${ages}`,
+    detail: more > 0.5 ? `${formatCurrency(more)} more over both lifetimes than the plan’s ages (${formatCurrency(plan.discountedTotal)})` : `The plan’s ages pay the most: ${formatCurrency(plan.discountedTotal)} over the plan`,
+  };
+}

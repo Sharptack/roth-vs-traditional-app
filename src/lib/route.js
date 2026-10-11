@@ -3,7 +3,7 @@
 //
 //   #/                 the homepage: the household in brief and a tile per calculator
 //   #/inputs           the inputs page
-//   #/roth, #/tax, #/projection, #/spending, #/funding, #/conversion, #/pension   the calculators
+//   #/roth, #/tax, #/projection, #/spending, #/funding, #/conversion, #/pension, #/social-security   the calculators
 //   #/docs[/<article>[/<heading>]]   the Docs section (lib/docs.js)
 //   #/scenarios        the Visualization page
 //
@@ -23,6 +23,7 @@ export const PAGES = {
   funding: '#/funding',
   conversion: '#/conversion',
   pension: '#/pension',
+  socialSecurity: '#/social-security',
 };
 
 // The Roth article's sections the Roth page links to, by their heading in articles/roth.md (a test

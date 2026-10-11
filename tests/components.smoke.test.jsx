@@ -1492,6 +1492,28 @@ describe('Already retired (2026-10-09)', () => {
     expect(home).toMatch(/\$[\d,]+\/yr after tax/);
   });
 
+  it('phase 5: the Social Security page, Use in the plan for a claiming age, and its tile', async () => {
+    const { default: NextApp, previewResult } = await import('../src/next/NextApp.jsx');
+    const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
+    const { applyClaimAge, socialSecurityView } = await import('../src/lib/socialSecurityCalculator.js');
+    const page = renderToStaticMarkup(<NextApp initialPage="socialSecurity" initialValues={D} client={null} />);
+    expect(page).toContain('<h1>Social Security: when to claim</h1>');
+    expect(page).toContain('Lifetime Social Security');
+    expect(page).toContain('When to claim');
+    expect(page).toContain('Use in the plan');
+    expect(page).toContain('has paid more by age');
+    expect(page).toContain('Discount rate');
+    expect(page).not.toMatch(/NaN|Infinity/);
+    // Use in the plan: the plan now claims at 70
+    const applied = applyClaimAge(D, 'p1', 70);
+    const view = socialSecurityView(previewResult(applied, 2026).household);
+    expect(view.people[0].planClaimAge).toBe(70);
+    expect(view.tables[0].rows.find((r) => r.inPlan).claimAge).toBe(70);
+    const home = renderToStaticMarkup(<NextApp initialPage="home" initialValues={D} client={null} />);
+    expect(home).toContain('href="#/social-security"');
+    expect(home).toMatch(/Most at \d\d/);
+  });
+
   it('phase 4: the Pre-retirement funding page, Use in the plan for the savings, and its tile', async () => {
     const { default: NextApp, previewResult } = await import('../src/next/NextApp.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');

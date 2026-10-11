@@ -1,0 +1,80 @@
+import { describe, it, expect } from 'vitest';
+import { applyClaimAge, claimingPeople, socialSecurityView } from '../src/lib/socialSecurityCalculator.js';
+import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
+
+// The Social Security page from a household (phase 5, step d). The couple from
+// socialSecurityLifetime.test.js: A born 1960, PIA 2,000, plan-to 80, claiming at 67; B born 1962,
+// PIA 600, plan-to 90, claiming at 64. Their household total there, by hand: 766,400.
+const person = (id, birthYear, planToAge, pia, claimAge) => ({
+  id,
+  birthYear,
+  retirementAge: 60,
+  planToAge,
+  wages: 0,
+  selfEmploymentIncome: 0,
+  socialSecurity: { mode: 'pia', known: false, pia, benefit: NaN, claimAge },
+});
+const household = (discountRate = 0) => ({
+  year: 2026,
+  filingStatus: 'mfj',
+  people: [person('p1', 1960, 80, 2000, 67), person('p2', 1962, 90, 600, 64)],
+  calculators: { socialSecurity: { discountRate } },
+});
+
+describe('claimingPeople', () => {
+  it('each person: PIA, plan-to age and the plan’s claiming age', () => {
+    const ps = claimingPeople(household());
+    expect(ps.map((p) => [p.pia, p.planToAge, p.planClaimAge])).toEqual([[2000, 80, 67], [600, 90, 64]]);
+  });
+  it('no plan-to age: the projection’s end age (95)', () => {
+    const h = household();
+    h.people[0].planToAge = null;
+    expect(claimingPeople(h)[0].planToAge).toBe(95);
+  });
+});
+
+describe('socialSecurityView', () => {
+  const v = socialSecurityView(household());
+  it('the plan’s household total is the hand-worked 766,400', () => {
+    expect(v.plan.discountedTotal).toBeCloseTo(766400, 6);
+  });
+  it('each person’s table: the open claiming ages, the other held at the plan’s; the plan’s row matches', () => {
+    expect(v.tables[0].rows.map((r) => r.claimAge)).toEqual([66, 67, 68, 69, 70]);
+    const b64 = v.tables[1].rows.find((r) => r.claimAge === 64);
+    expect(b64.inPlan).toBe(true);
+    expect(b64.householdTotal).toBeCloseTo(766400, 6);
+    // B's own at 64: 480 a month; own lifetime 155,520 (27 years)
+    expect(b64.monthly).toBeCloseTo(480, 6);
+    expect(b64.ownTotal).toBeCloseTo(155520, 6);
+  });
+  it('break-even ages: 62 vs 67, 67 vs 70, 62 vs 70 for the person with 62 still open', () => {
+    // A is 66: from 66. B is 64: 64 vs 67 vs 70.
+    expect(v.tables[0].breakEvens.map((b) => [b.earlyAge, b.lateAge])).toEqual([[66, 67], [67, 70], [66, 70]]);
+    expect(v.tables[1].breakEvens.map((b) => [b.earlyAge, b.lateAge])).toEqual([[64, 67], [67, 70], [64, 70]]);
+  });
+  it('the grid for a couple, its best cell the largest', () => {
+    expect(v.grid.cells).toHaveLength(5 * 7);
+    expect(v.grid.best.discountedTotal).toBe(Math.max(...v.grid.cells.map((c) => c.discountedTotal)));
+  });
+  it('the discount rate is the household’s', () => {
+    expect(socialSecurityView(household(0.03)).discountRate).toBe(0.03);
+    expect(socialSecurityView(household(0.03)).plan.discountedTotal).toBeLessThan(766400);
+  });
+});
+
+describe('applyClaimAge (Use in the plan)', () => {
+  it('sets the Social Security row’s starting age', () => {
+    const values = {
+      ...DEFAULT_HOUSEHOLD_VALUES,
+      incomes: [{ id: 'i1', owner: 'p1', type: 'socialSecurity', ssMode: 'pia', amount: '2000', fromAge: '67', toAge: '' }],
+    };
+    const next = applyClaimAge(values, 'p1', 70);
+    expect(next.incomes).toEqual([{ ...values.incomes[0], fromAge: '70' }]);
+  });
+  it('with no row (estimated from earnings): adds an estimate row at that age', () => {
+    const values = { ...DEFAULT_HOUSEHOLD_VALUES, incomes: [] };
+    const next = applyClaimAge(values, 'p2', 68);
+    expect(next.incomes).toHaveLength(1);
+    expect(next.incomes[0]).toMatchObject({ owner: 'p2', type: 'socialSecurity', ssMode: 'estimate', fromAge: '68' });
+  });
+});

@@ -2562,3 +2562,25 @@ th.win .th-sub {
   margin: 4px 0 8px;
   font-size: 0.9rem;
 }
+
+/* The Social Security grid (phase 5): the plan's pair shaded, the best in bold, the chosen outlined. */
+.ss-grid td,
+.ss-grid th {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ss-grid td.chosen-row {
+  background: var(--accent-soft);
+}
+.ss-grid td.best-cell .link-button {
+  font-weight: 700;
+}
+.ss-grid td.picked-cell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}

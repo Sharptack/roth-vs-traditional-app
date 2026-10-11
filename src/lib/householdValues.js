@@ -156,6 +156,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
     conversion: { amount: '50000' },
     pension: { lumpSum: '300000' },
     funding: { target: '1' }, // the funded level savings needed is solved to (phase 4), '1' = 100%
+    socialSecurity: { discountRate: '0' }, // the Social Security calculator's discount rate (phase 5)
   },
 };
 

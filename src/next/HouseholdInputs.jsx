@@ -53,6 +53,7 @@ const labelOptions = (labels, keys = Object.keys(labels)) => keys.map((value) =>
 
 const COLA_OPTIONS = ['0', '0.01', '0.02', '0.025', '0.03'].map((v) => ({ value: v, label: v === '0' ? 'None' : `${Number(v) * 100}%` }));
 // Pre-retirement funding's target (decided 2026-10-10): 80% to 150%, 100% by default.
+const DISCOUNT_RATES = ['0', '0.01', '0.02', '0.03', '0.04', '0.05'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%${v === '0' ? ' (no discount)' : ''}` }));
 const FUNDING_TARGETS = ['0.8', '0.9', '1', '1.1', '1.2', '1.25', '1.5'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%${v === '1' ? ' (meets the need)' : ''}` }));
 const SURVIVOR_OPTIONS = [
   { value: '0', label: 'None' },
@@ -965,6 +966,16 @@ export default function HouseholdInputs({
         value={values.calculators.funding?.target ?? '1'}
         onChange={setGroup('calculators.funding', 'target')}
         options={FUNDING_TARGETS}
+      />
+    ),
+
+    socialSecurity: () => (
+      <SelectInput
+        label="Discount rate"
+        hint="Each year's benefits are discounted at this rate a year from today, after inflation (benefits already rise with prices). 0% adds them up as they come; a rate near the return the household expects in retirement weighs money sooner more."
+        value={values.calculators.socialSecurity?.discountRate ?? '0'}
+        onChange={setGroup('calculators.socialSecurity', 'discountRate')}
+        options={DISCOUNT_RATES}
       />
     ),
 

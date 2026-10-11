@@ -244,6 +244,7 @@ export const INPUT_SECTIONS = [
     summary: (v) => `${strategyLabel(v)} · heirs taxed at ${Math.round(Number(v.calculators.projection.heirTaxRate ?? 0) * 100)}%`,
   },
   { id: 'conversion', title: 'Conversion', summary: (v) => `Convert ${money(v.calculators.conversion.amount)} this year` },
+  { id: 'socialSecurity', title: 'Discount rate', summary: (v) => `Lifetime benefits discounted at ${pct(v.calculators.socialSecurity?.discountRate ?? '0')} a year` },
   { id: 'funding', title: 'Funding target', summary: (v) => `Savings needed to reach ${pct(v.calculators.funding?.target ?? '1')} funded` },
   {
     id: 'pension',
@@ -315,6 +316,12 @@ export const CALCULATOR_INPUTS = {
     sections: ['funding', 'household', 'contributions', 'income', 'spending', 'legacy', 'projection', 'dependents', 'deductions', 'accounts', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
+  // Social Security (phase 5): the discount rate, then the people (ages, life expectancy, sex for the
+  // survival chart) and their Social Security rows.
+  socialSecurity: {
+    sections: ['socialSecurity', 'household', 'income'],
+    fields: { people: ['age', 'planToAge', 'sex', 'retirementAge'] },
+  },
   conversion: {
     sections: ['conversion', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
@@ -346,6 +353,7 @@ const SECTION_DATA = {
   projection: (v) => v.calculators.projection,
   conversion: (v) => v.calculators.conversion,
   funding: (v) => v.calculators.funding,
+  socialSecurity: (v) => v.calculators.socialSecurity,
   pension: (v) => [v.calculators.pension, v.incomes.filter((r) => r.type === 'pension')],
 };
 

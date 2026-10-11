@@ -265,6 +265,8 @@ export function toHouseholdV2(input, year) {
       conversion: { amount: blankAsZero(values.calculators.conversion.amount) },
       // Pre-retirement funding (phase 4): the funded level savings needed is solved to (1 = 100%).
       funding: { target: Number(values.calculators.funding?.target) > 0 ? Number(values.calculators.funding.target) : 1 },
+      // The Social Security calculator (phase 5): the discount rate on lifetime benefits (0 by default).
+      socialSecurity: { discountRate: Number(values.calculators.socialSecurity?.discountRate) > 0 ? Number(values.calculators.socialSecurity.discountRate) : 0 },
       pension: firstPension
         ? {
             owner: firstPension.owner,

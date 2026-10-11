@@ -63,3 +63,21 @@ export function lifetimeHeadline(lifetime) {
   if (lifetime.winner === 'even') return 'About even';
   return `${lifetime.winner === 'roth' ? 'Roth' : 'Pre-tax'} supports ${$(Math.abs(lifetime.difference.sustainable))} per year more`;
 }
+
+// The Social Security calculator (socialSecurityView, phase 5).
+const SS_WHO = { p1: 'you', p2: 'your spouse' };
+export function socialSecurityHeadlines(view) {
+  const { people, plan, tables, grid } = view;
+  const best = (t) => t.best;
+  return {
+    plan: `${$(plan.discountedTotal)} for the household, claiming as the plan does`,
+    people: tables.map((t) => {
+      if (t.receiving) return '';
+      const b = best(t);
+      return b ? `Most at ${b.claimAge}: ${$(b.householdTotal)}` : '';
+    }),
+    grid: grid
+      ? `Most: ${people.map((p, i) => `${SS_WHO[p.id]} ${grid.best.claimAges[i] ?? 'now'}`).join(', ')}, ${$(grid.best.discountedTotal)}`
+      : '',
+  };
+}
