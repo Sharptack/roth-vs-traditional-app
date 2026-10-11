@@ -23,7 +23,7 @@ Year-keyed tables: `taxBrackets`, `capitalGainsBrackets`, `ficaRates` (incl. the
 `compare.js` (orchestrator, every number on the Roth page; optional inputs `earners`, `contributors`,
 `retirementTaxRules`, `taxSavedAcrossContribution`, `skipBlend`), `sideAwareRates.js` (identity (X − e) × W = the exact
 after-tax difference), `portfolioTax.js`, `blend.js`, `rateSteps.js`, `growthCalculations.js`, `contributionLimits.js`,
-`socialSecurity.js`, `risingIncome.js`, `scenarios.js`; `formInputs.js`/`shareInputs.js` (old v1 values and links, still read).
+`socialSecurity.js`, `socialSecurityClaiming.js` (claiming ages 62 to 70, spousal, survivor; phase 5), `risingIncome.js`, `scenarios.js`; `formInputs.js`/`shareInputs.js` (old v1 values and links, still read).
 
 ## Household (`src/lib/`)
 - Version 2: `householdValues.js` (form values: people, income/contribution/account/liability rows, linked

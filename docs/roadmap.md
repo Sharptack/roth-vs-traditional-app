@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 3, the switchover, the "Before phase" lists, and phase 4 (pre-retirement funding). 918 tests. Last closed: phase 4 (tag `phase-4-done`): the Pre-retirement funding page (#/funding): through retirement (sustainable spending with the legacy goal) and the 4% at the last retirement (from the projection), funded levels and status; savings needed for each measure to a target (80% to 150%), with Use in the plan; a retirement-age table per person with Use in the plan; room to spare when overfunded (more to spend, less to save, the earliest retirement). Also: income above the need is spent while working and saved in retirement by default; taxable contribution rows now count as savings.
 
-**In progress: phase 5, the Social Security calculator.** Decisions and steps set 2026-10-10 (in the phase 5 section below). Next step: (a).
+**In progress: phase 5, the Social Security calculator.** Decisions and steps set 2026-10-10 (in the phase 5 section below). Done: (a), the claiming engine. Next step: (b).
 
 **Known gaps and open items:**
 - The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).

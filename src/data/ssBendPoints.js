@@ -50,6 +50,25 @@ export const FULL_RETIREMENT_AGE = [
   { fromBirthYear: 1960, toBirthYear: Infinity, months: y(67) },
 ];
 
+// Full retirement age for a SURVIVOR benefit, by the survivor's birth year, in months. The same
+// steps as above two years later. Source: SSA, "Survivors benefits: full retirement age"
+// (ssa.gov/benefits/survivors/survivorchartred.html).
+export const SURVIVOR_FULL_RETIREMENT_AGE = [
+  { fromBirthYear: -Infinity, toBirthYear: 1939, months: y(65) },
+  { fromBirthYear: 1940, toBirthYear: 1940, months: y(65, 2) },
+  { fromBirthYear: 1941, toBirthYear: 1941, months: y(65, 4) },
+  { fromBirthYear: 1942, toBirthYear: 1942, months: y(65, 6) },
+  { fromBirthYear: 1943, toBirthYear: 1943, months: y(65, 8) },
+  { fromBirthYear: 1944, toBirthYear: 1944, months: y(65, 10) },
+  { fromBirthYear: 1945, toBirthYear: 1956, months: y(66) },
+  { fromBirthYear: 1957, toBirthYear: 1957, months: y(66, 2) },
+  { fromBirthYear: 1958, toBirthYear: 1958, months: y(66, 4) },
+  { fromBirthYear: 1959, toBirthYear: 1959, months: y(66, 6) },
+  { fromBirthYear: 1960, toBirthYear: 1960, months: y(66, 8) },
+  { fromBirthYear: 1961, toBirthYear: 1961, months: y(66, 10) },
+  { fromBirthYear: 1962, toBirthYear: Infinity, months: y(67) },
+];
+
 // Earliest and latest ages at which benefits can be claimed.
 export const EARLIEST_CLAIMING_AGE = 62;
 export const LATEST_CLAIMING_AGE = 70;
