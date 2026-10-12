@@ -10,7 +10,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **In progress:** Before phase 6: Social Security planner additions (the grid, year by year per strategy, the break-even graph; asked 2026-10-12). Steps (a) to (e) done, 972 tests; waiting on Michael's look at the page, then `/closeout`.
 
-**Also in progress: phase 6, the year-by-year planner** (started 2026-10-12; decisions and steps under Phase 6 below). Steps (a) to (e) done 2026-10-12 (1,011 tests, local, unpushed). Next: step (f), the Docs article. Open for Michael: the first-year IRMAA artifact (under step d).
+**Also in progress: phase 6, the year-by-year planner** (started 2026-10-12; decisions and steps under Phase 6 below). Steps (a) to (f) done 2026-10-12 (1,011 tests, local, unpushed): every step built; waiting on Michael's look at the planner page, then `/closeout`. Open for Michael: the first-year IRMAA artifact (under step d). Open for Michael: the first-year IRMAA artifact (under step d).
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years (full retirement age from the birth year); month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -173,6 +173,7 @@ The projection page's year table gets these first (they need no planner), so the
 - (e) The planner page (`#/planner`, under Decisions): the year table, the list of changes, a year's panel to add or change, with cost, room, value and suggestions.
   **Done 2026-10-12.** `src/next/PlannerResult.jsx`. "Your changes" leads: each change in words with Remove, all of them against the plan with none (sustainable spending, lifetime tax, after tax for heirs), and the note on who pays a conversion's tax (Michael: say it briefly in the planner). "Year by year": the projection's table (with Converted, Contributed, the bracket and MAGI shown, ● on a year with a change); clicking a year opens its panel: the bracket and the room left, the IRMAA tier for the premium two years on and the room before the next, the most that can be converted; add a conversion (whose Pre-tax money, for a couple; the amount, with its cost and lifetime value shown as it is typed); the suggestions with cost and value, each with Add; change a contribution (the rows of the people working that year; that year only or from it on); the year's changes with their value and Remove; "What makes up the year" (step a's breakdown). The figures are worked out just after the click (about a second), showing "Working out…" first. Dashboard tile: the number of changes and the dollars converted. Checked in the browser at desktop and phone widths (no sideways scroll), adding a suggestion, and a contribution change from 2030 on.
 - (f) The Docs article; code map and the projection article updated.
+  **Done 2026-10-12.** `articles/planner.md` ("The year-by-year planner"), listed in Docs and linked from the page; its examples are the hand-worked tests (the $34,886.36 of room, $4,176 and $16,333.36 of cost, the $77,386.36 IRMAA room and $1,148.40 surcharge). The projection and conversion articles point to it.
 
 ## Phase 7: Roth vs. Pre-tax with conversions in low-income years
 

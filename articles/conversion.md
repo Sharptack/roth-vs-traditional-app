@@ -26,4 +26,4 @@ The ordinary brackets as a bar, filled to this year's taxable income with the co
 
 ## What it leaves out
 
-State tax, and the five-year rule on withdrawing converted amounts. One conversion this year; for a conversion every year, use the conversion strategies on the projection page.
+State tax, and the five-year rule on withdrawing converted amounts. One conversion this year; for a conversion every year, use the conversion strategies on the projection page, or plan them year by year in the [year-by-year planner](#/docs/planner).

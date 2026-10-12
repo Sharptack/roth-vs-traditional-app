@@ -46,6 +46,11 @@ export const DOCS_ARTICLES = [
     blurb: 'A conversion this year: lifetime tax, the legacy and retirement income with and without it, its tax now and its effective rate.',
   },
   {
+    slug: 'planner',
+    title: 'The year-by-year planner',
+    blurb: 'Roth conversions and contribution changes year by year: the room in each year’s bracket and before IRMAA, a conversion’s cost, what each change is worth, and the suggestions.',
+  },
+  {
     slug: 'pension',
     title: 'The pension calculator',
     blurb: 'Lump sum or monthly: the expected return on life expectancy, survivor benefits, how long you live, and which one the plan takes.',

@@ -46,7 +46,7 @@ The engine always takes at least the RMD and never more than an account holds, w
 - **Proportional:** the same share of every account each year.
 - **Taxable, then Pre-tax, then Roth:** the common default order.
 - **Fill the 12% (or 22%) bracket from Pre-tax:** each year, Pre-tax money up to the top of the bracket, then taxable, then Roth. Anything above the need is reinvested.
-- **Roth conversions to the top of 12%, 22% or 24%:** in retirement, before each owner's RMDs start, convert Pre-tax money to Roth up to the top of the bracket. Spending comes in the default order. The conversion's tax is paid from a taxable account; when there is none, or it runs short, the rest is held back from the conversion, so less reaches Roth (decided 2026-10-12; before, that year's withdrawals paid it).
+- **Roth conversions to the top of 12%, 22% or 24%:** in retirement, before each owner's RMDs start, convert Pre-tax money to Roth up to the top of the bracket. Spending comes in the default order. The conversion's tax is paid from a taxable account; when there is none, or it runs short, the rest is held back from the conversion, so less reaches Roth (decided 2026-10-12; before, that year's withdrawals paid it). For conversions chosen year by year (convert $40,000 in 2029, nothing in 2031), use the [year-by-year planner](#/docs/planner); its changes are part of the plan, so this page includes them and says so at the top.
 
 ## Required minimum distributions
 

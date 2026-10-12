@@ -151,6 +151,7 @@ export const CALCULATORS = [
     title: 'Year-by-year planner',
     blurb: 'Click a year to add a Roth conversion or change a contribution: its cost that year, the room left in the bracket and before IRMAA, and what it is worth over the plan.',
     ownTitle: 'Planner inputs',
+    article: 'planner',
   },
   {
     id: 'pension',
