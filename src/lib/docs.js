@@ -53,7 +53,7 @@ export const DOCS_ARTICLES = [
   {
     slug: 'social-security',
     title: 'The Social Security calculator',
-    blurb: 'When to claim: benefits at each age from 62 to 70, spousal and survivor benefits, lifetime totals, what each age does to the plan, break-even ages and the chance of reaching them.',
+    blurb: 'When to claim: the grid of every pair of claiming ages, strategies year by year and on a break-even graph, spousal and survivor benefits, what each age does to the plan, and the chance of reaching the break-even ages.',
   },
   {
     slug: 'rates',

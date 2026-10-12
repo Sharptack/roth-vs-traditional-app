@@ -23,7 +23,7 @@ Year-keyed tables: `taxBrackets`, `capitalGainsBrackets`, `ficaRates` (incl. the
 `compare.js` (orchestrator, every number on the Roth page; optional inputs `earners`, `contributors`,
 `retirementTaxRules`, `taxSavedAcrossContribution`, `skipBlend`), `sideAwareRates.js` (identity (X − e) × W = the exact
 after-tax difference), `portfolioTax.js`, `blend.js`, `rateSteps.js`, `growthCalculations.js`, `contributionLimits.js`,
-`socialSecurity.js`, `socialSecurityClaiming.js` (claiming ages 62 to 70, spousal, survivor; phase 5), `socialSecurityLifetime.js` (lifetime benefits, break-even ages, the couple grid), `risingIncome.js`, `scenarios.js`; `formInputs.js`/`shareInputs.js` (old v1 values and links, still read).
+`socialSecurity.js`, `socialSecurityClaiming.js` (claiming ages 62 to 70, spousal, survivor; phase 5), `socialSecurityLifetime.js` (lifetime benefits, break-even ages, the claiming grid, a strategy year by year, running totals and their crossings), `risingIncome.js`, `scenarios.js`; `formInputs.js`/`shareInputs.js` (old v1 values and links, still read).
 
 ## Household (`src/lib/`)
 - Version 2: `householdValues.js` (form values: people, income/contribution/account/liability rows, linked
@@ -40,7 +40,7 @@ after-tax difference), `portfolioTax.js`, `blend.js`, `rateSteps.js`, `growthCal
 (`runProjection`: the year loop, strategy seam, `convertNow`), `strategies.js`, `projectionSummary.js` (sustainable
 spending, `projectionView`), `spendingNeed.js` (the spending need every calculator reads: top-down or the budget), `retirementSpending.js` (the
 Retirement spending page: what the resources allow with the legacy goal; "Use in the plan"),
-`funding.js` (Pre-retirement funding: the two measures, savings needed, the page's view and "Use in the plan"; page `src/next/FundingResult.jsx`), `socialSecurityCalculator.js` (the Social Security page's view and "Use in the plan" for claiming ages; page `src/next/SocialSecurityResult.jsx`), `lifetimeComparison.js`, `conversionLifetime.js`, `suiteTiles.js`, `blockHeadlines.js`.
+`funding.js` (Pre-retirement funding: the two measures, savings needed, the page's view and "Use in the plan"; page `src/next/FundingResult.jsx`), `socialSecurityCalculator.js` (the Social Security page's view, the strategies compared, and "Use in the plan" for claiming ages; page `src/next/SocialSecurityResult.jsx`), `lifetimeComparison.js`, `conversionLifetime.js`, `suiteTiles.js`, `blockHeadlines.js`.
 
 ## UI
 - `src/App.jsx`: the shell (hash routes from `src/lib/route.js`; NextApp always mounted; Docs and Visualization lazy;

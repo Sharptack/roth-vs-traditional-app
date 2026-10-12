@@ -1,6 +1,6 @@
 # The Social Security calculator
 
-When should each person claim? The calculator lays out every claiming age from 62 to 70: the monthly benefit, the benefits over a lifetime, the ages at which waiting pays off, and for a couple every pair of ages, with spousal and survivor benefits counted. It also reruns the whole plan at each age, so the answer accounts for taxes, withdrawals and the portfolio.
+When should each person claim? The calculator lays out every claiming age from 62 to 70: the monthly benefit, the benefits over a lifetime, and for a couple every pair of ages in a grid, with spousal and survivor benefits counted. Choose cells to compare strategies year by year and on a break-even graph. It also reruns the whole plan at each age, so the answer accounts for taxes, withdrawals and the portfolio.
 
 Everything is in today's dollars: benefits rise with prices each year, so a benefit in today's dollars stays the same. The benefit totals are before tax; tax on the benefits is in the other calculators and in the plan's figures below.
 
@@ -62,7 +62,17 @@ These ages don't depend on the size of the benefit. A discount rate pushes them 
 
 ## Every pair of claiming ages
 
-For a couple, a grid sets one person's claiming age across and the other's down; each cell is the household's lifetime benefits (own, spousal and survivor). ★ marks the most, and the shaded cell is the plan. Choose a cell to see its parts and use that pair in the plan.
+The grid leads the page. Your claiming age runs down the side and your spouse's across the top, and each heading shows that person's own benefit a month at that age. Each cell is the household's lifetime benefits (own, spousal and survivor, at the discount rate), shaded darker for more. ★ marks the most, and the dashed cell is the plan. For one person, the grid is a single row of claiming ages.
+
+Choose a cell to see its benefit options: each person's own, spousal and survivor benefit a month, each person's lifetime total, and how the cell compares with the plan and with the most. From there you can use that pair in the plan. Choosing a cell also adds it to the strategies compared below; a colored dot in the grid marks each one, in its line color on the graph.
+
+## The strategies compared
+
+The strategies are the most plus the cells you choose, starting with the plan's ages (up to four chosen cells; choosing a fifth drops the oldest). Remove one from the cell's panel.
+
+**Year by year:** a dropdown picks one strategy and a table shows each year from the first benefit to the second death: both ages, each person's own, spousal and survivor benefit (columns that are always zero are left out), the household total, and the running total. Survivor years are shaded. The table is in today's dollars by default. Switch to future dollars to see each year grown at the inflation input, the way cost-of-living adjustments raise the checks; the running total then adds dollars of different years. The table is not discounted.
+
+**Break-even graph:** each strategy's running total by your age, in today's dollars at the discount rate. A strategy that starts later pays off where its line crosses an earlier one. Dashed lines mark the crossings with the strategy picked in the dropdown, and a table lists every crossing, at your age and your spouse's. Example, with no discount: you born 1960 with a full-retirement benefit of $2,000, plan-to 80; your spouse born 1962 with $600, claiming at 64, plan-to 90. If you claim at 70 instead of 67, the household falls $84,000 behind by your 70th birthday. It gains $6,560 a year while you're both alive (your larger check and the spousal top-up) and $5,760 a year after, as your spouse's survivor benefit includes your delayed credits. It passes at your age 83 and 1 month, with your spouse 81. The graph stays in today's dollars, because growing later years works like a negative discount rate and would move the crossings.
 
 ## The chance of being alive
 

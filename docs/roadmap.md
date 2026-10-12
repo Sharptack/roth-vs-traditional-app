@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 4, the switchover, the "Before phase" lists, and phase 5 (Social Security). 959 tests. Last closed: phase 5 (tag `phase-5-done`): the Social Security page (#/social-security): each person's benefit and lifetime total by claiming age 62 to 70 (own, spousal, survivor), a discount rate, break-even ages, the couple's grid with the best cell, the plan effect of each claiming age (sustainable spending, lifetime tax), the chance of being alive at each age, and "Use in the plan" for claiming ages. Also: the projection's survivor years follow the SSA survivor rules.
 
-**In progress:** Before phase 6: Social Security planner additions (the grid, year by year per strategy, the break-even graph; asked 2026-10-12). Steps (a) to (e) below.
+**In progress:** Before phase 6: Social Security planner additions (the grid, year by year per strategy, the break-even graph; asked 2026-10-12). Steps (a) to (e) done, 972 tests; waiting on Michael's look at the page, then `/closeout`.
 
 **Next: phase 6, the year-by-year planner.** First step: set its decisions and steps with Michael (the breakdowns in the projection's year table can come first, as they need no planner).
 
