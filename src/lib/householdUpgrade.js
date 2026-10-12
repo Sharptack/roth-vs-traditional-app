@@ -142,6 +142,7 @@ export function upgradeHouseholdValues(values, year) {
         spouseEndAge: v.penSpouseEndAge,
       },
     },
+    plannerChanges: [], // new in phase 6
   }, year);
 }
 

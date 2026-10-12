@@ -23,6 +23,7 @@ import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/household
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
 import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, isoDate, refreshAges, updateRow } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
+import { plannerChangesNote } from '../lib/planner.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
@@ -112,6 +113,11 @@ const socialSecurityOf = (household) => (socialSecurityReady(household) ? social
 const fundingOf = (r) => (r.spending.need !== null ? fundingView(r.household, r.spending.need) : null);
 // The homepage shows every calculator's tile; a calculator page shows only its own result; the
 // inputs page shows none.
+// The pages that run the plan year by year, and so carry the planner's changes (phase 6, decided
+// 2026-10-12): each says so. The Roth page's comparison sets the contributions itself.
+const PLAN_PAGES = ['roth', 'spending', 'funding', 'projection', 'conversion', 'socialSecurity'];
+const plannerNote = (changes, id) => plannerChangesNote(changes, { conversionsOnly: id === 'roth' });
+
 const isHome = (page) => page === 'home';
 const shownOn = (page, id) => isHome(page) || page === id;
 
@@ -557,6 +563,9 @@ export default function NextApp({ initialPage, initialValues, client }) {
             </button>
             )}
             <div className="results-column">
+              {PLAN_PAGES.includes(calculator.id) && plannerNote(h.plannerChanges, calculator.id) && (
+                <p className="note planner-note">{plannerNote(h.plannerChanges, calculator.id)}</p>
+              )}
               {calculator.id === 'roth' && (
                 <>
                   {comparing && (

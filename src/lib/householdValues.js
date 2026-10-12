@@ -59,6 +59,10 @@
 //                  pension: { lumpSum },
 //                  funding: { target } },   // Pre-retirement funding's target funded level, '1' = 100%   // the lump-sum offer before it moved onto the pension row
 //                                          // (2026-10-09; moveLumpSumToRow), kept for older saves
+//   plannerChanges: [                      // the year-by-year planner's changes (phase 6, decided
+//     { id, year, kind: 'convert', owner, amount }   // 2026-10-12): numbers, not strings (the planner
+//     | { id, year, kind: 'contribution', row, amount, scope: 'year' | 'onward' } ],   // parses them);
+//                                          // row: a contributions row's id. runProjection's yearChanges.
 // }
 //
 // The defaults are version 1's (household.js PREVIEW_DEFAULT_VALUES), row by row.
@@ -158,6 +162,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
     funding: { target: '1' }, // the funded level savings needed is solved to (phase 4), '1' = 100%
     socialSecurity: { discountRate: '0' }, // the Social Security calculator's discount rate (phase 5)
   },
+  plannerChanges: [], // the year-by-year planner's changes (phase 6): none
 };
 
 // "Clear inputs" (decided 2026-10-09): a blank form for a new client. The people, income, savings,
@@ -291,8 +296,23 @@ export function updateRow(values, list, id, field, value) {
   return { ...values, [list]: values[list].map((r) => (r.id === id ? { ...r, [field]: value } : r)) };
 }
 
+// Removing a contribution row removes the planner's changes to it (a new row may take its id).
 export function removeRow(values, list, id) {
-  return { ...values, [list]: values[list].filter((r) => r.id !== id) };
+  const next = { ...values, [list]: values[list].filter((r) => r.id !== id) };
+  if (list === 'contributions' && Array.isArray(values.plannerChanges)) {
+    next.plannerChanges = values.plannerChanges.filter((c) => !(c.kind === 'contribution' && c.row === id));
+  }
+  return next;
+}
+
+// The planner's changes (phase 6): add one (it gets a free id), remove one by id.
+export function addPlannerChange(values, change) {
+  const list = values.plannerChanges ?? [];
+  return { ...values, plannerChanges: [...list, { id: newRowId(list, 'pc'), ...change }] };
+}
+
+export function removePlannerChange(values, id) {
+  return { ...values, plannerChanges: (values.plannerChanges ?? []).filter((c) => c.id !== id) };
 }
 
 // Set a field of one of the groups (spending, assumptions) or a calculator's own inputs
@@ -376,6 +396,39 @@ function cleanRows(raw, list) {
     });
 }
 
+// The ids cleanRows gives a list's rows: { raw id: new id }, for the rows it keeps.
+function cleanRowIds(raw, list) {
+  if (!Array.isArray(raw)) return {};
+  const { prefix } = ROW_TEMPLATES[list];
+  const rules = ROW_RULES[list];
+  const kept = raw.slice(0, MAX_ROWS).filter((r) => isObject(r) && Object.entries(rules.choices).every(([k, options]) => options.includes(r[k])));
+  return Object.fromEntries(kept.map((r, i) => [r.id, `${prefix}${i + 1}`]));
+}
+
+// The planner's changes: numbers within bounds, a known kind and owner, a contribution change's row
+// mapped to its row's new id (dropped when the row is gone); renumbered pc1, pc2, ...
+export const MAX_PLANNER_CHANGES = 200;
+const PLANNER_KINDS = ['convert', 'contribution'];
+const PLANNER_SCOPES = ['year', 'onward'];
+function cleanPlannerChanges(raw, contributionIds) {
+  if (!Array.isArray(raw)) return [];
+  const num = (v) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
+  const out = [];
+  for (const c of raw.slice(0, MAX_PLANNER_CHANGES)) {
+    if (!isObject(c) || !PLANNER_KINDS.includes(c.kind)) continue;
+    const year = num(c.year);
+    const amount = num(c.amount);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200 || !Number.isFinite(amount) || amount < 0 || amount > 1e9) continue;
+    const id = `pc${out.length + 1}`;
+    if (c.kind === 'convert') {
+      if (OWNERS.includes(c.owner)) out.push({ id, year, kind: 'convert', owner: c.owner, amount });
+    } else if (Object.hasOwn(contributionIds, c.row)) {
+      out.push({ id, year, kind: 'contribution', row: contributionIds[c.row], amount, scope: oneOf(c.scope, PLANNER_SCOPES, 'year') });
+    }
+  }
+  return out;
+}
+
 // year: the year it's opened in (converting a first-layout household's Social Security received).
 export function cleanHouseholdValues(input, year = new Date().getFullYear()) {
   if (!isObject(input) || input.version !== HOUSEHOLD_VALUES_VERSION) return null;
@@ -404,6 +457,7 @@ export function cleanHouseholdValues(input, year = new Date().getFullYear()) {
     calculators: Object.fromEntries(
       Object.entries(D.calculators).map(([name, defaults]) => [name, cleanGroup(calculators[name], defaults)]),
     ),
+    plannerChanges: cleanPlannerChanges(raw.plannerChanges, cleanRowIds(raw.contributions, 'contributions')),
   });
 }
 

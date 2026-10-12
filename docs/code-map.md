@@ -37,7 +37,7 @@ after-tax difference), `portfolioTax.js`, `blend.js`, `rateSteps.js`, `growthCal
 
 ## Calculators (`src/lib/`)
 `taxCalculator.js`, `conversionCalculator.js`, `pensionCalculator.js`, `irmaa.js`, `rmd.js`, `projection.js`
-(`runProjection`: the year loop, strategy seam, `convertNow`; each row's `detail` = its parts), `projectionDetail.js` (reads `detail`: the year's tax rows, labels, the columns that open; page `src/next/YearDetail.jsx`), `strategies.js`, `projectionSummary.js` (sustainable
+(`runProjection`: the year loop, strategy seam, `convertNow`; each row's `detail` = its parts), `planner.js` (the year-by-year planner: its changes described and weighed; the changes are `household.plannerChanges`, runProjection's `yearChanges`), `projectionDetail.js` (reads `detail`: the year's tax rows, labels, the columns that open; page `src/next/YearDetail.jsx`), `strategies.js`, `projectionSummary.js` (sustainable
 spending, `projectionView`), `spendingNeed.js` (the spending need every calculator reads: top-down or the budget), `retirementSpending.js` (the
 Retirement spending page: what the resources allow with the legacy goal; "Use in the plan"),
 `funding.js` (Pre-retirement funding: the two measures, savings needed, the page's view and "Use in the plan"; page `src/next/FundingResult.jsx`), `socialSecurityCalculator.js` (the Social Security page's view, the strategies compared, and "Use in the plan" for claiming ages; page `src/next/SocialSecurityResult.jsx`), `lifetimeComparison.js`, `conversionLifetime.js`, `suiteTiles.js`, `blockHeadlines.js`.
