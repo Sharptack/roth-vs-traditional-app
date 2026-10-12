@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lifetimeBenefits, breakEvenAge, claimingGrid } from '../src/lib/socialSecurityLifetime.js';
+import { lifetimeBenefits, breakEvenAge, claimingGrid, strategyRows, cumulativeCurve, benefitCrossings } from '../src/lib/socialSecurityLifetime.js';
 
 // Hand-worked (round 2 phase 5, step b), worked out before running the code. Year 2026.
 
@@ -105,5 +105,83 @@ describe('the couple grid', () => {
     expect(cell.discountedTotal).toBeCloseTo(766400, 6);
     const max = Math.max(...g.cells.map((c) => c.discountedTotal));
     expect(g.best.discountedTotal).toBe(max);
+  });
+});
+
+// Before phase 6 (asked 2026-10-12), step (a): a strategy's year-by-year rows, its cumulative curve,
+// and where two strategies' cumulative totals cross. Worked out by hand before running the code.
+describe('a strategy year by year (HAND CALC)', () => {
+  // The couple above, S1 = A 67, B 64 (766,400 in all).
+  // 2026 (A 66, B 64): B own only = 5,760.
+  // 2027 (A 67, B 65): A own 24,000 + B own 5,760 + B spousal 4,000 = 33,760.
+  // Future dollars at 2.5%: 2027 = 33,760 x 1.025 = 34,604; running total 5,760 + 34,604 = 40,364.
+  const people = [
+    { birthYear: 1960, pia: 2000, planToAge: 80 },
+    { birthYear: 1962, pia: 600, planToAge: 90 },
+  ];
+  const s1 = lifetimeBenefits({ year: 2026, people, claimAges: [67, 64] });
+
+  it("today's dollars: each year's total and the running total", () => {
+    const rows = strategyRows(s1, { year: 2026 });
+    expect(rows[0]).toMatchObject({ year: 2026, ages: [66, 64], total: 5760, cumulative: 5760 });
+    expect(rows[1].total).toBeCloseTo(33760, 6);
+    expect(rows[1].cumulative).toBeCloseTo(39520, 6);
+    expect(rows[1].streams[1]).toEqual({ own: 5760, spousal: 4000, survivor: 0 });
+    expect(rows.at(-1).cumulative).toBeCloseTo(766400, 6);
+  });
+  it('future dollars at 2.5%: 2027 = 34,604, running total 40,364; each stream grown too', () => {
+    const rows = strategyRows(s1, { year: 2026, inflationRate: 0.025, futureDollars: true });
+    expect(rows[0].total).toBeCloseTo(5760, 6);
+    expect(rows[1].total).toBeCloseTo(34604, 6);
+    expect(rows[1].cumulative).toBeCloseTo(40364, 6);
+    expect(rows[1].streams[0].own).toBeCloseTo(24600, 6); // 24,000 x 1.025
+  });
+  it("the cumulative curve by A's age: 0 at 66 (now), 5,760 by 67, 39,520 by 68", () => {
+    const pts = cumulativeCurve(s1);
+    expect(pts[0]).toEqual({ x: 66, y: 0 });
+    expect(pts[1].x).toBe(67);
+    expect(pts[1].y).toBeCloseTo(5760, 6);
+    expect(pts[2]).toMatchObject({ x: 68 });
+    expect(pts[2].y).toBeCloseTo(39520, 6);
+  });
+});
+
+describe('where two strategies cross (HAND CALC)', () => {
+  it('one person, PIA 2,000, born 1960, from 62 (2022): 70 passes 62 at 80.3704, as breakEvenAge', () => {
+    const p = [{ birthYear: 1960, pia: 2000, planToAge: 95 }];
+    const a = lifetimeBenefits({ year: 2022, people: p, claimAges: [62] });
+    const b = lifetimeBenefits({ year: 2022, people: p, claimAges: [70] });
+    const x = benefitCrossings(a, b);
+    expect(x).toHaveLength(1);
+    expect(x[0].age).toBeCloseTo(80.3704, 3);
+    expect(x[0].leader).toBe('b'); // b leads after the crossing
+  });
+  it('the couple: S2 = A 70, B 64 passes S1 = A 67, B 64 at A 83.0556', () => {
+    // S2: A own 2,000 x 1.24 = 2,480 a month = 29,760 a year at A 70 to 80. B spousal: A files at
+    // 70 when B is 68 (past B's FRA of 67): 400 a month = 4,800 a year, B 68 to 78 (A 70 to 80).
+    // B survivor: A's 2,480 (credits kept) - 480 = 2,000 a month = 24,000 a year, B 79 to 90.
+    // B own is the same in both. S2 - S1 by A's age:
+    //   A 67, 68, 69: 0 - (24,000 + 4,000) = -28,000 each -> -84,000 by A 70
+    //   A 70 to 80 (11 years): 34,560 - 28,000 = +6,560 -> -84,000 + 72,160 = -11,840 by A 81
+    //   A 81 to 92 (B 79 to 90): 24,000 - 18,240 = +5,760; by A 83: -11,840 + 11,520 = -320
+    //   crossed during A 83: 83 + 320 / 5,760 = 83.0556
+    // S2 total: 327,360 + 155,520 + 52,800 + 288,000 = 823,680 (S1 + 57,280).
+    const people = [
+      { birthYear: 1960, pia: 2000, planToAge: 80 },
+      { birthYear: 1962, pia: 600, planToAge: 90 },
+    ];
+    const s1 = lifetimeBenefits({ year: 2026, people, claimAges: [67, 64] });
+    const s2 = lifetimeBenefits({ year: 2026, people, claimAges: [70, 64] });
+    expect(s2.total).toBeCloseTo(823680, 6);
+    const x = benefitCrossings(s1, s2);
+    expect(x).toHaveLength(1);
+    expect(x[0].age).toBeCloseTo(83.0556, 3);
+    expect(x[0].leader).toBe('b');
+    expect(benefitCrossings(s2, s1)[0].leader).toBe('a');
+  });
+  it('the same strategy twice: no crossing', () => {
+    const p = [{ birthYear: 1960, pia: 2000, planToAge: 95 }];
+    const a = lifetimeBenefits({ year: 2022, people: p, claimAges: [62] });
+    expect(benefitCrossings(a, a)).toEqual([]);
   });
 });

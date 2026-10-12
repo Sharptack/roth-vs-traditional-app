@@ -133,3 +133,45 @@ export function claimingGrid({ year, people, discountRate = 0 }) {
   const best = cells.reduce((b, c) => (c.discountedTotal > b.discountedTotal ? c : b));
   return { ages, cells, best };
 }
+
+// A strategy (a lifetimeBenefits result) year by year, for its table (before phase 6, asked
+// 2026-10-12): each year's streams and total, and the running total, not discounted. Today's
+// dollars, or with futureDollars each year grown at the inflation input (benefits rise with prices).
+// -> [{ year, ages, streams: [{ own, spousal, survivor }], total, cumulative }]
+export function strategyRows(result, { year, inflationRate = 0, futureDollars = false }) {
+  let cumulative = 0;
+  return result.years.map((y) => {
+    const g = futureDollars ? (1 + inflationRate) ** (y.year - year) : 1;
+    const streams = y.streams.map((s) => ({ own: s.own * g, spousal: s.spousal * g, survivor: s.survivor * g }));
+    cumulative += y.total * g;
+    return { year: y.year, ages: y.ages, streams, total: y.total * g, cumulative };
+  });
+}
+
+// The running total (today's dollars, at the result's discount rate) by the first person's age:
+// 0 at their age now, then what has been received by the end of each year (by the next age).
+// -> [{ x, y }]
+export function cumulativeCurve(result) {
+  const pts = [{ x: result.years[0].ages[0], y: 0 }];
+  let sum = 0;
+  for (const y of result.years) {
+    sum += y.discounted;
+    pts.push({ x: y.ages[0] + 1, y: sum });
+  }
+  return pts;
+}
+
+// Where two strategies' running totals (as cumulativeCurve) cross, by the first person's exact age;
+// linear within the year it happens, as breakEvenAge. leader: the one ahead after the crossing.
+// Both results are for the same people (the same years). -> [{ age, leader: 'a' | 'b' }]
+export function benefitCrossings(a, b) {
+  const out = [];
+  let diff = 0; // b minus a, received by the start of the year
+  a.years.forEach((ya, k) => {
+    const step = b.years[k].discounted - ya.discounted;
+    const next = diff + step;
+    if ((diff < 0 && next >= 0) || (diff > 0 && next <= 0)) out.push({ age: ya.ages[0] - diff / step, leader: diff < 0 ? 'b' : 'a' });
+    diff = next;
+  });
+  return out;
+}

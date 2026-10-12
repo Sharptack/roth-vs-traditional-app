@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 4, the switchover, the "Before phase" lists, and phase 5 (Social Security). 959 tests. Last closed: phase 5 (tag `phase-5-done`): the Social Security page (#/social-security): each person's benefit and lifetime total by claiming age 62 to 70 (own, spousal, survivor), a discount rate, break-even ages, the couple's grid with the best cell, the plan effect of each claiming age (sustainable spending, lifetime tax), the chance of being alive at each age, and "Use in the plan" for claiming ages. Also: the projection's survivor years follow the SSA survivor rules.
 
-**In progress:** nothing.
+**In progress:** Before phase 6: Social Security planner additions (the grid, year by year per strategy, the break-even graph; asked 2026-10-12). Steps (a) to (e) below.
 
 **Next: phase 6, the year-by-year planner.** First step: set its decisions and steps with Michael (the breakdowns in the projection's year table can come first, as they need no planner).
 
@@ -98,6 +98,24 @@ The projection has to carry every part of the household, so the plan evaluators 
 ### Year-by-year and Monte Carlo: one plan
 
 Both run the same plan from the same inputs and assumptions; only the returns differ. The year-by-year projection is the plan at a constant return, readable line by line. Monte Carlo (phase 8) reruns that exact plan over many random return paths and reports how often it works. With no volatility, Monte Carlo reproduces the year-by-year exactly (a test). Both pages show the same plan (by name, once phase 10 exists) and link to each other; the guardrails (phase 9) are spending rules applied inside the same paths.
+
+## Before phase 6: Social Security planner additions
+
+Asked by Michael on 2026-10-12, after phase 5: the claiming grid, a year-by-year view of each strategy, and a break-even graph are "the main piece of the calc." The phase 5 grid was on the page (the third block for a couple), but as a plain table of "$1,5xxk" links with no benefit amounts or shading, so it didn't read as the grid he meant.
+
+**Decisions (2026-10-12, Michael):**
+- **The grid:** your claiming age down the side, your spouse's across the top; each header shows the age and that person's monthly benefit. Cells shaded by the household lifetime total; ★ the best, outlined the plan's. Clicking a cell shows its benefit options (each person's own, spousal and survivor benefit a month and over the lifetime, the difference from the plan and the best) with "Use in the plan." A single person (or a spouse already receiving) gets one row. Reason: the grid is how an advisor reads the couple's choice at a glance.
+- **Strategies = the best cell plus the cells clicked; the plan is in by default.** A dropdown picks one strategy for the year-by-year table; the break-even graph draws them all. Reason: compare what the advisor is weighing, not a fixed set.
+- **Year by year:** each year to the second death: both ages, each person's own, spousal and survivor benefit, the household total, and the running total.
+- **Dollars: today's by default, with a switch to future dollars** (benefits growing at the inflation input, as COLAs). Reason: the app's convention, with the figures a client sees on SSA statements one switch away. The switch is on the year-by-year table only.
+- **The break-even graph:** cumulative household benefits by your age, one line per strategy, in today's dollars at the page's discount rate, with each crossing marked and labeled. Not in future dollars: growing later years works like a negative discount rate, so it would move the break-even ages (and add 2060 dollars to 2027 ones).
+
+**Steps:**
+- (a) The math (`src/lib/socialSecurityLifetime.js` / `socialSecurityCalculator.js`): a strategy's year-by-year rows (today's or future dollars, cumulative, discounted) and the crossing ages between two strategies' cumulative totals. Hand-worked: one couple's rows across the first death, one crossing age, the future-dollar rows.
+- (b) The grid: headers with monthly benefits, shading, the cell panel, one row for a single person.
+- (c) The strategies, the dropdown and the year-by-year table, with the dollars switch.
+- (d) The break-even graph.
+- (e) The Social Security article updated.
 
 ## Phase 6: Year-by-year planner
 
