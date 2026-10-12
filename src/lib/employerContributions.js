@@ -38,7 +38,8 @@ export function employerContribution({ rows, wages, year, age }) {
 
 // A person's employer contribution that year, from a version 2 household's contribution rows
 // (their Roth and Pre-tax 401(k) rows) and W-2 wages. Version 1 households have none.
-export function employerContributionFor(household, person, age) {
-  const rows = (household.contributionRows ?? []).filter((r) => r.owner === person.id && r.account === '401k' && r.tax !== 'taxable');
+// contributionRows: the rows with that year's amounts (the planner's changes); default the household's.
+export function employerContributionFor(household, person, age, contributionRows = household.contributionRows) {
+  const rows = (contributionRows ?? []).filter((r) => r.owner === person.id && r.account === '401k' && r.tax !== 'taxable');
   return employerContribution({ rows, wages: person.wages, year: household.year, age });
 }

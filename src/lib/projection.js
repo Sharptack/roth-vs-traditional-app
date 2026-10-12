@@ -235,7 +235,18 @@ export function socialSecurityInYear(household, t) {
 //                    what-if: "rates 3 points higher in retirement"); default: the household's
 //                    assumptions.retirementRateShift, else 0.
 //   convertNow       a Roth conversion in the first projected year, in dollars (see the header).
-export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0 } = {}) {
+//   yearChanges      the planner's changes for single years (phase 6 step b, decided 2026-10-12); default
+//                    household.plannerChanges, none = today's results. Each alters its year (and, for
+//                    'onward', the years after), never an earlier one:
+//                    { year, kind: 'convert', owner, amount }: a Roth conversion that calendar year from
+//                      the owner's Pre-tax accounts (pro rata by balance; the survivor's after a death),
+//                      on top of the strategy's; its tax as any conversion's (see the header)
+//                    { year, kind: 'contribution', row, amount, scope: 'year' | 'onward' }: a contribution
+//                      row's amount (household.contributionRows) that year, or from that year on; for a
+//                      row, the change from the latest year wins, and in its own year a 'year' change
+//                      wins over an 'onward' one. The employer's match follows the changed amount. Not
+//                      applied where the caller overrides the contributions (or taxable savings).
+export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0, yearChanges = household.plannerChanges ?? [] } = {}) {
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
   // The household's own what-if (assumptions.retirementRateShift) unless a caller sets one.
   const rateShiftInRetirement = retirementRateShift ?? assumptions.retirementRateShift ?? 0;
@@ -263,6 +274,39 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
   ];
   // Each saver's account type (their own, else the household's) sets their IRS limit.
   const accountTypeOf = (owner) => fc.contributions.find((c) => c.owner === owner)?.accountType ?? fc.accountType;
+
+  // The planner's contribution changes (see yearChanges above): each row's amount in a year, and the
+  // year's plan with the changed rows' differences added to their owner's entries.
+  const contributionRows = household.contributionRows ?? [];
+  const contributionChanges = yearChanges.filter((c) => c.kind === 'contribution' && contributionRows.some((r) => r.id === c.row));
+  const rowAmountIn = (row, y) => {
+    let best = null;
+    for (const c of contributionChanges) {
+      if (c.row !== row.id || !(c.scope === 'year' ? c.year === y : c.year <= y)) continue;
+      if (!best || c.year > best.year || (c.year === best.year && c.scope === 'year')) best = c;
+    }
+    return best ? Math.max(0, best.amount) : row.amount;
+  };
+  // -> { plan, rows } for the year, or null when no change applies to it.
+  const changedPlanIn = (y) => {
+    if (contributionChanges.length === 0) return null;
+    const rows = contributionRows.map((r) => ({ ...r, amount: rowAmountIn(r, y) }));
+    if (rows.every((r, i) => r.amount === contributionRows[i].amount)) return null;
+    const delta = (owner, taxable) =>
+      rows.reduce((s, r, i) => (r.owner === owner && (r.tax === 'taxable') === taxable ? s + r.amount - contributionRows[i].amount : s), 0);
+    const owners = people.map((p) => p.id);
+    const adjusted = plan.map((c) => {
+      const overridden = c.type === 'taxable' ? taxableSavings : contributions;
+      return overridden ? c : { ...c, amount: Math.max(0, c.amount + delta(c.owner, c.type === 'taxable')) };
+    });
+    if (!taxableSavings) {
+      for (const owner of owners) {
+        const d = delta(owner, true);
+        if (d > 0 && !adjusted.some((c) => c.owner === owner && c.type === 'taxable')) adjusted.push({ owner, amount: d, type: 'taxable' });
+      }
+    }
+    return { plan: adjusted, rows };
+  };
 
   // Working balances, one per account; contributions and surplus get accounts of their own.
   const accounts = household.accounts.map((a) => ({
@@ -307,9 +351,10 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const pensions = pensionIncomesInYear(household, t, { deceased: survivorYear ? people[deceased].id : null });
     const pension = pensions.reduce((s, p) => s + p.amount, 0);
 
-    // 2. This year's contributions (paid in at the end of the year).
+    // 2. This year's contributions (paid in at the end of the year), with any planner change.
+    const changed = changedPlanIn(calendarYear);
     const made = [];
-    for (const c of plan) {
+    for (const c of changed ? changed.plan : plan) {
       const i = people.findIndex((p) => p.id === c.owner);
       if (i < 0 || !working[i] || !((c.amount ?? c.takeHomeCost) > 0)) continue;
       if (c.takeHomeCost !== undefined) {
@@ -325,7 +370,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     }
     const pretaxDeferrals = made.filter((m) => m.type === 'pretax').reduce((s, m) => s + m.toAccount, 0);
     // The employers' contributions (Pre-tax, paid in at the end of the year).
-    const employerMade = people.map((p, i) => (working[i] ? employerContributionFor(household, p, ages[i]) : 0));
+    const employerMade = people.map((p, i) => (working[i] ? employerContributionFor(household, p, ages[i], changed?.rows) : 0));
     const contributionCash = made.reduce((s, m) => s + m.toAccount + m.excess, 0);
 
     // 3. RMDs, per owner, spread over that owner's Pre-tax accounts by balance.
@@ -440,7 +485,20 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const pretaxTotal = pretaxLive.reduce((s, a) => s + a.balance, 0);
     const oneTime = t === 0 && convertNow > 0 && pretaxTotal > 0 ? Math.min(convertNow, pretaxTotal) : 0;
     const oneTimeConversions = oneTime > 0 ? pretaxLive.map((a) => ({ from: a.id, amount: (oneTime * a.balance) / pretaxTotal, oneTime: true })) : [];
-    const fixedConversions = oneTimeConversions;
+    // The planner's conversions this year (see yearChanges): each from its owner's Pre-tax accounts,
+    // pro rata by balance (after a death, the survivor's, who holds the accounts).
+    const plannedConversions = yearChanges
+      .filter((c) => c.kind === 'convert' && c.year === calendarYear && c.amount > 0)
+      .flatMap((c) => {
+        const i = people.findIndex((p) => p.id === c.owner);
+        if (i < 0) return [];
+        const owner = alive[i] ? c.owner : people[1 - i].id;
+        const sources = pretaxLive.filter((a) => a.owner === owner);
+        const total = sources.reduce((s, a) => s + a.balance, 0);
+        const amount = Math.min(c.amount, total);
+        return amount > 0 ? sources.map((a) => ({ from: a.id, amount: (amount * a.balance) / total, planned: true })) : [];
+      });
+    const fixedConversions = [...oneTimeConversions, ...plannedConversions];
     // The strategy plans the spending withdrawals only (decided 2026-10-12, see the header): its cash
     // leaves out every conversion's tax, which is paid after it; its tax lines include the conversions
     // (so a conversion strategy sizes its own on top of the others).
