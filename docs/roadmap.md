@@ -10,7 +10,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **In progress:** Before phase 6: Social Security planner additions (the grid, year by year per strategy, the break-even graph; asked 2026-10-12). Steps (a) to (e) done, 972 tests; waiting on Michael's look at the page, then `/closeout`.
 
-**Also in progress: phase 6, the year-by-year planner** (started 2026-10-12; decisions and steps under Phase 6 below). Steps (a) to (f) done 2026-10-12 (1,011 tests, local, unpushed): every step built; waiting on Michael's look at the planner page, then `/closeout`. Open for Michael: the first-year IRMAA artifact (under step d). Open for Michael: the first-year IRMAA artifact (under step d).
+**Also in progress: phase 6, the year-by-year planner** (started 2026-10-12; decisions and steps under Phase 6 below). Steps (a) to (f) done 2026-10-12 (1,011 tests, local, unpushed): every step built; waiting on Michael's look at the planner page, then `/closeout`. Open for Michael: the first-year IRMAA artifact (under step d).
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years (full retirement age from the birth year); month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
