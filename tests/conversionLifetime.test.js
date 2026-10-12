@@ -26,23 +26,25 @@ describe('the conversion over a lifetime (HAND CALC)', () => {
     // age 70, $200,000 Pre-tax, need $30,000, one year (tests/projection.test.js works both runs):
     //   without: withdraw 31,613.6364, tax 1,613.6364; Pre-tax left 168,386.3636
     //            after the heirs' 24%: 168,386.3636 x 0.76 = 127,973.6364
-    //   with $20,000 converted: withdraw 34,340.9091, tax 4,340.9091; Pre-tax 145,659.0909, Roth 20,000
-    //            legacy 165,659.0909; after the heirs' tax 145,659.0909 x 0.76 + 20,000 = 130,700.9091
-    //   difference: tax +2,727.2727, legacy -2,727.2727, after the heirs' tax +2,727.2727
-    //   (the $22,727.27 more taken out of Pre-tax is taxed at 12% now instead of the heirs' 24%)
+    //   with $20,000 converted (decided 2026-10-12: no taxable account, so its tax is held back from it):
+    //            withdraw 31,613.6364 (spending only), tax 1,613.6364 + 12% x 20,000 = 4,013.6364;
+    //            Pre-tax 148,386.3636, Roth 20,000 - 2,400 = 17,600; legacy 165,986.3636;
+    //            after the heirs' tax 148,386.3636 x 0.76 + 17,600 = 130,373.6364
+    //   difference: tax +2,400, legacy -2,400, after the heirs' tax +2,400
+    //   (the $20,000 is taxed at 12% now instead of the heirs' 24%)
     const r = conversionLifetime(retiree({ age: 70, pretax: 200000 }), 30000, 20000);
     expect(r.without.totals.lifetimeTax).toBeCloseTo(1613.6364, 3);
-    expect(r.with.totals.lifetimeTax).toBeCloseTo(4340.9091, 3);
+    expect(r.with.totals.lifetimeTax).toBeCloseTo(4013.6364, 3);
     expect(r.without.totals.legacy).toBeCloseTo(168386.3636, 3);
-    expect(r.with.totals.legacy).toBeCloseTo(165659.0909, 3);
+    expect(r.with.totals.legacy).toBeCloseTo(165986.3636, 3);
     expect(r.without.totals.legacyAfterTax).toBeCloseTo(127973.6364, 3);
-    expect(r.with.totals.legacyAfterTax).toBeCloseTo(130700.9091, 3);
-    expect(r.difference.lifetimeTax).toBeCloseTo(2727.2727, 3);
-    expect(r.difference.legacyAfterTax).toBeCloseTo(2727.2727, 3);
-    // retirement income: everything withdrawn (no other income here)
+    expect(r.with.totals.legacyAfterTax).toBeCloseTo(130373.6364, 3);
+    expect(r.difference.lifetimeTax).toBeCloseTo(2400, 3);
+    expect(r.difference.legacyAfterTax).toBeCloseTo(2400, 3);
+    // retirement income: everything withdrawn (no other income here; a conversion is not income)
     expect(r.without.totals.retirementIncome).toBeCloseTo(31613.6364, 3);
-    expect(r.with.totals.retirementIncome).toBeCloseTo(34340.9091, 3);
-    expect(r.years).toEqual([{ year: 2026, ages: [70], without: expect.closeTo(1613.6364, 3), with: expect.closeTo(4340.9091, 3) }]);
+    expect(r.with.totals.retirementIncome).toBeCloseTo(31613.6364, 3);
+    expect(r.years).toEqual([{ year: 2026, ages: [70], without: expect.closeTo(1613.6364, 3), with: expect.closeTo(4013.6364, 3) }]);
   });
 
   it('the totals add up the rows: income tax and IRMAA every year; income only in retirement years', () => {

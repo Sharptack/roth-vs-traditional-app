@@ -96,15 +96,15 @@ export function fillBracketStrategy(rate) {
 }
 
 // 3. Roth conversions: in retirement before each owner's RMDs start, convert Pre-tax to Roth up to
-// the top of the chosen bracket. Spending comes from the conventional order; the conversion's tax
-// is paid from that year's withdrawals (taxable first), or from Pre-tax/Roth when taxable runs out.
-// The conversion is sized after the spending withdrawals, then the withdrawals are re-solved with
-// the conversion's tax included (twice, since paying the tax can move the bracket).
+// the top of the chosen bracket. Spending comes from the conventional order; the conversion is sized
+// on top of the spending withdrawals. Its tax is the engine's to pay (projection.js, decided
+// 2026-10-12): from a taxable account, else held back from the conversion; evaluate's cash leaves
+// it out, so the spending withdrawals don't change with it.
 export function rothConversionStrategy(rate) {
   const strategy = (args) => {
     const { accounts, rmdByAccount, need, evaluate, filingStatus, taxYear, household, ages, working, alive } = args;
     const at = sequentialAt(accounts, rmdByAccount, ['taxable', 'pretax', 'roth']);
-    let withdrawals = solveDraw(at, accounts, rmdByAccount, need, evaluate);
+    const withdrawals = solveDraw(at, accounts, rmdByAccount, need, evaluate);
     // Owners living, retired and below their RMD start age convert.
     const eligible = household.people
       .filter((p, i) => alive?.[i] !== false && !working[i] && ages[i] < rmdStartAge(p.birthYear))
@@ -122,30 +122,25 @@ export function rothConversionStrategy(rate) {
       }
       return out;
     };
-    let conversions = [];
-    for (let pass = 0; pass < 2; pass++) {
-      // The conversion that brings ordinary taxable income to the bracket top (bisection: it can pull
-      // Social Security into tax with it).
-      const top = getBrackets(filingStatus, taxYear).find((b) => Math.abs(b.rate - rate) < 1e-9)?.upTo;
-      const ordinaryWith = (amount) => evaluate(withdrawals, asConversions(amount)).tax.lines.ordinaryTaxableIncome;
-      let amount = 0;
-      if (Number.isFinite(top) && ordinaryWith(0) < top) {
-        let lo = 0;
-        let hi = sources.reduce((s, a) => s + a.balance, 0);
-        if (ordinaryWith(hi) <= top) lo = hi;
-        else {
-          for (let i = 0; i < 50; i++) {
-            const mid = (lo + hi) / 2;
-            if (ordinaryWith(mid) < top) lo = mid;
-            else hi = mid;
-          }
+    // The conversion that brings ordinary taxable income to the bracket top (bisection: it can pull
+    // Social Security into tax with it).
+    const top = getBrackets(filingStatus, taxYear).find((b) => Math.abs(b.rate - rate) < 1e-9)?.upTo;
+    const ordinaryWith = (amount) => evaluate(withdrawals, asConversions(amount)).tax.lines.ordinaryTaxableIncome;
+    let amount = 0;
+    if (Number.isFinite(top) && ordinaryWith(0) < top) {
+      let lo = 0;
+      let hi = sources.reduce((s, a) => s + a.balance, 0);
+      if (ordinaryWith(hi) <= top) lo = hi;
+      else {
+        for (let i = 0; i < 50; i++) {
+          const mid = (lo + hi) / 2;
+          if (ordinaryWith(mid) < top) lo = mid;
+          else hi = mid;
         }
-        amount = lo;
       }
-      conversions = asConversions(amount);
-      withdrawals = solveDraw(at, accounts, rmdByAccount, need, evaluate, conversions);
+      amount = lo;
     }
-    return { withdrawals, conversions };
+    return { withdrawals, conversions: asConversions(amount) };
   };
   strategy.label = `Convert to Roth up to the ${Math.round(rate * 100)}% bracket before RMDs`;
   return strategy;

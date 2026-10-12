@@ -620,24 +620,63 @@ describe('runProjection: income rows over their ages, and the surplus setting (2
 
 // The Roth conversion calculator's lifetime view (decided 2026-10-09): a conversion in the first year.
 describe('runProjection: a conversion this year (convertNow, HAND CALC)', () => {
-  it('retired: the year\'s withdrawals pay its tax; the whole amount reaches Roth', () => {
-    // age 70, born 1956 (RMDs at 73), no age deductions, $200,000 Pre-tax, need $30,000, convert $20,000.
-    // W - tax(W + 20,000) = 30,000; taxable W + 20,000 - 16,100 = W + 3,900, in the 12% bracket:
-    //   tax = 1,240 + 12% x (W + 3,900 - 12,400) = 220 + 0.12 W -> 0.88 W = 30,220 -> W = 34,340.9091
-    //   (taxable 38,240.91; tax 4,340.9091). Without it: W = 31,613.6364, tax 1,613.6364 (above).
-    //   Pre-tax at the year end: 200,000 - 34,340.9091 - 20,000 = 145,659.0909; Roth 20,000.
-    const h = retiree({ age: 70, pretax: 200000 });
+  // Retired (decided 2026-10-12, Michael): the withdrawals cover spending only; the conversion's tax
+  // comes from a taxable account, else it is held back from the conversion (Pre-tax pays it).
+  it('retired, with a taxable account: the taxable account pays its tax; the whole amount reaches Roth', () => {
+    // age 70, born 1956 (RMDs at 73), no age deductions, return 0; $200,000 Pre-tax, $100,000 taxable
+    // all basis (no gain); need $30,000; convert $20,000. Proportional: k of each account.
+    //   Spending, without the conversion: cash = 300,000k - tax(200,000k); taxable ordinary 200,000k - 16,100
+    //   in the 10% bracket: 300,000k - 20,000k + 1,610 = 30,000 -> k = 28,390 / 280,000 = 0.1013928571
+    //   -> Pre-tax 20,278.5714, taxable 10,139.2857, tax 417.8571 (taxable 4,178.57)
+    //   With the conversion: ordinary 40,278.5714 - 16,100 = 24,178.5714 -> 1,240 + 12% x 11,778.5714
+    //   = 2,653.4286; its tax 2,235.5714, drawn from taxable (no gain, so no more tax)
+    //   End: Pre-tax 200,000 - 20,278.5714 - 20,000 = 159,721.4286; taxable 100,000 - 10,139.2857
+    //   - 2,235.5714 = 87,625.1429; Roth 20,000
+    const h = retiree({ age: 70, pretax: 200000, taxable: 100000, basisShare: 1 });
     const [r] = runProjection(h, { need: 30000, endAge: 70, convertNow: 20000 }).rows;
     expect(r.conversions).toBe(20000);
-    expect(r.withdrawals.pretax).toBeCloseTo(34340.9091, 3);
-    expect(r.totalTax).toBeCloseTo(4340.9091, 3);
+    expect(r.withdrawals.pretax).toBeCloseTo(20278.5714, 3);
+    expect(r.withdrawals.taxable).toBeCloseTo(10139.2857 + 2235.5714, 3);
+    expect(r.totalTax).toBeCloseTo(2653.4286, 3);
     expect(r.afterTaxIncome).toBeCloseTo(30000, 4);
     expect(r.conversionTaxWithheld).toBe(0);
-    expect(r.endBalances.pretax).toBeCloseTo(145659.0909, 3);
+    expect(r.endBalances.pretax).toBeCloseTo(159721.4286, 3);
+    expect(r.endBalances.taxable).toBeCloseTo(87625.1429, 3);
     expect(r.endBalances.roth).toBeCloseTo(20000, 6);
     // no conversion after the first year
     const rows = runProjection(h, { need: 30000, endAge: 71, convertNow: 20000 }).rows;
     expect(rows[1].conversions).toBe(0);
+  });
+
+  it('retired, no taxable account: its tax is held back from the conversion', () => {
+    // $200,000 Pre-tax only. Spending: W - tax(W) = 30,000 -> W = 31,613.6364, tax 1,613.6364 (above).
+    // The conversion adds 12% x 20,000 = 2,400 (taxable 35,513.64, inside 12%): total tax 4,013.6364;
+    // held back, so Roth gets 17,600. Pre-tax 200,000 - 31,613.6364 - 20,000 = 148,386.3636.
+    // (Before 2026-10-12 the withdrawal paid it: W 34,340.9091, Pre-tax 145,659.0909, Roth 20,000.)
+    const [r] = runProjection(retiree({ age: 70, pretax: 200000 }), { need: 30000, endAge: 70, convertNow: 20000 }).rows;
+    expect(r.withdrawals.pretax).toBeCloseTo(31613.6364, 3);
+    expect(r.totalTax).toBeCloseTo(4013.6364, 3);
+    expect(r.conversionTaxWithheld).toBeCloseTo(2400, 6);
+    expect(r.afterTaxIncome).toBeCloseTo(30000, 4);
+    expect(r.endBalances.pretax).toBeCloseTo(148386.3636, 3);
+    expect(r.endBalances.roth).toBeCloseTo(17600, 6);
+  });
+
+  it('retired, a small taxable account: it pays what it can, the rest is held back', () => {
+    // $200,000 Pre-tax, $1,000 taxable (all basis). Spending, proportional: cash = 201,000k - tax(200,000k),
+    // in the 12% bracket: tax = 1,240 + 12% x (200,000k - 28,500) = 24,000k - 2,180
+    //   -> 177,000k + 2,180 = 30,000 -> k = 0.1571751412: Pre-tax 31,435.0282, taxable 157.1751, tax 1,592.2034
+    // The conversion's tax: 2,400 (all at 12%). Taxable left 842.8249 pays that much; 1,557.1751 held back.
+    // End: Pre-tax 200,000 - 31,435.0282 - 20,000 = 148,564.9718; taxable 0; Roth 18,442.8249.
+    const [r] = runProjection(retiree({ age: 70, pretax: 200000, taxable: 1000, basisShare: 1 }), { need: 30000, endAge: 70, convertNow: 20000 }).rows;
+    expect(r.withdrawals.pretax).toBeCloseTo(31435.0282, 3);
+    expect(r.withdrawals.taxable).toBeCloseTo(1000, 6);
+    expect(r.totalTax).toBeCloseTo(3992.2034, 3);
+    expect(r.conversionTaxWithheld).toBeCloseTo(1557.1751, 3);
+    expect(r.afterTaxIncome).toBeCloseTo(30000, 4);
+    expect(r.endBalances.pretax).toBeCloseTo(148564.9718, 3);
+    expect(r.endBalances.taxable).toBeCloseTo(0, 6);
+    expect(r.endBalances.roth).toBeCloseTo(18442.8249, 3);
   });
 
   it('working: its tax is held back from the conversion, so less reaches Roth', () => {

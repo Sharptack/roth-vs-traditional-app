@@ -69,10 +69,10 @@ function Lifetime({ lifetime: l }) {
         the same spending in retirement, withdrawal strategy and returns. Retirement income is everything withdrawn and
         received in the years anyone is retired (withdrawals, Social Security, pensions, other income); with spending fixed,
         lower taxes later mean less has to be withdrawn, so compare it with the tax and the legacy.
+        {' '}The conversion&rsquo;s tax is paid from a taxable account once anyone has retired; while everyone works, or when
+        the taxable accounts run short, it is held back from the conversion.
         {l.with.rows[0].conversionTaxWithheld > 0.5 &&
-          ` While working, there are no withdrawals to pay the conversion's tax from, so it is held back from the conversion: ${$(
-            l.with.rows[0].conversionTaxWithheld,
-          )} of it, and ${$(l.amount - l.with.rows[0].conversionTaxWithheld)} reaches Roth.`}
+          ` Here ${$(l.with.rows[0].conversionTaxWithheld)} is held back, so ${$(l.amount - l.with.rows[0].conversionTaxWithheld)} reaches Roth.`}
       </p>
     </>
   );

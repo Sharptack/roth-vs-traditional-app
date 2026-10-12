@@ -58,6 +58,21 @@ describe('withdrawal strategies (2026, HAND CALC)', () => {
     expect(r.endBalances.taxable).toBeCloseTo(264200, 2);
   });
 
+  it('Roth conversions to the top of 12% with no taxable account: the tax is held back (decided 2026-10-12)', () => {
+    // 66, $500,000 Pre-tax only, need 30,000. Spending: W - tax(W) = 30,000 -> W = 31,613.6364,
+    // tax 1,613.6364 (ordinary taxable 15,513.6364). Convert to the 12% top (50,400): 34,886.3636;
+    // its tax 12% x 34,886.3636 = 4,186.3636, held back -> Roth 30,700. Total tax 5,800.
+    // End: Pre-tax 500,000 - 31,613.6364 - 34,886.3636 = 433,500.
+    const r = runProjection(retiree({ age: 66, pretax: 500000 }), { need: 30000, endAge: 66, strategy: rothConversionStrategy(0.12) }).rows[0];
+    expect(r.withdrawals.pretax).toBeCloseTo(31613.6364, 3);
+    expect(r.conversions).toBeCloseTo(34886.3636, 2);
+    expect(r.conversionTaxWithheld).toBeCloseTo(4186.3636, 2);
+    expect(r.totalTax).toBeCloseTo(5800, 2);
+    expect(r.afterTaxIncome).toBeCloseTo(30000, 4);
+    expect(r.endBalances.pretax).toBeCloseTo(433500, 2);
+    expect(r.endBalances.roth).toBeCloseTo(30700, 2);
+  });
+
   it('no conversions once RMDs start', () => {
     const r = runProjection(retiree({ age: 75, pretax: 500000, taxable: 300000 }), { need: 30000, endAge: 75, strategy: rothConversionStrategy(0.12) }).rows[0];
     expect(r.conversions).toBe(0);

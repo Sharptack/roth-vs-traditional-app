@@ -28,27 +28,29 @@ function retiree({ age, pretax = 0, returnRate = 0 }) {
 describe('projection row detail (2026, HAND CALC)', () => {
   it('a retired year with a conversion: each account’s flow, the withdrawal, the tax rows', () => {
     // age 70 (born 1956, RMDs at 73), $200,000 Pre-tax, 10% return, need $30,000, convert $20,000.
-    // From projection.test.js: W = 34,340.9091, tax 4,340.9091.
-    // a1 (Pre-tax): 200,000 - 34,340.9091 withdrawn - 20,000 converted = 145,659.0909;
-    //   growth 10% = 14,565.9091; end 160,225.0000
-    // the projection's Roth account for p1: 20,000 in, growth 2,000, end 22,000
+    // From projection.test.js (no taxable account: the conversion's tax, 2,400, is held back from it):
+    // W = 31,613.6364, tax 4,013.6364.
+    // a1 (Pre-tax): 200,000 - 31,613.6364 withdrawn - 20,000 converted = 148,386.3636;
+    //   growth 10% = 14,838.6364; end 163,225.0000
+    // the projection's Roth account for p1: 17,600 in, growth 1,760, end 19,360
     // a2 (Roth, $0, nothing in or out): not listed
     const [r] = runProjection(retiree({ age: 70, pretax: 200000, returnRate: 0.1 }), { need: 30000, endAge: 70, convertNow: 20000 }).rows;
     const { accounts } = r.detail;
     expect(accounts.map((a) => a.id)).toEqual(['a1', 'new-roth-p1']);
     const [a1, roth] = accounts;
     expect(a1).toMatchObject({ owner: 'p1', type: 'pretax', start: 200000, rmd: 0, convertedOut: 20000, convertedIn: 0 });
-    expect(a1.withdrawn).toBeCloseTo(34340.9091, 3);
-    expect(a1.growth).toBeCloseTo(14565.9091, 3);
-    expect(a1.end).toBeCloseTo(160225, 3);
-    expect(roth).toMatchObject({ type: 'roth', start: 0, withdrawn: 0, convertedIn: 20000 });
-    expect(roth.growth).toBeCloseTo(2000, 6);
-    expect(roth.end).toBeCloseTo(22000, 6);
+    expect(a1.withdrawn).toBeCloseTo(31613.6364, 3);
+    expect(a1.growth).toBeCloseTo(14838.6364, 3);
+    expect(a1.end).toBeCloseTo(163225, 3);
+    expect(roth).toMatchObject({ type: 'roth', start: 0, withdrawn: 0 });
+    expect(roth.convertedIn).toBeCloseTo(17600, 6);
+    expect(roth.growth).toBeCloseTo(1760, 6);
+    expect(roth.end).toBeCloseTo(19360, 6);
     for (const a of accounts) expect(accountFlowTotal(a)).toBeCloseTo(a.end, 6);
     // the tax rows end on the year's tax
     const rows = yearTaxRowsOf(r);
-    expect(rows.find((x) => x.key === 'incomeTax').value).toBeCloseTo(4340.9091, 3);
-    expect(rows.find((x) => x.key === 'ordinaryIncome').value).toBeCloseTo(54340.9091, 3); // W + the conversion
+    expect(rows.find((x) => x.key === 'incomeTax').value).toBeCloseTo(4013.6364, 3);
+    expect(rows.find((x) => x.key === 'ordinaryIncome').value).toBeCloseTo(51613.6364, 3); // W + the conversion
     // spending: the need met exactly
     expect(r.detail.spending).toMatchObject({ need: 30000, baseNeed: 30000, extraSpending: 0, reinvested: 0, shortfall: 0 });
   });

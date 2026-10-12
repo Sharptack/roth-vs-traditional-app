@@ -223,6 +223,10 @@ export default function ProjectionResult({ view, error }) {
           </tbody>
         </table>
         <p className="hint">
+          Roth conversions: the conversion&rsquo;s tax is paid from a taxable account; when there is none, or it runs
+          short, it is held back from the conversion (less reaches Roth).
+        </p>
+        <p className="hint">
           Medicare IRMAA: the Part B and Part D surcharges from 65, set by income two years earlier (when included in
           Assumptions). The strategies don&rsquo;t aim around its thresholds; they only pay it. Not modeled yet: the 10-year
           rule for heirs of Pre-tax accounts.

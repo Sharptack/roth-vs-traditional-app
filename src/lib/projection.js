@@ -86,10 +86,17 @@
 //
 // A conversion this year (option convertNow, the Roth conversion calculator's lifetime view, decided
 // 2026-10-09): that many dollars move from the Pre-tax accounts (pro rata by balance) to Roth in the
-// first projected year, taxed as ordinary income that year. Once anyone has retired, the year's
-// withdrawals cover its tax, as for the strategy's own conversions. While everyone still works there is
-// no withdrawal to pay it from, so the tax is held back from the conversion (less reaches Roth; the
-// row's conversionTaxWithheld).
+// first projected year, taxed as ordinary income that year.
+//
+// Who pays a conversion's tax (every conversion: a strategy's, convertNow; decided 2026-10-12,
+// Michael): the conversion's tax = the year's tax with the conversions − without them.
+//   - once anyone has retired: the strategy draws for spending only (its evaluate leaves the
+//     conversions' tax out of the cash); then the taxable accounts pay the tax (more withdrawn from
+//     them, pro rata by what is left, until the cash meets the need again; any gains on it taxed
+//     too); what they can't cover is held back from the conversions (Pre-tax pays it; less reaches Roth)
+//   - while everyone works: held back from the conversions
+// The amount held back is the row's conversionTaxWithheld, spread over the conversions by size.
+// Before 2026-10-12, in retirement the year's withdrawals (by the strategy's order) paid it.
 //
 // A pension taken as a lump sum (household.rollovers, decided 2026-10-09): rolled over to the owner's
 // Pre-tax account at the start of the year they reach the pension's start age (the survivor's, after
@@ -433,8 +440,15 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const pretaxTotal = pretaxLive.reduce((s, a) => s + a.balance, 0);
     const oneTime = t === 0 && convertNow > 0 && pretaxTotal > 0 ? Math.min(convertNow, pretaxTotal) : 0;
     const oneTimeConversions = oneTime > 0 ? pretaxLive.map((a) => ({ from: a.id, amount: (oneTime * a.balance) / pretaxTotal, oneTime: true })) : [];
-    // The strategy sees the year's cash with the one-time conversion's tax in it.
-    const evaluateWithOneTime = oneTime > 0 ? (w, conv = [], ...rest) => evaluate(w, [...conv, ...oneTimeConversions], ...rest) : evaluate;
+    const fixedConversions = oneTimeConversions;
+    // The strategy plans the spending withdrawals only (decided 2026-10-12, see the header): its cash
+    // leaves out every conversion's tax, which is paid after it; its tax lines include the conversions
+    // (so a conversion strategy sizes its own on top of the others).
+    const evaluateForStrategy = (w, conv = [], full = false, opts = {}) => {
+      const all = [...conv, ...fixedConversions];
+      if (all.length === 0) return evaluate(w, [], full, opts);
+      return { ...evaluate(w, all, full, opts), cash: evaluate(w, [], false, opts).cash };
+    };
     const solveYear = () => {
       // 4. Withdrawals: the strategy once anyone has retired; RMDs only while everyone works.
       const proposed = anyRetired
@@ -451,7 +465,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
             need: needThisYear,
             socialSecurity,
             filingStatus: filingStatusThisYear,
-            evaluate: evaluateWithOneTime,
+            evaluate: evaluateForStrategy,
           })
         : { withdrawals: { ...rmdByAccount }, conversions: [] };
       // The engine's rules, whatever the strategy returned: at least the RMD, at most the balance.
@@ -464,7 +478,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       // left after this year's withdrawals (and any conversion before it); taxed as ordinary income this
       // year (taxParams). The one-time conversion comes after the strategy's own.
       const used = {};
-      const conversions = [...(proposed.conversions ?? []), ...oneTimeConversions]
+      const conversions = [...(proposed.conversions ?? []), ...fixedConversions]
         .map((c) => {
           const a = accounts.find((x) => x.id === c.from && x.type === 'pretax');
           if (!a) return null;
@@ -473,13 +487,34 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
           return { from: a.id, owner: a.owner, amount, ...(c.oneTime && { oneTime: true }) };
         })
         .filter((c) => c && c.amount > 0);
+      // The conversions' tax (see the header). Once anyone has retired: more from the taxable accounts
+      // (pro rata by what is left in them) until the year's cash meets the need again; what they can't
+      // cover is held back from the conversions. While everyone works: all of it held back.
+      let withheld = 0;
+      if (conversions.length > 0) {
+        const conversionTax = (w) => evaluate(w, conversions).tax.totalTax - evaluate(w, []).tax.totalTax;
+        if (anyRetired) {
+          const target = needThisYear;
+          if (evaluate(withdrawals, conversions).cash < target) {
+            const left = live.filter((a) => a.type === 'taxable').map((a) => [a.id, a.balance - withdrawals[a.id]]).filter(([, x]) => x > 0);
+            const room = left.reduce((s, [, x]) => s + x, 0);
+            const at = (x) => {
+              const w = { ...withdrawals };
+              for (const [id, rest] of left) w[id] += (x * rest) / room;
+              return w;
+            };
+            if (room > 0) {
+              const x = evaluate(at(room), conversions).cash <= target
+                ? room
+                : solveMonotonicIncreasing((v) => evaluate(at(v), conversions).cash, target, { lo: 0, hiStart: room, maxHi: room, iterations: 50 }).x;
+              Object.assign(withdrawals, at(Math.min(x, room)));
+            }
+            const short = target - evaluate(withdrawals, conversions).cash;
+            if (short > 0) withheld = Math.min(short, conversionTax(withdrawals));
+          }
+        } else withheld = conversionTax(withdrawals);
+      }
       const { tax, params, cash } = evaluate(withdrawals, conversions, true);
-      // While everyone works, the one-time conversion's tax is held back from it (see the header): the
-      // year's cash doesn't pay it.
-      const withheld =
-        !anyRetired && conversions.some((c) => c.oneTime)
-          ? tax.totalTax - evaluate(withdrawals, conversions.filter((c) => !c.oneTime)).tax.totalTax
-          : 0;
       return { withdrawals, conversions, tax, params, cash: cash + withheld, withheld };
     };
     if (enrolled > 0) {
@@ -523,12 +558,12 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       return flows.get(a.id);
     };
     // Conversions move from the Pre-tax account to the owner's Roth before growth.
-    const oneTimeTotal = conversions.filter((c) => c.oneTime).reduce((s, c) => s + c.amount, 0);
+    const convertedTotal = conversions.reduce((s, c) => s + c.amount, 0);
     for (const c of conversions) {
       accounts.find((x) => x.id === c.from).balance -= c.amount;
       flows.get(c.from).convertedOut += c.amount;
-      // (the one-time conversion's tax held back, while everyone works, by each part's share)
-      const reaching = c.amount - (c.oneTime ? (withheld * c.amount) / oneTimeTotal : 0);
+      // (any tax held back from the conversions, by each one's share)
+      const reaching = c.amount - (withheld * c.amount) / convertedTotal;
       const roth = accountFor(c.owner, 'roth');
       roth.balance += reaching;
       flowOf(roth).convertedIn += reaching;
@@ -653,7 +688,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       startBalances: { ...startBalances, total: startBalances.pretax + startBalances.roth + startBalances.taxable },
       withdrawals: { ...withdrawn, total: withdrawn.pretax + withdrawn.roth + withdrawn.taxable },
       conversions: conversions.reduce((s, c) => s + c.amount, 0),
-      conversionTaxWithheld: withheld, // the one-time conversion's tax held back from it (while everyone works)
+      conversionTaxWithheld: withheld, // the conversions' tax held back from them (see the header)
       employerContributions: employerMade.reduce((s, e) => s + e, 0), // to Pre-tax, not in contributions
       contributions: { ...contributed, total: contributed.pretax + contributed.roth + contributed.taxable },
       wages: peopleThisYear.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0),

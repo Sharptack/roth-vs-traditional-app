@@ -12,7 +12,7 @@ The page runs the household's year-by-year projection twice, to the end of the p
 
 At the bottom of the page, the **Charts** block shows the tax paid each year as bars, with and without the conversion, and the totals. The conversion's tax shows as a taller bar this year; lower RMDs and withdrawals later show as shorter ones.
 
-**Who pays the conversion's tax.** Once anyone in the household has retired, the year's withdrawals cover it, as for any other tax. While everyone still works there is no withdrawal to pay it from, so the tax is held back from the conversion and less reaches Roth; the page says how much. When the money runs out in either run, the page says so: after that year spending goes unmet and less tax is paid, so the figures compare two plans that both fall short.
+**Who pays the conversion's tax.** Once anyone in the household has retired, a taxable account pays it (more is withdrawn from it, and any gain on that is taxed too). When there is no taxable account, or it runs short, the rest is held back from the conversion, so Pre-tax money pays it and less reaches Roth. While everyone still works, the tax is held back from the conversion. The page says how much is held back. The withdrawals for spending are the same with and without the conversion. (Decided 2026-10-12; before, the year's withdrawals paid it.) When the money runs out in either run, the page says so: after that year spending goes unmet and less tax is paid, so the figures compare two plans that both fall short.
 
 The lifetime view needs the household's spending in retirement, the retirement income number from **Spending** on the inputs page. For a household already retired that is its budget; until the budget is entered, the page asks for it.
 
