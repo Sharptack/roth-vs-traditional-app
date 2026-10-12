@@ -322,6 +322,11 @@ export const CALCULATOR_INPUTS = {
     sections: ['socialSecurity', 'household', 'income'],
     fields: { people: ['age', 'planToAge', 'sex', 'retirementAge'] },
   },
+  // The year-by-year planner (phase 6): what the projection reads (its changes are made on the page).
+  planner: {
+    sections: ['projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
+    fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
+  },
   conversion: {
     sections: ['conversion', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },

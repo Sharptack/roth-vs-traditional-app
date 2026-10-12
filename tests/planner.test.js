@@ -1,7 +1,7 @@
 // Round 2 phase 6 step (d): the planner's selected year (src/lib/planner.js): the room in the bracket
 // and before the next IRMAA tier, a conversion's cost, its lifetime value, the suggestions.
 import { describe, it, expect } from 'vitest';
-import { allChangesValue, changeValue, conversionCost, plannerYear, suggestions } from '../src/lib/planner.js';
+import { allChangesValue, changeValue, changeableRows, conversionCost, describeChange, plannerTile, plannerYear, suggestions } from '../src/lib/planner.js';
 import { runProjection } from '../src/lib/projection.js';
 import { sustainableSpending } from '../src/lib/projectionSummary.js';
 import { conversionTotals } from '../src/lib/conversionLifetime.js';
@@ -142,5 +142,35 @@ describe('suggestions', () => {
 
   it('none when the year has no Pre-tax money to convert', () => {
     expect(suggestions(retiree({ age: 70, taxable: 500000 }), 30000, 2027, 'p1', { withValue: false })).toEqual([]);
+  });
+});
+
+describe('describing the changes, the rows a year can change, the tile', () => {
+  const couple = {
+    people: [{ id: 'p1' }, { id: 'p2' }],
+    contributionRows: [
+      { id: 'c1', owner: 'p1', tax: 'pretax', account: '401k', amount: 23000 },
+      { id: 'c2', owner: 'p2', tax: 'roth', account: 'ira', amount: 7000 },
+      { id: 'c3', owner: 'p2', tax: 'taxable', account: '401k', amount: 5000 },
+    ],
+  };
+
+  it('in words', () => {
+    expect(describeChange({ year: 2030, kind: 'convert', owner: 'p2', amount: 40000 }, couple)).toBe('Convert $40,000 of Spouse’s Pre-tax money to Roth');
+    expect(describeChange({ year: 2030, kind: 'convert', owner: 'p1', amount: 40000 }, { ...couple, people: [{ id: 'p1' }] })).toBe('Convert $40,000 of Pre-tax money to Roth');
+    expect(describeChange({ year: 2030, kind: 'contribution', row: 'c1', amount: 0, scope: 'onward' }, couple)).toBe('You: Pre-tax 401(k) at $0 a year from 2030 on (entered: $23,000)');
+    expect(describeChange({ year: 2031, kind: 'contribution', row: 'c3', amount: 9000, scope: 'year' }, couple)).toBe('Spouse: savings to a taxable account at $9,000 in 2031 only (entered: $5,000)');
+    expect(describeChange({ year: 2030, kind: 'contribution', row: 'c1', amount: 0, scope: 'year' }, { ...couple, people: [{ id: 'p1' }] })).toBe('Pre-tax 401(k) at $0 in 2030 only (entered: $23,000)');
+  });
+
+  it('a year can change the rows of the people still working then', () => {
+    const row = { working: [true, false] };
+    expect(changeableRows(couple, row).map((r) => r.id)).toEqual(['c1']);
+    expect(changeableRows(couple, { working: [false, false] })).toEqual([]);
+  });
+
+  it('the tile', () => {
+    expect(plannerTile([])).toEqual({ headline: 'No changes yet', detail: 'Click a year to plan a Roth conversion or change a contribution.' });
+    expect(plannerTile([{ year: 2031, kind: 'convert', owner: 'p1', amount: 30000 }, { year: 2030, kind: 'convert', owner: 'p1', amount: 40000 }]).headline).toBe('2 changes · $70,000 converted');
   });
 });

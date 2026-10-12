@@ -237,7 +237,7 @@ export function toHouseholdV2(input, year) {
     futureContributions: { currentType, accountType, contributions, taxableSavings },
     deductions: { itemized: blankAsZero(values.deductions?.itemized) },
     // The year-by-year planner's changes (phase 6), read by runProjection (yearChanges) in every calculator.
-    plannerChanges: (values.plannerChanges ?? []).map(({ id: _id, ...c }) => c),
+    plannerChanges: (values.plannerChanges ?? []).map((c) => ({ ...c })),
     // Children with their age this year (the age reached this calendar year); other dependents.
     dependents: (values.dependents ?? []).map((d) => ({ kind: d.kind, age: d.kind === 'child' ? blankAsNull(d.age) : null })),
     spending: {

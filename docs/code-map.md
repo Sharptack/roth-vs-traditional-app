@@ -46,7 +46,7 @@ Retirement spending page: what the resources allow with the legacy goal; "Use in
 - `src/App.jsx`: the shell (hash routes from `src/lib/route.js`; NextApp always mounted; Docs and Visualization lazy;
   the feedback footer).
 - `src/next/`: `NextApp.jsx` (Dashboard, inputs page, each calculator, computed only on its own page or the home tiles),
-  `HouseholdInputs.jsx` (the v2 form), `Blocks.jsx` (results layout).
+  `HouseholdInputs.jsx` (the v2 form), `Blocks.jsx` (results layout), `PlannerResult.jsx` (the year-by-year planner; its year table is `ProjectionResult.jsx`'s `YearTable`).
 - `src/components/`: `ResultsSummary.jsx` (Roth page blocks), `fields.jsx`, `DocsPage.jsx`, `Feedback.jsx`, `charts/`.
 - `src/services/`: Supabase. Docs articles: `articles/*.md`, listed in `src/lib/docs.js`.
 

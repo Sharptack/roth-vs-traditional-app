@@ -89,10 +89,10 @@ describe('values.plannerChanges', () => {
     expect(sameSavedHouseholdV2(v, DEFAULT_HOUSEHOLD_VALUES)).toBe(false);
   });
 
-  it('the household carries them (without ids) to every calculator', () => {
+  it('the household carries them (with their ids) to every calculator', () => {
     const v = addPlannerChange(DEFAULT_HOUSEHOLD_VALUES, { year: 2060, kind: 'convert', owner: 'p1', amount: 25000 });
     const h = toHouseholdV2(v, Y);
-    expect(h.plannerChanges).toEqual([{ year: 2060, kind: 'convert', owner: 'p1', amount: 25000 }]);
+    expect(h.plannerChanges).toEqual([{ id: 'pc1', year: 2060, kind: 'convert', owner: 'p1', amount: 25000 }]);
     expect(toHouseholdV2(DEFAULT_HOUSEHOLD_VALUES, Y).plannerChanges).toEqual([]);
     const row = runProjection(h, { need: 60000 }).rows.find((r) => r.year === 2060);
     expect(row.conversions).toBeCloseTo(25000, 6);

@@ -66,13 +66,20 @@ const COLUMNS = [
 
 // Phase 6 step (a), decided 2026-10-12: click a year to open what makes up its totals (YearDetail);
 // a total column with parts opens into them across the years (columnParts).
-export function YearTable({ rows }) {
+// The planner (step e) passes renderDetail (its own panel for the open year), keyColumns (more
+// columns shown without "Show all columns"), marks ({ year: a short note }: years with changes),
+// hint and onOpen (the year opened, or null).
+export function YearTable({ rows, renderDetail, keyColumns = [], marks = {}, hint, onOpen }) {
   const [all, setAll] = useState(false);
-  const [openYear, setOpenYear] = useState(null);
+  const [openYear, setOpenYearState] = useState(null);
+  const setOpenYear = (y) => {
+    setOpenYearState(y);
+    onOpen?.(y);
+  };
   const [openColumns, setOpenColumns] = useState(() => new Set());
   const ctx = useMemo(() => detailContext(rows), [rows]);
   const parts = useMemo(() => Object.fromEntries(COLUMNS.map((c) => [c.key, columnParts(c.key, rows, ctx)])), [rows, ctx]);
-  const cols = COLUMNS.filter((c) => all || c.key1).flatMap((c) =>
+  const cols = COLUMNS.filter((c) => all || c.key1 || keyColumns.includes(c.key)).flatMap((c) =>
     openColumns.has(c.key) ? [c, ...parts[c.key].map((p) => ({ ...p, part: true }))] : [c],
   );
   const toggleColumn = (key) =>
@@ -91,7 +98,7 @@ export function YearTable({ rows }) {
         </p>
       )}
       <p className="hint">
-        Click a year to see what makes up its totals; a column marked + opens into its parts across the years.
+        {hint ?? 'Click a year to see what makes up its totals; a column marked + opens into its parts across the years.'}
       </p>
       <button type="button" className="link-button" onClick={() => setAll(!all)}>
         {all ? 'Show key columns only' : 'Show all columns'}
@@ -116,7 +123,9 @@ export function YearTable({ rows }) {
           <tbody>
             {rows.map((r) => {
               const open = openYear === r.year;
-              const className = [r.alive?.includes(false) && 'survivor-row', r.shortfall > 0 && 'short-row', 'year-row', open && 'open-row'].filter(Boolean).join(' ');
+              const className = [r.alive?.includes(false) && 'survivor-row', r.shortfall > 0 && 'short-row', 'year-row', open && 'open-row', marks[r.year] && 'marked-row']
+                .filter(Boolean)
+                .join(' ');
               return (
                 <Fragment key={r.year}>
                   <tr className={className} onClick={() => setOpenYear(open ? null : r.year)}>
@@ -125,6 +134,7 @@ export function YearTable({ rows }) {
                         {i === 0 ? (
                           <button type="button" className="year-toggle" aria-expanded={open}>
                             <span aria-hidden="true">{open ? '▾' : '▸'}</span> {(c.format ?? $)(c.value(r))}
+                            {marks[r.year] && <span className="year-mark" title={marks[r.year]}> ●</span>}
                           </button>
                         ) : (
                           (c.format ?? $)(c.value(r))
@@ -135,7 +145,7 @@ export function YearTable({ rows }) {
                   {open && (
                     <tr className="year-detail-row">
                       <td colSpan={cols.length}>
-                        <YearDetail row={r} couple={ctx.couple} pensionCount={ctx.pensionCount} />
+                        {renderDetail ? renderDetail(r, ctx) : <YearDetail row={r} couple={ctx.couple} pensionCount={ctx.pensionCount} />}
                       </td>
                     </tr>
                   )}

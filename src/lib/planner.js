@@ -210,3 +210,51 @@ export function plannerChangesNote(changes = [], { conversionsOnly = false } = {
   if (conversionsOnly && contributions.length > 0) text += ' This comparison sets the contributions itself, so only the conversions count here.';
   return text;
 }
+
+// ---- For the page ----
+
+const ACCOUNT_SHORT = { '401k': '401(k)', ira: 'IRA' };
+const TYPE_SHORT = { pretax: 'Pre-tax', roth: 'Roth' };
+const whoLabel = (household, owner) => (household.people.length > 1 ? (owner === 'p1' ? 'You' : 'Spouse') : null);
+
+// A contribution row in words: "Pre-tax 401(k)", "savings to a taxable account".
+export function contributionRowLabel(row) {
+  return row.tax === 'taxable' ? 'savings to a taxable account' : `${TYPE_SHORT[row.tax]} ${ACCOUNT_SHORT[row.account] ?? row.account}`;
+}
+
+// A change in words.
+export function describeChange(change, household) {
+  if (change.kind === 'convert') {
+    const who = whoLabel(household, change.owner);
+    return `Convert ${formatCurrency(change.amount)} of ${who ? `${who}’s ` : ''}Pre-tax money to Roth`;
+  }
+  const row = (household.contributionRows ?? []).find((r) => r.id === change.row);
+  if (!row) return 'A contribution change (its row is gone)';
+  const when = change.scope === 'onward' ? `a year from ${change.year} on` : `in ${change.year} only`;
+  const who = whoLabel(household, row.owner);
+  const label = contributionRowLabel(row);
+  return `${who ? `${who}: ${label}` : label[0].toUpperCase() + label.slice(1)} at ${formatCurrency(change.amount)} ${when} (entered: ${formatCurrency(row.amount)})`;
+}
+
+// The contribution rows a year can change: those of the people still working that year.
+export function changeableRows(household, row) {
+  return (household.contributionRows ?? []).filter((r) => {
+    const i = household.people.findIndex((p) => p.id === r.owner);
+    return i >= 0 && row.working[i];
+  });
+}
+
+// The plan's rows with the planner's changes, as the projection page runs it.
+export function plannerRows(household, need) {
+  return runWith(household, need, changesOf(household));
+}
+
+// The dashboard tile.
+export function plannerTile(changes = []) {
+  if (changes.length === 0) return { headline: 'No changes yet', detail: 'Click a year to plan a Roth conversion or change a contribution.' };
+  const converted = changes.filter((c) => c.kind === 'convert').reduce((s, c) => s + c.amount, 0);
+  return {
+    headline: `${plural(changes.length, 'change', 'changes')}${converted > 0 ? ` · ${formatCurrency(converted)} converted` : ''}`,
+    detail: plannerChangesNote(changes),
+  };
+}

@@ -21,9 +21,9 @@ import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 import { householdValuesV2FromSearch } from '../lib/householdLink.js';
 import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/householdInputs.js';
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
-import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, isoDate, refreshAges, updateRow } from '../lib/householdValues.js';
+import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, addPlannerChange, isoDate, refreshAges, removePlannerChange, updateRow } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
-import { plannerChangesNote } from '../lib/planner.js';
+import { plannerChangesNote, plannerTile } from '../lib/planner.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
@@ -45,6 +45,7 @@ import ProjectionResult from './ProjectionResult.jsx';
 import LifetimeComparison from './LifetimeComparison.jsx';
 import ConversionResult from './ConversionResult.jsx';
 import PensionResult from './PensionResult.jsx';
+import PlannerResult from './PlannerResult.jsx';
 import { compareLifetime } from '../lib/lifetimeComparison.js';
 import { strategyById } from '../lib/strategies.js';
 import { useCloud } from './useCloud.js';
@@ -143,6 +144,13 @@ export const CALCULATORS = [
     blurb: 'A Roth conversion this year: its tax now and its effective rate, and lifetime tax, the legacy and retirement income with and without it.',
     ownTitle: 'Roth conversion inputs',
     article: 'conversion',
+  },
+  {
+    id: 'planner',
+    group: 'decisions',
+    title: 'Year-by-year planner',
+    blurb: 'Click a year to add a Roth conversion or change a contribution: its cost that year, the room left in the bracket and before IRMAA, and what it is worth over the plan.',
+    ownTitle: 'Planner inputs',
   },
   {
     id: 'pension',
@@ -314,6 +322,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
     conversion: conversionTile(parts.conversion),
     pension: pensionTile(parts.pension, pensionInputs),
     socialSecurity: socialSecurityTile(parts.socialSecurity),
+    planner: plannerTile(h.plannerChanges),
   });
   const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView, funding, socialSecurity }) : null;
   // For Copy summary: every calculator's headline, working out on demand what this page skipped.
@@ -624,6 +633,16 @@ export default function NextApp({ initialPage, initialValues, client }) {
                 />}
               {calculator.id === 'socialSecurity' && (
                 <SocialSecurityResult view={socialSecurity} effect={claimingEffect} survival={survival} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
+              )}
+              {calculator.id === 'planner' && (
+                <PlannerResult
+                  household={deferredRoth.spending.need !== null ? deferredRoth.household : null}
+                  need={deferredRoth.spending.need}
+                  error={roth.spending.error}
+                  locked={locked}
+                  onAdd={(change) => setValues((v) => addPlannerChange(v, change))}
+                  onRemove={(id) => setValues((v) => removePlannerChange(v, id))}
+                />
               )}
               {calculator.id === 'pension' && (
                 <PensionResult

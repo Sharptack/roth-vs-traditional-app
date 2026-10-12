@@ -2069,6 +2069,51 @@ th.win .th-sub {
   gap: 8px 32px;
 }
 
+/* phase 6 step (e): the planner's year panel and its marks */
+.projection-table .marked-row .year-toggle {
+  font-weight: 700;
+}
+
+.year-mark {
+  color: var(--accent);
+}
+
+.planner-panel h4:first-child {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+.planner-facts {
+  margin: 4px 0 8px;
+}
+
+.planner-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 4px 0 8px;
+}
+
+.planner-table {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.planner-table td {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.planner-table th[scope='row'] {
+  text-align: left;
+  font-weight: 400;
+}
+
+.planner-total {
+  margin-top: 12px;
+}
+
 .year-detail .year-accounts th[scope='row'] {
   text-align: left;
   font-weight: 400;
