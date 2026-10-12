@@ -10,7 +10,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **In progress:** Before phase 6: Social Security planner additions (the grid, year by year per strategy, the break-even graph; asked 2026-10-12). Steps (a) to (e) done, 972 tests; waiting on Michael's look at the page, then `/closeout`.
 
-**Next: phase 6, the year-by-year planner.** First step: set its decisions and steps with Michael (the breakdowns in the projection's year table can come first, as they need no planner).
+**Also in progress: phase 6, the year-by-year planner** (started 2026-10-12; decisions and steps under Phase 6 below). Step (a) done 2026-10-12 (981 tests, local, unpushed). Next: step (b), the engine's per-year changes; open first: whether decision 6's conversion-tax rule also applies to the whole-plan strategies and the conversion page (a change to existing results).
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years (full retirement age from the birth year); month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -150,6 +150,25 @@ The projection page's year table gets these first (they need no planner), so the
 **Tests:** a change in one year leaves every earlier row identical; each lifetime value equals the difference of two full runs.
 
 **Click a year (asked 2026-10-08):** in the year-by-year planner, click a year to add a Roth conversion there. The planner may differ from the evaluator's year-by-year table; Michael will try both.
+
+**Decided 2026-10-12 (Michael, the recommended options unless noted):**
+
+1. Changes made in the planner go straight into the plan (saved with the household, each removable); no trial step and no "Use in the plan" button, since building the plan is the page's job. Michael's view of plans: the household's inputs are the default plan, and plans with changes are comparisons against it (phase 10 saves several). So the planner also shows all its changes together against the plan without any (the base), beside each change's own value.
+2. Every evaluator reads the changes (the projection, Retirement spending, Funding, the Social Security plan effect), each noting "includes N planned changes"; decision calculators hold them as part of the rest of the plan.
+3. With a whole-plan conversion strategy chosen, the planner's conversions are added on top of it, with a note.
+4. Contribution changes, first version: the amount only, for that year or from that year on (no Roth/Pre-tax switch per year: one contribution type per person).
+5. Breakdowns: both a year's detail (click a row: the tax calculator's rows and each group's parts), first, and total columns that open into their parts across the years.
+6. A conversion's tax (Michael's rule, not the recommendation): in retirement, paid from a taxable account if there is one; otherwise from Pre-tax (held back from the conversion). While anyone still works, held back from the conversion, as today. Applies to the planner's conversions; whether the whole-plan strategies and the conversion page's lifetime view follow it (a change to existing results) is open.
+
+**Steps:**
+
+- (a) Breakdowns in the projection's year table: each row carries its parts (income by row and person, withdrawals by account with the RMD part, each account's balance and contributions, spending's parts, the year's tax inputs so `yearTaxRows` rebuilds the tax calculator's rows, IRMAA). Parts add up to their totals (tested); results unchanged.
+  **Done 2026-10-12.** Each projection row has a `detail` (projection.js; read by `src/lib/projectionDetail.js`); results unchanged (no number moved; the pins don't hold rows). In the year table (the projection page and the Roth page's lifetime table): click a year to open its income by source and person (Social Security as own, spousal top-up and survivor parts), withdrawals and conversions by account with the RMD part, spending, the tax calculator's rows for the year plus IRMAA, and each account from start to end (an empty flow column hidden). Withdrawn, Income tax and End balance (and other totals with more than one source) open into part columns across the years. The accounts the projection opens are named by what goes in ("Pre-tax, new contributions"). Not in spending's parts: debt payments, which the projection doesn't carry yet (phase 11). Tests: hand-worked conversion, RMD, survivor and working years; the parts add up to every total on two richer households. Seen: the strategy table already overflows a phone screen by 19 px (not this step).
+- (b) Engine: `yearChanges` on `runProjection` (`convert`: year, owner, amount; `contribution`: year, row, amount, this year or onward), on top of the strategy; none = today's results. Tests: earlier rows identical; a hand-worked conversion year; the tax rule of decision 6.
+- (c) Saved with the household (`plannerChanges`, empty for older households; saves and share links carry it); every evaluator reads it.
+- (d) The selected year (`src/lib/planner.js`): the cost (tax with minus without in the year, plus IRMAA two years later), the room in the bracket and before the next IRMAA tier, the lifetime value (against the plan without the change; and all changes against the base), suggestions (fill the bracket, the next bracket, up to the IRMAA tier). Each value equals the difference of two full runs (tested).
+- (e) The planner page (`#/planner`, under Decisions): the year table, the list of changes, a year's panel to add or change, with cost, room, value and suggestions.
+- (f) The Docs article; code map and the projection article updated.
 
 ## Phase 7: Roth vs. Pre-tax with conversions in low-income years
 

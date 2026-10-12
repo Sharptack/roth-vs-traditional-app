@@ -1,12 +1,14 @@
 // The projection page's results (roadmap phase 5), as blocks: funded status, the withdrawal strategies, the lifetime summary, income by
 // source per year, balances over time, and the year-by-year table. Renders
 // lib/projectionSummary.js's projectionView; no math of its own.
-import { useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import LineChart from '../components/charts/LineChart.jsx';
 import StackedBarChart from '../components/charts/StackedBarChart.jsx';
 import { projectionHeadlines } from '../lib/blockHeadlines.js';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
+import { columnParts, detailContext } from '../lib/projectionDetail.js';
 import Blocks from './Blocks.jsx';
+import YearDetail from './YearDetail.jsx';
 
 // One color per source, the same in every chart (color follows the entity, never the position).
 const COLORS = { ss: 'var(--series-1)', pretax: 'var(--series-2)', taxable: 'var(--series-3)', roth: 'var(--series-4)', pension: 'var(--series-5)' };
@@ -62,9 +64,24 @@ const COLUMNS = [
   { key: 'basis', label: 'Taxable basis', value: (r) => r.taxableBasis },
 ];
 
+// Phase 6 step (a), decided 2026-10-12: click a year to open what makes up its totals (YearDetail);
+// a total column with parts opens into them across the years (columnParts).
 export function YearTable({ rows }) {
   const [all, setAll] = useState(false);
-  const cols = COLUMNS.filter((c) => all || c.key1);
+  const [openYear, setOpenYear] = useState(null);
+  const [openColumns, setOpenColumns] = useState(() => new Set());
+  const ctx = useMemo(() => detailContext(rows), [rows]);
+  const parts = useMemo(() => Object.fromEntries(COLUMNS.map((c) => [c.key, columnParts(c.key, rows, ctx)])), [rows, ctx]);
+  const cols = COLUMNS.filter((c) => all || c.key1).flatMap((c) =>
+    openColumns.has(c.key) ? [c, ...parts[c.key].map((p) => ({ ...p, part: true }))] : [c],
+  );
+  const toggleColumn = (key) =>
+    setOpenColumns((s) => {
+      const next = new Set(s);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const death = firstDeath(rows);
   return (
     <div>
@@ -73,6 +90,9 @@ export function YearTable({ rows }) {
           Shaded: survivor years, filing single, after the first death ({deathNote(death)}, by the life expectancies).
         </p>
       )}
+      <p className="hint">
+        Click a year to see what makes up its totals; a column marked + opens into its parts across the years.
+      </p>
       <button type="button" className="link-button" onClick={() => setAll(!all)}>
         {all ? 'Show key columns only' : 'Show all columns'}
       </button>
@@ -81,23 +101,47 @@ export function YearTable({ rows }) {
           <thead>
             <tr>
               {cols.map((c) => (
-                <th key={c.key} scope="col">
-                  {c.label}
+                <th key={c.key} scope="col" className={c.part ? 'part-col' : undefined}>
+                  {parts[c.key]?.length > 1 ? (
+                    <button type="button" className="column-toggle" aria-expanded={openColumns.has(c.key)} onClick={() => toggleColumn(c.key)}>
+                      {c.label} <span aria-hidden="true">{openColumns.has(c.key) ? '−' : '+'}</span>
+                    </button>
+                  ) : (
+                    c.label
+                  )}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.year}
-                className={[r.alive?.includes(false) && 'survivor-row', r.shortfall > 0 && 'short-row'].filter(Boolean).join(' ') || undefined}
-              >
-                {cols.map((c) => (
-                  <td key={c.key}>{(c.format ?? $)(c.value(r))}</td>
-                ))}
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const open = openYear === r.year;
+              const className = [r.alive?.includes(false) && 'survivor-row', r.shortfall > 0 && 'short-row', 'year-row', open && 'open-row'].filter(Boolean).join(' ');
+              return (
+                <Fragment key={r.year}>
+                  <tr className={className} onClick={() => setOpenYear(open ? null : r.year)}>
+                    {cols.map((c, i) => (
+                      <td key={c.key} className={c.part ? 'part-col' : undefined}>
+                        {i === 0 ? (
+                          <button type="button" className="year-toggle" aria-expanded={open}>
+                            <span aria-hidden="true">{open ? '▾' : '▸'}</span> {(c.format ?? $)(c.value(r))}
+                          </button>
+                        ) : (
+                          (c.format ?? $)(c.value(r))
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  {open && (
+                    <tr className="year-detail-row">
+                      <td colSpan={cols.length}>
+                        <YearDetail row={r} couple={ctx.couple} pensionCount={ctx.pensionCount} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

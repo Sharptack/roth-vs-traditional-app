@@ -12,7 +12,7 @@ import { docsHash } from '../lib/docs.js';
 const pct = (r) => formatPercent(r, 1);
 
 // The rows, with the ordinary brackets folded into a "By bracket" dropdown.
-function CalculationRows({ rows }) {
+export function CalculationRows({ rows }) {
   const out = [];
   for (let i = 0; i < rows.length; i++) {
     // Only the ordinary brackets fold away; the capital-gains rows (0%, 15%, 20%) stay in view.

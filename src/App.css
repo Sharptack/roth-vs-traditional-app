@@ -2007,6 +2007,73 @@ th.win .th-sub {
   color: var(--critical, #b42318);
 }
 
+/* phase 6 step (a): a year opens into its parts; a total column into its part columns */
+.projection-table .year-row {
+  cursor: pointer;
+}
+
+.projection-table .year-row:hover td,
+.projection-table .open-row td {
+  background: var(--accent-soft);
+}
+
+.year-toggle,
+.column-toggle {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.column-toggle > span {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.projection-table .part-col {
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+
+.projection-table .year-detail-row > td {
+  white-space: normal;
+  text-align: left;
+  padding: 0;
+  border-left: 3px solid var(--accent);
+}
+
+/* sticks to the left of the scrolling table, as wide as its visible part (the container below) */
+.table-scroll:has(.year-detail) {
+  container-type: inline-size;
+}
+
+.year-detail {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: calc(100cqw - 8px);
+  padding: 8px 12px 12px;
+  font-size: 0.9rem;
+}
+
+.year-detail h4 {
+  margin: 12px 0 4px;
+}
+
+.year-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 8px 32px;
+}
+
+.year-detail .year-accounts th[scope='row'] {
+  text-align: left;
+  font-weight: 400;
+}
+
 /* the preview Roth page's lifetime comparison */
 .lifetime-card {
   margin-top: 16px;

@@ -9,6 +9,9 @@ The projection follows the household from this year to the end of the plan, one 
 - **Lifetime summary:** total tax, the average tax rate over the whole plan, the year with the highest tax, and the ending balances. After-tax ending wealth counts Pre-tax money at the heirs' tax rate (an assumption) and Roth and taxable money in full, since heirs get a step-up in basis on taxable accounts.
 - **Income by source in retirement** and **balances over time**, as charts.
 - **Year by year:** a table with every year's figures; "Show all columns" opens the rest (withdrawals by account type, dividends, employer contributions, Medicare IRMAA, the marginal and effective marginal rates, bracket room, cost basis and more).
+  - **Click a year** to see what makes up its totals: income by source and person (Social Security split into each person's own benefit, the spousal top-up and the survivor benefit), withdrawals and conversions by account with the required minimum marked, the spending need against after-tax income and any surplus, the year's full tax calculation (the same rows as the tax calculator, with IRMAA after them), and each account from its start to its end: withdrawals, conversions, contributions, the employer's money, saved surplus and growth.
+  - **A column marked +** (Withdrawn, Income tax, End balance, and Earnings, Social Security, Pension, Other income or Contributed when there is more than one source) opens into its parts across all the years: by account, by source, or ordinary tax, capital-gains tax, NIIT and credits. The parts add up to the column.
+  - Accounts the plan opens itself are named by what goes into them: "Pre-tax, new contributions" (this year's contributions and the employer's money), "Roth, new contributions and conversions", "Taxable, new savings and surplus" (savings over the limit, savings to a taxable account, reinvested surplus).
 
 ## How each year is worked out
 

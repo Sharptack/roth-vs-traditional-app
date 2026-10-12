@@ -107,11 +107,35 @@ import { solveMonotonicIncreasing } from './solver.js';
 import { splitAtTakeHome } from './compare.js';
 import { irmaaCost, medicareEnrollees } from './irmaa.js';
 import { dependentsInYear } from './dependents.js';
-import { pensionIncomeInYear } from './pensionIncome.js';
+import { pensionIncomesInYear } from './pensionIncome.js';
 import { employerContributionFor } from './employerContributions.js';
 import { IRMAA_LOOKBACK_YEARS } from '../data/irmaa.js';
 
 export const DEFAULT_END_AGE = 95;
+
+// One account's year (row.detail.accounts, phase 6 step a):
+//   start - withdrawn - convertedOut + convertedIn + growth - dividendTax + contributed + employer
+//   + reinvested = end   (projectionDetail.js accountFlowTotal)
+// growth: the return on what stays invested (dividends are part of it); rmd: the required part of
+// withdrawn; owner: the owner at the start of the year (a death passes the account on at its end).
+const newFlow = (a, start) => ({
+  id: a.id,
+  owner: a.owner,
+  type: a.type,
+  start,
+  withdrawn: 0,
+  rmd: 0,
+  convertedOut: 0,
+  convertedIn: 0,
+  growth: 0,
+  dividends: 0,
+  dividendTax: 0,
+  contributed: 0,
+  employer: 0,
+  reinvested: 0,
+  end: 0,
+});
+const hasActivity = (f) => Object.values(f).some((v) => typeof v === 'number' && Math.abs(v) > 0.005);
 // Spending in survivor years, as a share of the couple's (assumptions.survivorSpending).
 export const DEFAULT_SURVIVOR_SPENDING = 0.8;
 
@@ -273,7 +297,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       socialSecurity = ownNow + (ages[s] >= survivorSS.startAge ? Math.max(0, survivorSS.annual - ownNow) : 0);
     } else socialSecurity = people.reduce((acc, _, i) => acc + ssOf(i), 0);
     // today's dollars (pensionIncome.js)
-    const pension = pensionIncomeInYear(household, t, { deceased: survivorYear ? people[deceased].id : null });
+    const pensions = pensionIncomesInYear(household, t, { deceased: survivorYear ? people[deceased].id : null });
+    const pension = pensions.reduce((s, p) => s + p.amount, 0);
 
     // 2. This year's contributions (paid in at the end of the year).
     const made = [];
@@ -398,7 +423,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       const withdrawn = Object.values(withdrawals).reduce((s, w) => s + w, 0);
       const earned = params.people.reduce((s, p) => s + p.wages + p.selfEmploymentIncome, 0);
       const other = opts.paycheckOnly ? 0 : otherIncomeTotal;
-      return { tax, cash: earned + other + socialSecurity + pension + withdrawn - tax.totalTax - contributionCash - irmaaThisYear };
+      return { tax, params, cash: earned + other + socialSecurity + pension + withdrawn - tax.totalTax - contributionCash - irmaaThisYear };
     };
 
     const live = accounts.filter((a) => a.balance > 0);
@@ -448,14 +473,14 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
           return { from: a.id, owner: a.owner, amount, ...(c.oneTime && { oneTime: true }) };
         })
         .filter((c) => c && c.amount > 0);
-      const { tax, cash } = evaluate(withdrawals, conversions, true);
+      const { tax, params, cash } = evaluate(withdrawals, conversions, true);
       // While everyone works, the one-time conversion's tax is held back from it (see the header): the
       // year's cash doesn't pay it.
       const withheld =
         !anyRetired && conversions.some((c) => c.oneTime)
           ? tax.totalTax - evaluate(withdrawals, conversions.filter((c) => !c.oneTime)).tax.totalTax
           : 0;
-      return { withdrawals, conversions, tax, cash: cash + withheld, withheld };
+      return { withdrawals, conversions, tax, params, cash: cash + withheld, withheld };
     };
     if (enrolled > 0) {
       const back = t - IRMAA_LOOKBACK_YEARS;
@@ -464,7 +489,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       irmaaThisYear = irmaa.total;
     }
     const solved = solveYear();
-    const { withdrawals, conversions, tax, withheld } = solved;
+    const { withdrawals, conversions, tax, params: taxParamsUsed, withheld } = solved;
     const dividendsByAccount = dividendsOf(withdrawals);
     const dividends = sum(dividendsByAccount);
     // While everyone works the dividends' tax comes out of the dividends (reinvested less), not the
@@ -491,43 +516,67 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     });
     const withdrawn = byType(withdrawals);
     const startBalances = byType(Object.fromEntries(accounts.map((a) => [a.id, a.balance])));
+    // Each account's year (row.detail.accounts): its start, each flow in or out, and its end.
+    const flows = new Map(accounts.map((a) => [a.id, newFlow(a, a.balance)]));
+    const flowOf = (a) => {
+      if (!flows.has(a.id)) flows.set(a.id, newFlow(a, 0));
+      return flows.get(a.id);
+    };
     // Conversions move from the Pre-tax account to the owner's Roth before growth.
     const oneTimeTotal = conversions.filter((c) => c.oneTime).reduce((s, c) => s + c.amount, 0);
     for (const c of conversions) {
       accounts.find((x) => x.id === c.from).balance -= c.amount;
+      flows.get(c.from).convertedOut += c.amount;
       // (the one-time conversion's tax held back, while everyone works, by each part's share)
-      accountFor(c.owner, 'roth').balance += c.amount - (c.oneTime ? (withheld * c.amount) / oneTimeTotal : 0);
+      const reaching = c.amount - (c.oneTime ? (withheld * c.amount) / oneTimeTotal : 0);
+      const roth = accountFor(c.owner, 'roth');
+      roth.balance += reaching;
+      flowOf(roth).convertedIn += reaching;
     }
     for (const a of accounts) {
       const w = withdrawals[a.id] ?? 0;
       if (a.type === 'taxable' && a.balance > 0) a.basis *= 1 - w / a.balance;
+      const f = flowOf(a);
+      f.withdrawn = w;
+      f.rmd = rmdByAccount[a.id] ?? 0;
+      f.growth = (a.balance - w) * returnRate;
       a.balance = (a.balance - w) * (1 + returnRate);
       // Dividends are reinvested (cost basis); any tax the account pays comes off, by its dividends.
       const d = dividendsByAccount[a.id] ?? 0;
+      f.dividends = d;
       if (d > 0) {
         const taxPaid = (dividendTax * d) / dividends;
         a.balance -= taxPaid;
         a.basis += d - taxPaid;
+        f.dividendTax = taxPaid;
       }
     }
     const contributed = { pretax: 0, roth: 0, taxable: 0 };
     for (const m of made) {
-      accountFor(m.owner, m.type).balance += m.toAccount;
+      const to = accountFor(m.owner, m.type);
+      to.balance += m.toAccount;
+      flowOf(to).contributed += m.toAccount;
       contributed[m.type] += m.toAccount;
       if (m.excess > 0) {
         const side = accountFor(m.owner, 'taxable');
         side.balance += m.excess;
         side.basis += m.excess;
+        flowOf(side).contributed += m.excess;
         contributed.taxable += m.excess;
       }
     }
     people.forEach((p, i) => {
-      if (employerMade[i] > 0) accountFor(p.id, 'pretax').balance += employerMade[i];
+      if (employerMade[i] > 0) {
+        const to = accountFor(p.id, 'pretax');
+        to.balance += employerMade[i];
+        flowOf(to).employer += employerMade[i];
+      }
     });
     if (reinvested > 0.005) {
       const side = accountFor(people[survivorYear ? 1 - deceased : 0].id, 'taxable');
       side.balance += reinvested;
       side.basis += reinvested;
+      flowOf(side).reinvested += reinvested;
     }
     // A death this year (only the first, and not both at once): from the year end the deceased's
     // accounts are the survivor's, taxable ones with a step-up in basis.
@@ -556,6 +605,41 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       }
     }
     const endBalances = byType(Object.fromEntries(accounts.map((a) => [a.id, a.balance])));
+    for (const a of accounts) flowOf(a).end = a.balance;
+
+    // The year's income, each source on its own line (row.detail.income).
+    const income = [];
+    const addIncome = (item) => {
+      if (Math.abs(item.amount) > 0) income.push(item);
+    };
+    if (incomeRows) {
+      for (const r of incomeRows) {
+        const i = people.findIndex((p) => p.id === r.owner);
+        if (EARNINGS.includes(r.type) && i >= 0 && alive[i] && counts(r)) addIncome({ kind: r.type, id: r.id, owner: r.owner, amount: r.amount });
+      }
+    } else {
+      people.forEach((p, i) => {
+        if (!alive[i]) return;
+        const own = peopleThisYear[alive.slice(0, i).filter(Boolean).length];
+        addIncome({ kind: 'w2', id: null, owner: p.id, amount: own.wages });
+        addIncome({ kind: '1099', id: null, owner: p.id, amount: own.selfEmploymentIncome });
+      });
+    }
+    if (survivorYear) {
+      const s = 1 - deceased;
+      const ownNow = ages[s] >= ss[s].ownStartAge ? ss[s].own : 0;
+      addIncome({ kind: 'socialSecurity', owner: people[s].id, part: 'own', amount: ownNow });
+      addIncome({ kind: 'socialSecurity', owner: people[s].id, part: 'survivor', amount: socialSecurity - ownNow });
+    } else {
+      people.forEach((p, i) => {
+        addIncome({ kind: 'socialSecurity', owner: p.id, part: 'own', amount: ages[i] >= ss[i].ownStartAge ? ss[i].own : 0 });
+        addIncome({ kind: 'socialSecurity', owner: p.id, part: 'spousal', amount: ages[i] >= ss[i].topUpStartAge ? ss[i].topUp : 0 });
+      });
+    }
+    for (const p of pensions) addIncome({ kind: 'pension', owner: p.owner, index: p.index, amount: p.amount });
+    for (const r of incomeRows ?? []) {
+      if (r.type === 'other' && counts(r)) addIncome({ kind: 'other', id: r.id, owner: r.owner, treatment: r.treatment, amount: r.amount });
+    }
 
     rows.push({
       year: calendarYear,
@@ -600,6 +684,22 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
       dividendTaxFromAccounts: dividendTax, // their tax when the accounts paid it (while everyone works)
       endBalances: { ...endBalances, total: endBalances.pretax + endBalances.roth + endBalances.taxable },
       taxableBasis: accounts.filter((a) => a.type === 'taxable').reduce((s, a) => s + a.basis, 0),
+      // The parts behind the totals (phase 6 step a; projectionDetail.js reads them).
+      detail: {
+        income,
+        accounts: [...flows.values()].filter(hasActivity),
+        spending: {
+          baseNeed: need, // the need before the survivor share
+          need: needThisYear,
+          afterTaxIncome: cash,
+          surplus,
+          extraSpending: spendSurplus && surplus > 0.005 ? surplus : 0,
+          reinvested: surplus > 0.005 ? reinvested : 0,
+          shortfall,
+        },
+        taxParams: taxParamsUsed, // what calculateYearTax was given, so yearTaxRows rebuilds the year
+        tax,
+      },
     });
   }
   return { rows, runOutYear, endAge: lastAge };
