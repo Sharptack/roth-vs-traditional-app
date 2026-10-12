@@ -1,17 +1,27 @@
 // The Social Security calculator's results (phase 5): the household's lifetime benefits under the
-// plan's claiming ages and the best pair, each person's table by claiming age, break-even ages, and
-// for a couple the grid of every pair. Renders lib/socialSecurityCalculator.js's view; no math of
-// its own. effect: claimingPlanEffect's rows (the plan rerun at each age; null while not worked out).
-// onUse(personId, age): "Use in the plan" (absent: view only).
+// plan's claiming ages and the best pair; the grid of every pair (one row for one person) with each
+// cell's benefits; the strategies compared year by year and on a break-even graph (before phase 6,
+// asked 2026-10-12); each person's table by claiming age with break-even ages. Renders
+// lib/socialSecurityCalculator.js's view; no math of its own. effect: claimingPlanEffect's rows (the
+// plan rerun at each age; null while not worked out). onUse(personId, age): "Use in the plan"
+// (absent: view only).
 import { useState } from 'react';
 import { formatCurrency as $, formatPercent } from '../lib/format.js';
 import { socialSecurityHeadlines } from '../lib/blockHeadlines.js';
+import { strategyCompare } from '../lib/socialSecurityCalculator.js';
+import { strategyRows } from '../lib/socialSecurityLifetime.js';
 import Blocks from './Blocks.jsx';
 import LineChart from '../components/charts/LineChart.jsx';
+import { SERIES_COLORS } from '../components/charts/palette.js';
 
 export const WHO = { p1: 'You', p2: 'Your spouse' };
 const whose = { p1: 'Your', p2: 'Your spouse’s' };
 const k = (x) => `$${Math.round(x / 1000).toLocaleString('en-US')}k`;
+const signed = (x) => `${x >= 0 ? '+' : '−'}${$(Math.abs(x))}`;
+const sameAges = (x, y) => x.length === y.length && x.every((a, i) => a === y[i]);
+const keyOf = (ages) => ages.map((a) => a ?? 'now').join('-');
+// Cells chosen in the grid, beside the most (the line colors run out past five strategies).
+const MAX_CLICKED = 4;
 const ageText = (a) => {
   if (a === null) return 'never (by 119)';
   const months = Math.round((a % 1) * 12);
@@ -22,6 +32,9 @@ const ageText = (a) => {
 // survival: survivalView's chance of being alive at each age (null: no chart).
 export default function SocialSecurityResult({ view, effect, survival, onUse }) {
   const [picked, setPicked] = useState(null); // a grid cell's claiming ages
+  const [clicked, setClicked] = useState(['plan']); // cells compared: claiming ages, or 'plan' (the plan's, whatever they become)
+  const [shown, setShown] = useState(null); // the strategy in Year by year (its key; null: the first)
+  const [futureDollars, setFutureDollars] = useState(false);
   if (!view) {
     return (
       <section className="card">
@@ -30,7 +43,7 @@ export default function SocialSecurityResult({ view, effect, survival, onUse }) 
       </section>
     );
   }
-  const { people, plan, tables, grid, discountRate } = view;
+  const { people, plan, tables, grid, pairs, discountRate, inflationRate } = view;
   const couple = people.length === 2;
   const discounted = discountRate > 0;
   const totalWord = discounted ? `discounted at ${formatPercent(discountRate, 0)}` : 'before tax';
@@ -40,6 +53,14 @@ export default function SocialSecurityResult({ view, effect, survival, onUse }) 
   const best = couple ? grid.best : tables[0].best ? { claimAges: [tables[0].best.claimAge], discountedTotal: tables[0].best.householdTotal } : null;
   const bestIsPlan = best && best.claimAges.every((a, i) => a === planAges[i]);
   const applyAges = (ages) => ages.forEach((a, i) => a !== null && a !== planAges[i] && onUse(people[i].id, a));
+  const resolve = (x) => (x === 'plan' ? planAges : x);
+  const strategyLabel = (ages) =>
+    couple ? `You ${ages[0] ?? 'now'}, your spouse ${ages[1] ?? 'now'}` : ages[0] === null ? 'Receiving now' : `Claim at ${ages[0]}`;
+  const compared = strategyCompare(
+    view,
+    [pairs.best.claimAges, ...clicked.map(resolve)].filter((x, i, all) => all.findIndex((y) => sameAges(x, y)) === i),
+  );
+  const strategies = compared.strategies;
 
   const summary = (
     <>
@@ -171,34 +192,60 @@ export default function SocialSecurityResult({ view, effect, survival, onUse }) 
     };
   };
 
-  const gridBlock = grid && grid.cells.length > 1 && {
+  // The grid (before phase 6, asked 2026-10-12): your claiming age down the side, your spouse's
+  // across (one row for one person), each header with that person's monthly benefit; cells shaded
+  // by the household total. Choosing a cell shows its benefits and adds it to the strategies compared.
+  const rowAges = couple ? pairs.ages[0] : [undefined];
+  const colAges = couple ? pairs.ages[1] : pairs.ages[0];
+  const agesAt = (a, b) => (couple ? [a, b] : [b]);
+  const cellOf = (ages) => pairs.cells.find((c) => sameAges(c.claimAges, ages));
+  const monthlyAt = (i, age) => (age === null ? tables[i].monthly : tables[i].rows.find((r) => r.claimAge === age)?.monthly ?? 0);
+  const totals = pairs.cells.map((c) => c.discountedTotal);
+  const [lo, hi] = [Math.min(...totals), Math.max(...totals)];
+  const shade = (c) => ({ background: `color-mix(in srgb, var(--series-1) ${Math.round(4 + 46 * (hi > lo ? (c.discountedTotal - lo) / (hi - lo) : 1))}%, transparent)` });
+  const head = (i, age) => (
+    <>
+      <span>{age ?? 'receiving'}</span>
+      <span className="ss-mo">{$(monthlyAt(i, age))}/mo</span>
+    </>
+  );
+  const choose = (ages) => {
+    setPicked(ages);
+    setShown(keyOf(ages));
+    if (!strategies.some((s) => sameAges(s.claimAges, ages))) setClicked((list) => [...list, ages].slice(-MAX_CLICKED));
+  };
+  const remove = (ages) => setClicked((list) => list.filter((x) => !sameAges(resolve(x), ages)));
+  const pickedCell = picked && cellOf(picked);
+  const gridBlock = pairs.cells.length > 1 && {
     id: 'grid',
-    title: 'Every pair of claiming ages',
-    summary: h.grid,
+    title: couple ? 'Every pair of claiming ages' : 'Every claiming age',
+    summary: `Most: ${strategyLabel(pairs.best.claimAges)}, ${$(pairs.best.discountedTotal)}`,
     content: (
       <>
         <div className="table-scroll">
           <table className="compare-table ss-grid">
+            <caption className="sr-only">Household lifetime benefits by claiming age{couple ? ': yours down, your spouse’s across' : ''}</caption>
             <thead>
               <tr>
-                <th scope="col">You \ Your spouse</th>
-                {grid.ages[1].map((b) => <th key={b} scope="col">{b ?? 'receiving'}</th>)}
+                <th scope="col" className="ss-corner">{couple ? <>You &darr; &nbsp; Your spouse &rarr;</> : 'Claim at'}</th>
+                {colAges.map((b) => <th key={b} scope="col">{head(couple ? 1 : 0, b)}</th>)}
               </tr>
             </thead>
             <tbody>
-              {grid.ages[0].map((a) => (
-                <tr key={a}>
-                  <th scope="row">{a ?? 'receiving'}</th>
-                  {grid.ages[1].map((b) => {
-                    const c = grid.cells.find((x) => x.claimAges[0] === a && x.claimAges[1] === b);
-                    const isBest = c === grid.best;
-                    const isPlan = a === planAges[0] && b === planAges[1];
-                    const isPicked = picked && picked[0] === a && picked[1] === b;
-                    const cls = [isPlan && 'chosen-row', isBest && 'best-cell', isPicked && 'picked-cell'].filter(Boolean).join(' ');
+              {rowAges.map((a) => (
+                <tr key={a ?? 'one'}>
+                  <th scope="row">{couple ? head(0, a) : 'You'}</th>
+                  {colAges.map((b) => {
+                    const ages = agesAt(a, b);
+                    const c = cellOf(ages);
+                    const idx = strategies.findIndex((s) => sameAges(s.claimAges, ages));
+                    const cls = [sameAges(ages, planAges) && 'plan-cell', picked && sameAges(ages, picked) && 'picked-cell'].filter(Boolean).join(' ');
                     return (
-                      <td key={b} className={cls || undefined}>
-                        <button type="button" className="link-button" onClick={() => setPicked([a, b])} aria-pressed={Boolean(isPicked)}>
-                          {k(c.discountedTotal)}{isBest ? ' ★' : ''}
+                      <td key={b} className={cls || undefined} style={shade(c)}>
+                        <button type="button" className="link-button" onClick={() => choose(ages)} aria-pressed={idx >= 0}>
+                          {idx >= 0 && <span className="ss-dot" style={{ background: SERIES_COLORS[idx % SERIES_COLORS.length] }} aria-hidden="true" />}
+                          {k(c.discountedTotal)}
+                          {c === pairs.best ? ' ★' : ''}
                         </button>
                       </td>
                     );
@@ -208,27 +255,187 @@ export default function SocialSecurityResult({ view, effect, survival, onUse }) 
             </tbody>
           </table>
         </div>
-        <p className="hint">Household lifetime benefits ({totalWord}) for each pair: own, spousal and survivor. ★ the most; shaded: the plan. Choose a cell to see it.</p>
-        {picked && (() => {
-          const c = grid.cells.find((x) => x.claimAges[0] === picked[0] && x.claimAges[1] === picked[1]);
-          const isPlan = picked.every((a, i) => a === planAges[i]);
-          return (
+        <p className="hint">
+          Household lifetime benefits ({totalWord}){couple ? ': own, spousal and survivor' : ''}; darker = more. Headers: each person&rsquo;s own benefit a
+          month at that age. ★ the most; dashed: the plan; a dot: compared below. Choose a cell to see its benefits and add it to the comparison.
+        </p>
+        {pickedCell && (
+          <div className="ss-panel">
+            <h3>{strategyLabel(picked)}</h3>
+            <table className="compare-table strategy-table">
+              <thead>
+                <tr>
+                  {couple && <th scope="col">Who</th>}
+                  <th scope="col">Own a month</th>
+                  {couple && <th scope="col">Spousal a month</th>}
+                  {couple && <th scope="col">Survivor a month</th>}
+                  <th scope="col">Lifetime</th>
+                </tr>
+              </thead>
+              <tbody>
+                {people.map((p, i) => {
+                  const m = pickedCell.monthly[i];
+                  const life = pickedCell.people[i];
+                  return (
+                    <tr key={p.id}>
+                      {couple && <th scope="row">{WHO[p.id]} {picked[i] === null ? '(receiving)' : `at ${picked[i]}`}</th>}
+                      <td>{$(m.own)}</td>
+                      {couple && <td>{m.spousal > 0 ? $(m.spousal) : '—'}</td>}
+                      {couple && <td>{m.survivor > 0 ? <>{$(m.survivor)} <span className="dim">after the first death</span></> : '—'}</td>}
+                      <td>{$(life.own + life.spousal + life.survivor)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
             <div className="calc">
-              {people.map((p, i) => (
-                <div key={p.id} className="calc-row">
-                  <span>{whose[p.id]} at {picked[i] ?? 'now'}: own {$(c.people[i].own)}{c.people[i].spousal > 0 ? `, spousal ${$(c.people[i].spousal)}` : ''}{c.people[i].survivor > 0 ? `, survivor ${$(c.people[i].survivor)}` : ''}</span>
-                  <span>{$(c.people[i].own + c.people[i].spousal + c.people[i].survivor)}</span>
-                </div>
-              ))}
-              <div className="calc-row total"><span>Household ({totalWord})</span><span>{$(c.discountedTotal)}</span></div>
-              {onUse && !isPlan && (
+              <div className="calc-row total"><span>Household ({totalWord})</span><span>{$(pickedCell.discountedTotal)}</span></div>
+              {!sameAges(picked, planAges) && <div className="calc-row sub"><span>Compared with the plan&rsquo;s ages</span><span>{signed(pickedCell.discountedTotal - plan.discountedTotal)}</span></div>}
+              {pickedCell !== pairs.best && <div className="calc-row sub"><span>Compared with the most ({strategyLabel(pairs.best.claimAges)})</span><span>{signed(pickedCell.discountedTotal - pairs.best.discountedTotal)}</span></div>}
+            </div>
+            {couple && <p className="hint">Spousal: the top-up while both are alive, from the later of the two claims. Survivor: the top-up to the larger benefit, after the first death (at the plan&rsquo;s life expectancies).</p>}
+            <div className="button-row">
+              {onUse && !sameAges(picked, planAges) && (
                 <button type="button" className="button secondary" onClick={() => applyAges(picked)}>
-                  Use you {picked[0] ?? 'now'}, your spouse {picked[1] ?? 'now'} in the plan
+                  Use {strategyLabel(picked).toLowerCase()} in the plan
+                </button>
+              )}
+              {clicked.some((x) => sameAges(resolve(x), picked)) && !sameAges(picked, pairs.best.claimAges) && (
+                <button type="button" className="link-button" onClick={() => remove(picked)}>
+                  Remove from the comparison
                 </button>
               )}
             </div>
-          );
-        })()}
+          </div>
+        )}
+      </>
+    ),
+  };
+
+  // The strategies compared: the most, then the cells chosen (the plan's to start), each with its
+  // line color; the dropdown picks one for the table year by year.
+  const shownStrategy = strategies.find((s) => keyOf(s.claimAges) === shown) ?? strategies[0];
+  const shownIndex = strategies.indexOf(shownStrategy);
+  const strategyName = (s) => `${strategyLabel(s.claimAges)}${sameAges(s.claimAges, planAges) ? ' (the plan)' : ''}${s.cell === pairs.best ? ' ★ the most' : ''}`;
+  const rows = shownStrategy ? strategyRows(shownStrategy.cell, { year: view.year, inflationRate, futureDollars }) : [];
+  const firstPaid = rows.findIndex((r) => r.total > 0);
+  const paidRows = firstPaid < 0 ? [] : rows.slice(firstPaid);
+  const cols = people.flatMap((p, i) =>
+    ['own', 'spousal', 'survivor']
+      .filter((kind) => paidRows.some((r) => r.streams[i][kind] > 0))
+      .map((kind) => ({ i, kind, label: `${couple ? `${WHO[p.id]}: ` : ''}${kind}` })),
+  );
+  const deathYear = (i) => people[i].birthYear + people[i].planToAge;
+  const dollarsWord = futureDollars ? `future dollars, growing ${formatPercent(inflationRate, 1)} a year` : 'today’s dollars';
+  const yearsBlock = shownStrategy && {
+    id: 'years',
+    title: 'Year by year',
+    summary: `${strategyLabel(shownStrategy.claimAges)}: ${paidRows.length ? `${$(paidRows[0].total)} in ${paidRows[0].year}, ` : ''}${$(rows.at(-1)?.cumulative ?? 0)} in all (${futureDollars ? 'future' : 'today’s'} dollars)`,
+    content: (
+      <>
+        <div className="ss-controls">
+          <label>
+            Strategy{' '}
+            <select value={keyOf(shownStrategy.claimAges)} onChange={(e) => setShown(e.target.value)}>
+              {strategies.map((s) => <option key={keyOf(s.claimAges)} value={keyOf(s.claimAges)}>{strategyName(s)}</option>)}
+            </select>
+          </label>
+          <label>
+            Dollars{' '}
+            <select value={futureDollars ? 'future' : 'today'} onChange={(e) => setFutureDollars(e.target.value === 'future')}>
+              <option value="today">Today&rsquo;s dollars</option>
+              <option value="future">Future dollars ({formatPercent(inflationRate, 1)} a year)</option>
+            </select>
+          </label>
+        </div>
+        <div className="table-scroll ss-years">
+          <table className="compare-table strategy-table">
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                <th scope="col">{couple ? 'Ages' : 'Age'}</th>
+                {cols.map((c) => <th key={`${c.i}-${c.kind}`} scope="col">{c.label}</th>)}
+                <th scope="col">{couple ? 'Household' : 'Benefit'}</th>
+                <th scope="col">Running total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paidRows.map((r) => (
+                <tr key={r.year} className={shownStrategy.cell.firstDeath >= 0 && r.year > deathYear(shownStrategy.cell.firstDeath) ? 'survivor-row' : undefined}>
+                  <th scope="row">{r.year}</th>
+                  <td>{r.ages.map((a, i) => (r.year > deathYear(i) ? '—' : a)).join(' / ')}</td>
+                  {cols.map((c) => <td key={`${c.i}-${c.kind}`}>{r.streams[c.i][c.kind] > 0 ? $(r.streams[c.i][c.kind]) : '—'}</td>)}
+                  <td>{$(r.total)}</td>
+                  <td>{$(r.cumulative)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="hint">
+          Each year&rsquo;s benefits before tax, in {dollarsWord}, not discounted{firstPaid > 0 ? `; from the first year paid (${paidRows[0].year})` : ''}, to
+          {couple ? ' the second death' : ` age ${people[0].planToAge}`} at the plan&rsquo;s life expectancies{couple ? ' (survivor years shaded)' : ''}. Choose cells in the grid to add strategies.
+        </p>
+      </>
+    ),
+  };
+
+  // The break-even graph: each strategy's running total by your age (today's dollars, at the
+  // discount rate); dashed lines where another strategy crosses the one chosen in Year by year.
+  const starts = strategies.map((s) => s.curve.findIndex((p) => p.y > 0)).filter((i) => i >= 0);
+  const from = starts.length ? Math.max(0, Math.min(...starts) - 1) : 0;
+  const yourAge = (x) => (couple ? `your age ${ageText(x)} (your spouse ${ageText(x + people[0].birthYear - people[1].birthYear)})` : `age ${ageText(x)}`);
+  const crossRows = compared.crossings.map((x) => ({ ...x, behind: x.leader === x.a ? x.b : x.a }));
+  const passes = (x) => `${strategyLabel(strategies[x.leader].claimAges)} passes ${strategyLabel(strategies[x.behind].claimAges).toLowerCase()}`;
+  const breakEvenBlock = strategies.length > 0 && {
+    id: 'break-even',
+    title: 'Break-even',
+    summary:
+      strategies.length < 2
+        ? 'Choose cells in the grid to compare strategies'
+        : crossRows.length
+          ? `${passes(crossRows[0])} at ${yourAge(crossRows[0].age)}`
+          : 'No crossings: one strategy stays ahead',
+    content: (
+      <>
+        <LineChart
+          series={strategies.map((s) => ({ key: keyOf(s.claimAges), label: strategyName(s), points: s.curve.slice(from) }))}
+          xTicks={strategies[0].curve.slice(from).map((p) => p.x)}
+          formatX={(a) => (couple ? `Your age ${a}` : `Age ${a}`)}
+          formatXTick={(a) => `${a}`}
+          formatY={(y) => $(y)}
+          formatYTick={k}
+          xLabel={couple ? 'Your age' : 'Age'}
+          yLabel={`Running total (${totalWord})`}
+          markers={false}
+          yFloor={0}
+          refLines={crossRows
+            .filter((x) => x.a === shownIndex || x.b === shownIndex)
+            .map((x) => ({ x: x.age, label: `${strategyLabel(strategies[x.leader].claimAges)} ahead from ${ageText(x.age)}` }))}
+        />
+        {crossRows.length > 0 && (
+          <table className="compare-table strategy-table">
+            <thead>
+              <tr>
+                <th scope="col">Crossing</th>
+                <th scope="col">At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {crossRows.map((x) => (
+                <tr key={`${x.a}-${x.b}-${x.age}`}>
+                  <th scope="row">{passes(x)}</th>
+                  <td>{yourAge(x.age)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="hint">
+          Household benefits received by each age ({totalWord}){couple ? ': own, spousal and survivor, by your age' : ''}. A later claim pays off once its line
+          crosses an earlier one; dashed: the crossings with {shownStrategy ? strategyLabel(shownStrategy.claimAges).toLowerCase() : 'the strategy'} (the one chosen
+          in Year by year). Today&rsquo;s dollars only: future dollars would move the crossings, as a discount rate does.
+        </p>
       </>
     ),
   };
@@ -308,11 +515,13 @@ export default function SocialSecurityResult({ view, effect, survival, onUse }) 
     <Blocks
       blocks={[
         { id: 'plan', title: 'Lifetime Social Security', summary: h.plan, className: 'key-card', content: summary },
-        ...tables.map(personBlock),
         gridBlock,
+        yearsBlock,
+        breakEvenBlock,
+        ...tables.map(personBlock),
         aliveBlock,
       ]}
-      disclaimer="Estimates only — not tax or financial advice. Gross benefits in today’s dollars. SSA’s rules for reductions, delayed credits, spousal and survivor benefits; not modeled: the earnings test, benefits for children or ex-spouses."
+      disclaimer="Estimates only — not tax or financial advice. Gross benefits in today’s dollars (future dollars as an option year by year). SSA’s rules for reductions, delayed credits, spousal and survivor benefits; not modeled: the earnings test, benefits for children or ex-spouses."
     />
   );
 }

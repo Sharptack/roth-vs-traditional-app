@@ -7,7 +7,7 @@ import { DEFAULT_END_AGE, runProjection, socialSecuritySchedule } from './projec
 import { heirsOf, legacyOption, sustainableSpending } from './projectionSummary.js';
 import { conversionTotals } from './conversionLifetime.js';
 import { strategyById } from './strategies.js';
-import { breakEvenAge, claimingGrid, lifetimeBenefits, openClaimAges } from './socialSecurityLifetime.js';
+import { benefitCrossings, breakEvenAge, claimingGrid, cumulativeCurve, lifetimeBenefits, openClaimAges } from './socialSecurityLifetime.js';
 import { getFullRetirementAgeMonths } from './socialSecurity.js';
 import { addRow, updateRow } from './householdValues.js';
 import { deathRates, survival } from './lifeTable.js';
@@ -70,8 +70,30 @@ export function socialSecurityView(household) {
     const best = rows.reduce((b, r) => (r.householdTotal > b.householdTotal ? r : b), rows[0]);
     return { id: p.id, receiving: false, pia: p.pia, rows, best, breakEvens: p.pia > 0 ? breakEvens(p, open, discountRate) : [] };
   });
-  const grid = people.length === 2 ? claimingGrid({ year, people, discountRate }) : null;
-  return { year, discountRate, people, plan, tables, grid };
+  // pairs: every pair of claiming ages (one person: one row); grid: the same, for a couple only.
+  const pairs = claimingGrid({ year, people, discountRate });
+  const grid = people.length === 2 ? pairs : null;
+  const inflationRate = household.assumptions?.inflationRate || 0;
+  return { year, discountRate, inflationRate, people, plan, tables, pairs, grid };
+}
+
+// The strategies compared on the page (before phase 6, asked 2026-10-12): each a set of claiming
+// ages (one per person) found among the view's pairs (a pair not open is left out), with its
+// running-total curve (cumulativeCurve), and every crossing between two of them (benefitCrossings:
+// a and b index the strategies; leader is the one ahead after it).
+// -> { strategies: [{ claimAges, cell, curve }], crossings: [{ a, b, age, leader }] }
+export function strategyCompare(view, list) {
+  const strategies = list
+    .map((claimAges) => view.pairs.cells.find((c) => c.claimAges.every((a, i) => a === claimAges[i])))
+    .filter(Boolean)
+    .map((cell) => ({ claimAges: cell.claimAges, cell, curve: cumulativeCurve(cell) }));
+  const crossings = strategies.flatMap((sa, a) =>
+    strategies.slice(a + 1).flatMap((sb, k) => {
+      const b = a + 1 + k;
+      return benefitCrossings(sa.cell, sb.cell).map((x) => ({ a, b, age: x.age, leader: x.leader === 'a' ? a : b }));
+    }),
+  );
+  return { strategies, crossings };
 }
 
 // "Use in the plan": the person's claiming age, as the starting age of their Social Security row;

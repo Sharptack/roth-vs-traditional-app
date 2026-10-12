@@ -185,3 +185,17 @@ describe('where two strategies cross (HAND CALC)', () => {
     expect(benefitCrossings(a, a)).toEqual([]);
   });
 });
+
+describe('each person’s monthly benefits in a strategy (HAND CALC)', () => {
+  it('S1 = A 67, B 64: own 2,000 and 480; B spousal (1,000 - 600) x 83.333% = 333.33; B survivor 2,000 - 480 = 1,520', () => {
+    const people = [
+      { birthYear: 1960, pia: 2000, planToAge: 80 },
+      { birthYear: 1962, pia: 600, planToAge: 90 },
+    ];
+    const r = lifetimeBenefits({ year: 2026, people, claimAges: [67, 64] });
+    expect(r.monthly[0]).toEqual({ own: 2000, spousal: 0, survivor: 0 });
+    expect(r.monthly[1].own).toBeCloseTo(480, 6);
+    expect(r.monthly[1].spousal).toBeCloseTo(333.333, 2);
+    expect(r.monthly[1].survivor).toBeCloseTo(1520, 6);
+  });
+});

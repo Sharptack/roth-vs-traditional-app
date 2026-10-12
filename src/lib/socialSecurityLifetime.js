@@ -93,6 +93,12 @@ export function lifetimeBenefits({ year, people, claimAges, discountRate = 0 }) 
   }
   return {
     people: totals,
+    // Each person's monthly benefits in this strategy (the survivor's: the excess over their own).
+    monthly: people.map((_, i) => ({
+      own: own[i].monthly,
+      spousal: totals[i].spousal > 0 ? spousal[i].monthly : 0,
+      survivor: firstDeath === 1 - i ? survivor.monthly : 0,
+    })),
     years,
     firstDeath,
     total: years.reduce((acc, r) => acc + r.total, 0),

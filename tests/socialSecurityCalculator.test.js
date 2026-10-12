@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyClaimAge, claimingPeople, socialSecurityView } from '../src/lib/socialSecurityCalculator.js';
+import { applyClaimAge, claimingPeople, socialSecurityView, strategyCompare } from '../src/lib/socialSecurityCalculator.js';
 import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
 
 // The Social Security page from a household (phase 5, step d). The couple from
@@ -130,5 +130,32 @@ describe('survivalView (HAND CALC on a made-up table)', async () => {
     // a break-even age in months: B's 64 vs 67 break-even age, from B's 64
     const be = s.reach[1].marks.find((m) => m.kind === 'breakEven');
     expect(be.chance).toBeCloseTo(0.9 ** (Math.round((be.age - 64) * 12) / 12), 10);
+  });
+});
+
+// Before phase 6 (asked 2026-10-12): the strategies compared on the page.
+describe('strategyCompare', () => {
+  const v = socialSecurityView(household());
+  it('pairs: every pair for a couple (the grid), one row for one person', () => {
+    expect(v.pairs).toBe(v.grid);
+    const single = { ...household(), filingStatus: 'single', people: [person('p1', 1960, 80, 2000, 67)] };
+    const s = socialSecurityView(single);
+    expect(s.grid).toBeNull();
+    expect(s.pairs.cells.map((c) => c.claimAges)).toEqual([[66], [67], [68], [69], [70]]);
+  });
+  it('the inflation input, for future dollars (0 when not set)', () => {
+    expect(v.inflationRate).toBe(0);
+    expect(socialSecurityView({ ...household(), assumptions: { inflationRate: 0.025 } }).inflationRate).toBe(0.025);
+  });
+  it('each strategy its cell and curve; A 70, B 64 passes A 67, B 64 at A 83.0556 (hand-worked in socialSecurityLifetime.test.js)', () => {
+    const c = strategyCompare(v, [[67, 64], [70, 64]]);
+    expect(c.strategies.map((s) => s.cell.discountedTotal)).toEqual([expect.closeTo(766400, 6), expect.closeTo(823680, 6)]);
+    expect(c.strategies[0].curve[0]).toEqual({ x: 66, y: 0 });
+    expect(c.crossings).toHaveLength(1);
+    expect(c.crossings[0]).toMatchObject({ a: 0, b: 1, leader: 1 });
+    expect(c.crossings[0].age).toBeCloseTo(83.0556, 3);
+  });
+  it('a pair that is not open is left out', () => {
+    expect(strategyCompare(v, [[62, 64]]).strategies).toEqual([]);
   });
 });
