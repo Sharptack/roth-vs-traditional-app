@@ -27,7 +27,8 @@
 // IRMAA (assumptions.medicareIrmaa; off when absent): each person 65 or older pays the Part B and
 // Part D surcharges set by the household's MAGI two years earlier (lib/irmaa.js). The surcharge is
 // known at the start of the year, so it is a fixed cost the strategy meets like tax. The two years
-// before the first projected year are taken to have the first year's MAGI (for the first year
+// before the first projected year are taken to have the first year's MAGI without its conversions
+// (decided 2026-10-13: a conversion this year can't have set past premiums; for the first year
 // itself, as worked out before its surcharge). While everyone is still working the surcharge is
 // recorded but, like tax, comes out of the paycheck. In the first retirement year of a
 // one-person household this is exactly what the total portfolio section computes (tested).
@@ -329,6 +330,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
 
   const rows = [];
   let runOutYear = null;
+  let preProjectionMagi = 0; // IRMAA: the first year's MAGI without its conversions, set in that year
   for (let t = 0; age0[0] + t <= lastAge; t++) {
     const calendarYear = year + t;
     const ages = age0.map((a) => a + t);
@@ -545,6 +547,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
           return { from: a.id, owner: a.owner, amount, ...(c.oneTime && { oneTime: true }) };
         })
         .filter((c) => c && c.amount > 0);
+      const forSpending = { ...withdrawals }; // before any drawn to pay the conversions' tax
       // The conversions' tax (see the header). Once anyone has retired: more from the taxable accounts
       // (pro rata by what is left in them) until the year's cash meets the need again; what they can't
       // cover is held back from the conversions. While everyone works: all of it held back.
@@ -573,16 +576,19 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         } else withheld = conversionTax(withdrawals);
       }
       const { tax, params, cash } = evaluate(withdrawals, conversions, true);
-      return { withdrawals, conversions, tax, params, cash: cash + withheld, withheld };
+      return { withdrawals, forSpending, conversions, tax, params, cash: cash + withheld, withheld };
     };
     if (enrolled > 0) {
+      // The years before the projection: the first year's MAGI without its conversions (see the header);
+      // for the first year itself, as worked out before its surcharge.
       const back = t - IRMAA_LOOKBACK_YEARS;
-      const lookbackMagi = back >= 0 ? rows[back].magi : rows.length > 0 ? rows[0].magi : solveYear().tax.lines.magi;
+      const lookbackMagi = back >= 0 ? rows[back].magi : t === 0 ? evaluate(solveYear().forSpending, []).tax.lines.magi : preProjectionMagi;
       irmaa = irmaaCost({ magi: lookbackMagi, filingStatus: filingStatusThisYear, year, enrolled });
       irmaaThisYear = irmaa.total;
     }
     const solved = solveYear();
     const { withdrawals, conversions, tax, params: taxParamsUsed, withheld } = solved;
+    if (t === 0) preProjectionMagi = conversions.length > 0 ? evaluate(solved.forSpending, []).tax.lines.magi : tax.lines.magi;
     const dividendsByAccount = dividendsOf(withdrawals);
     const dividends = sum(dividendsByAccount);
     // While everyone works the dividends' tax comes out of the dividends (reinvested less), not the

@@ -20,7 +20,7 @@ The projection follows the household from this year to the end of the plan, one 
 3. **Contributions** from each person still working, each capped at their own IRS limit for that year's age (so the catch-up starts at 50). Anything over the limit goes to a taxable account, as do taxable contribution rows (as cost basis). Employer 401(k) contributions go into the person's Pre-tax account.
 4. **Required minimum distributions** from each owner's Pre-tax accounts, on the balance at the start of the year.
 5. **Withdrawals.** Once anyone has retired, the withdrawal strategy decides which accounts pay for spending, so that after-tax income meets the retirement income number. While everyone works, the paycheck is the budget: only RMDs come out.
-6. **Tax** on the whole year through the same tax engine as the tax calculator: ordinary brackets, capital-gains rates, Social Security taxability, payroll tax, the Net Investment Income Tax, deductions and credits. Medicare IRMAA surcharges follow from income two years earlier.
+6. **Tax** on the whole year through the same tax engine as the tax calculator: ordinary brackets, capital-gains rates, Social Security taxability, payroll tax, the Net Investment Income Tax, deductions and credits. Medicare IRMAA surcharges follow from income two years earlier; for this year and next, set by tax returns before the projection starts, it takes this year's income without any Roth conversion (a conversion made now can't have set them).
 7. **Growth.** What is left grows at the year's return; contributions and anything reinvested are added at the end of the year.
 
 ## Income over the years

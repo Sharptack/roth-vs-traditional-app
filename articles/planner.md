@@ -61,9 +61,10 @@ A change sets one contribution row's amount for one year, or from that year on. 
 
 The changes are part of the plan: they are saved with the household and carried by share links, and every page that runs the plan includes them, saying so at the top: the projection, Retirement spending, Pre-retirement funding, the Roth conversion calculator's lifetime view, Social Security's plan effect and the Roth vs. Pre-tax lifetime comparison. Two exceptions: the Roth vs. Pre-tax comparison sets the contributions itself, so only the conversions count there; and Pre-retirement funding's savings-needed search scales the contribution rows as entered (its two funded levels include every change).
 
+**A conversion in the plan's first year and IRMAA.** This year's and next year's premiums were set by tax returns filed before the plan starts. The projection takes those years to have this year's income without any conversion, so a conversion now first shows in IRMAA two years on, as it would (decided 2026-10-13).
+
 ## Not modeled
 
-- **A conversion in the plan's first year and IRMAA:** the projection takes the two years before it to have the first year's income, so a conversion this year also raises this year's and next year's surcharge there, though those premiums were set by tax returns already filed. The cost shown (the surcharge two years on) is right; the lifetime tax counts the two earlier years too.
 - The five-year rules on withdrawing converted money, and the 10% penalty before 59½ on tax held back from a conversion.
 - State tax.
 - Other changes for a year (an extra withdrawal, an extra expense, a different retirement year) are candidates for later.

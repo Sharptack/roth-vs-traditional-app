@@ -196,6 +196,23 @@ describe('runProjection: Medicare IRMAA (2026, HAND CALC)', () => {
     expect(off.every((r) => r.irmaa === 0 && r.irmaaTier === 0)).toBe(true);
   });
 
+  it('the years before the projection take the first year’s MAGI without its conversions (decided 2026-10-13)', () => {
+    // 70, born 1956 (RMDs at 73), $1,000,000 Pre-tax, need $30,000, convert $80,000 this year.
+    // Spending: W = 31,613.6364 every year (no surcharge in the way). MAGI this year with the
+    // conversion 111,613.64 (tier 1), without it 31,613.64 (no tier).
+    //   year 0 and year 1: set by the years before the projection -> 31,613.64 -> no surcharge
+    //   year 2: set by year 0's actual MAGI, 111,613.64 -> tier 1, (81.20 + 14.50) x 12 = 1,148.40
+    // (Before 2026-10-13 the conversion counted in years 0 and 1 too: 1,148.40 in each.)
+    const h = { ...retiree({ age: 70, pretax: 1000000 }), assumptions: { returnRate: 0, inflationRate: 0, ageDeductions: false, medicareIrmaa: true } };
+    const rows = runProjection(h, { need: 30000, endAge: 73, convertNow: 80000 }).rows;
+    expect(rows[0].magi).toBeCloseTo(111613.6364, 3);
+    expect(rows.slice(0, 3).map((r) => r.irmaa)).toEqual([0, 0, expect.closeTo(1148.4, 6)]);
+    expect(rows[0].withdrawals.pretax).toBeCloseTo(31613.6364, 3);
+    // the planner's conversion in the first year likewise
+    const planned = runProjection(h, { need: 30000, endAge: 73, yearChanges: [{ year: 2026, kind: 'convert', owner: 'p1', amount: 80000 }] }).rows;
+    expect(planned.slice(0, 3).map((r) => r.irmaa)).toEqual([0, 0, expect.closeTo(1148.4, 6)]);
+  });
+
   it('under 65 (no Medicare) nothing is charged, whatever the income', () => {
     // 64 with a $100,000 need from a large Pre-tax balance: MAGI well over the threshold, no Medicare yet
     const h = { ...retiree({ age: 64, pretax: 3000000 }), assumptions: { returnRate: 0, inflationRate: 0, ageDeductions: false, medicareIrmaa: true } };
