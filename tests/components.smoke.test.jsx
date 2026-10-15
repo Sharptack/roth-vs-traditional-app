@@ -1079,10 +1079,12 @@ describe('NextApp', () => {
     }
     expect(page).toContain('<strong>Existing Accounts:</strong> Pre-tax $100,000');
     expect(page).toContain('class="collapsible card collapsible-card inputs-assumptions"');
-    expect((page.match(/mini-block/g) ?? []).length).toBe(9); // with the legacy goal (phase 3)
+    expect((page.match(/mini-block/g) ?? []).length).toBe(10); // with the legacy goal (phase 3) and Social Security (2026-10-15)
     // income rows: closed, one line each
     expect(page).toContain('<span>W-2 wages · $100,000 per year</span>');
-    expect(page).toContain('<span>Social Security · estimated from earnings</span>');
+    // Social Security in its own section (2026-10-15), not among the income rows
+    expect(page).not.toContain('<span>Social Security · estimated from earnings</span>');
+    expect(page).toContain('<strong>Social Security:</strong> Estimated from earnings, claimed at retirement');
     expect(page).toContain('>Set start/end ages</button>');
     for (const label of ['Biological sex', 'Life expectancy', 'or birthdate', '+ Add a debt', '+ Add income', 'Withdrawal strategy in retirement']) {
       expect(page, label).toContain(label);
@@ -1091,7 +1093,7 @@ describe('NextApp', () => {
     for (const label of ['+ Add other income types', 'Lump sum offered', 'Project to age', 'Convert to Roth this year']) {
       expect(page, label).not.toContain(label);
     }
-    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(13); // with the legacy goal (phase 3)
+    expect((page.match(/class="collapsible card collapsible-card/g) ?? []).length).toBe(14); // with the legacy goal (phase 3) and Social Security (2026-10-15)
     expect(page).toContain('Open a calculator');
     expect(page).toContain('href="#/pension"');
     expect(page).not.toContain('suite-tile-headline');

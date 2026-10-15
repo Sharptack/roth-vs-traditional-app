@@ -73,9 +73,10 @@ function personLine(p) {
   return `${OWNER_LABELS[p.id]} ${p.age || '—'}, ${retired ? 'retired' : 'retires'} at ${p.retirementAge || '—'}, life expectancy ${p.planToAge || '—'}`;
 }
 
-// The income summary: yearly amounts by kind, then each person's Social Security and pensions.
+// The income summary: yearly amounts by kind, then the pensions (Social Security has a section of
+// its own, decided 2026-10-15).
 function incomeSummary(v) {
-  const rows = countedRows(v, 'incomes');
+  const rows = countedRows(v, 'incomes').filter((r) => r.type !== 'socialSecurity');
   const annual = totalsBy(
     rows.filter((r) => !MONTHLY_INCOME_TYPES.includes(r.type)),
     (r) => (r.type === 'other' ? `other:${r.treatment}` : r.type),
@@ -85,16 +86,33 @@ function incomeSummary(v) {
   );
   const two = hasSpouseV2(v);
   const whose = (r) => (two ? `${r.owner === 'p1' ? 'your' : "spouse's"} ` : '');
-  // A person with no Social Security row: estimated from earnings (decided 2026-10-09).
-  const ssRows = activePeople(v).map((p) => rows.find((r) => r.owner === p.id && r.type === 'socialSecurity') ?? { owner: p.id, ssMode: 'estimate' });
-  const ss = ssRows.map(
-    (r) => `${two ? (r.owner === 'p1' ? 'Your' : "Spouse's") + ' ' : ''}Social Security ${r.ssMode === 'pia' ? `${money(r.amount)}/mo PIA` : r.ssMode === 'receiving' ? `${money(r.amount)}/mo received` : 'estimated'}`,
-  );
   const pensions = rows
     .filter((r) => r.type === 'pension')
     .map((r) => (r.election === 'lumpSum' ? `${whose(r)}pension taken as a ${money(r.lumpSum)} lump sum` : `${whose(r)}pension ${money(r.amount)}/mo from ${r.fromAge || '—'}`));
-  const parts = [annual === 'None' ? null : annual, ...ss, ...pensions].filter(Boolean);
+  const parts = [annual === 'None' ? null : annual, ...pensions].filter(Boolean);
   return parts.length > 0 ? parts.map((s) => s.replace(/^[a-z]/, (c) => c.toUpperCase())).join(' · ') : 'None';
+}
+
+// Each person's Social Security row; a person with none is estimated from earnings (decided
+// 2026-10-09), shown as such.
+export function socialSecurityRows(v) {
+  const rows = countedRows(v, 'incomes');
+  return activePeople(v).map(
+    (p) => rows.find((r) => r.owner === p.id && r.type === 'socialSecurity') ?? { id: null, owner: p.id, type: 'socialSecurity', ssMode: 'estimate', amount: '', fromAge: '' },
+  );
+}
+
+// The Social Security section's summary, a part per person: "PIA $2,400/mo, claimed at 67".
+function socialSecuritySummary(v) {
+  const two = hasSpouseV2(v);
+  return socialSecurityRows(v)
+    .map((r) => {
+      const claim = `claimed at ${String(r.fromAge ?? '').trim() || 'retirement'}`;
+      if (r.ssMode === 'pia') return `${two ? `${OWNER_LABELS[r.owner]}: ` : ''}PIA ${money(r.amount)}/mo, ${claim}`;
+      if (r.ssMode === 'receiving') return `${two ? `${OWNER_LABELS[r.owner]}: r` : 'R'}eceiving ${money(r.amount)}/mo`;
+      return `${two ? `${OWNER_LABELS[r.owner]}: e` : 'E'}stimated from earnings, ${claim}`;
+    })
+    .join(' · ');
 }
 
 // One income row, closed (decided 2026-10-09): its type and amount, and whose with a spouse.
@@ -144,6 +162,7 @@ export const INPUT_SECTIONS = [
     },
   },
   { id: 'income', title: 'Income', summary: incomeSummary },
+  { id: 'ssBenefits', title: 'Social Security', summary: socialSecuritySummary },
   {
     id: 'contributions',
     title: 'Contributions',
@@ -273,7 +292,7 @@ const strategyLabel = (v) => (STRATEGIES.find((s) => s.id === v.calculators.proj
 // The inputs page: four groups, each holding its sections (decided 2026-10-08).
 export const INPUT_GROUPS = [
   { id: 'household', title: 'Household', sections: ['household', 'dependents', 'legacy'] }, // the legacy goal here (Michael, 2026-10-15)
-  { id: 'income', title: 'Income and expenses', sections: ['income', 'contributions', 'spending', 'deductions'] },
+  { id: 'income', title: 'Income and expenses', sections: ['income', 'ssBenefits', 'contributions', 'spending', 'deductions'] },
   { id: 'assets', title: 'Assets and liabilities', sections: ['accounts', 'liabilities'] },
   { id: 'assumptions', title: 'Assumptions', sections: ['assumptions'] },
 ];
@@ -293,42 +312,42 @@ const WITHOUT_PROJECTION = ASSUMPTION_FIELDS.filter((f) => f !== 'strategy' && f
 const FOR_PLAN = ['age', 'retirementAge', 'planToAge'];
 export const CALCULATOR_INPUTS = {
   roth: {
-    sections: ['contributions', 'household', 'dependents', 'income', 'deductions', 'accounts', 'spending', 'assumptions'],
+    sections: ['contributions', 'household', 'dependents', 'income', 'ssBenefits', 'deductions', 'accounts', 'spending', 'assumptions'],
     fields: { people: FOR_PLAN },
     // The Roth page keeps its Future Contributions / Existing Accounts pair (Michael, 2026-10-08).
     titles: { contributions: 'Future Contributions' },
   },
   tax: {
-    sections: ['income', 'household', 'dependents', 'contributions', 'deductions', 'assumptions'],
+    sections: ['income', 'ssBenefits', 'household', 'dependents', 'contributions', 'deductions', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   projection: {
-    sections: ['projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
+    sections: ['projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
   // Retirement spending (phase 3): the legacy goal and spending first, then what the plan reads.
   spending: {
-    sections: ['legacy', 'spending', 'projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
+    sections: ['legacy', 'spending', 'projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
   // Pre-retirement funding (phase 4): the target, then the savings and retirement ages it weighs.
   funding: {
-    sections: ['funding', 'household', 'contributions', 'income', 'spending', 'legacy', 'projection', 'dependents', 'deductions', 'accounts', 'assumptions'],
+    sections: ['funding', 'household', 'contributions', 'income', 'ssBenefits', 'spending', 'legacy', 'projection', 'dependents', 'deductions', 'accounts', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
   // Social Security (phase 5): the discount rate, then the people (ages, life expectancy, sex for the
   // survival chart) and their Social Security rows.
   socialSecurity: {
-    sections: ['socialSecurity', 'household', 'income'],
+    sections: ['socialSecurity', 'ssBenefits', 'household', 'income'],
     fields: { people: ['age', 'planToAge', 'sex', 'retirementAge'] },
   },
   // The year-by-year planner (phase 6): what the projection reads (its changes are made on the page).
   planner: {
-    sections: ['projection', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
+    sections: ['projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
   conversion: {
-    sections: ['conversion', 'household', 'dependents', 'income', 'contributions', 'deductions', 'accounts', 'assumptions'],
+    sections: ['conversion', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'assumptions'],
     fields: { people: ['age'], assumptions: ['medicareIrmaa'] },
   },
   pension: {
@@ -347,7 +366,8 @@ export function inputSections(ids = ALL_SECTION_IDS) {
 const SECTION_DATA = {
   household: (v) => [v.filingStatus, v.includeSpouse, v.people],
   dependents: (v) => v.dependents ?? [],
-  income: (v) => v.incomes,
+  income: (v) => v.incomes.filter((r) => r.type !== 'socialSecurity'),
+  ssBenefits: (v) => v.incomes.filter((r) => r.type === 'socialSecurity'),
   contributions: (v) => v.contributions,
   accounts: (v) => v.accounts,
   liabilities: (v) => v.liabilities,

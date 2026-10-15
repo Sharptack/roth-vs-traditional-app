@@ -29,6 +29,7 @@ import {
   OWNER_LABELS,
   PERSON_FIELDS,
   incomeRowSummary,
+  socialSecurityRows,
   accountRowSummary,
   inputSections,
   sectionChanged,
@@ -213,6 +214,28 @@ export default function HouseholdInputs({
     </>
   );
 
+  // A person's Social Security fields. setField(field) -> onChange (it may add the row first).
+  const ssFields = (r, setField) => (
+    <>
+      <SelectInput label="Benefit" value={r.ssMode} onChange={setField('ssMode')} options={SS_MODE_OPTIONS} />
+      {r.ssMode === 'pia' && <CurrencyInput label="PIA (monthly)" value={r.amount} onChange={setField('amount')} />}
+      {r.ssMode === 'receiving' && <CurrencyInput label="Monthly benefit now" value={r.amount} onChange={setField('amount')} />}
+      {r.ssMode !== 'receiving' && <SelectInput label="Claim at" value={r.fromAge} onChange={setField('fromAge')} options={CLAIM_AGE_OPTIONS} />}
+      <p className="hint">
+        {r.ssMode === 'receiving' ? (
+          "The monthly check as received today, before any Medicare premium is taken out, in today's dollars; it counts as is from this year on. Its PIA isn't known, so it adds no spousal benefit for a spouse."
+        ) : (
+          <>
+            {r.ssMode === 'pia'
+              ? "PIA: the monthly benefit at full retirement age, from the SSA statement, in today's dollars; the benefit at the claiming age, and any spousal benefit, are worked out from it."
+              : "Estimated from this year's earnings; the PIA on the SSA statement is more precise."}{' '}
+            Claimed at retirement means at the retirement age, held within 62 to 70.
+          </>
+        )}
+      </p>
+    </>
+  );
+
   const ownerSelect = (list, row) =>
     spouse && (
       <SelectInput label="Whose" value={row.owner} onChange={setRow(list, row.id, 'owner')} options={labelOptions(OWNER_LABELS)} />
@@ -295,54 +318,35 @@ export default function HouseholdInputs({
       </>
     ),
 
+    // Social Security (its own section, decided 2026-10-15): one block per person. The rows stay in
+    // the income list (type socialSecurity); a person with none shows as estimated, and editing a
+    // field adds their row.
+    ssBenefits: () => (
+      <>
+        <p className="hint">
+          One per person. Without a PIA, the benefit is estimated from this year&rsquo;s earnings (a PIA of $0 means none).
+        </p>
+        <div className={spouse ? 'people-grid' : 'people-grid one'}>
+          {socialSecurityRows(values).map((r) => {
+            const setField = (field) =>
+              r.id
+                ? setRow('incomes', r.id, field)
+                : (value) => onUpdate((v) => addRow(v, 'incomes', { type: 'socialSecurity', owner: r.owner, ssMode: 'estimate', amount: '', fromAge: '', [field]: value }));
+            return (
+              <fieldset key={r.owner} className="person-column">
+                <legend>{OWNER_LABELS[r.owner]}</legend>
+                {ssFields(r, setField)}
+              </fieldset>
+            );
+          })}
+        </div>
+      </>
+    ),
+
     income: () => {
-      const rows = values.incomes.filter((r) => people.some((p) => p.id === r.owner));
+      const rows = values.incomes.filter((r) => people.some((p) => p.id === r.owner) && r.type !== 'socialSecurity');
       const agesOpen = (r) => Boolean(String(r.fromAge).trim() || String(r.toAge).trim()) !== agesToggled.has(r.id);
       const fieldsFor = (r) => {
-        if (r.type === 'socialSecurity') {
-          return (
-            <>
-              <SelectInput
-                label="Benefit"
-                value={r.ssMode}
-                onChange={setRow('incomes', r.id, 'ssMode')}
-                options={SS_MODE_OPTIONS}
-              />
-              {r.ssMode === 'pia' && (
-                <CurrencyInput
-                  label="PIA (monthly)"
-                  value={r.amount}
-                  onChange={setRow('incomes', r.id, 'amount')}
-                />
-              )}
-              {r.ssMode === 'receiving' && (
-                <CurrencyInput
-                  label="Monthly benefit now"
-                  value={r.amount}
-                  onChange={setRow('incomes', r.id, 'amount')}
-                />
-              )}
-              {r.ssMode !== 'receiving' && (
-                <SelectInput
-                  label="Claim at"
-                  value={r.fromAge}
-                  onChange={setRow('incomes', r.id, 'fromAge')}
-                  options={CLAIM_AGE_OPTIONS}
-                />
-              )}
-              <p className="hint">
-                {r.ssMode === 'receiving' ? (
-                  "The monthly check as received today, before any Medicare premium is taken out, in today's dollars; it counts as is from this year on. Its PIA isn't known, so it adds no spousal benefit for a spouse."
-                ) : (
-                  <>
-                    {r.ssMode === 'pia' ? "PIA: the monthly benefit at full retirement age, from the SSA statement, in today's dollars; the benefit at the claiming age, and any spousal benefit, are worked out from it." : "Estimated from this year's earnings; the PIA on the SSA statement is more precise."}{' '}
-                    Claimed at retirement means at the retirement age, held within 62 to 70.
-                  </>
-                )}
-              </p>
-            </>
-          );
-        }
         if (r.type === 'pension') {
           return (
             <>
@@ -406,8 +410,7 @@ export default function HouseholdInputs({
           <p className="hint">
             One row per source; click a row to open it. Earnings and other income are yearly, from now
             until retirement unless start and end ages are set (both included; a row starting at or after
-            retirement runs for life). Social Security (one row each; without one, estimated from earnings)
-            and pensions are monthly.
+            retirement runs for life). Pensions are monthly. Social Security has its own section.
           </p>
           <ul className="account-list">
             {rows.map((r, i) => {
@@ -427,7 +430,7 @@ export default function HouseholdInputs({
                   </button>
                   <div id={bodyId} className="income-row-body" hidden={!isOpen}>
                     <div className="field-row">
-                      <SelectInput label="Type" value={r.type} onChange={setIncomeType(r)} options={labelOptions(INCOME_TYPE_LABELS)} />
+                      <SelectInput label="Type" value={r.type} onChange={setIncomeType(r)} options={labelOptions(INCOME_TYPE_LABELS).filter((o) => o.value !== 'socialSecurity')} />
                       {ownerSelect('incomes', r)}
                     </div>
                     {fieldsFor(r)}

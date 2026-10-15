@@ -6,7 +6,7 @@ All dollar amounts are in today's dollars. The expected return is a return after
 
 ## Two ways to work
 
-- **Fill in everything first.** The inputs page (**Edit inputs** on the dashboard's Inputs card) holds every input in four blocks: **Household** (the people, dependents and the legacy goal), **Income and expenses** (income, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Closed, each block shows a line per section, so the whole household reads at a glance; open one and each section inside it is a smaller block of its own. Signed in, the **Households** card sits at the top, closed, to switch households. Fill it in, then open any calculator.
+- **Fill in everything first.** The inputs page (**Edit inputs** on the dashboard's Inputs card) holds every input in four blocks: **Household** (the people, dependents and the legacy goal), **Income and expenses** (income, Social Security, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Closed, each block shows a line per section, so the whole household reads at a glance; open one and each section inside it is a smaller block of its own. Signed in, the **Households** card sits at the top, closed, to switch households. Fill it in, then open any calculator.
 - **Start from one calculator.** Each calculator page has one inputs card on the left with only the inputs that calculator reads, its own section first. It edits the same household, so a change made there shows on the inputs page and in every other calculator. The **All inputs** link at the top of the card opens the full inputs page.
 
 A closed section still shows a one-line summary of what's in it, so you can check the household at a glance. On a calculator page, the bar between the inputs and the results tucks the inputs away to the left and widens the results; click it again to bring them back.
@@ -63,25 +63,12 @@ With a goal set, sustainable spending is the most the household can spend each y
 One row per source of income, added with **Add income**, each with whose it is and its type. Closed, a row is one line, its type and amount (with its ages, if set), so every source shows at a glance; click it to open it. A new row opens.
 
 - **W-2 wages** and **1099 (self-employed)** income are earnings, a yearly amount. Earnings are what payroll tax, the retirement income number and the Social Security estimate are based on. Enter 1099 income as net earnings, after business expenses; self-employment tax replaces FICA on it, and half of that tax is deductible. 1099 income also gets the qualified business income (QBI) deduction: 20% of it (less half the self-employment tax), up to 20% of taxable income. Above $201,750 of taxable income ($403,500 joint) in 2026 it shrinks, and the app assumes a business with no employees or property, where it reaches $0 by $276,750 ($553,500 joint); from 2026 it is at least $400. Each 1099 row asks **Qualifies for the QBI deduction?** (yes by default): most self-employment income does; a 1099 paid by a former employer, or what is really investment income, doesn't. Only the qualifying rows count.
-- **Social Security** (below): one row per person.
 - **Pension** (below): a monthly amount.
 - **Other**, a yearly amount, of one of four kinds: taxable as ordinary income (for example Pre-tax withdrawals); tax-exempt; interest, non-qualified dividends and short-term gains (ordinary rates, and investment income for the Net Investment Income Tax); or qualified dividends and long-term gains (the 0%, 15% and 20% rates, stacked on top of ordinary income).
 
 A yearly row runs from now until its owner retires, or for life when it starts at or after retirement. To change that, **Set start/end ages**: the ages of the row's owner when it is received, both included (part-time work in early retirement, a rental that ends). A blank start age means from now; a blank end age means until retirement, or for life for a row that starts at or after it. For someone already retired, a row with blank ages counts for life (rent, interest, an annuity), except earnings: a retiree's part-time work needs an end age.
 
 The tax and conversion calculators read the income received this year. The projection reads every row in the years its ages cover: earnings (taxed with payroll tax), ordinary income such as rent or an annuity, interest and qualified dividends, each taxed as its kind, and tax-exempt income as cash (it doesn't yet count toward Social Security taxability or IRMAA, as it does by law). Before retirement, income beyond today's paycheck is extra (see **Income above what is needed, while working** in Assumptions); earnings that end before retirement are taken as lower spending, not drawn from savings. After the first death, the deceased's earnings stop and their other income goes on. Dividends from the taxable accounts are worked out from the accounts, not entered here.
-
-### Social Security
-
-One row per person. A person with no Social Security row has their benefit estimated from earnings, as **From earnings** below; to model no benefit of their own, enter a PIA of $0 (a spousal benefit can still come from the other spouse's). Three ways to set the benefit:
-
-- **From earnings:** a simplified estimate from this year's earnings, treated as a lifetime average. It can overstate the benefit for someone who earned less earlier in their career. For a precise figure, use the person's statement from ssa.gov.
-- **Enter the PIA:** the benefit at full retirement age (the primary insurance amount), the monthly amount on the SSA statement, in today's dollars. The benefit at the chosen claiming age is worked out from it: reduced for each month before full retirement age, increased for each month after it, up to 70.
-- **Currently receiving:** for someone already collecting, the monthly check as received today (before any Medicare premium is taken out), in today's dollars. It counts as entered from this year on, at any age, with no adjustment for a claiming age. Because the PIA behind it isn't known, it adds no spousal benefit for the other spouse; it is taken to include any spousal benefit the person already receives.
-
-With an estimate or a PIA, a married couple's spousal benefit is worked out from both people's benefits: up to half the other spouse's benefit at full retirement age, when that is more than their own.
-
-**Claim at** (not asked when currently receiving): the age benefits start, 62 to 70. Left at "At retirement", benefits start at the retirement age (held within 62 to 70). Once claimed, the benefit counts in the tax and conversion calculators this year (up to 85% of it is taxable, depending on other income), and in every year of the projection.
 
 ### Pension
 
@@ -94,6 +81,18 @@ The **monthly benefit** as the plan states it at its start (for a pension alread
 Like everything else, it is counted in today's dollars: a pension with no cost-of-living increase loses value each year at the inflation rate. For a couple, after the owner's death the survivor receives the survivor's share of it (see Survivor years).
 
 The row also holds the **lump sum offered** instead, if any, and **In the plan**: the monthly benefit (the default) or the lump sum. Taken as a lump sum, the pension pays nothing in any calculator; the lump sum is rolled over to the owner's Pre-tax IRA in the year they reach the start age (or is a Pre-tax account today, when that age has passed). The Roth comparison counts a later rollover as Pre-tax money today, worth the lump sum discounted at the return to its start. The pension calculator weighs the first pension row's two options either way.
+
+## Social Security
+
+Its own section in Income and expenses (decided 2026-10-15; it was part of Income): one block per person. A person who has never set it has their benefit estimated from earnings, as **From earnings** below; to model no benefit of their own, enter a PIA of $0 (a spousal benefit can still come from the other spouse's). Three ways to set the benefit:
+
+- **From earnings:** a simplified estimate from this year's earnings, treated as a lifetime average. It can overstate the benefit for someone who earned less earlier in their career. For a precise figure, use the person's statement from ssa.gov.
+- **Enter the PIA:** the benefit at full retirement age (the primary insurance amount), the monthly amount on the SSA statement, in today's dollars. The benefit at the chosen claiming age is worked out from it: reduced for each month before full retirement age, increased for each month after it, up to 70.
+- **Currently receiving:** for someone already collecting, the monthly check as received today (before any Medicare premium is taken out), in today's dollars. It counts as entered from this year on, at any age, with no adjustment for a claiming age. Because the PIA behind it isn't known, it adds no spousal benefit for the other spouse; it is taken to include any spousal benefit the person already receives.
+
+With an estimate or a PIA, a married couple's spousal benefit is worked out from both people's benefits: up to half the other spouse's benefit at full retirement age, when that is more than their own.
+
+**Claim at** (not asked when currently receiving): the age benefits start, 62 to 70. Left at "At retirement", benefits start at the retirement age (held within 62 to 70). Once claimed, the benefit counts in the tax and conversion calculators this year (up to 85% of it is taxable, depending on other income), and in every year of the projection.
 
 ## Contributions
 
