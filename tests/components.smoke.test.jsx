@@ -1054,8 +1054,8 @@ describe('NextApp', () => {
     expect(blockCount(conv)).toBe(4); // the charts block at the bottom (2026-10-09)
     expect(blockCount(pen)).toBe(0); // no pension: no results
     expect(blockCount(penResult)).toBe(3); // with "In the plan"
-    // the Roth page: its five cards, the blend explorer, the lifetime comparison and its full table
-    expect(blockCount(roth)).toBe(8);
+    // the Roth page: its five cards, the blend explorer, the lifetime comparison, the lower-years conversions and the full table
+    expect(blockCount(roth)).toBe(9);
     expect(roth).toContain('>Show full table<');
     // income and tax rates year by year, and the tax each year over the whole lifetime (2026-10-09)
     expect(roth).toContain('>Income and tax rates, year by year</h3>');

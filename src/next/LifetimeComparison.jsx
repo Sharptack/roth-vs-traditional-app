@@ -13,6 +13,7 @@ import { breakEvenRateShift } from '../lib/lifetimeComparison.js';
 import { STRATEGIES, strategyById } from '../lib/strategies.js';
 import { YearTable } from './ProjectionResult.jsx';
 import IncomeAndRates from './IncomeAndRates.jsx';
+import LowerYearConversions from './LowerYearConversions.jsx';
 
 // Roth = blue, Pre-tax = orange, as everywhere the app shows a winner.
 const ROTH_COLOR = 'var(--series-1)';
@@ -184,6 +185,7 @@ export default function LifetimeComparison({ lifetime, household, result, open =
         <BreakEven household={household} result={result} endAge={endAge} winner={winner} />
       )}
     </Collapsible>
+    <LowerYearConversions lifetime={lifetime} household={household} result={result} open={open} />
     <Collapsible
       headingId="lifetime-table"
       className="lifetime-table-card"

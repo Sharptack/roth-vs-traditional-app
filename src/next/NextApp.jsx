@@ -46,8 +46,7 @@ import LifetimeComparison from './LifetimeComparison.jsx';
 import ConversionResult from './ConversionResult.jsx';
 import PensionResult from './PensionResult.jsx';
 import PlannerResult from './PlannerResult.jsx';
-import { compareLifetime } from '../lib/lifetimeComparison.js';
-import { strategyById } from '../lib/strategies.js';
+import { compareLifetime, lifetimeOptions } from '../lib/lifetimeComparison.js';
 import { useCloud } from './useCloud.js';
 import AccountBar from './AccountBar.jsx';
 import SavedHouseholds from './SavedHouseholds.jsx';
@@ -308,13 +307,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
   const choice = useMemo(() => (page === 'roth' ? contributionSwitch(values, h, roth.result) : null), [page, values, h, roth.result]);
   const lifetime = useMemo(() => {
     if (page !== 'roth' || !deferredRoth.result.valid) return null;
-    const own = deferredRoth.household.calculators?.projection ?? {};
-    return compareLifetime(deferredRoth.household, deferredRoth.result, {
-      endAge: own.endAge,
-      heirTaxRate: own.heirTaxRate,
-      charityShare: deferredRoth.household.legacy?.charityShare ?? 0,
-      strategy: strategyById(own.strategy),
-    });
+    return compareLifetime(deferredRoth.household, deferredRoth.result, lifetimeOptions(deferredRoth.household));
   }, [deferredRoth, page]);
   const tilesOf = (parts) => ({
     roth: rothTile(roth.result),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { conversionHeadlines, lifetimeHeadline, pensionHeadlines, projectionHeadlines, taxHeadlines } from '../src/lib/blockHeadlines.js';
+import { conversionHeadlines, lifetimeHeadline, lowerYearsHeadline, lowerYearsSentence, pensionHeadlines, projectionHeadlines, taxHeadlines } from '../src/lib/blockHeadlines.js';
 
 // Small made-up results: only the fields the headlines read.
 describe('result block headlines', () => {
@@ -75,5 +75,14 @@ describe('result block headlines', () => {
     expect(lifetimeHeadline({ winner: 'pretax', difference: { sustainable: -834.4 } })).toBe('Pre-tax supports $834 per year more');
     expect(lifetimeHeadline({ winner: 'roth', difference: { sustainable: 1200 } })).toBe('Roth supports $1,200 per year more');
     expect(lifetimeHeadline({ winner: 'even', difference: { sustainable: 3 } })).toBe('About even');
+  });
+
+  it('with conversions in the lower years (phase 7)', () => {
+    const c = { rate: 0.22, without: { winner: 'roth', difference: { sustainable: 1200 } }, with: { winner: 'pretax', difference: { sustainable: -900.4 } } };
+    expect(lowerYearsSentence(c)).toBe('Without conversions Roth leads by $1,200 a year; converting in the years below 22%, Pre-tax leads by $900 a year.');
+    expect(lowerYearsHeadline(c)).toBe('Converting below 22%: Pre-tax supports $900 per year more');
+    const even = { ...c, with: { winner: 'even', difference: { sustainable: 2 } } };
+    expect(lowerYearsSentence(even)).toBe('Without conversions Roth leads by $1,200 a year; converting in the years below 22%, the two are about even.');
+    expect(lowerYearsHeadline(even)).toBe('Converting below 22%: about even');
   });
 });

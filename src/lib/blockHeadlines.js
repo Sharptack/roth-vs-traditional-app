@@ -64,6 +64,17 @@ export function lifetimeHeadline(lifetime) {
   return `${lifetime.winner === 'roth' ? 'Roth' : 'Pre-tax'} supports ${$(Math.abs(lifetime.difference.sustainable))} per year more`;
 }
 
+// The Roth page's "with conversions in the lower years" block (compareWithConversions, phase 7).
+// The verdict without and with the conversions in one sentence, and the block's headline.
+const leads = (l) => (l.winner === 'even' ? 'the two are about even' : `${l.winner === 'roth' ? 'Roth' : 'Pre-tax'} leads by ${$(Math.abs(l.difference.sustainable))} a year`);
+export function lowerYearsSentence(c) {
+  const without = leads(c.without);
+  return `Without conversions ${without}; converting in the years below ${formatPercent(c.rate, 0)}, ${leads(c.with)}.`;
+}
+export function lowerYearsHeadline(c) {
+  return `Converting below ${formatPercent(c.rate, 0)}: ${c.with.winner === 'even' ? 'about even' : lifetimeHeadline(c.with)}`;
+}
+
 // The Social Security calculator (socialSecurityView, phase 5).
 const SS_WHO = { p1: 'you', p2: 'your spouse' };
 export function socialSecurityHeadlines(view) {

@@ -11,6 +11,19 @@
 import { runProjection } from './projection.js';
 import { afterTaxEnding, summarizeProjection, sustainableSpending } from './projectionSummary.js';
 import { winnerOf } from './compare.js';
+import { strategyById } from './strategies.js';
+
+// The options the Roth page runs the comparison with: the projection page's end age, heirs' rate and
+// withdrawal strategy, and the legacy goal's charity share.
+export function lifetimeOptions(household) {
+  const own = household.calculators?.projection ?? {};
+  return {
+    endAge: own.endAge,
+    heirTaxRate: own.heirTaxRate,
+    charityShare: household.legacy?.charityShare ?? 0,
+    strategy: strategyById(own.strategy),
+  };
+}
 
 // The two scenarios' contributions, one per saver, from the Roth calculator's result.
 export function lifetimeContributions(household, compareResult) {

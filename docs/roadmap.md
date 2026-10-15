@@ -8,9 +8,9 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 6, the switchover and the "Before phase" lists. 1,013 tests. Last closed: phase 6 (tag `phase-6-done`), with the Social Security additions before it (the claiming grid, strategies year by year, the break-even graph). Phase 6: the year table's breakdowns (click a year: income, withdrawals, the tax calculator's rows, each account; columns that open into their parts), and the year-by-year planner (#/planner): Roth conversions and contribution changes for single years, straight into the plan, with each year's bracket and IRMAA room, a conversion's cost, each change's lifetime value, and suggestions.
 
-**In progress:** Before phase 7: the inputs and page items Michael asked for on 2026-10-15 (listed under it below). All five done, local, unpushed; waiting on Michael's look.
+**In progress:** phase 7, Roth vs. Pre-tax with conversions in the lower years. Decisions set with Michael 2026-10-15 (under Phase 7 below). Built 2026-10-15, local, unpushed: the rule and the four-run comparison (`lowerYearConversions.js`, hand-calculated tests), the block on the Roth page under "Over a lifetime" (the answer without and with conversions, the bracket each year against the chosen rate, the conversions year by year with IRMAA room; "Collapse all results" reaches it), and the Roth article's new section. 1,022 tests. Waiting on Michael's look, then `/closeout` (which also archives the "Before phase 7" list, pushed 2026-10-15).
 
-**Next:** phase 7, Roth vs. Pre-tax with later conversions; its first step: set its decisions with Michael.
+**Next:** phase 8, Monte Carlo.
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years; month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -101,7 +101,7 @@ Both run the same plan from the same inputs and assumptions; only the returns di
 
 ## Before phase 7: inputs and page items
 
-Asked by Michael on 2026-10-15, after phase 6. Read as follows (Claude, 2026-10-15; no numbers change). **Status:** (a) to (e) done 2026-10-15 (1,013 tests; checked in the browser except (e), which needs a sign-in); waiting on Michael's look, then `/closeout`.
+Asked by Michael on 2026-10-15, after phase 6. Read as follows (Claude, 2026-10-15; no numbers change). **Status:** (a) to (e) done 2026-10-15 (1,013 tests; checked in the browser except (e), which needs a sign-in); pushed 2026-10-15; archived at phase 7's `/closeout`.
 
 - (a) **The legacy goal moves to the Household group** on the inputs page (Household, Children and dependents, Legacy goal), out of Income and expenses.
 - (b) **Social Security gets its own section**, "Social Security", in Income and expenses after Income: one block per person (the benefit: estimated, PIA or currently receiving; the amount; the claiming age). The Income section no longer lists or offers Social Security. The rows stay where they are in the household (`values.incomes`, type `socialSecurity`), so saves, links and every result are unchanged; a person with no row shows as estimated, and editing it adds their row.
@@ -123,6 +123,17 @@ The question: if the household converts Pre-tax money to Roth in the years after
 **Behind the blocks:** four lifetime runs, contributing Roth or Pre-tax, each with and without the conversions (the Roth side's existing Pre-tax money converts too, so the comparison is fair). The page shows only the two answers; that pairing is what "four-way" meant. Later, the planner's per-year conversions (phase 6) can stand in for the rule.
 
 **Tests:** each figure equals a separate full run; with no years below the chosen rate the blocks reduce to today's lifetime comparison.
+
+**Decisions (Michael, 2026-10-15):**
+
+| Question | Decision |
+| --- | --- |
+| How far to fill a low year | To the top of the bracket under the chosen rate (22% chosen: to the top of 12%), so every converted dollar is taxed below it. |
+| Which years convert | Any retired year below the rate, RMD years included (on top of the RMD); each person once they have retired. |
+| IRMAA | Each year's IRMAA room shown; a checkbox (off by default) also stops each year's conversion at the next IRMAA tier. |
+| "Use in the plan" | No button this phase; conversions go into the plan through the planner. |
+
+Decided by Claude while building (open to change): the conversion runs keep the plan's withdrawal strategy and the planner's changes, and add the rule's conversions on top (as the planner's conversions sit on top of a conversion strategy); "below the rate" compares the year's bracket (marginal rate), not the effective marginal rate.
 
 ## Phase 8: Monte Carlo
 
