@@ -47,11 +47,13 @@ function BreakEven({ household, result, endAge, winner }) {
   );
 }
 
-export default function LifetimeComparison({ lifetime, household, result }) {
+// open / setOpen: the card's open state, held by the page so "Collapse all results" reaches it
+// (2026-10-15); closing it there closes the year-by-year table too.
+export default function LifetimeComparison({ lifetime, household, result, open = true, setOpen = () => {} }) {
   const [tableFor, setTableFor] = useState('roth');
   const [ratesFor, setRatesFor] = useState('roth');
-  const [open, setOpen] = useState(true);
-  const [tableOpen, setTableOpen] = useState(false);
+  const [tableOpenState, setTableOpen] = useState(false);
+  const tableOpen = open && tableOpenState;
   if (!lifetime) return null;
   const { roth, pretax, winner, difference: d, wealthGap, crossoverYear } = lifetime;
   const endAge = roth.endAge; // person 1's age in the last year (the engine's option)

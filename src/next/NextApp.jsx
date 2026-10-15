@@ -228,6 +228,8 @@ export default function NextApp({ initialPage, initialValues, client }) {
   const [beforeClear, setBeforeClear] = useState(null);
   // "Compare a change" on the Roth page (decided 2026-10-08): a second household, starting as a copy.
   const [compareValues, setCompareValues] = useState(null);
+  // The Roth page's lifetime comparison: open or closed, here so "Collapse all results" reaches it (2026-10-15).
+  const [lifetimeOpen, setLifetimeOpen] = useState(true);
   // Sign-in and the saved household on screen ({ id, label }), when a backend is configured.
   const cloud = useCloud(client);
   const [opened, setOpened] = useState(null);
@@ -594,8 +596,8 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   {!comparing && !locked && (
                     <UseInPlan choice={choice} onUse={() => setValues((v) => applyContributionSwitch(v, contributionSwitch(v, h, roth.result)))} />
                   )}
-                  <ResultsSummary result={roth.result} showBlend disclaimer={false} />
-                  <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} />
+                  <ResultsSummary result={roth.result} showBlend disclaimer={false} linked={lifetime ? { open: lifetimeOpen, setOpen: setLifetimeOpen } : undefined} />
+                  <LifetimeComparison lifetime={lifetime} household={deferredRoth.household} result={deferredRoth.result} open={lifetimeOpen} setOpen={setLifetimeOpen} />
                   <RothDisclaimer dataYear={roth.result.dataYear} />
                 </>
               )}

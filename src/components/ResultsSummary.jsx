@@ -1226,7 +1226,9 @@ export function RothDisclaimer({ dataYear }) {
   );
 }
 
-export default function ResultsSummary({ result, showBlend = false, disclaimer = true }) {
+// linked: another block below that the "Collapse all results" button also opens and closes (the Roth
+// page's lifetime comparison, Michael 2026-10-15): { open, setOpen(open) }.
+export default function ResultsSummary({ result, showBlend = false, disclaimer = true, linked }) {
   const cards = cardsFor(showBlend);
   // Every card starts open; closing one keeps its dropdowns as they were (the body is hidden, not removed).
   const [open, setOpen] = useState(() => new Set(cards.map((card) => card.id)));
@@ -1245,7 +1247,7 @@ export default function ResultsSummary({ result, showBlend = false, disclaimer =
   }
 
   const headlines = resultHeadlines(result);
-  const allOpen = cards.every((card) => open.has(card.id));
+  const allOpen = cards.every((card) => open.has(card.id)) && (!linked || linked.open);
   return (
     <div className="results">
       <div className="results-head">
@@ -1253,7 +1255,10 @@ export default function ResultsSummary({ result, showBlend = false, disclaimer =
         <button
           type="button"
           className="link-button"
-          onClick={() => setOpen(new Set(allOpen ? [] : cards.map((card) => card.id)))}
+          onClick={() => {
+            setOpen(new Set(allOpen ? [] : cards.map((card) => card.id)));
+            linked?.setOpen(!allOpen);
+          }}
         >
           {allOpen ? 'Collapse all results' : 'Expand all results'}
         </button>
