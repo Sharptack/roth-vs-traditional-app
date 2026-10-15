@@ -51,6 +51,8 @@ Up to three for the year, each worked out on that year alone, rounded down to $1
 - **Fill the next bracket too.**
 - **Up to the next IRMAA tier** (when IRMAA applies): the most that keeps this year's income in its tier.
 
+If the projection's withdrawal strategy is one of the Roth conversion strategies, it converts every year on its own, and the planner's conversions come on top of it; the page says so.
+
 Each shows its cost that year and its three lifetime figures. Once one is added, the year's room and suggestions are worked out again from there.
 
 ## Changing a contribution

@@ -13,6 +13,7 @@ import {
   describeChange,
   plannerRows,
   plannerYear,
+  strategyConversionNote,
   suggestions,
 } from '../lib/planner.js';
 import Blocks from './Blocks.jsx';
@@ -348,6 +349,7 @@ export default function PlannerResult({ household, need, error, onAdd, onRemove,
           </div>
         </>
       )}
+      {strategyConversionNote(household) && <p className="note">{strategyConversionNote(household)}</p>}
       <p className="hint">
         A conversion&rsquo;s tax is paid from a taxable account once anyone has retired; while everyone works, or when the taxable
         accounts run short, it is held back from the conversion. Every page that runs the plan includes these changes.

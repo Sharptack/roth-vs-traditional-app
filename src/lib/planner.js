@@ -16,7 +16,7 @@
 //                 tax with it
 import { formatCurrency } from './format.js';
 import { runProjection } from './projection.js';
-import { strategyById } from './strategies.js';
+import { STRATEGIES, strategyById } from './strategies.js';
 import { heirsOf, legacyOption, sustainableSpending } from './projectionSummary.js';
 import { conversionTotals } from './conversionLifetime.js';
 import { getBrackets } from './taxCalculations.js';
@@ -257,4 +257,13 @@ export function plannerTile(changes = []) {
     headline: `${plural(changes.length, 'change', 'changes')}${converted > 0 ? ` · ${formatCurrency(converted)} converted` : ''}`,
     detail: plannerChangesNote(changes),
   };
+}
+
+// Decision 3 (2026-10-12): with a whole-plan conversion strategy chosen, the planner's conversions
+// come on top of the strategy's own; the page says so. null for a strategy that doesn't convert.
+export function strategyConversionNote(household) {
+  const id = household.calculators?.projection?.strategy;
+  const s = STRATEGIES.find((x) => x.id === id);
+  if (!s || !id.startsWith('convert')) return null;
+  return `The projection’s withdrawal strategy, “${s.label}”, converts every year too: the conversions here come on top of its own.`;
 }

@@ -174,3 +174,14 @@ describe('describing the changes, the rows a year can change, the tile', () => {
     expect(plannerTile([{ year: 2031, kind: 'convert', owner: 'p1', amount: 30000 }, { year: 2030, kind: 'convert', owner: 'p1', amount: 40000 }]).headline).toBe('2 changes · $70,000 converted');
   });
 });
+
+describe('the note when the plan already converts by strategy (decision 3)', () => {
+  it('names the strategy; none for a strategy that doesn’t convert', async () => {
+    const { strategyConversionNote } = await import('../src/lib/planner.js');
+    expect(strategyConversionNote({ calculators: { projection: { strategy: 'convert22' } } })).toBe(
+      'The projection’s withdrawal strategy, “Roth conversions to the top of 22%”, converts every year too: the conversions here come on top of its own.',
+    );
+    expect(strategyConversionNote({ calculators: { projection: { strategy: 'proportional' } } })).toBeNull();
+    expect(strategyConversionNote({ calculators: {} })).toBeNull();
+  });
+});
