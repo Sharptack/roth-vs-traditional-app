@@ -4,51 +4,51 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 ## Current status
 
-*Rewritten (not appended to) at each `/closeout`. Last: 2026-10-12.*
+*Rewritten (not appended to) at each `/closeout`. Last: 2026-10-15.*
 
-**Done:** round one; round 2 phases 0 to 4, the switchover, the "Before phase" lists, and phase 5 (Social Security). 959 tests. Last closed: phase 5 (tag `phase-5-done`): the Social Security page (#/social-security): each person's benefit and lifetime total by claiming age 62 to 70 (own, spousal, survivor), a discount rate, break-even ages, the couple's grid with the best cell, the plan effect of each claiming age (sustainable spending, lifetime tax), the chance of being alive at each age, and "Use in the plan" for claiming ages. Also: the projection's survivor years follow the SSA survivor rules.
+**Done:** round one; round 2 phases 0 to 6, the switchover and the "Before phase" lists. 1,013 tests. Last closed: phase 6 (tag `phase-6-done`), with the Social Security additions before it (the claiming grid, strategies year by year, the break-even graph). Phase 6: the year table's breakdowns (click a year: income, withdrawals, the tax calculator's rows, each account; columns that open into their parts), and the year-by-year planner (#/planner): Roth conversions and contribution changes for single years, straight into the plan, with each year's bracket and IRMAA room, a conversion's cost, each change's lifetime value, and suggestions.
 
-**In progress:** Before phase 6: Social Security planner additions (the grid, year by year per strategy, the break-even graph; asked 2026-10-12). Steps (a) to (e) done, 972 tests; waiting on Michael's look at the page, then `/closeout`.
+**In progress:** nothing.
 
-**Also in progress: phase 6, the year-by-year planner** (started 2026-10-12; decisions and steps under Phase 6 below). Steps (a) to (f) done 2026-10-12, and the first-year IRMAA fix 2026-10-13 (1,012 tests, local, unpushed): every step built; waiting on Michael's look at the planner page, then `/closeout`.
+**Next: the inputs and page items Michael asked for on 2026-10-15** (the legacy goal under the household, more prominent "Add" buttons, a Social Security section of its own, "Collapse all results" on the Roth page, the Households card on the dashboard and the inputs page). Then phase 7, Roth vs. Pre-tax with later conversions; its first step: set its decisions with Michael.
 
 **Known gaps and open items:**
-- Social Security claiming ages are whole years (full retirement age from the birth year); month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
-- The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending (it counts the charity in after-tax wealth).
+- Social Security claiming ages are whole years; month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
+- The Roth page's lifetime comparison doesn't hold the legacy goal in its sustainable spending; it sets the contributions itself, so the planner's contribution changes don't reach it (its conversions do).
 - The Roth comparison's retirement snapshot leaves out other income rows such as rent (the pension is in).
 - Tax-exempt income isn't yet in Social Security taxability or IRMAA.
 - One contribution type per person (see Open questions). The Roth catch-up rule is stated on the Roth page but not applied to the numbers.
-- Only the first death is modeled; the survivor lives to their life expectancy. Social Security "Currently receiving" has no known PIA, so it gives a spouse no spousal top-up.
-- Extra savings on the funding page earn no extra employer match (the match stays on the rows as entered).
+- Only the first death is modeled; the survivor lives to their life expectancy. "Currently receiving" Social Security has no known PIA, so it gives a spouse no spousal top-up.
+- Funding: extra savings earn no extra employer match, and the savings-needed search scales the rows as entered (not the planner's contribution changes).
+- The projection's withdrawal-strategy table is 19 px wider than a phone screen.
 - Staged spending is designed (`docs/staged-spending-design.md`) but not built (Later release).
 
 **Decisions later phases build on** (details in the archive):
 - Today's dollars everywhere; fixed thresholds shrink at the inflation input (2.5%) via `thresholdScale`. Results change only by a decided change; the v1 pins change by additions only.
-- Rate terms: marginal = the bracket, average tax rate = tax ÷ income, effective marginal rate = the tax on the next dollar. The Roth comparison pairs marginal today with the effective rate on the withdrawal. Bracket charts show total income with the taxable figure beside it.
-- Decision calculators vs. plan evaluators (below); "Use in the plan" writes a choice back (Roth/Pre-tax trial, pension lump sum, retirement spending, savings, retirement age). The Dashboard groups them as Decisions and Evaluations.
+- Rate terms: marginal = the bracket, average tax rate = tax ÷ income, effective marginal rate = the tax on the next dollar. The Roth comparison pairs marginal today with the effective rate on the withdrawal.
+- Decision calculators vs. plan evaluators (below); "Use in the plan" writes a choice back. The Dashboard groups them as Decisions and Evaluations.
 - The spending need: one function (`spendingNeed.js`), from today's income (default) or the budget; everyone retired = the budget. Solves that change savings hold it fixed.
 - The legacy goal (none by default) applies to every sustainable-spending figure on the evaluators; after-tax figures for what is left use `afterTaxEnding` (heirs' rate; a charity's share from Pre-tax first).
-- Funding: through retirement leads; the 4% measure is the projection's own year at the last retirement; about even = within 5%. Extra savings spread over the rows in proportion (none: taxable, by pay); one retirement age moves at a time (`funding.js`).
-- Survivor years: single from the year after the first death, accounts roll to the survivor, spending 80% (an input). Social Security on the SSA survivor rules: the deceased's benefit with credits (at least 82.5% of PIA after an early claim), reduced before the survivor's full retirement age, from the later of the year after the death and the survivor's claiming age (never before 60).
-- A retirement age at or below the age now = already retired: no earnings or contributions from this year; a retiree's income row with no ages counts for life (earnings excepted). A Social Security claim "at retirement" follows the retirement age (62 to 70).
-- Social Security: no row = estimated from earnings (a PIA of $0 = none); "Currently receiving" = the monthly check, as is, from now. Claiming ages are whole years; the Social Security grid is gross benefits, the plan effect is per person (the other held as in the plan).
-- Income above the need: spent while working, saved in retirement, by default (two settings). Taxable contribution rows are savings (in the top-down need and the projection), outside the Roth vs. Pre-tax comparison. Each taxable account is the only source of its dividends (1.3% by default).
-- Employer money is always Pre-tax, held to the 415(c) limit. The return in retirement applies once no one works; the Roth comparison's snapshot is at the last retirement (no earlier than today).
-- A pension lump sum rolls to the owner's Pre-tax IRA at the pension's start age. A conversion's tax while anyone works comes out of the conversion; once retired, from withdrawals. Lifetime tax = federal income tax + IRMAA.
+- Funding: through retirement leads; the 4% measure is the projection's own year at the last retirement; about even = within 5%.
+- Survivor years: single from the year after the first death, accounts roll to the survivor, spending 80% (an input); Social Security on the SSA survivor rules.
+- A retirement age at or below the age now = already retired. A Social Security claim "at retirement" follows the retirement age (62 to 70). Claiming ages are whole years.
+- Income above the need: spent while working, saved in retirement, by default. Taxable contribution rows are savings, outside the Roth vs. Pre-tax comparison.
+- Employer money is always Pre-tax, held to the 415(c) limit. A pension lump sum rolls to the owner's Pre-tax IRA at its start age. Lifetime tax = federal income tax + IRMAA.
+- A conversion's tax (every conversion, decided 2026-10-12): once anyone has retired, from a taxable account, else held back from the conversion; while everyone works, held back. IRMAA for the two years before the projection: the first year's MAGI without conversions (2026-10-13).
+- The planner's changes are part of the plan (`household.plannerChanges`, runProjection's `yearChanges`): every page that runs the plan includes them and says so; phase 10 gives each plan its own set. Each projection row carries its parts (`row.detail`).
 - Each phase ends with its Docs article (`articles/`, listed in `src/lib/docs.js`).
 
 ## Phases left
 
 | Phase | What ships | Done when |
 | --- | --- | --- |
-| 6. Year-by-year planner | A new page: click a year to add a Roth conversion or change a contribution, and see what that change is worth. | A change alters only that year and later; its value matches a full rerun. |
 | 7. Roth vs. Pre-tax with later conversions | New blocks on the Roth vs. Pre-tax calculator: the tax bracket each year, and the answer again with conversions in the years taxed lower. | Each block's figures reconcile with separate full runs. |
 | 8. Monte Carlo | Random return paths from the S&P 500's return and volatility after inflation (adjustable), chance of success, distribution charts for income and portfolio value. | No volatility reproduces the projection; a fixed seed repeats. |
 | 9. Spending with guardrails | The spending that succeeds in 50% of paths, and when to raise or cut it. | Each guardrail, rerun, lands on its target. |
 | 10. Household plans | One household's facts with several saved plans, switching between them and comparing them in every calculator. | Two plans of one household open side by side with every difference marked. |
 | 11. Liabilities and debt pay-off | A debt pay-off calculator for every debt (the mortgage included): pay off early or invest, the order to pay debts off, and payoff dates flowing into the retirement income number and the projection. | A hand-worked amortization matches, and the payoff year changes the spending need from that year on. |
 
-The finished phases (0, 1, 2, 3, 4, 5, the switchover and the "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
+The finished phases (0 to 6, the switchover and the "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
 
 ## How the plan fits together
 
@@ -68,7 +68,7 @@ A decision calculator runs the plan once per option and writes the chosen one ba
 | Retirement age, each person | Pre-retirement funding (phase 4) | Yes, an input | Built (phase 4) |
 | Roth or Pre-tax contributions | Roth vs. Pre-tax (phases 1 and 7) | Yes, the contribution rows | Built as a trial (phase 1) |
 | Social Security claiming age, each person | Social Security (phase 5) | Yes, an input | Built (phase 5) |
-| Roth conversions | Roth conversion (this year), the planner (phase 6), Roth vs. Pre-tax with conversions (phase 7) | Only as a whole-plan withdrawal strategy | Phase 6 (year by year), phase 7 (its rule) |
+| Roth conversions | Roth conversion (this year), the planner (phase 6), Roth vs. Pre-tax with conversions (phase 7) | Yes: a whole-plan withdrawal strategy, and year by year in the planner | The planner writes straight into the plan (phase 6); phase 7 (its rule) |
 | Pension: lump sum or monthly | Pension (phase 1) | Yes, the pension row | Built (before phase 3) |
 | Debts: pay off early or invest | Debt pay-off (phase 11) | No | Phase 11 |
 | Which accounts to draw first | The projection's strategy comparison | Yes, an input | Already there |
@@ -86,7 +86,7 @@ The projection has to carry every part of the household, so the plan evaluators 
 | Social Security at the chosen claiming ages, with the spousal top-up | Yes, with SSA survivor benefits (phase 5) | — |
 | Pension, monthly or as a lump-sum rollover | Yes | — |
 | RMDs and IRMAA | Yes | — |
-| Roth conversions | As whole-plan strategies | Year by year: phase 6 |
+| Roth conversions | As whole-plan strategies, and year by year (the planner, phase 6) | — |
 | Debt payments | Only "payments that end", before retirement | Each debt to its payoff date, before and after retirement: phase 11 |
 | Spending | Flat, from income or the budget, with the legacy goal (phase 3) | Guardrails: phase 9; staged spending: later (designed) |
 | Survivor years | Yes | — |
@@ -98,82 +98,6 @@ The projection has to carry every part of the household, so the plan evaluators 
 ### Year-by-year and Monte Carlo: one plan
 
 Both run the same plan from the same inputs and assumptions; only the returns differ. The year-by-year projection is the plan at a constant return, readable line by line. Monte Carlo (phase 8) reruns that exact plan over many random return paths and reports how often it works. With no volatility, Monte Carlo reproduces the year-by-year exactly (a test). Both pages show the same plan (by name, once phase 10 exists) and link to each other; the guardrails (phase 9) are spending rules applied inside the same paths.
-
-## Before phase 6: Social Security planner additions
-
-Asked by Michael on 2026-10-12, after phase 5: the claiming grid, a year-by-year view of each strategy, and a break-even graph are "the main piece of the calc." The phase 5 grid was on the page (the third block for a couple), but as a plain table of "$1,5xxk" links with no benefit amounts or shading, so it didn't read as the grid he meant.
-
-**Decisions (2026-10-12, Michael):**
-- **The grid:** your claiming age down the side, your spouse's across the top; each header shows the age and that person's monthly benefit. Cells shaded by the household lifetime total; ★ the best, outlined the plan's. Clicking a cell shows its benefit options (each person's own, spousal and survivor benefit a month and over the lifetime, the difference from the plan and the best) with "Use in the plan." A single person (or a spouse already receiving) gets one row. Reason: the grid is how an advisor reads the couple's choice at a glance.
-- **Strategies = the best cell plus the cells clicked; the plan is in by default.** A dropdown picks one strategy for the year-by-year table; the break-even graph draws them all. Reason: compare what the advisor is weighing, not a fixed set.
-- **Year by year:** each year to the second death: both ages, each person's own, spousal and survivor benefit, the household total, and the running total.
-- **Dollars: today's by default, with a switch to future dollars** (benefits growing at the inflation input, as COLAs). Reason: the app's convention, with the figures a client sees on SSA statements one switch away. The switch is on the year-by-year table only.
-- **The break-even graph:** cumulative household benefits by your age, one line per strategy, in today's dollars at the page's discount rate, with each crossing marked and labeled. Not in future dollars: growing later years works like a negative discount rate, so it would move the break-even ages (and add 2060 dollars to 2027 ones).
-
-**Steps:**
-- (a) The math (`src/lib/socialSecurityLifetime.js` / `socialSecurityCalculator.js`): a strategy's year-by-year rows (today's or future dollars, cumulative, discounted) and the crossing ages between two strategies' cumulative totals. Hand-worked: one couple's rows across the first death, one crossing age, the future-dollar rows.
-- (b) The grid: headers with monthly benefits, shading, the cell panel, one row for a single person.
-- (c) The strategies, the dropdown and the year-by-year table, with the dollars switch.
-- (d) The break-even graph.
-- (e) The Social Security article updated.
-
-## Phase 6: Year-by-year planner
-
-A new page with the whole plan, one row per year, where clicking a year opens it for changes. The point is Roth conversions decided year by year (convert $40,000 in 2029, nothing in 2031) rather than one rule across the plan. The projection page stays the quick view, and its whole-plan strategies stay as they are.
-
-**Changes a year can take (first version):**
-
-- Add a Roth conversion: the amount, and whose Pre-tax account it comes from.
-- Change a contribution, per contribution row, for that year or from that year on.
-
-Later candidates: an extra withdrawal from a chosen account, an extra expense, a different retirement year.
-
-**For the selected year:**
-
-- The conversion's cost: the tax with it minus the tax without, inside the projection's own year (Social Security made taxable, gains pushed up, NIIT, the senior deduction), plus the IRMAA it adds two years later.
-- The room left in the current bracket and before the next IRMAA tier.
-- Its lifetime value: the change in sustainable spending, lifetime tax and after-tax wealth for heirs against the same plan without it.
-- Suggestions: the conversions that fill this year to the top of the bracket or the IRMAA tier, each with its lifetime value.
-
-**Breakdowns in the year table (asked 2026-10-08).** Each total in the year-by-year table opens to show what makes it up, for that year and across the years:
-
-- Taxes: federal ordinary tax, capital gains tax, NIIT, payroll tax, taxable Social Security and the deductions, the same rows the tax calculator shows (it already builds them for one year), plus IRMAA.
-- Income: each source by its row (wages, 1099, Social Security for each person, pension, other income rows).
-- Withdrawals and conversions: by account and owner, with the RMD part marked.
-- Balances: each account, and contributions in.
-- Spending: the base need, debt payments, and the surplus saved or spent.
-
-The projection page's year table gets these first (they need no planner), so they can come earlier than the rest of this phase.
-
-**Engine:** a list of per-year changes (year, kind, row, amount) applied on top of the chosen withdrawal strategy; the strategy still meets the spending need. The changes are saved with the household (phase 10 gives each plan its own set).
-
-**Tests:** a change in one year leaves every earlier row identical; each lifetime value equals the difference of two full runs.
-
-**Click a year (asked 2026-10-08):** in the year-by-year planner, click a year to add a Roth conversion there. The planner may differ from the evaluator's year-by-year table; Michael will try both.
-
-**Decided 2026-10-12 (Michael, the recommended options unless noted):**
-
-1. Changes made in the planner go straight into the plan (saved with the household, each removable); no trial step and no "Use in the plan" button, since building the plan is the page's job. Michael's view of plans: the household's inputs are the default plan, and plans with changes are comparisons against it (phase 10 saves several). So the planner also shows all its changes together against the plan without any (the base), beside each change's own value.
-2. Every evaluator reads the changes (the projection, Retirement spending, Funding, the Social Security plan effect), each noting "includes N planned changes"; decision calculators hold them as part of the rest of the plan.
-3. With a whole-plan conversion strategy chosen, the planner's conversions are added on top of it, with a note (built 2026-10-15: `strategyConversionNote`, in "Your changes").
-4. Contribution changes, first version: the amount only, for that year or from that year on (no Roth/Pre-tax switch per year: one contribution type per person).
-5. Breakdowns: both a year's detail (click a row: the tax calculator's rows and each group's parts), first, and total columns that open into their parts across the years.
-6. A conversion's tax (Michael's rule, not the recommendation): in retirement, paid from a taxable account if there is one; otherwise from Pre-tax (held back from the conversion). While everyone still works (no one retired), held back from the conversion, as today. **It applies to every conversion (Michael, 2026-10-12): the planner's, the whole-plan conversion strategies and the conversion page's lifetime view**, each page saying so briefly. A decided change to existing results: the conversion strategies' figures, and every figure of a household whose chosen strategy is a conversion one (in the v1 pins: mfjOlderKnown's Roth-page lifetime verdict moves from even to Pre-tax); the conversion page's one-year hand case: +$2,400 for heirs (was +$2,727.27). Built 2026-10-12: the strategy draws for spending only, then more from the taxable accounts until the cash meets the need, the rest held back.
-
-**Steps:**
-
-- (a) Breakdowns in the projection's year table: each row carries its parts (income by row and person, withdrawals by account with the RMD part, each account's balance and contributions, spending's parts, the year's tax inputs so `yearTaxRows` rebuilds the tax calculator's rows, IRMAA). Parts add up to their totals (tested); results unchanged.
-  **Done 2026-10-12.** Each projection row has a `detail` (projection.js; read by `src/lib/projectionDetail.js`); results unchanged (no number moved; the pins don't hold rows). In the year table (the projection page and the Roth page's lifetime table): click a year to open its income by source and person (Social Security as own, spousal top-up and survivor parts), withdrawals and conversions by account with the RMD part, spending, the tax calculator's rows for the year plus IRMAA, and each account from start to end (an empty flow column hidden). Withdrawn, Income tax and End balance (and other totals with more than one source) open into part columns across the years. The accounts the projection opens are named by what goes in ("Pre-tax, new contributions"). Not in spending's parts: debt payments, which the projection doesn't carry yet (phase 11). Tests: hand-worked conversion, RMD, survivor and working years; the parts add up to every total on two richer households. Seen: the strategy table already overflows a phone screen by 19 px (not this step).
-- (b) Engine: `yearChanges` on `runProjection` (`convert`: year, owner, amount; `contribution`: year, row, amount, this year or onward), on top of the strategy; none = today's results. Tests: earlier rows identical; a hand-worked conversion year; the tax rule of decision 6.
-  **Done 2026-10-12.** Part 1: decision 6's rule, for every conversion (above). Part 2: `yearChanges` on `runProjection` (default `household.plannerChanges`). A conversion comes from its owner's Pre-tax accounts pro rata by balance (the survivor's after a death), on top of the strategy's. A contribution change sets a row's amount for that year or from it on; for a row the latest year's change wins, and in its own year a one-year change wins over a from-that-year-on one; the employer's match follows the changed amount (unlike the funding page's extra savings, which earn none). Not applied where a caller overrides the contributions (the Roth page's two scenarios). Tests (hand-worked): a planned conversion matches the conversion page's; a later-year one leaves the earlier rows identical; contribution changes for a year, from a year on, overlapping, to $0 (no match), and a taxable savings row; no changes = identical results.
-- (c) Saved with the household (`plannerChanges`, empty for older households; saves and share links carry it); every evaluator reads it.
-  **Done 2026-10-12.** `values.plannerChanges` (numbers; ids pc1, pc2, ...): cleaned from an allow-list like every value (known kinds and owners, whole years 1900 to 2200, amounts 0 to $1 billion, at most 200), so saves and share links carry it; a contribution change follows its row when cleaning renumbers the rows, and removing a contribution row removes its changes (a new row can take the freed id). `toHouseholdV2` passes them on as `household.plannerChanges`, which runProjection reads by default, so every page that runs the plan includes them; each of those pages (Roth, Retirement spending, Funding, Projection, Conversion, Social Security) says so in a note at the top (`plannerChangesNote`, `src/lib/planner.js`). Where they don't reach: the Roth page's comparison sets the contributions itself (its note says only the conversions count), and the funding page's savings-needed search scales the rows as entered (its headline measures include them).
-- (d) The selected year (`src/lib/planner.js`): the cost (tax with minus without in the year, plus IRMAA two years later), the room in the bracket and before the next IRMAA tier, the lifetime value (against the plan without the change; and all changes against the base), suggestions (fill the bracket, the next bracket, up to the IRMAA tier). Each value equals the difference of two full runs (tested).
-  **Done 2026-10-12.** `plannerYear` (the year's row, bracket and room, IRMAA room for the premium two years on when anyone will be on Medicare then, the most the owner can convert, and the conversions that reach each edge: bisection on the year itself, so Social Security pulled into tax counts), `conversionCost` (income tax with minus without in the year, IRMAA two years on, the effective rate, how much was held back or paid from taxable), `changeValue` (against the plan without the change, the other changes kept), `allChangesValue` (against no changes), `suggestions` (rounded down to $100, in order of size, each with cost and lifetime value). All run the plan as the projection page does (its strategy and end age). Hand-worked: the 12% and 22% fills and costs, a taxable account paying the cost, the IRMAA room ($77,386.36) and a tier crossed ($1,148.40 two years on). About 1 second for a year's view with its suggestions' lifetime values on the default household. Found in building: a conversion in the plan's first year also raised IRMAA in that year and the next, because the projection took the two years before it to have the first year's MAGI. **Decided 2026-10-13 (Michael): keep the first-year assumption, but without any conversions** (a conversion made now can't have set past premiums). Built 2026-10-13: the first year's MAGI with its spending withdrawals and no conversions (none of the taxable withdrawal that pays a conversion's tax either). A decided change, for first-year conversions with someone on Medicare in the first two years only (the conversion page's lifetime view, the planner, a conversion strategy for a household already retired); no v1 pin moved. Hand-worked: $80,000 converted at 70 now first costs IRMAA two years on ($1,148.40), not in years 0 and 1.
-- (e) The planner page (`#/planner`, under Decisions): the year table, the list of changes, a year's panel to add or change, with cost, room, value and suggestions.
-  **Done 2026-10-12.** `src/next/PlannerResult.jsx`. "Your changes" leads: each change in words with Remove, all of them against the plan with none (sustainable spending, lifetime tax, after tax for heirs), and the note on who pays a conversion's tax (Michael: say it briefly in the planner). "Year by year": the projection's table (with Converted, Contributed, the bracket and MAGI shown, ● on a year with a change); clicking a year opens its panel: the bracket and the room left, the IRMAA tier for the premium two years on and the room before the next, the most that can be converted; add a conversion (whose Pre-tax money, for a couple; the amount, with its cost and lifetime value shown as it is typed); the suggestions with cost and value, each with Add; change a contribution (the rows of the people working that year; that year only or from it on); the year's changes with their value and Remove; "What makes up the year" (step a's breakdown). The figures are worked out just after the click (about a second), showing "Working out…" first. Dashboard tile: the number of changes and the dollars converted. Checked in the browser at desktop and phone widths (no sideways scroll), adding a suggestion, and a contribution change from 2030 on.
-- (f) The Docs article; code map and the projection article updated.
-  **Done 2026-10-12.** `articles/planner.md` ("The year-by-year planner"), listed in Docs and linked from the page; its examples are the hand-worked tests (the $34,886.36 of room, $4,176 and $16,333.36 of cost, the $77,386.36 IRMAA room and $1,148.40 surcharge). The projection and conversion articles point to it.
 
 ## Phase 7: Roth vs. Pre-tax with conversions in low-income years
 
