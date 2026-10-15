@@ -442,7 +442,7 @@ export default function HouseholdInputs({
           </ul>
           <button
             type="button"
-            className="link-button"
+            className="button secondary add-row"
             onClick={() => {
               setOpenRows((o) => new Set(o).add(newRowId(values.incomes, 'i')));
               add('incomes');
@@ -530,7 +530,7 @@ export default function HouseholdInputs({
               </li>
             ))}
           </ul>
-          <button type="button" className="link-button" onClick={() => add('contributions')}>
+          <button type="button" className="button secondary add-row" onClick={() => add('contributions')}>
             + Add a contribution
           </button>
         </>
@@ -606,7 +606,7 @@ export default function HouseholdInputs({
         </ul>
         <button
           type="button"
-          className="link-button"
+          className="button secondary add-row"
           onClick={() => {
             setOpenRows((o) => new Set(o).add(newRowId(values.accounts, 'a')));
             add('accounts');
@@ -648,7 +648,7 @@ export default function HouseholdInputs({
             </li>
           ))}
         </ul>
-        <button type="button" className="link-button" onClick={() => add('liabilities')}>
+        <button type="button" className="button secondary add-row" onClick={() => add('liabilities')}>
           + Add a debt
         </button>
       </>
@@ -679,7 +679,7 @@ export default function HouseholdInputs({
             </li>
           ))}
         </ul>
-        <button type="button" className="link-button" onClick={() => add('dependents')}>
+        <button type="button" className="button secondary add-row" onClick={() => add('dependents')}>
           + Add a child or dependent
         </button>
       </>

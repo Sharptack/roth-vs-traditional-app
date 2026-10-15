@@ -2768,3 +2768,9 @@ th.win .th-sub {
   stroke-width: 1;
   stroke-dasharray: 4 3;
 }
+
+/* the row lists' "+ Add" buttons on the inputs (Michael, 2026-10-15: more prominent than a link) */
+.button.add-row {
+  display: inline-block;
+  margin-top: 8px;
+}
