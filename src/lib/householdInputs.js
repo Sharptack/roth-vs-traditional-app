@@ -272,8 +272,8 @@ const strategyLabel = (v) => (STRATEGIES.find((s) => s.id === v.calculators.proj
 
 // The inputs page: four groups, each holding its sections (decided 2026-10-08).
 export const INPUT_GROUPS = [
-  { id: 'household', title: 'Household', sections: ['household', 'dependents'] },
-  { id: 'income', title: 'Income and expenses', sections: ['income', 'contributions', 'spending', 'legacy', 'deductions'] },
+  { id: 'household', title: 'Household', sections: ['household', 'dependents', 'legacy'] }, // the legacy goal here (Michael, 2026-10-15)
+  { id: 'income', title: 'Income and expenses', sections: ['income', 'contributions', 'spending', 'deductions'] },
   { id: 'assets', title: 'Assets and liabilities', sections: ['accounts', 'liabilities'] },
   { id: 'assumptions', title: 'Assumptions', sections: ['assumptions'] },
 ];

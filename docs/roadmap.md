@@ -8,9 +8,9 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 6, the switchover and the "Before phase" lists. 1,013 tests. Last closed: phase 6 (tag `phase-6-done`), with the Social Security additions before it (the claiming grid, strategies year by year, the break-even graph). Phase 6: the year table's breakdowns (click a year: income, withdrawals, the tax calculator's rows, each account; columns that open into their parts), and the year-by-year planner (#/planner): Roth conversions and contribution changes for single years, straight into the plan, with each year's bracket and IRMAA room, a conversion's cost, each change's lifetime value, and suggestions.
 
-**In progress:** nothing.
+**In progress:** Before phase 7: the inputs and page items Michael asked for on 2026-10-15 (listed under it below).
 
-**Next: the inputs and page items Michael asked for on 2026-10-15** (the legacy goal under the household, more prominent "Add" buttons, a Social Security section of its own, "Collapse all results" on the Roth page, the Households card on the dashboard and the inputs page). Then phase 7, Roth vs. Pre-tax with later conversions; its first step: set its decisions with Michael.
+**Next:** phase 7, Roth vs. Pre-tax with later conversions; its first step: set its decisions with Michael.
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years; month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -98,6 +98,16 @@ The projection has to carry every part of the household, so the plan evaluators 
 ### Year-by-year and Monte Carlo: one plan
 
 Both run the same plan from the same inputs and assumptions; only the returns differ. The year-by-year projection is the plan at a constant return, readable line by line. Monte Carlo (phase 8) reruns that exact plan over many random return paths and reports how often it works. With no volatility, Monte Carlo reproduces the year-by-year exactly (a test). Both pages show the same plan (by name, once phase 10 exists) and link to each other; the guardrails (phase 9) are spending rules applied inside the same paths.
+
+## Before phase 7: inputs and page items
+
+Asked by Michael on 2026-10-15, after phase 6. Read as follows (Claude, 2026-10-15; no numbers change):
+
+- (a) **The legacy goal moves to the Household group** on the inputs page (Household, Children and dependents, Legacy goal), out of Income and expenses.
+- (b) **Social Security gets its own section**, "Social Security", in Income and expenses after Income: one block per person (the benefit: estimated, PIA or currently receiving; the amount; the claiming age). The Income section no longer lists or offers Social Security. The rows stay where they are in the household (`values.incomes`, type `socialSecurity`), so saves, links and every result are unchanged; a person with no row shows as estimated, and editing it adds their row.
+- (c) **"Add" buttons more prominent:** "+ Add income" and the other row lists' add buttons (contributions, accounts, debts, dependents) become outlined buttons instead of plain links.
+- (d) **"Collapse all results" on the Roth page** also collapses the lifetime comparison ("Over a lifetime"), which sits outside the page's blocks.
+- (e) **The Households card** (sign-in and saved households) starts open on the dashboard and closed on the inputs page. Michael asked whether that is too much: it isn't (a default per page, one line each).
 
 ## Phase 7: Roth vs. Pre-tax with conversions in low-income years
 

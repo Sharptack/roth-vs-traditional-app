@@ -25,7 +25,7 @@ The figure it is compared with is the retirement income number from **Spending**
 
 ## The legacy goal
 
-Set on the inputs page (Legacy goal): nothing (spend it all), an amount in today's dollars, or a share of today's portfolio. It is measured as the balance itself, or after tax, with Pre-tax money at the heirs' tax rate (under Withdrawals). The goal applies on the projection page too: its sustainable spending and funded status leave the goal as well.
+Set on the inputs page (Legacy goal, in the Household group): nothing (spend it all), an amount in today's dollars, or a share of today's portfolio. It is measured as the balance itself, or after tax, with Pre-tax money at the heirs' tax rate (under Withdrawals). The goal applies on the projection page too: its sustainable spending and funded status leave the goal as well.
 
 **To charity.** The share of what is left that goes to charity is taken from Pre-tax money first, as when a charity is named beneficiary of the Pre-tax accounts. A charity owes no tax on Pre-tax money, so that money counts in full, and heirs pay their rate only on the Pre-tax money beyond the charity's part. Every after-tax figure for what is left uses it: the goal measured after tax, the projection's after-tax ending wealth and its withdrawal strategies, the Roth page's lifetime comparison, the conversion's legacy. The larger the charity's share, the more Pre-tax money is favored, because Pre-tax money left to charity loses nothing to tax.
 

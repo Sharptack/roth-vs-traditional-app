@@ -6,7 +6,7 @@ All dollar amounts are in today's dollars. The expected return is a return after
 
 ## Two ways to work
 
-- **Fill in everything first.** The inputs page (**Edit inputs** on the dashboard's Inputs card) holds every input in four blocks: **Household** (the people and dependents), **Income and expenses** (income, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Closed, each block shows a line per section, so the whole household reads at a glance; open one and each section inside it is a smaller block of its own. Signed in, the **Households** card sits at the top, closed, to switch households. Fill it in, then open any calculator.
+- **Fill in everything first.** The inputs page (**Edit inputs** on the dashboard's Inputs card) holds every input in four blocks: **Household** (the people, dependents and the legacy goal), **Income and expenses** (income, contributions, spending, deductions), **Assets and liabilities** (accounts and debts) and **Assumptions**. Closed, each block shows a line per section, so the whole household reads at a glance; open one and each section inside it is a smaller block of its own. Signed in, the **Households** card sits at the top, closed, to switch households. Fill it in, then open any calculator.
 - **Start from one calculator.** Each calculator page has one inputs card on the left with only the inputs that calculator reads, its own section first. It edits the same household, so a change made there shows on the inputs page and in every other calculator. The **All inputs** link at the top of the card opens the full inputs page.
 
 A closed section still shows a one-line summary of what's in it, so you can check the household at a glance. On a calculator page, the bar between the inputs and the results tucks the inputs away to the left and widens the results; click it again to bring them back.
@@ -49,6 +49,14 @@ Only the first death is modeled; the survivor lives to their life expectancy. Tw
 ## Children and dependents
 
 For the child tax credit. Enter each child with their age this year: a child under 17 brings $2,200 off the tax in 2026, and up to $1,700 of it is paid out even when no tax is owed (15% of earned income over $2,500). Each other dependent brings $500, never paid out. The credit shrinks by $50 for each $1,000 of income over $200,000 ($400,000 joint), which adds 5 points to the rate on the next dollar in that range. Children count in every year of the projection until they turn 17; other dependents count this year only.
+
+## Legacy goal
+
+What the household wants to leave at the end of the plan (the second death, for a couple), for heirs or charity: **nothing set** (the default: spend it all), **an amount** in today's dollars, or **a share of today's portfolio** (of every Existing Account's balance today). **Measured as** the balance itself, or **after tax**, where Pre-tax money counts at the heirs' tax rate (under Withdrawals) and Roth and taxable money count in full.
+
+With a goal set, sustainable spending is the most the household can spend each year that never falls short and still leaves the goal: on the Retirement spending page and in the projection's funded status.
+
+**To charity:** the share of what is left that goes to charity (none by default, up to all of it). It is taken from Pre-tax money first, as when a charity is named beneficiary of the Pre-tax accounts: a charity owes no tax on Pre-tax money, so that money counts in full, while heirs pay their rate on the rest. Every after-tax figure for what is left uses it (the projection's lifetime summary and withdrawal strategies, the Roth page's lifetime comparison, the conversion's legacy, a goal measured after tax), so the larger the charity's share, the more Pre-tax money is favored. For $600,000 Pre-tax, $300,000 Roth and $100,000 taxable, with heirs at 24%: $856,000 after tax with nothing to charity; with 25% to charity, its $250,000 comes from Pre-tax untaxed and heirs pay 24% on the other $350,000, so $916,000.
 
 ## Income
 
@@ -126,14 +134,6 @@ No calculator reads these yet. A debt pay-off calculator, and each debt's paymen
 Together they set the **retirement income number**, the after-tax income the household is planning to live on: today's spending (take-home pay minus savings, or the budget), minus the costs that end, times the lifestyle setting. Every calculator uses this one number: the Roth comparison, the projection and the conversion's lifetime view.
 
 With everyone already retired there is no take-home pay to start from, so the budget is the retirement income number as entered; the costs that end and the lifestyle setting no longer apply and are hidden. Until it is entered, the projection and the conversion's lifetime view ask for it.
-
-## Legacy goal
-
-What the household wants to leave at the end of the plan (the second death, for a couple), for heirs or charity: **nothing set** (the default: spend it all), **an amount** in today's dollars, or **a share of today's portfolio** (of every Existing Account's balance today). **Measured as** the balance itself, or **after tax**, where Pre-tax money counts at the heirs' tax rate (under Withdrawals) and Roth and taxable money count in full.
-
-With a goal set, sustainable spending is the most the household can spend each year that never falls short and still leaves the goal: on the Retirement spending page and in the projection's funded status.
-
-**To charity:** the share of what is left that goes to charity (none by default, up to all of it). It is taken from Pre-tax money first, as when a charity is named beneficiary of the Pre-tax accounts: a charity owes no tax on Pre-tax money, so that money counts in full, while heirs pay their rate on the rest. Every after-tax figure for what is left uses it (the projection's lifetime summary and withdrawal strategies, the Roth page's lifetime comparison, the conversion's legacy, a goal measured after tax), so the larger the charity's share, the more Pre-tax money is favored. For $600,000 Pre-tax, $300,000 Roth and $100,000 taxable, with heirs at 24%: $856,000 after tax with nothing to charity; with 25% to charity, its $250,000 comes from Pre-tax untaxed and heirs pay 24% on the other $350,000, so $916,000.
 
 ## Assumptions
 
