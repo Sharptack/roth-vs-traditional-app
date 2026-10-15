@@ -20,12 +20,13 @@ const NOTICE =
 // opened: { id, label, values } of the household on screen (values = as last opened or saved), or
 // null; onOpen({ id, label, values }); onSaved({ id, label, values }) after a save, onSaved(null) when
 // the open household is deleted. clearControl: the "Clear inputs" button (NextApp.jsx), shown on the card.
-export default function SavedHouseholds({ client, values, opened, onOpen, onSaved, clearControl, compact = false }) {
+export default function SavedHouseholds({ client, values, opened, onOpen, onSaved, clearControl, compact = false, startOpen = false }) {
   const [rows, setRows] = useState(null);
   const [label, setLabel] = useState('');
   const [status, setStatus] = useState(null); // { kind: 'ok' | 'error', message }
   const [busy, setBusy] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false); // closed at first (decided 2026-10-09)
+  // closed at first (decided 2026-10-09); open at first on the dashboard (Michael, 2026-10-15)
+  const [cardOpen, setCardOpen] = useState(startOpen);
 
   const refresh = useCallback(async () => {
     try {
@@ -176,7 +177,7 @@ export default function SavedHouseholds({ client, values, opened, onOpen, onSave
   }
 
   // The whole card (the dashboard and the inputs page): a block like the others, named Households
-  // and closed at first (decided 2026-10-09).
+  // (startOpen above).
   return (
     <Collapsible
       className="saved-households"

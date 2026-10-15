@@ -379,13 +379,15 @@ export default function NextApp({ initialPage, initialValues, client }) {
   const calculator = CALCULATORS.find((c) => c.id === page);
   // Saved households: the whole card (every client) on the dashboard and the inputs page, compact
   // (the household on screen only) on each calculator.
-  const saved = (compact) =>
+  // startOpen: the card open at first (the dashboard; closed on the inputs page, Michael 2026-10-15).
+  const saved = (compact, startOpen = false) =>
     cloud.session && (
       <SavedHouseholds
         client={cloud.client}
         values={values}
         opened={opened}
         compact={compact}
+        startOpen={startOpen}
         onOpen={({ id, label, values: stored }) => {
           setBeforeClear(null);
           setValues(opening(stored));
@@ -480,7 +482,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
               </section>
             </div>
             <div className="results-column">
-              {saved(false)}
+              {saved(false, true)}
               {CALCULATOR_GROUPS.map((g) => (
                 <section key={g.id} className="suite-group" aria-labelledby={`group-${g.id}`}>
                   <h2 id={`group-${g.id}`} className="suite-group-title">
