@@ -247,7 +247,10 @@ export function socialSecurityInYear(household, t) {
 //                      row, the change from the latest year wins, and in its own year a 'year' change
 //                      wins over an 'onward' one. The employer's match follows the changed amount. Not
 //                      applied where the caller overrides the contributions (or taxable savings).
-export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0, yearChanges = household.plannerChanges ?? [] } = {}) {
+//   yearReturn       (rate, t) => this year's return, from the plan's return for the year (before or after
+//                    retirement) and the year's index t (0 = the first year); Monte Carlo's random paths
+//                    (phase 8). Default: the plan's return, today's results.
+export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0, yearChanges = household.plannerChanges ?? [], yearReturn } = {}) {
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
   // The household's own what-if (assumptions.retirementRateShift) unless a caller sets one.
   const rateShiftInRetirement = retirementRateShift ?? assumptions.retirementRateShift ?? 0;
@@ -339,7 +342,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     const filingStatusThisYear = survivorYear ? 'single' : filingStatus;
     const working = people.map((p, i) => alive[i] && ages[i] < p.retirementAge);
     const anyRetired = people.some((_, i) => alive[i] && !working[i]);
-    const returnRate = working.some(Boolean) ? workingReturn : retiredReturn;
+    const planReturn = working.some(Boolean) ? workingReturn : retiredReturn;
+    const returnRate = yearReturn ? yearReturn(planReturn, t) : planReturn;
     const thresholdScale = 1 / (1 + inflation) ** t;
     const ssOf = (i) => (ages[i] >= ss[i].ownStartAge ? ss[i].own : 0) + (ages[i] >= ss[i].topUpStartAge ? ss[i].topUp : 0);
     let socialSecurity;
