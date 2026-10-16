@@ -96,6 +96,19 @@ export function socialSecurityTile(view) {
   };
 }
 
+// The guardrails (phase 9): the last run's recommended spending and today's guardrails (it runs
+// only on its page, with Run).
+export function guardrailsTile(run, stale) {
+  const r = run?.report;
+  if (!r) return { headline: run?.running ? 'Running…' : 'Not run yet', detail: 'Open it and press Run: the spending to aim for, and the portfolio values at which to cut or raise it.' };
+  const { cut, raise } = r.today;
+  const raiseText = Number.isFinite(raise.portfolio) ? `, raise above ${formatCurrency(raise.portfolio)}` : '';
+  return {
+    headline: `${formatCurrency(r.target)} a year`,
+    detail: `${Math.round(r.settings.target * 100)}% of paths sustain it; cut below ${formatCurrency(cut.portfolio)}${raiseText}${stale ? ' (inputs changed since this run)' : ''}`,
+  };
+}
+
 // Monte Carlo (phase 8): the last run's chance of success (it runs only on its page, with Run).
 //   run: useMonteCarlo's (null: none yet); stale: the inputs changed since.
 export function monteCarloTile(run, stale) {

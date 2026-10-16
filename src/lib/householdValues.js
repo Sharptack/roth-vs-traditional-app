@@ -162,6 +162,9 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
     funding: { target: '1' }, // the funded level savings needed is solved to (phase 4), '1' = 100%
     socialSecurity: { discountRate: '0' }, // the Social Security calculator's discount rate (phase 5)
     monteCarlo: { volatility: '0.2' }, // Monte Carlo's yearly swing of returns (phase 8, decided 2026-10-16)
+    // The guardrails (phase 9, decided 2026-10-16): the target chance of success, the chances that cut
+    // and raise spending, and the smallest change made (shares).
+    guardrails: { target: '0.8', cut: '0.5', raise: '0.95', minChange: '0.05' },
   },
   plannerChanges: [], // the year-by-year planner's changes (phase 6): none
 };

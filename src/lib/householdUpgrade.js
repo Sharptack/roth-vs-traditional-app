@@ -133,6 +133,7 @@ export function upgradeHouseholdValues(values, year) {
       funding: { target: '1' }, // new in phase 4
       socialSecurity: { discountRate: '0' }, // new in phase 5
       monteCarlo: { volatility: '0.2' }, // new in phase 8
+      guardrails: { target: '0.8', cut: '0.5', raise: '0.95', minChange: '0.05' }, // new in phase 9
       pension: {
         lumpSum: v.penLumpSum,
         monthly: v.penMonthly,

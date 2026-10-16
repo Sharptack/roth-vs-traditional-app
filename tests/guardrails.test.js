@@ -13,7 +13,9 @@ import {
   rulePath,
   rulePaths,
   summarizeRule,
+  cloudAt,
   tableGuardrails,
+  tableYears,
   tableLookup,
   spendingCloud,
   summarizeGuardrails,
@@ -313,14 +315,18 @@ describe('the rule on a hand-made path (HAND CALC)', () => {
       { t: 1, age: 71, from: 40000, to: expect.closeTo(14400, 6), kind: 'cut' },
       { t: 2, age: 72, from: expect.closeTo(14400, 6), to: expect.closeTo(33600, 6), kind: 'raise' },
     ]);
-    expect(o).toMatchObject({ success: true, cuts: 1, raises: 1, lowest: expect.closeTo(14400, 6) });
+    expect(o).toMatchObject({ success: true, short: false, endShort: 0, cuts: 1, raises: 1, lowest: expect.closeTo(14400, 6) });
     expect(o.largestCut).toBeCloseTo(0.64, 10);
   });
   it('a change under the minimum is skipped', () => {
-    // Year 1's table all W = 0.81P = 38,880 at 48,000: chance 0, target 38,880 = −2.8%: under 5%.
+    // Year 1's table all W = 0.81P = 38,880 at 48,000: chance 0, target 38,880 = −2.8%: under 5%. So
+    // 40,000 is spent: 8,000 left for year 2, the last: it pays 8,000, short 32,000 (80%). A shortfall
+    // only in the last year: the path still counts as lasting (the rule spends what is left then).
     const near = rulePath(h, 40000, [{ t: 1, portfolio: 48000, points: Array(4).fill(line(0, 0.81)) }], (_, t) => [-0.2, 0, 0][t]);
     expect(near.changes).toEqual([]);
-    expect(near.spending).toEqual([40000, 40000, 40000]);
+    expect(near.spending).toEqual([40000, 40000, expect.closeTo(8000, 6)]);
+    expect(near).toMatchObject({ success: true, short: true, lowest: expect.closeTo(8000, 6) });
+    expect(near.endShort).toBeCloseTo(0.8, 10);
   });
   it('the table lookup: the chance and the target at a spending and a portfolio', () => {
     // a + bP at 100: 10 + 0.5 × 100 = 60, 0 + 1 × 100 = 100, −50 + 0.2 × 100 = −30 → 0
@@ -332,12 +338,13 @@ describe('the rule on a hand-made path (HAND CALC)', () => {
 
 describe('the year table (HAND CALC)', () => {
   // Roth only, no tax, 70 to 72: W is proportional to the portfolio: on path A (10%) W = P × 1.21 / 3.31
-  // at 50,000, 100,000 and 150,000: 18,277.95, 36,555.89, 54,833.84 (each within half a percent below).
-  it('the three points: 0.5, 1 and 1.5 times the plan’s portfolio', () => {
+  // at 0, 25,000, 100,000 and 400,000: 0, 9,138.97, 36,555.89, 146,223.56 (each within half a percent below).
+  it('the four points: 0, 0.25, 1 and 4 times the plan’s portfolio', () => {
     const tab = ruleTableYear(rothOnly(100000), 30000, 0, { to: 1, returnPaths: [[0.1, 0.1, 0.1]] });
     expect(tab.portfolio).toBe(100000);
-    tab.points[0].forEach(([P, W], i) => {
-      expect(P).toBe([50000, 100000, 150000][i]);
+    expect(tab.points[0].map(([P]) => P)).toEqual([0, 25000, 100000, 400000]);
+    expect(tab.points[0][0][1]).toBe(0);
+    tab.points[0].slice(1).forEach(([P, W]) => {
       expect(W).toBeLessThanOrEqual((P * 1.21) / 3.31 + 1e-6);
       expect(W).toBeGreaterThan(((P * 1.21) / 3.31) * 0.994);
     });
@@ -384,9 +391,9 @@ describe('summarizeRule (HAND CALC)', () => {
   // p90 = 30,000 + 0.8 × 10,000 = 38,000. Chance 2/3; with a cut 2/3; with a raise 1/3; cuts [0, 1, 1]:
   // median 1; deepest cut on the cutting paths [0.25, 0.64]: median 0.445; lowest [14,400, 30,000, 40,000].
   const outs = [
-    { success: true, spending: [40000, 14400, 33600], cuts: 1, raises: 1, largestCut: 0.64, lowest: 14400 },
-    { success: false, spending: [40000, 40000, 40000], cuts: 0, raises: 0, largestCut: 0, lowest: 40000 },
-    { success: true, spending: [40000, 30000, 30000], cuts: 1, raises: 0, largestCut: 0.25, lowest: 30000 },
+    { success: true, endShort: 0.1, spending: [40000, 14400, 33600], cuts: 1, raises: 1, largestCut: 0.64, lowest: 14400 },
+    { success: false, endShort: 0, spending: [40000, 40000, 40000], cuts: 0, raises: 0, largestCut: 0, lowest: 40000 },
+    { success: true, endShort: 0.3, spending: [40000, 30000, 30000], cuts: 1, raises: 0, largestCut: 0.25, lowest: 30000 },
   ];
   const s = summarizeRule(outs, [70, 71, 72], [0, 1, 2]);
   it('the figures', () => {
@@ -395,6 +402,9 @@ describe('summarizeRule (HAND CALC)', () => {
     expect(s.cuts.p50).toBe(1);
     expect(s.largestCut.p50).toBeCloseTo(0.445, 10);
     expect(s.lowest.p50).toBe(30000);
+    // last-year shortfalls on 2 of 3 paths, [0.1, 0.3]: the middle one 0.2
+    expect(s.endShort.share).toBeCloseTo(2 / 3, 10);
+    expect(s.endShort.p50).toBeCloseTo(0.2, 10);
   });
 });
 
@@ -414,5 +424,57 @@ describe('a year’s guardrails from its table (HAND CALC)', () => {
     expect(g.cut.spending).toBeCloseTo(18000, -1);
     expect(g.raise.portfolio).toBeCloseTo(100000, -1);
     expect(g.raise).toMatchObject({ chance: 1, applies: false });
+  });
+});
+
+describe('tables every other year, and the years between (HAND CALC)', () => {
+  it('every second rule year from the first, and each of the last 10', () => {
+    const years = Array.from({ length: 31 }, (_, i) => 30 + i); // 30 to 60
+    expect(tableYears(years)).toEqual([30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60]);
+    expect(tableYears([0, 1, 2, 3])).toEqual([0, 1, 2, 3]);
+    expect(tableYears([])).toEqual([]);
+  });
+  // Tables at 1 (W = 0.5P) and 3 (W = 0.3P): at year 2, P = 100: halfway, 0.5 × 50 + 0.5 × 30 = 40;
+  // at year 1 the table itself, 50; at year 4 (past the last) none.
+  const line = (b) => [[0, 0], [1, b]];
+  const tables = [{ t: 1, points: [line(0.5)] }, { t: 3, points: [line(0.3)] }];
+  it('between two tables: each inner path’s W from both, by nearness', () => {
+    expect(cloudAt(tables, 2, 100)).toEqual([40]);
+    expect(cloudAt(tables, 1, 100)).toEqual([50]);
+    expect(cloudAt(tables, 4, 100)).toBeNull();
+    expect(cloudAt(tables, 0, 100)).toBeNull();
+  });
+  // The rule reads the year between: $100,000 Roth, $45,000 in year 0 at 0%: 55,000 at the start of
+  // year 1; table W = 0.5P = 27,500 < 45,000: chance 0, cut to 27,500 (−38.9%); 27,500 left at the start
+  // of year 2, between: W = 0.4 × 27,500 = 11,000 < 27,500: cut to 11,000 (−60%); 16,500 left at the start
+  // of year 3, its own table: W = 0.3 × 16,500 = 4,950: cut to 4,950 (−55%).
+  it('the rule checks the year between two tables', () => {
+    const o = rulePath(rothOnly(100000, 73), 45000, [{ t: 1, portfolio: 55000, points: [line(0.5)] }, { t: 3, portfolio: 1, points: [line(0.3)] }], () => 0);
+    expect(o.changes.map((c) => [c.t, Math.round(c.to)])).toEqual([[1, 27500], [2, 11000], [3, 4950]]);
+  });
+});
+
+describe('the searches started from a guess', () => {
+  // The four hand-made paths: the same answers, within the searches' half percent, from good and bad
+  // guesses alike.
+  const returnPaths = [[0.1, 0.1, 0.1], [0.5, 0.5, 0.5], [0, 0, 0], [0.2, 0.2, 0.2]];
+  const h = rothOnly(100000);
+  const scales = [132400 / 121000, 190000 / 225000, 1.2, 145600 / 144000];
+  const spending = [121000 / 3.31, 225000 / 4.75, 100000 / 3, 144000 / 3.64];
+  it('needed scales', () => {
+    for (const guesses of [scales, scales.map((k) => k * 3), scales.map((k) => k / 5)]) {
+      requiredScales(h, 40000, { to: 4, returnPaths, guesses }).forEach((k, i) => {
+        expect(k).toBeGreaterThanOrEqual(scales[i] * (1 - 1e-9));
+        expect(k / scales[i]).toBeLessThan(1.006);
+      });
+    }
+  });
+  it('sustained spending', () => {
+    for (const guesses of [spending, spending.map((w) => w * 4), spending.map((w) => w / 6)]) {
+      spendingCloud(h, 1, { to: 4, returnPaths, guesses }).forEach((w, i) => {
+        expect(w).toBeLessThanOrEqual(spending[i] * (1 + 1e-9));
+        expect(w / spending[i]).toBeGreaterThan(0.994);
+      });
+    }
   });
 });

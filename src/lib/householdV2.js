@@ -44,6 +44,7 @@ import { pensionIncomeInYear } from './pensionIncome.js';
 import { incomeRowCounts } from './projection.js';
 import { SS_MODES, activePeople, isLegacyV2, migrateLegacyV2, parseBirthDate } from './householdValues.js';
 import { validateHousehold } from './household.js';
+import { guardrailSettings } from './guardrails.js';
 
 const blankAsZero = (text) => (String(text ?? '').trim() === '' ? 0 : parseNumber(text));
 const blankAsNull = (text) => (String(text ?? '').trim() === '' ? null : parseNumber(text));
@@ -289,6 +290,9 @@ export function toHouseholdV2(input, year) {
       socialSecurity: { discountRate: Number(values.calculators.socialSecurity?.discountRate) > 0 ? Number(values.calculators.socialSecurity.discountRate) : 0 },
       // Monte Carlo (phase 8): the volatility of yearly returns (blank or not a number: 20%; 0 = none).
       monteCarlo: { volatility: monteCarloVolatility(values.calculators.monteCarlo?.volatility) },
+      // The guardrails (phase 9): shares; any blank, out of 0 to 1, or the target not between the cut
+      // and the raise: the defaults (80%, 50%, 95%, 5%).
+      guardrails: guardrailSettings(Object.fromEntries(Object.entries(values.calculators.guardrails ?? {}).map(([k, v]) => [k, String(v ?? '').trim() === '' ? NaN : Number(v)]))),
       pension: firstPension
         ? {
             owner: firstPension.owner,

@@ -67,7 +67,7 @@ describe('version 1 households open in version 2 with the same results', () => {
         expect(on.tax.incomeTax, name).toBeLessThan(off.tax.incomeTax);
       }
     }
-  }, 60000); // every example twice, whole projections included: slow under a full parallel run
+  }, 120000); // every example twice, whole projections included: slow under a full parallel run (33 s alone; 120 s from 2026-10-16, past 60 with the guardrails' tests beside it)
 
   it('mfjMixedBenefits: the spouse with no earnings gains a spousal top-up from the PIA (HAND CALC)', () => {
     // You: age 50 (born 1976, full retirement age 67), known $42,000 claimed at retirement, 64:

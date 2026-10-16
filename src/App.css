@@ -2926,3 +2926,28 @@ th.win .th-sub {
   display: inline-block;
   margin-bottom: 8px;
 }
+
+/* Guardrails (phase 9): the four settings in a row (two columns on a phone). */
+.gr-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px 16px;
+  margin-bottom: 12px;
+}
+.gr-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gr-setting .hint {
+  margin: 0;
+  font-size: 0.8rem;
+}
+.gr-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gr-input input {
+  width: 5em;
+}

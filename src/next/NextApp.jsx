@@ -27,7 +27,7 @@ import { plannerChangesNote, plannerTile } from '../lib/planner.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
-import { conversionTile, fundingTile, monteCarloTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
+import { conversionTile, fundingTile, guardrailsTile, monteCarloTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
 import { applyClaimAge, socialSecurityView, survivalView } from '../lib/socialSecurityCalculator.js';
 import SocialSecurityResult from './SocialSecurityResult.jsx';
 import { applyRetirementAge, applySavingsChoice, fundingView, overfundedView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
@@ -48,6 +48,8 @@ import PensionResult from './PensionResult.jsx';
 import PlannerResult from './PlannerResult.jsx';
 import MonteCarloResult from './MonteCarloResult.jsx';
 import useMonteCarlo from './useMonteCarlo.js';
+import GuardrailsResult from './GuardrailsResult.jsx';
+import useGuardrails from './useGuardrails.js';
 import { compareLifetime, lifetimeOptions } from '../lib/lifetimeComparison.js';
 import { useCloud } from './useCloud.js';
 import AccountBar from './AccountBar.jsx';
@@ -117,7 +119,7 @@ const fundingOf = (r) => (r.spending.need !== null ? fundingView(r.household, r.
 // inputs page shows none.
 // The pages that run the plan year by year, and so carry the planner's changes (phase 6, decided
 // 2026-10-12): each says so. The Roth page's comparison sets the contributions itself.
-const PLAN_PAGES = ['roth', 'spending', 'funding', 'projection', 'monteCarlo', 'conversion', 'socialSecurity'];
+const PLAN_PAGES = ['roth', 'spending', 'funding', 'projection', 'monteCarlo', 'guardrails', 'conversion', 'socialSecurity'];
 const plannerNote = (changes, id) => plannerChangesNote(changes, { conversionsOnly: id === 'roth' });
 
 const isHome = (page) => page === 'home';
@@ -187,6 +189,13 @@ export const CALCULATORS = [
     article: 'monte-carlo',
   },
   {
+    id: 'guardrails',
+    group: 'evaluations',
+    title: 'Spending guardrails',
+    blurb: 'The spending 80% of random return paths sustain, the portfolio values at which to cut or raise it (today and each retired year), and how spending moves under that rule.',
+    ownTitle: 'Guardrails inputs',
+  },
+  {
     id: 'spending',
     group: 'evaluations',
     title: 'Retirement spending',
@@ -234,6 +243,9 @@ export default function NextApp({ initialPage, initialValues, client }) {
   // Monte Carlo's run (phase 8): kept across pages; out of date once the inputs change.
   const mc = useMonteCarlo();
   const mcStale = Boolean(mc.run) && mc.run.values !== values;
+  // The guardrails' run (phase 9): the same, on its own page.
+  const gr = useGuardrails();
+  const grStale = Boolean(gr.run) && gr.run.values !== values;
   // "Clear inputs" (decided 2026-10-09; "Start a new household" before it): a blank form, with an Undo
   // that restores the household on screen (and which saved household it was). A saved household is
   // never touched until it is saved over.
@@ -324,6 +336,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
     socialSecurity: socialSecurityTile(parts.socialSecurity),
     planner: plannerTile(h.plannerChanges),
     monteCarlo: monteCarloTile(mc.run, mcStale),
+    guardrails: guardrailsTile(gr.run, grStale),
   });
   const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView, funding, socialSecurity }) : null;
   // For Copy summary: every calculator's headline, working out on demand what this page skipped.
@@ -648,6 +661,23 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   onVolatility={locked ? undefined : (text) => setValues((v) => setGroupField(v, 'calculators.monteCarlo', 'volatility', text))}
                   onRun={() => mc.start({ household: h, need: roth.spending.need, values, volatility: h.calculators.monteCarlo.volatility })}
                   onCancel={mc.cancel}
+                />
+              )}
+              {calculator.id === 'guardrails' && (
+                <GuardrailsResult
+                  run={gr.run}
+                  stale={grStale}
+                  household={roth.spending.need !== null ? h : null}
+                  need={roth.spending.need}
+                  error={roth.spending.error}
+                  volatility={h.calculators.monteCarlo.volatility}
+                  onVolatility={locked ? undefined : (text) => setValues((v) => setGroupField(v, 'calculators.monteCarlo', 'volatility', text))}
+                  settings={h.calculators.guardrails}
+                  onSetting={locked ? undefined : (key, text) => setValues((v) => setGroupField(v, 'calculators.guardrails', key, text))}
+                  onRun={() =>
+                    gr.start({ household: h, need: roth.spending.need, values, volatility: h.calculators.monteCarlo.volatility, settings: h.calculators.guardrails })
+                  }
+                  onCancel={gr.cancel}
                 />
               )}
               {calculator.id === 'planner' && (

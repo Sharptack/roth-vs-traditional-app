@@ -65,15 +65,37 @@ function lastsFrom(household, { spending, before, scale, start, options, yearRet
 }
 
 // The smallest scale at which a path sustains the spending, within SCALE_TOLERANCE above; 0 when it
-// lasts with nothing; Infinity when it never does. Bisection: more money only lasts as long.
-function requiredScale(lasts) {
+// lasts with nothing; Infinity when it never does. Bisection: more money only lasts as long. guess
+// (optional): a likely answer, to start the bracket near it.
+function requiredScale(lasts, guess) {
   if (lasts(0)) return 0;
   let lo = 0;
   let hi = 1;
-  while (!lasts(hi)) {
-    lo = hi;
-    hi *= 2;
-    if (hi > MAX_SCALE) return Infinity;
+  if (guess > 0 && Number.isFinite(guess)) {
+    // A bracket around the guess, widened by a quarter at a time.
+    hi = guess * 1.05;
+    if (lasts(hi)) {
+      lo = guess / 1.05;
+      while (lo > 1e-6 && lasts(lo)) {
+        hi = lo;
+        lo /= 1.25;
+      }
+      if (!(lo > 1e-6)) lo = 0;
+    } else {
+      lo = hi;
+      hi *= 1.25;
+      while (!lasts(hi)) {
+        lo = hi;
+        hi *= 1.25;
+        if (hi > MAX_SCALE) return Infinity;
+      }
+    }
+  } else {
+    while (!lasts(hi)) {
+      lo = hi;
+      hi *= 2;
+      if (hi > MAX_SCALE) return Infinity;
+    }
   }
   while (hi - lo > SCALE_TOLERANCE * hi) {
     const mid = (lo + hi) / 2;
@@ -130,19 +152,20 @@ function setup(household, { from = 0, to = GUARDRAIL_PATHS, volatility = DEFAULT
 }
 
 // Each path's needed scale of the balances at the start of year start (default today) to sustain the
-// spending, paths from to to (exclusive).
-export function requiredScales(household, spending, { start = 0, ...paths } = {}) {
+// spending, paths from to to (exclusive). guesses (optional): a likely answer for each of those paths.
+export function requiredScales(household, spending, { start = 0, guesses, ...paths } = {}) {
   const { options, returns } = setup(household, paths);
   const resume = snapshotAt(household, options, spending, start);
-  return returns.map((yearReturn) => requiredScale((scale) => lastsFrom(household, { spending, before: spending, scale, start, options, yearReturn, resume })));
+  return returns.map((yearReturn, i) => requiredScale((scale) => lastsFrom(household, { spending, before: spending, scale, start, options, yearReturn, resume }), guesses?.[i]));
 }
 
 // The spending each path sustains from year start with the balances there times scale (the plan's
-// spending, before, until then), paths from to to (exclusive).
-export function spendingCloud(household, scale, { start = 0, before = 0, ...paths } = {}) {
+// spending, before, until then), paths from to to (exclusive). guesses (optional): a likely answer
+// for each of those paths, to start its search near it.
+export function spendingCloud(household, scale, { start = 0, before = 0, guesses, ...paths } = {}) {
   const { options, returns } = setup(household, paths);
   const resume = snapshotAt(household, options, before, start);
-  return returns.map((yearReturn) => sustainedSpending((spending) => lastsFrom(household, { spending, before, scale, start, options, yearReturn, resume })));
+  return returns.map((yearReturn, i) => sustainedSpending((spending) => lastsFrom(household, { spending, before, scale, start, options, yearReturn, resume }), guesses?.[i]));
 }
 
 // The share of paths that sustain the spending from year start with the balances times scale (a
@@ -232,21 +255,36 @@ export function guardrails(household, spending, { settings = DEFAULT_GUARDRAILS,
 // once per year along the plan at the target spending (where the paths settle; at a spending the
 // plan can't sustain, its portfolio would run dry and leave the late years without a table): for each
 // of TABLE_PATHS inner paths (their own seed, apart from the outer ones), the spending it sustains from
-// that year at 0.5, 1 and 1.5 times the plan's portfolio then, joined by straight lines (the end
-// segments carried on beyond them), at least 0. A path's chance at spending S and portfolio P is the
+// that year at 0, 0.25, 1 and 4 times the plan's portfolio then, joined by straight lines (the last
+// segment carried on beyond 4), at least 0. The points span the portfolios the paths reach: after 30
+// years at 20% volatility the middle 80% lie between about a quarter and four times the middle path's.
+// Checked against direct searches on the default household (2026-10-16): within 0.35% (median), 2.4%
+// (9 in 10), 6.7% at worst; three points at 0.5, 1 and 1.5 had erred by up to 168% far below them,
+// which made the last years' spending more than the portfolio held. A path's chance at spending S and portfolio P is the
 // share of inner paths with W(P) ≥ S; the target there the m-th largest W(P). Simplifications: the
 // inner paths start from the plan's state that year (its account mix, its IRMAA history), and
-// sustainable spending is straight between the three points and beyond them.
+// sustainable spending is straight between the points and beyond them.
+// Tables are built every TABLE_STEP-th retired year from the first, and every one of the last
+// TABLE_EVERY_LAST (a year's table takes up to about 10 seconds in a browser, less the fewer years
+// are left; near the end what a portfolio sustains changes fast from year to year, so a year between
+// two tables there would be off); a year between two tables takes each inner path's W from both,
+// weighted by how near each is (the paths are the same draws in every table).
 
 export const TABLE_PATHS = 50;
+export const TABLE_STEP = 2;
+export const TABLE_EVERY_LAST = 10;
 export const TABLE_SEED = 2;
-export const TABLE_SCALES = [0.5, 1, 1.5];
+export const TABLE_SCALES = [0, 0.25, 1, 4];
 
 // The years the rule checks: those with spending from the portfolio (anyone retired), by index t.
 export function ruleYears(household, spending) {
   const { legacy: _legacy, ...options } = monteCarloOptions(household);
   return runProjection(household, { ...options, need: spending }).rows.flatMap((r, t) => (r.need > 0 ? [t] : []));
 }
+
+// The years given a table: every TABLE_STEP-th of the rule years from the first, and each of the last
+// TABLE_EVERY_LAST.
+export const tableYears = (years) => years.filter((_, i) => i % TABLE_STEP === 0 || i >= years.length - TABLE_EVERY_LAST);
 
 // The table for year t along the plan at the spending: { t, portfolio (the plan's then), points:
 // [[[P, W] at each scale] per inner path] }; null when the plan's portfolio that year is empty.
@@ -272,10 +310,24 @@ function along(points, P) {
   return Math.max(0, w1 + ((w2 - w1) * (P - p1)) / (p2 - p1));
 }
 
+// The chance and the target at spending S from each inner path's W.
+const lookup = (w, spending, settings) => ({ chance: w.filter((x) => x >= spending).length / w.length, target: targetSpending(w, settings.target) });
+
 // The chance and the target at spending S and portfolio P from a year's table.
 export function tableLookup(table, spending, portfolio, settings = DEFAULT_GUARDRAILS) {
-  const w = table.points.map((pts) => along(pts, portfolio));
-  return { chance: w.filter((x) => x >= spending).length / w.length, target: targetSpending(w, settings.target) };
+  return lookup(table.points.map((pts) => along(pts, portfolio)), spending, settings);
+}
+
+// Each inner path's W at portfolio P in year t: from that year's table, or, between two tables, from
+// both, weighted by nearness; null outside the tables' years (tables sorted by t, nulls left out).
+export function cloudAt(tables, t, P) {
+  const exact = tables.find((x) => x.t === t);
+  if (exact) return exact.points.map((pts) => along(pts, P));
+  const next = tables.findIndex((x) => x.t > t);
+  if (next <= 0) return null;
+  const [a, b] = [tables[next - 1], tables[next]];
+  const f = (t - a.t) / (b.t - a.t);
+  return a.points.map((pts, i) => (1 - f) * along(pts, P) + f * along(b.points[i], P));
 }
 
 // The portfolio at which one inner path's W(P) reaches the spending (W rises with P): bisection on
@@ -314,17 +366,24 @@ export function tableGuardrails(table, spending, settings = DEFAULT_GUARDRAILS) 
 }
 
 // One path under the rule: the projection with its spending set each year by the tables.
-// -> { success, spending: [by year t], changes: [{ t, age, from, to, kind }], cuts, raises,
-//      largestCut (the deepest single cut, as a share), lowest (the lowest spending in a rule year) }
+// The plan's last year: the rule spends what is left (with no years after it, the target is what the
+// portfolio can pay), so a shortfall there is the spending down of the portfolio, not a failure; the
+// tables, built from the middle path's account mix and IRMAA history, can overstate what a path that
+// spent a lot can pay then (on the default household: by about 10% in the middle path, 2026-10-16).
+// spending: what each year actually paid (the need less any shortfall, before the survivor share).
+// -> { success (no shortfall before the last year, the legacy goal left), short (a shortfall in any
+//      year), endShort (the last year's shortfall as a share of its spending), spending: [by year t],
+//      changes: [{ t, age, from, to, kind }], cuts, raises, largestCut (the deepest single cut, as a
+//      share), lowest (the lowest spending paid in a rule year) }
 export function rulePath(household, spending, tables, yearReturn, settings = DEFAULT_GUARDRAILS) {
   const { legacy, ...options } = monteCarloOptions(household);
-  const byYear = new Map(tables.filter(Boolean).map((x) => [x.t, x]));
+  const sorted = tables.filter(Boolean).sort((a, b) => a.t - b.t);
   let current = spending;
   const changes = [];
   const needIn = (t, portfolio) => {
-    const table = byYear.get(t);
-    if (table && portfolio > 0) {
-      const { chance, target } = tableLookup(table, current, portfolio, settings);
+    const w = portfolio > 0 ? cloudAt(sorted, t, portfolio) : null;
+    if (w) {
+      const { chance, target } = lookup(w, current, settings);
       if (chance <= settings.cut || chance >= settings.raise) {
         const big = current > 0 ? Math.abs(target - current) / current >= settings.minChange : target > 0;
         if (big) {
@@ -336,17 +395,21 @@ export function rulePath(household, spending, tables, yearReturn, settings = DEF
     return current;
   };
   const { rows } = runProjection(household, { ...options, needIn, yearReturn });
-  const legacyMet = !(legacy?.target > 0) || legacyValue(rows[rows.length - 1].endBalances, legacy) >= legacy.target;
-  const ruled = rows.filter((r) => r.need > 0);
+  const last = rows[rows.length - 1];
+  const legacyMet = !(legacy?.target > 0) || legacyValue(last.endBalances, legacy) >= legacy.target;
+  const paid = rows.map((r) => (r.need > 0 ? r.detail.spending.baseNeed * (1 - r.shortfall / r.need) : r.detail.spending.baseNeed));
+  const ruled = rows.flatMap((r, t) => (r.need > 0 ? [paid[t]] : []));
   const cutsOnly = changes.filter((c) => c.kind === 'cut');
   return {
-    success: rows.every((r) => r.shortfall === 0) && legacyMet,
-    spending: rows.map((r) => r.detail.spending.baseNeed),
+    success: rows.slice(0, -1).every((r) => r.shortfall === 0) && legacyMet,
+    short: rows.some((r) => r.shortfall > 0),
+    endShort: last.need > 0 ? last.shortfall / last.need : 0,
+    spending: paid,
     changes: changes.map((c) => ({ ...c, age: rows[c.t].ages[0] })),
     cuts: cutsOnly.length,
     raises: changes.length - cutsOnly.length,
     largestCut: cutsOnly.reduce((m, c) => Math.max(m, (c.from - c.to) / c.from), 0),
-    lowest: ruled.length ? Math.min(...ruled.map((r) => r.detail.spending.baseNeed)) : spending,
+    lowest: ruled.length ? Math.min(...ruled) : spending,
   };
 }
 
@@ -357,7 +420,8 @@ export function rulePaths(household, spending, tables, { from = 0, to = GUARDRAI
 
 // The rule's figures across the paths: spending's percentiles each rule year (person 1's age), the
 // share of paths with a cut and with a raise, the cuts per path, the deepest cut on the paths that
-// cut, each path's lowest spending, and the share that still succeed.
+// cut, each path's lowest spending, the share that last (every year before the last paid), and the
+// last year's shortfalls (how often, and the middle one's share).
 export function summarizeRule(outcomes, ages, years) {
   const n = outcomes.length;
   const sorted = (xs) => [...xs].sort((a, b) => a - b);
@@ -369,11 +433,43 @@ export function summarizeRule(outcomes, ages, years) {
   return {
     paths: n,
     chance: n ? outcomes.filter((o) => o.success).length / n : null,
+    endShort: { share: n ? outcomes.filter((o) => o.endShort > 0).length / n : null, p50: percentile(sorted(outcomes.filter((o) => o.endShort > 0).map((o) => o.endShort)), 0.5) },
     fan: years.map((t) => ({ t, age: ages[t], ...pick(outcomes.map((o) => o.spending[t])) })),
     withCut: n ? cutPaths.length / n : null,
     withRaise: n ? outcomes.filter((o) => o.raises > 0).length / n : null,
     cuts: pick(outcomes.map((o) => o.cuts)),
     largestCut: cutPaths.length ? pick(cutPaths.map((o) => o.largestCut)) : null,
     lowest: pick(outcomes.map((o) => o.lowest)),
+  };
+}
+
+// ---- The page (step d) ----
+
+// The plan at the spending: person 1's age each year, by index t.
+export function planAges(household, spending) {
+  const { legacy: _legacy, ...options } = monteCarloOptions(household);
+  return runProjection(household, { ...options, need: spending }).rows.map((r) => r.ages[0]);
+}
+
+// Everything the page shows, from the parts the workers work out:
+//   need: the plan's spending need; today: the spending each path sustains today; target: today's
+//   target spending (from today); scales: each path's needed scale at the target; atCut / atRaise:
+//   the clouds at the two guardrails (null until in); tables: the rule's year tables (null until in);
+//   rule: the outer paths under the rule (null until in).
+// -> { target, need, needChance (the share of paths sustaining the need), today (summarizeGuardrails
+//      at the target), schedule ([{ age, ...tableGuardrails }] each rule year), rule (summarizeRule) }
+export function guardrailsReport({ household, need, settings = DEFAULT_GUARDRAILS, today, scales, atCut = null, atRaise = null, tables = null, rule = null }) {
+  const target = targetSpending(today, settings.target);
+  const ages = planAges(household, target);
+  const ruled = tables ? tables.filter(Boolean) : [];
+  return {
+    settings,
+    tablePaths: TABLE_PATHS,
+    target,
+    need,
+    needChance: today.filter((w) => w >= need).length / today.length,
+    today: summarizeGuardrails({ spending: target, portfolio: portfolioTotal(household), scales, today, atCut, atRaise, settings }),
+    schedule: tables ? ruled.map((t) => ({ age: ages[t.t], ...tableGuardrails(t, target, settings) })) : null,
+    rule: rule ? summarizeRule(rule, ages, ruleYears(household, target)) : null,
   };
 }

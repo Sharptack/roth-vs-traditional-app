@@ -347,6 +347,11 @@ export const CALCULATOR_INPUTS = {
     sections: ['projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'spending', 'legacy', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
+  // The guardrails (phase 9): what Monte Carlo reads (the settings, volatility and Run are on the page).
+  guardrails: {
+    sections: ['projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'spending', 'legacy', 'assumptions'],
+    fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
+  },
   // The year-by-year planner (phase 6): what the projection reads (its changes are made on the page).
   planner: {
     sections: ['projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],
