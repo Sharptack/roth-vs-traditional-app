@@ -8,9 +8,9 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 8, the switchover and the "Before phase" lists. 1,048 tests. Last closed: phase 8 (tag `phase-8-done`): Monte Carlo (#/monte-carlo, under Evaluations): 1,000 seeded random return paths around the plan's returns (their median; volatility 20% to start, a slider saved with the household), run in background workers with a Run button; the chance of success, the portfolio's fan and its spread at an age, the spending each of 200 paths sustains, when failing paths run out. Before it: the Social Security rework and phase 7 (closed 2026-10-16).
 
-**In progress:** nothing. The three-scenario Visualization page (a side task, 2026-10-16) is built and pushed, and paused; Michael wants to come back to it (other angles, sustainable income: `docs/ideas.md`, "Three-scenario visualization").
+**In progress:** phase 9, spending with guardrails: the method and default thresholds settled (2026-10-16, below); next, step (a). The three-scenario Visualization page (a side task, 2026-10-16) is built and pushed, and paused; Michael wants to come back to it (other angles, sustainable income: `docs/ideas.md`, "Three-scenario visualization").
 
-**Next:** phase 9, spending with guardrails. First step: settle with Michael the method (risk-based as the main one, Guyton-Klinger beside it, as proposed) and the default thresholds; then spending as a rule inside each Monte Carlo path, Guyton-Klinger first (the cheap one).
+**Next:** phase 9 step (a): the chance of success at a spending and a portfolio value, the target spending, and today's guardrails.
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years; month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -46,7 +46,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 | Phase | What ships | Done when |
 | --- | --- | --- |
-| 9. Spending with guardrails | The spending that succeeds in 50% of paths, and when to raise or cut it. | Each guardrail, rerun, lands on its target. |
+| 9. Spending with guardrails | The spending that succeeds in 80% of paths, and when to raise or cut it (risk-based). | Each guardrail, rerun, lands on its target. |
 | 10. Household plans | One household's facts with several saved plans, switching between them and comparing them in every calculator. | Two plans of one household open side by side with every difference marked. |
 | 11. Liabilities and debt pay-off | A debt pay-off calculator for every debt (the mortgage included): pay off early or invest, the order to pay debts off, and payoff dates flowing into the retirement income number and the projection. | A hand-worked amortization matches, and the payoff year changes the spending need from that year on. |
 
@@ -103,29 +103,33 @@ Both run the same plan from the same inputs and assumptions; only the returns di
 
 ## Phase 9: Spending with guardrails
 
-A spending number with rules for changing it: start at the spending that succeeds in 50% of the Monte Carlo paths, then know in advance at what portfolio value to raise it and at what value to cut it.
+A spending number with rules for changing it: start at the spending that succeeds in 80% of the Monte Carlo paths, then know in advance at what portfolio value to raise it and at what value to cut it.
 
-**The two guardrail methods:**
+**Decided with Michael (2026-10-16):**
 
-|  | Guyton-Klinger | Risk-based (Income Lab) |
-| --- | --- | --- |
-| What it watches | The withdrawal rate: this year's spending ÷ the portfolio | The plan's chance of success, recomputed with everything else in the plan |
-| When it acts | The rate drifts 20% above the starting rate (cut 10%) or 20% below (raise 10%) | The chance falls below a lower guardrail (cut) or rises above an upper one (raise) |
-| How much it changes | A fixed 10% | Back to the target chance of success, so the size fits the situation |
-| What it ignores | Social Security starting later, other income, the years left | Little: it uses the whole plan |
-| Shown as | Portfolio values that trigger the 10% steps | Portfolio values that trigger a change, and the new spending |
+- **Risk-based guardrails only; no Guyton-Klinger beside them.** Reason: Michael prefers Income Lab's approach and doesn't want the two side by side. (Supersedes the proposal below and the archive's "Guardrails" line.)
+- **The target: 80% chance of success**, adjustable (Income Lab's default: the spending 80% of paths sustain). Replaces the 50% starting point.
+- **The guardrails: cut when the chance falls to 50%, raise when it reaches 95%**, both adjustable. Michael's leaning, not firm: he likes Income Lab (cut at 25%, raise at about 100%) and isn't sure. Revisit once the page shows how often cuts come and how large they are under each.
+- **The change: back to the target both ways** (the spending whose chance is 80% at that portfolio), **skipped when under 5%** (Income Lab's minimum change).
+- Sources: Income Lab's methodology help page (incomelab.helpjuice.com, "How are the retirement paycheck and guardrails calculated?"); Kitces, Fitzpatrick and Tharp, "Improving Retirement Distribution With Risk-Based Guardrails" (2021: a 90% target, cut at 70%, raise at 99%).
 
-Proposed: risk-based as the main method, since it is Income Lab's approach and it accounts for Social Security, other income and the years left; Guyton-Klinger beside it for comparison, since it is the familiar one. Default thresholds are set when built, starting from published examples, and adjustable.
+**How it works.** The spending the plan sustains differs path by path (phase 8's "spending each path sustains", Income Lab's "spending cloud"). The chance of success at a spending is the share of paths that sustain it, so the target spending is that cloud's 20th percentile. A guardrail is a portfolio value: the value at which today's spending's chance falls to 50% (cut) or rises to 95% (raise), with the whole plan (Social Security, pensions, other income, the years left) in every path. At a guardrail, spending moves to the target spending at that portfolio value.
 
 **Outputs:**
 
-- Starting spending (50% of paths succeed).
+- The target spending (80% of paths sustain it) and today's chance at the plan's spending.
 - Today's guardrails: "if the portfolio falls to $X, cut spending to $Y; if it rises to $Z, raise it to $W", and the same levels for the next several years.
-- How spending behaves under each rule across the paths: its range by year, how often a cut comes, the largest cut.
+- Spending under the rule across the paths: its range by year, how often a cut comes, the largest cut.
 
-**Engine:** spending becomes a rule applied inside each Monte Carlo path. Guyton-Klinger is cheap. Risk-based needs the chance of success at every point on every path; a precomputed table of chance of success by age and withdrawal rate keeps that fast, to be measured.
+**Steps:**
 
-**Tests:** a hand-made path under Guyton-Klinger; each risk-based guardrail, rerun, lands on its target chance of success; with no volatility no rule triggers.
+- (a) Today's guardrails (`src/lib/guardrails.js`): the spending cloud with today's balances scaled, the chance at a spending, the target spending, the cut and raise portfolio values and the spending at each, the 5% minimum. Tests on hand-made return paths; with no volatility the chance is 0 or 1.
+- (b) The plan from a later year at a given portfolio: the projection replayed to year t, its balances scaled there, random returns after. Gives the guardrails for the next several years. Test: scaled by 1, it is the projection.
+- (c) The rule inside each path: measure the cost first (it needs the chance at every year of every path); likely a table of the spending cloud by year and portfolio value, built once from (b). Spending becomes a per-year amount in the projection. Tests: with no volatility nothing triggers; a hand-made path cuts where (a) says.
+- (d) The page (`#/guardrails`, under Evaluations): the four settings saved with the household, run in background workers with a Run button, as Monte Carlo.
+- (e) The Docs article.
+
+**Done when:** each guardrail, rerun, lands on its target (the chance at the cut value is 50%, at the raise value 95%, and the new spending's chance there is 80%, within the paths' sampling).
 
 ## Phase 10: Household plans and comparison
 
