@@ -255,11 +255,17 @@ export function socialSecurityInYear(household, t) {
 //   yearReturn       (rate, t) => this year's return, from the plan's return for the year (before or after
 //                    retirement) and the year's index t (0 = the first year); Monte Carlo's random paths
 //                    (phase 8). Default: the plan's return, today's results.
-//   needIn           (t) => the need in year t (phase 9: spending that changes along a path, the
-//                    guardrails); replaces need where given. Default: need every year.
+//   needIn           (t, portfolio) => the need in year t, from the portfolio at its start (phase 9:
+//                    spending that changes along a path, the guardrails); called once a year, in order.
+//                    Replaces need where given. Default: need every year.
 //   rescale          { t, scale }: at the start of year t, every account's balance (and basis) times
 //                    scale (phase 9: the plan from a later year at a given portfolio). Default: none.
-export function runProjection(household, { need = 0, needIn, rescale, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0, yearChanges = household.plannerChanges ?? [], yearReturn } = {}) {
+//   snapshotAt       t: also return the state at the start of year t (result.snapshot), to resume from.
+//   resume           a snapshot (from a run of the same household and options up to its year): start
+//                    there instead of replaying the years before it; the rows before it are the
+//                    snapshot's. The result is the same as the whole run's (phase 9: the guardrails'
+//                    many runs from a later year).
+export function runProjection(household, { need = 0, needIn, rescale, snapshotAt, resume, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0, yearChanges = household.plannerChanges ?? [], yearReturn } = {}) {
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
   // The household's own what-if (assumptions.retirementRateShift) unless a caller sets one.
   const rateShiftInRetirement = retirementRateShift ?? assumptions.retirementRateShift ?? 0;
@@ -279,8 +285,8 @@ export function runProjection(household, { need = 0, needIn, rescale, strategy =
   const spendSurplusWorking = (assumptions.surplusWorking ?? assumptions.surplus) === 'spend';
   // Version 2: the income rows (earnings and other income) by their ages; version 1: none.
   const incomeRows = Array.isArray(household.incomes) ? household.incomes : null;
-  let deceased = -1; // the index of the person who has died, from the year after their death
-  let survivorSS = { annual: 0, startAge: Infinity }; // the survivor benefit, set at the death
+  let deceased = resume ? resume.deceased : -1; // the index of the person who has died, from the year after their death
+  let survivorSS = resume ? resume.survivorSS : { annual: 0, startAge: Infinity }; // the survivor benefit, set at the death
   const plan = [
     ...(contributions ?? fc.contributions.map((c) => ({ owner: c.owner, amount: c.amount, type: c.currentType ?? fc.currentType }))),
     ...(taxableSavings ?? fc.taxableSavings ?? []).map((c) => ({ owner: c.owner, amount: c.amount, type: 'taxable' })),
@@ -322,7 +328,7 @@ export function runProjection(household, { need = 0, needIn, rescale, strategy =
   };
 
   // Working balances, one per account; contributions and surplus get accounts of their own.
-  const accounts = household.accounts.map((a) => ({
+  const accounts = resume ? resume.accounts.map((a) => ({ ...a })) : household.accounts.map((a) => ({
     id: a.id,
     owner: a.owner,
     type: a.type,
@@ -340,10 +346,12 @@ export function runProjection(household, { need = 0, needIn, rescale, strategy =
     return a;
   };
 
-  const rows = [];
-  let runOutYear = null;
-  let preProjectionMagi = 0; // IRMAA: the first year's MAGI without its conversions, set in that year
-  for (let t = 0; age0[0] + t <= lastAge; t++) {
+  const rows = resume ? [...resume.rows] : [];
+  let runOutYear = resume ? resume.runOutYear : null;
+  let preProjectionMagi = resume ? resume.preProjectionMagi : 0; // IRMAA: the first year's MAGI without its conversions, set in that year
+  let snapshot = null;
+  for (let t = resume ? resume.t : 0; age0[0] + t <= lastAge; t++) {
+    if (t === snapshotAt) snapshot = { t, accounts: accounts.map((a) => ({ ...a })), deceased, survivorSS, rows: [...rows], runOutYear, preProjectionMagi };
     const calendarYear = year + t;
     const ages = age0.map((a) => a + t);
     const alive = people.map((_, i) => i !== deceased);
@@ -502,7 +510,7 @@ export function runProjection(household, { need = 0, needIn, rescale, strategy =
     };
 
     const live = accounts.filter((a) => a.balance > 0);
-    const baseNeed = needIn ? needIn(t) : need;
+    const baseNeed = needIn ? needIn(t, accounts.reduce((s, a) => s + a.balance, 0)) : need;
     const needThisYear = anyRetired ? baseNeed * (survivorYear ? survivorSpending : 1) : 0;
     // The one-time conversion (first year only): from every Pre-tax account, pro rata by balance.
     const pretaxLive = live.filter((a) => a.type === 'pretax');
@@ -823,5 +831,5 @@ export function runProjection(household, { need = 0, needIn, rescale, strategy =
       },
     });
   }
-  return { rows, runOutYear, endAge: lastAge };
+  return { rows, runOutYear, endAge: lastAge, ...(snapshotAt !== undefined && { snapshot }) };
 }
