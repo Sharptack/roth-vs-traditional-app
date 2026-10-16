@@ -42,3 +42,14 @@ The main rollout covers the common 90% of cases and stays simple; these cover th
 - Conversions in later years on the conversion calculator (today: one conversion this year).
 - Non-qualified pensions on the pension calculator (rare; not planned).
 - The simplified Roth calculator: see Later release.
+
+## Three-scenario visualization: to come back to (Michael, 2026-10-16)
+
+The page (`#/scenarios/three-way`; roadmap "Three-scenario visualization" for what's built and the first results) gave the broad view. Michael wants to come back to it with other options and other angles.
+
+- **What creates the most sustainable income (Michael's question).** Today sustainable spending can't show conversions: at the highest steady spending the low brackets are full, so the rule converts nothing and scenario 3 ties Pre-tax. Ways to get at it: conversions sized at that spending with years left to fill (retiring before Social Security, claiming at 70, so the gap years are low); sustainable spending with a legacy goal held equal across the three, so wealth left doesn't hide in the comparison; a rule that converts while working in a low-income year.
+- **More scenarios:** a split (half Roth, half Pre-tax); Roth up to a bracket, Pre-tax above it; Roth plus conversions; other conversion rules (a fixed 22% or 24% top, before RMDs only, stopping at the next IRMAA tier).
+- **More axes:** retirement age, Social Security claiming age, married filing jointly (and the survivor's single brackets), the savings rate, the return, tax rates rising in retirement (`retirementRateShift`), the surplus spent instead of saved.
+- **Other measures:** Monte Carlo's chance of success per scenario; lifetime tax counted when it's paid (a present value), since today it sums years and favors Roth by construction (a larger Pre-tax balance is more taxable income); heirs taxed over 10 years (pairs with "Inherited accounts" above) or a higher heirs' rate for large estates.
+- **Narrowing down:** run the three scenarios around a real client household (the grid centered on its age, pay and balances) instead of the sample one, and open any cell in the calculators to read it year by year.
+- **A Docs article** for the page once its shape settles (the Visualization page has none either).

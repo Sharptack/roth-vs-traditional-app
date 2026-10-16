@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 8, the switchover and the "Before phase" lists. 1,048 tests. Last closed: phase 8 (tag `phase-8-done`): Monte Carlo (#/monte-carlo, under Evaluations): 1,000 seeded random return paths around the plan's returns (their median; volatility 20% to start, a slider saved with the household), run in background workers with a Run button; the chance of success, the portfolio's fan and its spread at an age, the spending each of 200 paths sustains, when failing paths run out. Before it: the Social Security rework and phase 7 (closed 2026-10-16).
 
-**In progress:** a side task before phase 9: a second Visualization page comparing three scenarios across many households (see "Three-scenario visualization" below).
+**In progress:** nothing. The three-scenario Visualization page (a side task, 2026-10-16) is built and pushed, and paused; Michael wants to come back to it (other angles, sustainable income: `docs/ideas.md`, "Three-scenario visualization").
 
 **Next:** phase 9, spending with guardrails. First step: settle with Michael the method (risk-based as the main one, Guyton-Klinger beside it, as proposed) and the default thresholds; then spending as a rule inside each Monte Carlo path, Guyton-Klinger first (the cheap one).
 
