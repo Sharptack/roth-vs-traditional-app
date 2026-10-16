@@ -131,7 +131,7 @@ The projection assumes the same return every year, which hides sequence risk: ba
 
 **Steps (Claude, 2026-10-16):**
 
-- (a) **The engine:** runProjection takes  (the plan's return each year by default: today's results); seeded lognormal paths (). Tests: a hand-made three-year path, zero volatility = the projection exactly, a seed repeats, σ by hand, the drawn returns' median, average and spread. Measured: about 2.5 ms a projection (61 years), so 1,000 paths take about 2.5 seconds.
+- (a) **The engine:** runProjection takes `yearReturn` (the plan's return each year by default: today's results); seeded lognormal paths (`src/lib/monteCarlo.js`). Tests: a hand-made three-year path, zero volatility = the projection exactly, a seed repeats, σ by hand, the drawn returns' median, average and spread. Measured: about 2.5 ms a projection (61 years), so 1,000 paths take about 2.5 seconds.
   **Done 2026-10-16.**
 - (b) **The simulation:** every path at the spending need: chance of success (no shortfall, and the legacy goal left), the portfolio by year (10th to 90th percentiles), at a chosen age and at the end, when the failing paths run out; the spending each of the first 200 paths sustains. Pure, in chunks, so a worker can report progress.
 - (c) **The page** (#/monte-carlo, under Evaluations): the volatility slider, the Run button and progress (a background worker), the chance of success, the fan chart, the distribution charts, the run-out ages; out of date after an input changes. Dashboard tile and Copy summary.
