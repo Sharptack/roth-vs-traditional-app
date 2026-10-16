@@ -3,7 +3,7 @@ import Heatmap from './charts/Heatmap.jsx';
 import LineChart from './charts/LineChart.jsx';
 import { runAllBatches, runHeatmap } from '../lib/scenarios.js';
 import { HEATMAPS, SCENARIO_BATCHES } from '../data/scenarioBatches.js';
-import { HOME_HASH } from '../lib/route.js';
+import { HOME_HASH, THREE_WAY_HASH } from '../lib/route.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -213,6 +213,10 @@ export default function ScenariosPage() {
           <a href="#/how-it-works">How this works</a>). The rate gap itself is unpacked once, after the first chart,
           and two maps at the end show where each side wins. Hover or focus any point for exact numbers; each chart
           has a table underneath.
+        </p>
+        <p>
+          <a href={THREE_WAY_HASH}>Roth, Pre-tax, or Pre-tax with conversions &rarr;</a> the three side by side through the
+          whole plan, across starting ages, pay and existing balances.
         </p>
       </div>
 

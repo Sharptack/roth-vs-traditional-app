@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 8, the switchover and the "Before phase" lists. 1,048 tests. Last closed: phase 8 (tag `phase-8-done`): Monte Carlo (#/monte-carlo, under Evaluations): 1,000 seeded random return paths around the plan's returns (their median; volatility 20% to start, a slider saved with the household), run in background workers with a Run button; the chance of success, the portfolio's fan and its spread at an age, the spending each of 200 paths sustains, when failing paths run out. Before it: the Social Security rework and phase 7 (closed 2026-10-16).
 
-**In progress:** nothing.
+**In progress:** a side task before phase 9: a second Visualization page comparing three scenarios across many households (see "Three-scenario visualization" below).
 
 **Next:** phase 9, spending with guardrails. First step: settle with Michael the method (risk-based as the main one, Guyton-Klinger beside it, as proposed) and the default thresholds; then spending as a rule inside each Monte Carlo path, Guyton-Klinger first (the cheap one).
 
@@ -157,6 +157,17 @@ The app has nothing for liabilities today beyond "debt payments that end". Phase
 **Into the plan:** each payment stops at its payoff date. Before retirement that lowers the retirement income number (as debts that end do today); after retirement it lowers spending from that year on, so the projection's need steps down. Payoff dates that move with extra payments flow through to every calculator.
 
 **Tests:** a hand-worked amortization; avalanche and snowball on a hand-made pair of debts; the break-even return; the spending need stepping down in a payoff year.
+
+## Three-scenario visualization (side task, started 2026-10-16)
+
+Michael asked for charts comparing (1) all Roth, (2) all Pre-tax and (3) all Pre-tax with Roth conversions, across starting ages, incomes and existing balances: first a broad view, then narrow it down. A new page (`#/scenarios/three-way`), linked from the Visualization page; it runs the existing `compareWithConversions` (no new financial math) over a grid of sample households, in background workers with a Run button.
+
+- **The winner is after-tax wealth at the end age, spending the plan's need** (decided 2026-10-16). Reason: sustainable spending, the usual headline, can't show conversions: at the highest steady spending the withdrawals fill the low brackets, so phase 7's rule finds no room and scenario 3 ties Pre-tax exactly (checked on 4 sample households). Lifetime tax and sustainable spending are shown beside it.
+- **Scenario 3 uses phase 7's rule** (decided 2026-10-16): in retired years, fill to the top of the bracket below today's contribution rate, RMD years included; the same rule as the Roth page's conversions block.
+- Sample households: single, W-2 pay, 10% of pay saved, the existing balance all Pre-tax, retiring at 65, planning to 95, the default assumptions, no debt payments. Within 0.5% of the best is "about even" (the app's rule). The grid: starting ages 25/35/45/55 × pay $50k–$300k (6) × existing Pre-tax $0–$2M (6) = 144 households, about 85 seconds in 3 workers.
+- **Proposed, for Michael to confirm (2026-10-16): when the money runs out before 95 in all three, rank by sustainable spending** (each leaves $0, so wealth can't rank them; marked † on the maps). Most of the starting-at-45 and -55 households with little saved fall here.
+- **Built (2026-10-16):** the page (winner maps per starting age; "A closer look": any one variable across, the other two held, each scenario vs. all Pre-tax, with a table of wealth, lifetime tax, sustainable spending and the amount converted). No Docs article yet (the Visualization page has none either).
+- **First read of the results (for narrowing down):** Roth wins most of the map for 25- and 35-year-olds, often by 5–19%; much of that lead is the heirs' rate (24%) on large leftover Pre-tax balances. Conversions win only scattered cells (largest at 55 with $250k–$1M saved and $75k pay, +12%). The "°" cells (no room to convert at the need) follow pay: at $50k, $100k and $200k the plan's own withdrawals already fill the bracket below today's rate. Next steps to consider: the heirs' rate and the savings rate as page inputs; the lifetime tax as a second map.
 
 ## Open questions
 

@@ -12,6 +12,7 @@ import './App.css';
 
 // Pages other than the calculators load when first opened.
 const ScenariosPage = lazy(() => import('./components/ScenariosPage.jsx'));
+const ThreeWayPage = lazy(() => import('./components/ThreeWayPage.jsx'));
 const DocsPage = lazy(() => import('./components/DocsPage.jsx'));
 
 // The page from the URL hash; an older address is rewritten in place first. Opening a Docs
@@ -72,6 +73,7 @@ export default function App() {
 
       <Suspense fallback={<p className="hint">Loading&hellip;</p>}>
         {route === 'scenarios' && <ScenariosPage />}
+        {route === 'threeWay' && <ThreeWayPage />}
         {route === 'docs' && <DocsPage hash={hash} />}
       </Suspense>
 

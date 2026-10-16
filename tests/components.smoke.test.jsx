@@ -6,6 +6,8 @@ import articleMarkdown from '../articles/roth.md?raw';
 import ResultsSummary from '../src/components/ResultsSummary.jsx';
 import ScenarioCompare from '../src/components/ScenarioCompare.jsx';
 import ScenariosPage from '../src/components/ScenariosPage.jsx';
+import ThreeWayPage from '../src/components/ThreeWayPage.jsx';
+import WinnerGrid from '../src/components/charts/WinnerGrid.jsx';
 import { compareRothVsTraditional } from '../src/lib/compare.js';
 import { DEFAULT_FORM_VALUES, toCompareInputs } from '../src/lib/formInputs.js';
 import { SCENARIO_BATCHES } from '../src/data/scenarioBatches.js';
@@ -1659,5 +1661,54 @@ describe('The tax page (2026-10-09)', () => {
     expect(html).toContain('With $7.65 more payroll tax');
     expect(html).toContain('Medicare IRMAA tiers:');
     expect(html).not.toContain('IRMAA +$'); // no longer labelled on the chart
+  });
+});
+
+describe('ThreeWayPage (three scenarios)', () => {
+  const html = renderToStaticMarkup(<ThreeWayPage />);
+
+  it('before a run: the intro, the Run button and a back link to the Visualization page at top and bottom, no maps', () => {
+    expect(html).toContain('Roth, Pre-tax, or Pre-tax with conversions');
+    expect(html).toContain('Run the scenarios');
+    expect((html.match(/href="#\/scenarios"/g) ?? []).length).toBe(2);
+    expect(html).toContain('144 sample');
+    expect(html).not.toContain('Who comes out ahead');
+    expect(html).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('the Visualization page links to it', () => {
+    expect(renderToStaticMarkup(<ScenariosPage />)).toContain('href="#/scenarios/three-way"');
+  });
+});
+
+describe('WinnerGrid', () => {
+  const scenarios = {
+    roth: { label: 'All Roth', short: 'Roth', color: 'var(--series-1)' },
+    pretax: { label: 'All Pre-tax', short: 'Pre-tax', color: 'var(--series-2)' },
+  };
+  const cells = { 'a-x': { winner: 'roth', lead: 0.032, mark: false }, 'a-y': { winner: 'even', lead: 0.001, mark: true } };
+  const html = renderToStaticMarkup(
+    <WinnerGrid
+      caption="test"
+      rows={[{ key: 'a', label: 'Row A' }, { key: 'b', label: 'Row B' }]}
+      columns={[{ key: 'x', label: 'Col X' }, { key: 'y', label: 'Col Y' }]}
+      rowHeading="Rows"
+      columnHeading="Columns"
+      cellAt={(r, c) => cells[`${r}-${c}`]}
+      scenarios={scenarios}
+      describe={(r) => `winner ${r.winner}`}
+      formatLead={(r) => (r.winner === 'even' ? '' : `+${(r.lead * 100).toFixed(1)}%`)}
+      marks={[{ symbol: '°', note: 'a note', test: (r) => r.mark }]}
+    />,
+  );
+
+  it("names each cell's winner and lead, tints it in the winner's color, leaves 'even' and unrun cells untinted", () => {
+    expect(html).toContain('Roth</span>'); // the name, its lead after
+    expect(html).toContain('+3.2%');
+    expect(html).toContain('Even<span class="heatmap-flag">°</span></span>');
+    expect((html.match(/winner-grid-pending/g) ?? []).length).toBe(2);
+    expect(html).toContain('color-mix(in srgb, var(--series-1) 42%');
+    expect(html).toContain('° = a note');
+    expect(html).toContain('Pre-tax = All Pre-tax');
   });
 });

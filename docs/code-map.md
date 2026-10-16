@@ -6,7 +6,8 @@ Where things are, file by file. `CLAUDE.md` has the short version; read this whe
 Year-keyed tables: `taxBrackets`, `capitalGainsBrackets`, `ficaRates` (incl. the SS wage base), `ssBendPoints`
 (+ full retirement age by birth year), `contributionLimits` (catch-up 50+ and 60–63), `ageDeductions` (65+ and the
 2025–2028 senior deduction), `irmaa`. Fixed by law: `ssTaxThresholds`, `niitRates`, `rmdTable`. Also `lifeTable.js`
-(SSA period life table), `yearlyTables.js` (the annual-update registry), `scenarioBatches.js` (Visualization page data).
+(SSA period life table), `yearlyTables.js` (the annual-update registry), `scenarioBatches.js` (Visualization page data),
+`threeWayGrid.js` (the three-scenario page's grid of sample households).
 `getYearData` picks the latest year <= the one requested.
 
 ## Tax engine (`src/lib/`)
@@ -40,6 +41,7 @@ after-tax difference), `portfolioTax.js`, `blend.js`, `rateSteps.js`, `growthCal
 (`runProjection`: the year loop, strategy seam, `convertNow`; each row's `detail` = its parts), `planner.js` (the year-by-year planner: its changes described and weighed; the changes are `household.plannerChanges`, runProjection's `yearChanges`), `projectionDetail.js` (reads `detail`: the year's tax rows, labels, the columns that open; page `src/next/YearDetail.jsx`), `strategies.js`, `projectionSummary.js` (sustainable
 spending, `projectionView`), `spendingNeed.js` (the spending need every calculator reads: top-down or the budget), `retirementSpending.js` (the
 Retirement spending page: what the resources allow with the legacy goal; "Use in the plan"),
+`threeWay.js` (the three-scenario Visualization page, #/scenarios/three-way: a grid point's sample household run as all Roth, all Pre-tax and Pre-tax with the phase 7 conversions; the winner among three; page `src/components/ThreeWayPage.jsx` with `threeWay.worker.js` and `charts/WinnerGrid.jsx`),
 `funding.js` (Pre-retirement funding: the two measures, savings needed, the page's view and "Use in the plan"; page `src/next/FundingResult.jsx`), `socialSecurityCalculator.js` (the Social Security page's view, two strategies compared, survival and a couple's joint odds, and "Use in the plan" for claiming ages; page `src/next/SocialSecurityResult.jsx`; `claimingPlanEffect`, the plan rerun at each claiming age, is tested but off the page since 2026-10-16), `lifetimeComparison.js` (the Roth page's lifetime comparison; `lifetimeOptions` = how the page runs it), `lowerYearConversions.js` (phase 7: the convert-below-a-rate rule as a strategy wrapper, and the comparison with and without it; block `src/next/LowerYearConversions.jsx`), `conversionLifetime.js`, `suiteTiles.js`, `blockHeadlines.js`.
 
 ## UI

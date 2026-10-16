@@ -6,12 +6,14 @@
 //   #/roth, #/tax, #/projection, #/spending, #/funding, #/conversion, #/pension, #/social-security, #/planner, #/monte-carlo   the calculators
 //   #/docs[/<article>[/<heading>]]   the Docs section (lib/docs.js)
 //   #/scenarios        the Visualization page
+//   #/scenarios/three-way   its three-scenario page (Roth, Pre-tax, Pre-tax with conversions)
 //
 // Older addresses still open (canonicalHash): the preview's "#/next/..." pages (round 2 until the
 // switchover), and the old calculator's article, "#/how-it-works[/<heading>]", now the Roth article
 // in the Docs.
 export const HOME_HASH = '#/';
 export const SCENARIOS_HASH = '#/scenarios';
+export const THREE_WAY_HASH = '#/scenarios/three-way';
 export const DOCS_HASH = '#/docs';
 
 export const PAGES = {
@@ -67,10 +69,11 @@ export function canonicalHash(hash) {
   return hash;
 }
 
-// 'docs', 'scenarios', or 'app' (the calculators: the homepage, the inputs page, a calculator).
+// 'docs', 'scenarios', 'threeWay', or 'app' (the calculators: the homepage, the inputs page, a calculator).
 export function routeFromHash(hash) {
   if (hash === DOCS_HASH || hash.startsWith(`${DOCS_HASH}/`)) return 'docs';
   if (hash === SCENARIOS_HASH) return 'scenarios';
+  if (hash === THREE_WAY_HASH) return 'threeWay';
   return 'app';
 }
 
