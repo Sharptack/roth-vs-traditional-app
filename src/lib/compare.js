@@ -369,12 +369,15 @@ export function compareRothVsTraditional(inputs) {
   // 2. Social Security benefit (known, or estimated)
   let socialSecurity;
   if (inputs.earners) {
-    // Per person: each earner's own covered earnings (wages + net self-employment earnings).
+    // Per person: each earner's own covered earnings (wages + net self-employment earnings); someone
+    // retired, those of the work they left (pastEarnings, householdV2.js).
+    const coveredOf = (e, i) => {
+      if (!e.pastEarnings) return e.wages + fica.people[i].selfEmployment.netEarnings;
+      const past = calculateEmploymentTaxes({ ...e.pastEarnings, filingStatus: inputs.filingStatus, year });
+      return e.pastEarnings.wages + past.selfEmployment.netEarnings;
+    };
     socialSecurity = estimateHouseholdSocialSecurity({
-      earners: inputs.earners.map((e, i) => ({
-        ...e,
-        earnings: e.wages + fica.people[i].selfEmployment.netEarnings,
-      })),
+      earners: inputs.earners.map((e, i) => ({ ...e, earnings: coveredOf(e, i) })),
       year,
     });
   } else if (inputs.knowsSocialSecurity) {

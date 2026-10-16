@@ -179,9 +179,11 @@ export function socialSecuritySchedule(household) {
   const ageOf = (p) => year - p.birthYear;
   const ss = estimateHouseholdSocialSecurity({
     earners: people.map((p) => {
-      const pay = calculateEmploymentTaxes({ wages: p.wages, selfEmploymentIncome: p.selfEmploymentIncome, filingStatus: household.filingStatus, year });
+      // Someone retired: the earnings of the work they left (householdV2 pastEarnings), else this year's.
+      const { wages, selfEmploymentIncome } = p.pastEarnings ?? p;
+      const pay = calculateEmploymentTaxes({ wages, selfEmploymentIncome, filingStatus: household.filingStatus, year });
       return {
-        earnings: p.wages + pay.selfEmployment.netEarnings,
+        earnings: wages + pay.selfEmployment.netEarnings,
         currentAge: ageOf(p),
         claimAge: p.socialSecurity.claimAge ?? p.retirementAge,
         knowsSocialSecurity: p.socialSecurity.known,

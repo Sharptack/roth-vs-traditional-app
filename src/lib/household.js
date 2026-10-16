@@ -336,11 +336,14 @@ export function householdToCompareInputs(household) {
   const ownPia = people.some((p) => p.socialSecurity.mode === 'pia');
   // A 1099 business that doesn't qualify for QBI (version 2) is read per person too.
   const ownQbiShare = people.some((p) => (p.qbiShare ?? 1) < 1);
-  if (people.length > 1 || ownClaimAge || ownPia || ownQbiShare) {
+  // Someone retired with earnings that ended: their Social Security estimate reads those (householdV2).
+  const ownPast = people.some((p) => p.pastEarnings);
+  if (people.length > 1 || ownClaimAge || ownPia || ownQbiShare || ownPast) {
     inputs.earners = people.map((p) => ({
       wages: p.wages,
       selfEmploymentIncome: p.selfEmploymentIncome,
       ...((p.qbiShare ?? 1) < 1 && { qbiShare: p.qbiShare }),
+      ...(p.pastEarnings && { pastEarnings: p.pastEarnings }),
       currentAge: ageOf(p),
       claimAge: p.socialSecurity.claimAge ?? p.retirementAge,
       knowsSocialSecurity: p.socialSecurity.known,

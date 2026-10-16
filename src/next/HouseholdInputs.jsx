@@ -228,7 +228,7 @@ export default function HouseholdInputs({
           <>
             {r.ssMode === 'pia'
               ? "PIA: the monthly benefit at full retirement age, from the SSA statement, in today's dollars; the benefit at the claiming age, and any spousal benefit, are worked out from it."
-              : "Estimated from this year's earnings; the PIA on the SSA statement is more precise."}{' '}
+              : "Estimated from this year's earnings (once retired, from the W-2 and 1099 rows that ended); the PIA on the SSA statement is more precise."}{' '}
             Claimed at retirement means at the retirement age, held within 62 to 70.
           </>
         )}
@@ -324,7 +324,7 @@ export default function HouseholdInputs({
     ssBenefits: () => (
       <>
         <p className="hint">
-          One per person. Without a PIA, the benefit is estimated from this year&rsquo;s earnings (a PIA of $0 means none).
+          One per person. Without a PIA, the benefit is estimated from earnings: this year&rsquo;s, or once retired, the work they left (a PIA of $0 means none).
         </p>
         <div className={spouse ? 'people-grid' : 'people-grid one'}>
           {socialSecurityRows(values).map((r) => {

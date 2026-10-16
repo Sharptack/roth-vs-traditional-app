@@ -14,6 +14,8 @@
 //   incomes: [{ id, owner, type, treatment, amount, fromAge, toAge, qbi }]  // numbers; ages null when blank;
 //                                          // qbi (1099 rows): false when the business doesn't qualify for QBI
 //   people[i].qbiShare                     // the share of this year's 1099 earnings that qualifies (yearTax.js)
+//   people[i].pastEarnings                 // someone retired: { wages, selfEmploymentIncome } of the rows
+//                                          // that ended, for the Social Security estimate only; absent otherwise
 //   pensions: [{ owner, monthly, startAge, cola, survivorShare }]            // the pension rows paid monthly
 //                                          // in the plan (pensionIncome.js); a row whose lump sum the plan
 //                                          // takes (election 'lumpSum', decided 2026-10-09) pays nothing:
@@ -118,6 +120,15 @@ export function toHouseholdV2(input, year) {
     const earned = (type, keep = () => true) =>
       incomes.filter((r) => r.owner === p.id && r.type === type && countsThisYear(r, age, parseNumber(p.retirementAge)) && keep(r)).reduce((a, r) => a + r.amount, 0);
     const selfEmployed = earned('1099');
+    // Someone already retired: the Social Security estimate reads the earnings of the work they
+    // left (decided 2026-10-16), the W-2 and 1099 rows that ended (a blank last age ends at
+    // retirement), not this year's (none, or part-time pay). None: this year's, as before.
+    const retired = Number.isFinite(parseNumber(p.retirementAge)) && age >= parseNumber(p.retirementAge);
+    const ended = (type) =>
+      incomes
+        .filter((r) => r.owner === p.id && r.type === type && !countsThisYear(r, age, parseNumber(p.retirementAge)) && !(r.fromAge !== null && age < r.fromAge))
+        .reduce((a, r) => a + r.amount, 0);
+    const pastEarnings = retired && ended('w2') + ended('1099') > 0 ? { wages: ended('w2'), selfEmploymentIncome: ended('1099') } : null;
     const ss = incomes.find((r) => r.owner === p.id && r.type === 'socialSecurity');
     // The PIA, or the monthly check now, as typed (blank = not entered: an error for those two).
     const piaTyped = ss && parseNumber(values.incomes.find((r) => r.id === ss.id)?.amount);
@@ -132,6 +143,7 @@ export function toHouseholdV2(input, year) {
       wages: earned('w2'),
       selfEmploymentIncome: selfEmployed,
       ...(selfEmployed > 0 && earned('1099', (r) => r.qbi) < selfEmployed && { qbiShare: earned('1099', (r) => r.qbi) / selfEmployed }),
+      ...(pastEarnings && { pastEarnings }),
       // No Social Security row: estimated from earnings (decided 2026-10-09; before, no benefit). A PIA
       // of $0 is no benefit of their own; a spousal top-up can still come.
       // Already receiving (decided 2026-10-09): version 1's known benefit, the check today x 12,
