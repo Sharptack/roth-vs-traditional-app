@@ -6,6 +6,7 @@ Finished phases and settled decisions from the round 2 plan, moved here word for
 
 | Date | Phase | Tests |
 | --- | --- | --- |
+| 2026-10-16 | Phase 8: Monte Carlo | 1,048 |
 | 2026-10-16 | Phase 7: Roth vs. Pre-tax with conversions in the lower years | 1,025 |
 | 2026-10-16 | Social Security page rework (during phase 7) | 1,025 |
 | 2026-10-15 | Before phase 7: inputs and page items | 1,013 |
@@ -657,3 +658,46 @@ The question: if the household converts Pre-tax money to Roth in the years after
 Decided by Claude while building (open to change): the conversion runs keep the plan's withdrawal strategy and the planner's changes, and add the rule's conversions on top (as the planner's conversions sit on top of a conversion strategy); "below the rate" compares the year's bracket (marginal rate), not the effective marginal rate.
 
 **Closed:** 2026-10-16, 1,025 tests (tag `phase-7-done`). Every item done: the rule and the four-run comparison (`lowerYearConversions.js`, hand-calculated tests, each figure equal to a separate full run; no years below the rate = today's lifetime comparison), the block on the Roth page under "Over a lifetime" (the bracket each year against the chosen rate, the answer without and with conversions, the conversions year by year with IRMAA room and the IRMAA-tier checkbox), and the Roth article's section "With Roth conversions in the lower years". No existing results changed.
+
+## Phase 8: Monte Carlo
+
+The projection assumes the same return every year, which hides sequence risk: bad years early in retirement do far more damage than the same years late. Phase 8 runs the same projection over many random return paths. The engine is shared with phase 9.
+
+**Return model:** the S&P 500's historical return and standard deviation, after inflation, to start (NYU Stern's yearly S&P 500 returns from 1928, less inflation; cited in the docs), both adjustable on the page (sliders, so the effect shows as they move). Later: different settings at different ages (a glide path toward lower risk) and more robust return options.
+
+**Engine:** the projection takes an optional return for each year; without it nothing changes. A seeded random number generator, so the same inputs always give the same answer. Dollars stay in today's terms.
+
+**Outputs:**
+
+- Chance of success: the share of paths that meet spending every year through the plan-to ages.
+- Distribution charts, for income and for total portfolio value: the spread of outcomes as a bell-shaped histogram, with the likely range marked (e.g. the middle 50% and 80% of paths) and the median. Income = the spending each path can sustain; portfolio value at a chosen age and at the end.
+- A fan chart of the portfolio over time (10th to 90th percentiles).
+- When the failing paths run out.
+
+**Speed:** about 8 ms a projection, so 1,000 paths take about 8 seconds. The runs move to a background worker so the page stays responsive and fills in as paths finish; the path count is to be set (500 to 1,000).
+
+**Tests:** zero volatility reproduces the projection exactly; a fixed seed repeats exactly; a hand-made three-year path; the drawn returns' average and spread match the inputs within a set tolerance.
+
+**Decisions (Michael, 2026-10-16):**
+
+| Question | Decision |
+| --- | --- |
+| The average return | The plan's two return inputs (before and after retirement), read as the long-run compound growth: the median path lands near the projection. Each year's draw is set higher to match (lognormal: the average yearly return is above the compound rate by about half the variance). |
+| Volatility | The S&P 500's own yearly swing after inflation, about 20% (NYU Stern's yearly returns from 1928, figure cited in the docs); a slider on the page. |
+| Paths | 1,000. |
+| The income chart | The spending each path sustains, from the first 200 paths (a search per path), filling in after the rest; its median is the spending that succeeds in half the paths (phase 9 builds on it). Chance of success and the portfolio charts use all 1,000. |
+| When it runs | A Run button (Michael asked whether one is needed: yes, a run takes 8 to 30 seconds). Progress shows while it runs; results stay after an input changes, marked out of date until run again. |
+
+**Steps (Claude, 2026-10-16):**
+
+- (a) **The engine:** runProjection takes `yearReturn` (the plan's return each year by default: today's results); seeded lognormal paths (`src/lib/monteCarlo.js`). Tests: a hand-made three-year path, zero volatility = the projection exactly, a seed repeats, σ by hand, the drawn returns' median, average and spread. Measured: about 2.5 ms a projection (61 years), so 1,000 paths take about 2.5 seconds.
+  **Done 2026-10-16.**
+- (b) **The simulation:** every path at the spending need: chance of success (no shortfall, and the legacy goal left), the portfolio by year (10th to 90th percentiles), at a chosen age and at the end, when the failing paths run out; the spending each of the first 200 paths sustains. Pure, in chunks, so a worker can report progress.
+  **Done 2026-10-16.** `simulatePaths`, `sustainableOnPaths`, `summarizeMonteCarlo` in `monteCarlo.js`; any range of paths, so chunks join to the whole. Tests: three given paths worked by hand (success, balances, the fan, run-out ages, each path's spending), no volatility = the projection, a seed repeats. The spending search stops within 0.5% (a `tolerance` option on sustainableSpending; default $1, today's results). Measured on the default household (need $65,380): 1,000 paths 5.5 s, the 200-path spending search 26 s on one thread, so step (c) splits the work over several workers. Chance of success 91%; the median path sustains $136,914 against the projection's $133,401 (the median path lands near the projection, as decided).
+- (c) **The page** (#/monte-carlo, under Evaluations): the volatility slider, the Run button and progress (a background worker), the chance of success, the fan chart, the distribution charts, the run-out ages; out of date after an input changes. Dashboard tile and Copy summary.
+  **Done 2026-10-16.** `src/next/MonteCarloResult.jsx`, run by `useMonteCarlo.js` in up to 4 workers (`monteCarlo.worker.js`; chunks of 50 paths, then 5 searches). The whole run takes about 8 to 12 seconds in the browser on the default household. Blocks: Chance of success (the volatility slider, saved with the household as `calculators.monteCarlo.volatility`; Run or Stop; progress), the portfolio over time (median and the middle 80% and 50% as bands, a `bands` option on LineChart), the portfolio at an age (a histogram, new `Histogram.jsx`, cut at the 90th percentile), the spending the paths sustain (with the need and the median marked; succeeds in 9 in 10, 3 in 4, half), when the failing paths run out. The run stays when moving between pages and is marked out of date once an input changes. Tile: the last run's chance, or "Not run yet". Checked in the browser at desktop and phone widths. Also: a share link now runs to 3,522 characters (the test's limit raised to 3,600).
+- (d) **The Docs article**, with the S&P 500 figures cited.
+  **Done 2026-10-16.** `articles/monte-carlo.md`, listed in Docs and linked from the page. The figures, worked out from NYU Stern's yearly table (1928 to 2023, 96 years, after inflation): the S&P 500's average year 8.40%, standard deviation 19.4%, compound growth 6.55%; 60% S&P 500 and 40% 10-year Treasuries rebalanced yearly: 5.79%, 12.5%, 5.03%. The 20% default is the S&P 500's 19.4% rounded. The projection article points to it; the Social Security blurbs (Docs index and dashboard) updated for the rework.
+
+**Closed:** 2026-10-16, 1,048 tests (tag `phase-8-done`). Every step done; the Done-when tests pass (no volatility reproduces the projection exactly; a fixed seed repeats). The histograms shade the middle 50% of paths and give the 80% range (10th and 90th percentiles) as figures under the chart. No existing results changed (`yearReturn` and `tolerance` default to today's behavior). Also during the phase: the projection's withdrawal-strategy table scrolls on a phone (the 19 px overflow fixed).
+

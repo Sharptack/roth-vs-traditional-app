@@ -6,11 +6,11 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 *Rewritten (not appended to) at each `/closeout`. Last: 2026-10-16.*
 
-**Done:** round one; round 2 phases 0 to 7, the switchover and the "Before phase" lists. 1,025 tests. Last closed: phase 7 (tag `phase-7-done`): on the Roth page under "Over a lifetime", the bracket each year against a chosen rate and the Roth vs. Pre-tax answer again with conversions in the years taxed below it (four full runs; conversions year by year with IRMAA room). With it: the "Before phase 7" input and page items, and the Social Security page rework (claiming strategy grid with the selected beside the most, year-by-year stacked bars, two freely chosen strategies on the break-even graph, a couple's joint odds).
+**Done:** round one; round 2 phases 0 to 8, the switchover and the "Before phase" lists. 1,048 tests. Last closed: phase 8 (tag `phase-8-done`): Monte Carlo (#/monte-carlo, under Evaluations): 1,000 seeded random return paths around the plan's returns (their median; volatility 20% to start, a slider saved with the household), run in background workers with a Run button; the chance of success, the portfolio's fan and its spread at an age, the spending each of 200 paths sustains, when failing paths run out. Before it: the Social Security rework and phase 7 (closed 2026-10-16).
 
-**In progress:** phase 8, Monte Carlo (decisions 2026-10-16, steps under Phase 8). Every step, (a) to (d), done 2026-10-16, local and unpushed; waiting on Michael's look, then `/closeout`. The page: #/monte-carlo, a Run button, workers, charts; the projection's yearReturn, the seeded lognormal paths and the simulation (`monteCarlo.js`, hand-calculated tests).
+**In progress:** nothing.
 
-**Next:** phase 9, spending with guardrails (builds on the paths and the spending each sustains).
+**Next:** phase 9, spending with guardrails. First step: settle with Michael the method (risk-based as the main one, Guyton-Klinger beside it, as proposed) and the default thresholds; then spending as a rule inside each Monte Carlo path, Guyton-Klinger first (the cheap one).
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years; month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -21,6 +21,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 - One contribution type per person (see Open questions). The Roth catch-up rule is stated on the Roth page but not applied to the numbers.
 - Only the first death is modeled; the survivor lives to their life expectancy. "Currently receiving" Social Security has no known PIA, so it gives a spouse no spousal top-up.
 - Funding: extra savings earn no extra employer match, and the savings-needed search scales the rows as entered (not the planner's contribution changes).
+- Monte Carlo: each year's return is independent of the last, one volatility covers every account (no stocks/bonds split, no glide path), lifespans are the plan's; its fan chart's scale follows the top paths, so the median can look flat late in a long plan.
 - Staged spending is designed (`docs/staged-spending-design.md`) but not built (Later release).
 
 **Decisions later phases build on** (details in the archive):
@@ -37,6 +38,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 - A conversion's tax (every conversion, decided 2026-10-12): once anyone has retired, from a taxable account, else held back from the conversion; while everyone works, held back. IRMAA for the two years before the projection: the first year's MAGI without conversions (2026-10-13).
 - The planner's changes are part of the plan (`household.plannerChanges`, runProjection's `yearChanges`): every page that runs the plan includes them and says so; phase 10 gives each plan its own set. Each projection row carries its parts (`row.detail`).
 - Conversions in the lower years (phase 7): fill to the top of the bracket under the chosen rate, in any retired year (RMD years too), on top of the plan's strategy and the planner's changes; "below" compares the marginal bracket. No "Use in the plan"; the planner puts conversions in the plan.
+- Monte Carlo (phase 8): the plan's return inputs are each year's median (lognormal; zero volatility = the projection exactly); one fixed seed, so reruns show an input's effect; `runProjection`'s `yearReturn` is the hook; the spending a path sustains is searched to 0.5% (`sustainableSpending`'s `tolerance`). Phase 9's spending rules run inside the same paths.
 - Each phase ends with its Docs article (`articles/`, listed in `src/lib/docs.js`).
 
 
@@ -44,12 +46,11 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 | Phase | What ships | Done when |
 | --- | --- | --- |
-| 8. Monte Carlo | Random return paths from the S&P 500's return and volatility after inflation (adjustable), chance of success, distribution charts for income and portfolio value. | No volatility reproduces the projection; a fixed seed repeats. |
 | 9. Spending with guardrails | The spending that succeeds in 50% of paths, and when to raise or cut it. | Each guardrail, rerun, lands on its target. |
 | 10. Household plans | One household's facts with several saved plans, switching between them and comparing them in every calculator. | Two plans of one household open side by side with every difference marked. |
 | 11. Liabilities and debt pay-off | A debt pay-off calculator for every debt (the mortgage included): pay off early or invest, the order to pay debts off, and payoff dates flowing into the retirement income number and the projection. | A hand-worked amortization matches, and the payoff year changes the spending need from that year on. |
 
-The finished phases (0 to 7, the switchover and the "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
+The finished phases (0 to 8, the switchover and the "Before phase" lists) and the decision tables are in `docs/roadmap-archive.md`.
 
 ## How the plan fits together
 
@@ -92,53 +93,13 @@ The projection has to carry every part of the household, so the plan evaluators 
 | Spending | Flat, from income or the budget, with the legacy goal (phase 3) | Guardrails: phase 9; staged spending: later (designed) |
 | Survivor years | Yes | — |
 | Tax drag on taxable accounts; returns before and after retirement | Yes | — |
-| The return each year | Constant | Random paths: phase 8 |
+| The return each year | Constant | Random paths: Monte Carlo (phase 8, built) |
 
 **Surplus income (decided 2026-10-08).** Some years bring in more than spending, tax and savings use: an RMD larger than the need, part-time work or rent in retirement, Social Security plus a pension. A setting in Assumptions decides what happens to it: **save it** (reinvested in a taxable account, as today; the default) or **spend it** (spending rises in those years). Built in phase 2; each year's surplus shows in the year table. The same rule covers income beyond the paycheck before retirement. Later, phase 11 may add sending it to extra debt payments.
 
 ### Year-by-year and Monte Carlo: one plan
 
 Both run the same plan from the same inputs and assumptions; only the returns differ. The year-by-year projection is the plan at a constant return, readable line by line. Monte Carlo (phase 8) reruns that exact plan over many random return paths and reports how often it works. With no volatility, Monte Carlo reproduces the year-by-year exactly (a test). Both pages show the same plan (by name, once phase 10 exists) and link to each other; the guardrails (phase 9) are spending rules applied inside the same paths.
-
-## Phase 8: Monte Carlo
-
-The projection assumes the same return every year, which hides sequence risk: bad years early in retirement do far more damage than the same years late. Phase 8 runs the same projection over many random return paths. The engine is shared with phase 9.
-
-**Return model:** the S&P 500's historical return and standard deviation, after inflation, to start (NYU Stern's yearly S&P 500 returns from 1928, less inflation; cited in the docs), both adjustable on the page (sliders, so the effect shows as they move). Later: different settings at different ages (a glide path toward lower risk) and more robust return options.
-
-**Engine:** the projection takes an optional return for each year; without it nothing changes. A seeded random number generator, so the same inputs always give the same answer. Dollars stay in today's terms.
-
-**Outputs:**
-
-- Chance of success: the share of paths that meet spending every year through the plan-to ages.
-- Distribution charts, for income and for total portfolio value: the spread of outcomes as a bell-shaped histogram, with the likely range marked (e.g. the middle 50% and 80% of paths) and the median. Income = the spending each path can sustain; portfolio value at a chosen age and at the end.
-- A fan chart of the portfolio over time (10th to 90th percentiles).
-- When the failing paths run out.
-
-**Speed:** about 8 ms a projection, so 1,000 paths take about 8 seconds. The runs move to a background worker so the page stays responsive and fills in as paths finish; the path count is to be set (500 to 1,000).
-
-**Tests:** zero volatility reproduces the projection exactly; a fixed seed repeats exactly; a hand-made three-year path; the drawn returns' average and spread match the inputs within a set tolerance.
-
-**Decisions (Michael, 2026-10-16):**
-
-| Question | Decision |
-| --- | --- |
-| The average return | The plan's two return inputs (before and after retirement), read as the long-run compound growth: the median path lands near the projection. Each year's draw is set higher to match (lognormal: the average yearly return is above the compound rate by about half the variance). |
-| Volatility | The S&P 500's own yearly swing after inflation, about 20% (NYU Stern's yearly returns from 1928, figure cited in the docs); a slider on the page. |
-| Paths | 1,000. |
-| The income chart | The spending each path sustains, from the first 200 paths (a search per path), filling in after the rest; its median is the spending that succeeds in half the paths (phase 9 builds on it). Chance of success and the portfolio charts use all 1,000. |
-| When it runs | A Run button (Michael asked whether one is needed: yes, a run takes 8 to 30 seconds). Progress shows while it runs; results stay after an input changes, marked out of date until run again. |
-
-**Steps (Claude, 2026-10-16):**
-
-- (a) **The engine:** runProjection takes `yearReturn` (the plan's return each year by default: today's results); seeded lognormal paths (`src/lib/monteCarlo.js`). Tests: a hand-made three-year path, zero volatility = the projection exactly, a seed repeats, σ by hand, the drawn returns' median, average and spread. Measured: about 2.5 ms a projection (61 years), so 1,000 paths take about 2.5 seconds.
-  **Done 2026-10-16.**
-- (b) **The simulation:** every path at the spending need: chance of success (no shortfall, and the legacy goal left), the portfolio by year (10th to 90th percentiles), at a chosen age and at the end, when the failing paths run out; the spending each of the first 200 paths sustains. Pure, in chunks, so a worker can report progress.
-  **Done 2026-10-16.** `simulatePaths`, `sustainableOnPaths`, `summarizeMonteCarlo` in `monteCarlo.js`; any range of paths, so chunks join to the whole. Tests: three given paths worked by hand (success, balances, the fan, run-out ages, each path's spending), no volatility = the projection, a seed repeats. The spending search stops within 0.5% (a `tolerance` option on sustainableSpending; default $1, today's results). Measured on the default household (need $65,380): 1,000 paths 5.5 s, the 200-path spending search 26 s on one thread, so step (c) splits the work over several workers. Chance of success 91%; the median path sustains $136,914 against the projection's $133,401 (the median path lands near the projection, as decided).
-- (c) **The page** (#/monte-carlo, under Evaluations): the volatility slider, the Run button and progress (a background worker), the chance of success, the fan chart, the distribution charts, the run-out ages; out of date after an input changes. Dashboard tile and Copy summary.
-  **Done 2026-10-16.** `src/next/MonteCarloResult.jsx`, run by `useMonteCarlo.js` in up to 4 workers (`monteCarlo.worker.js`; chunks of 50 paths, then 5 searches). The whole run takes about 8 to 12 seconds in the browser on the default household. Blocks: Chance of success (the volatility slider, saved with the household as `calculators.monteCarlo.volatility`; Run or Stop; progress), the portfolio over time (median and the middle 80% and 50% as bands, a `bands` option on LineChart), the portfolio at an age (a histogram, new `Histogram.jsx`, cut at the 90th percentile), the spending the paths sustain (with the need and the median marked; succeeds in 9 in 10, 3 in 4, half), when the failing paths run out. The run stays when moving between pages and is marked out of date once an input changes. Tile: the last run's chance, or "Not run yet". Checked in the browser at desktop and phone widths. Also: a share link now runs to 3,522 characters (the test's limit raised to 3,600).
-- (d) **The Docs article**, with the S&P 500 figures cited.
-  **Done 2026-10-16.** `articles/monte-carlo.md`, listed in Docs and linked from the page. The figures, worked out from NYU Stern's yearly table (1928 to 2023, 96 years, after inflation): the S&P 500's average year 8.40%, standard deviation 19.4%, compound growth 6.55%; 60% S&P 500 and 40% 10-year Treasuries rebalanced yearly: 5.79%, 12.5%, 5.03%. The 20% default is the S&P 500's 19.4% rounded. The projection article points to it; the Social Security blurbs (Docs index and dashboard) updated for the rework.
 
 ## Phase 9: Spending with guardrails
 
