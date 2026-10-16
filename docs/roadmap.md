@@ -119,6 +119,16 @@ The projection assumes the same return every year, which hides sequence risk: ba
 
 **Tests:** zero volatility reproduces the projection exactly; a fixed seed repeats exactly; a hand-made three-year path; the drawn returns' average and spread match the inputs within a set tolerance.
 
+**Decisions (Michael, 2026-10-16):**
+
+| Question | Decision |
+| --- | --- |
+| The average return | The plan's two return inputs (before and after retirement), read as the long-run compound growth: the median path lands near the projection. Each year's draw is set higher to match (lognormal: the average yearly return is above the compound rate by about half the variance). |
+| Volatility | The S&P 500's own yearly swing after inflation, about 20% (NYU Stern's yearly returns from 1928, figure cited in the docs); a slider on the page. |
+| Paths | 1,000. |
+| The income chart | The spending each path sustains, from the first 200 paths (a search per path), filling in after the rest; its median is the spending that succeeds in half the paths (phase 9 builds on it). Chance of success and the portfolio charts use all 1,000. |
+| When it runs | A Run button (Michael asked whether one is needed: yes, a run takes 8 to 30 seconds). Progress shows while it runs; results stay after an input changes, marked out of date until run again. |
+
 ## Phase 9: Spending with guardrails
 
 A spending number with rules for changing it: start at the spending that succeeds in 50% of the Monte Carlo paths, then know in advance at what portfolio value to raise it and at what value to cut it.
