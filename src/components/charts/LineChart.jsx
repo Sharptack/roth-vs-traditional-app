@@ -17,6 +17,9 @@ function padDomain(min, max, fraction) {
 // and a legend when there's more than one series (see the dataviz skill).
 // `zones` (optional): { above: { label, color }, below: { label, color } } shades the areas above and
 // below the zero line and labels them (used to show who comes out ahead).
+// `bands` (optional): [{ key, label, lower: [{ x, y }], upper: [{ x, y }], color, strength }] shaded ranges
+// behind the lines (Monte Carlo's fan: the middle 80% and 50% of paths), strength the fill's percent
+// of the color; the tooltip shows each as a range and the legend lists them.
 // `includeZero` (default true): whether the y-axis always shows $0/0, even when every value is
 // far from it — right for rate-gap-style charts centered on zero, wrong for a chart whose
 // values are always positive and clustered in a narrow band (it would squash the interesting
@@ -37,6 +40,7 @@ export default function LineChart({
   yCeil, // optional: the axis never goes above this (e.g. 1 for a chance)
   shadeFrom, // optional { x, label }: a light band from that x to the end (e.g. survivor years)
   refLines = [], // optional [{ x, label }]: dashed vertical markers, labels stacked down from the top (e.g. break-even ages)
+  bands = [],
 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
@@ -55,7 +59,7 @@ export default function LineChart({
     right: i === xTicks.length - 1 ? plotRight : (xPixels[i] + xPixels[i + 1]) / 2,
   }));
 
-  const allY = series.flatMap((s) => s.points.map((p) => p.y));
+  const allY = [...series.flatMap((s) => s.points.map((p) => p.y)), ...bands.flatMap((b) => [...b.lower, ...b.upper].map((p) => p.y))];
   const yRawMin = includeZero ? Math.min(...allY, 0) : Math.min(...allY);
   const yRawMax = includeZero ? Math.max(...allY, 0) : Math.max(...allY);
   const [yPadMinRaw, yPadMaxRaw] = padDomain(yRawMin, yRawMax, 0.15);
@@ -174,6 +178,14 @@ export default function LineChart({
             </g>
           ))}
 
+          {bands.map((b) => (
+            <path
+              key={b.key}
+              d={[...b.upper.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.x)} ${yScale(p.y)}`), ...[...b.lower].reverse().map((p) => `L ${xScale(p.x)} ${yScale(p.y)}`), 'Z'].join(' ')}
+              style={{ fill: `color-mix(in srgb, ${b.color} ${b.strength}%, transparent)` }}
+            />
+          ))}
+
           {hoveredX !== null && (
             <line x1={hoveredX} x2={hoveredX} y1={plotTop} y2={plotBottom} className="chart-crosshair" />
           )}
@@ -208,7 +220,7 @@ export default function LineChart({
               height={plotBottom - plotTop}
               fill="transparent"
               tabIndex={0}
-              aria-label={`${formatX(x)}: ${series.map((s) => `${s.label} ${formatY(s.points[i]?.y)}`).join(', ')}`}
+              aria-label={`${formatX(x)}: ${[...series.map((s) => `${s.label} ${formatY(s.points[i]?.y)}`), ...bands.map((b) => `${b.label} ${formatY(b.lower[i]?.y)} to ${formatY(b.upper[i]?.y)}`)].join(', ')}`}
               onPointerEnter={() => setHoverIndex(i)}
               onFocus={() => setHoverIndex(i)}
               onPointerLeave={() => setHoverIndex(null)}
@@ -237,11 +249,20 @@ export default function LineChart({
                 <span className="chart-tooltip-label">{s.label}</span>
               </div>
             ))}
+            {bands.map((b) => (
+              <div className="chart-tooltip-row" key={b.key}>
+                <span className="chart-tooltip-key" style={{ background: `color-mix(in srgb, ${b.color} ${b.strength}%, transparent)` }} />
+                <span className="chart-tooltip-value">
+                  {formatY(b.lower[hoverIndex]?.y)} to {formatY(b.upper[hoverIndex]?.y)}
+                </span>
+                <span className="chart-tooltip-label">{b.label}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {series.length > 1 && (
+      {series.length + bands.length > 1 && (
         <ul className="chart-legend">
           {series.map((s, si) => (
             <li key={s.key}>
@@ -250,6 +271,12 @@ export default function LineChart({
                 style={{ background: s.color ?? SERIES_COLORS[si % SERIES_COLORS.length] }}
               />
               {s.label}
+            </li>
+          ))}
+          {bands.map((b) => (
+            <li key={b.key}>
+              <span className="chart-legend-swatch" style={{ background: `color-mix(in srgb, ${b.color} ${b.strength}%, transparent)` }} />
+              {b.label}
             </li>
           ))}
         </ul>

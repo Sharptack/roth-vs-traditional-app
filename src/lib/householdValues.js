@@ -161,6 +161,7 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
     pension: { lumpSum: '300000' },
     funding: { target: '1' }, // the funded level savings needed is solved to (phase 4), '1' = 100%
     socialSecurity: { discountRate: '0' }, // the Social Security calculator's discount rate (phase 5)
+    monteCarlo: { volatility: '0.2' }, // Monte Carlo's yearly swing of returns (phase 8, decided 2026-10-16)
   },
   plannerChanges: [], // the year-by-year planner's changes (phase 6): none
 };

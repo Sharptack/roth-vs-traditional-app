@@ -164,3 +164,31 @@ export function summarizeMonteCarlo(outcomes, incomes = []) {
     income: incomes.length ? spread(incomes) : null,
   };
 }
+
+// Each path's portfolio at the end of year t (person 1's age = the fan's age at t).
+export const balancesAt = (outcomes, t) => outcomes.map((o) => o.balances[t]);
+
+// Bins for a distribution chart: equal widths from the smallest value to the clip percentile (a few
+// very large paths would otherwise squash the rest into one bar), the last bin open, holding
+// everything above; or, with width, bins of that width from the smallest value rounded down to it
+// (ages: width 1), none open.
+// -> [{ from, to, count, open }]
+export function histogram(values, { bins = 20, clip = 0.98, width } = {}) {
+  if (values.length === 0) return [];
+  const sorted = [...values].sort((a, b) => a - b);
+  const min = sorted[0];
+  if (width) {
+    const lo = Math.floor(min / width) * width;
+    const n = Math.floor((sorted.at(-1) - lo) / width) + 1;
+    const out = Array.from({ length: n }, (_, i) => ({ from: lo + i * width, to: lo + (i + 1) * width, count: 0, open: false }));
+    for (const v of sorted) out[Math.min(n - 1, Math.floor((v - lo) / width))].count += 1;
+    return out;
+  }
+  const hi = percentile(sorted, clip);
+  if (!(hi > min)) return [{ from: min, to: sorted.at(-1), count: sorted.length, open: false }];
+  const w = (hi - min) / bins;
+  const out = Array.from({ length: bins }, (_, i) => ({ from: min + i * w, to: min + (i + 1) * w, count: 0, open: false }));
+  for (const v of sorted) out[Math.min(bins - 1, Math.floor((v - min) / w))].count += 1;
+  out[bins - 1].open = sorted.at(-1) > hi;
+  return out;
+}

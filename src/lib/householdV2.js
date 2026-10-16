@@ -46,6 +46,12 @@ import { validateHousehold } from './household.js';
 const blankAsZero = (text) => (String(text ?? '').trim() === '' ? 0 : parseNumber(text));
 const blankAsNull = (text) => (String(text ?? '').trim() === '' ? null : parseNumber(text));
 
+// Monte Carlo's volatility as typed: blank or not a number = 20% (the default); 0 = none.
+const monteCarloVolatility = (text) => {
+  const n = parseFloat(String(text ?? '').trim());
+  return Number.isFinite(n) && n >= 0 ? n : 0.2;
+};
+
 // Whether a row is received at this age (blank ages: no limit on that side).
 export function receivedAt(row, age) {
   if (row.fromAge !== null && !(age >= row.fromAge)) return false;
@@ -269,6 +275,8 @@ export function toHouseholdV2(input, year) {
       funding: { target: Number(values.calculators.funding?.target) > 0 ? Number(values.calculators.funding.target) : 1 },
       // The Social Security calculator (phase 5): the discount rate on lifetime benefits (0 by default).
       socialSecurity: { discountRate: Number(values.calculators.socialSecurity?.discountRate) > 0 ? Number(values.calculators.socialSecurity.discountRate) : 0 },
+      // Monte Carlo (phase 8): the volatility of yearly returns (blank or not a number: 20%; 0 = none).
+      monteCarlo: { volatility: monteCarloVolatility(values.calculators.monteCarlo?.volatility) },
       pension: firstPension
         ? {
             owner: firstPension.owner,

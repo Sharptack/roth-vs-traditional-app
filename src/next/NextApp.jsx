@@ -21,13 +21,13 @@ import { upgradeHouseholdValues } from '../lib/householdUpgrade.js';
 import { householdValuesV2FromSearch } from '../lib/householdLink.js';
 import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/householdInputs.js';
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
-import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, addPlannerChange, isoDate, refreshAges, removePlannerChange, updateRow } from '../lib/householdValues.js';
+import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, addPlannerChange, isoDate, refreshAges, removePlannerChange, setGroupField, updateRow } from '../lib/householdValues.js';
 import { projectionView } from '../lib/projectionSummary.js';
 import { plannerChangesNote, plannerTile } from '../lib/planner.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
-import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
+import { conversionTile, fundingTile, monteCarloTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
 import { applyClaimAge, socialSecurityView, survivalView } from '../lib/socialSecurityCalculator.js';
 import SocialSecurityResult from './SocialSecurityResult.jsx';
 import { applyRetirementAge, applySavingsChoice, fundingView, overfundedView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
@@ -46,6 +46,8 @@ import LifetimeComparison from './LifetimeComparison.jsx';
 import ConversionResult from './ConversionResult.jsx';
 import PensionResult from './PensionResult.jsx';
 import PlannerResult from './PlannerResult.jsx';
+import MonteCarloResult from './MonteCarloResult.jsx';
+import useMonteCarlo from './useMonteCarlo.js';
 import { compareLifetime, lifetimeOptions } from '../lib/lifetimeComparison.js';
 import { useCloud } from './useCloud.js';
 import AccountBar from './AccountBar.jsx';
@@ -115,7 +117,7 @@ const fundingOf = (r) => (r.spending.need !== null ? fundingView(r.household, r.
 // inputs page shows none.
 // The pages that run the plan year by year, and so carry the planner's changes (phase 6, decided
 // 2026-10-12): each says so. The Roth page's comparison sets the contributions itself.
-const PLAN_PAGES = ['roth', 'spending', 'funding', 'projection', 'conversion', 'socialSecurity'];
+const PLAN_PAGES = ['roth', 'spending', 'funding', 'projection', 'monteCarlo', 'conversion', 'socialSecurity'];
 const plannerNote = (changes, id) => plannerChangesNote(changes, { conversionsOnly: id === 'roth' });
 
 const isHome = (page) => page === 'home';
@@ -177,6 +179,14 @@ export const CALCULATORS = [
     article: 'projection',
   },
   {
+    id: 'monteCarlo',
+    group: 'evaluations',
+    title: 'Monte Carlo',
+    blurb: 'The plan over 1,000 random return paths: the chance the money lasts, the spread of the portfolio and of the spending it sustains, and when failing paths run out.',
+    ownTitle: 'Monte Carlo inputs',
+    article: 'monte-carlo',
+  },
+  {
     id: 'spending',
     group: 'evaluations',
     title: 'Retirement spending',
@@ -221,6 +231,9 @@ function usePreviewPage() {
 export default function NextApp({ initialPage, initialValues, client }) {
   const [values, setValues] = useState(() => initialValues ?? (FROM_LINK ? opening(FROM_LINK.values) : DEFAULT_HOUSEHOLD_VALUES));
   const [locked, setLocked] = useState(Boolean(FROM_LINK?.viewOnly));
+  // Monte Carlo's run (phase 8): kept across pages; out of date once the inputs change.
+  const mc = useMonteCarlo();
+  const mcStale = Boolean(mc.run) && mc.run.values !== values;
   // "Clear inputs" (decided 2026-10-09; "Start a new household" before it): a blank form, with an Undo
   // that restores the household on screen (and which saved household it was). A saved household is
   // never touched until it is saved over.
@@ -310,6 +323,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
     pension: pensionTile(parts.pension, pensionInputs),
     socialSecurity: socialSecurityTile(parts.socialSecurity),
     planner: plannerTile(h.plannerChanges),
+    monteCarlo: monteCarloTile(mc.run, mcStale),
   });
   const tiles = isHome(page) ? tilesOf({ tax, conversion, pension, projection, spending: spendingView, funding, socialSecurity }) : null;
   // For Copy summary: every calculator's headline, working out on demand what this page skipped.
@@ -622,6 +636,19 @@ export default function NextApp({ initialPage, initialValues, client }) {
                 />}
               {calculator.id === 'socialSecurity' && (
                 <SocialSecurityResult view={socialSecurity} survival={survival} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
+              )}
+              {calculator.id === 'monteCarlo' && (
+                <MonteCarloResult
+                  run={mc.run}
+                  stale={mcStale}
+                  household={roth.spending.need !== null ? h : null}
+                  need={roth.spending.need}
+                  error={roth.spending.error}
+                  volatility={h.calculators.monteCarlo.volatility}
+                  onVolatility={locked ? undefined : (text) => setValues((v) => setGroupField(v, 'calculators.monteCarlo', 'volatility', text))}
+                  onRun={() => mc.start({ household: h, need: roth.spending.need, values, volatility: h.calculators.monteCarlo.volatility })}
+                  onCancel={mc.cancel}
+                />
               )}
               {calculator.id === 'planner' && (
                 <PlannerResult

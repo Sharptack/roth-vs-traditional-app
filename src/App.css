@@ -2810,3 +2810,34 @@ th.win .th-sub {
   display: inline-block;
   margin-top: 8px;
 }
+
+/* Monte Carlo (phase 8): the volatility slider, Run and its progress, the age picker. */
+.mc-controls {
+  margin-top: 12px;
+}
+.mc-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 420px;
+}
+.mc-slider input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.mc-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dim);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.mc-progress progress {
+  width: 160px;
+  accent-color: var(--accent);
+}
+.mc-age {
+  display: inline-block;
+  margin-bottom: 8px;
+}

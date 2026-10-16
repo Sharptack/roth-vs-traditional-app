@@ -95,3 +95,14 @@ export function socialSecurityTile(view) {
     detail: more > 0.5 ? `${formatCurrency(more)} more over both lifetimes than the plan’s ages (${formatCurrency(plan.discountedTotal)})` : `The plan’s ages pay the most: ${formatCurrency(plan.discountedTotal)} over the plan`,
   };
 }
+
+// Monte Carlo (phase 8): the last run's chance of success (it runs only on its page, with Run).
+//   run: useMonteCarlo's (null: none yet); stale: the inputs changed since.
+export function monteCarloTile(run, stale) {
+  if (!run?.summary) return { headline: run?.running ? 'Running…' : 'Not run yet', detail: 'Open it and press Run: 1,000 random return paths through the plan.' };
+  const s = run.summary;
+  return {
+    headline: `${Math.round(s.chance * 100)}% chance of success`,
+    detail: `${s.successes.toLocaleString('en-US')} of ${s.paths.toLocaleString('en-US')} paths meet the ${formatCurrency(run.need)} need at ${Math.round(run.volatility * 100)}% volatility${stale ? ' (inputs changed since this run)' : ''}`,
+  };
+}

@@ -132,6 +132,7 @@ export function upgradeHouseholdValues(values, year) {
       conversion: { amount: v.convAmount },
       funding: { target: '1' }, // new in phase 4
       socialSecurity: { discountRate: '0' }, // new in phase 5
+      monteCarlo: { volatility: '0.2' }, // new in phase 8
       pension: {
         lumpSum: v.penLumpSum,
         monthly: v.penMonthly,

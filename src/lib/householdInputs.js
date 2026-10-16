@@ -342,6 +342,11 @@ export const CALCULATOR_INPUTS = {
     sections: ['household', 'ssBenefits', 'socialSecurity', 'income'],
     fields: { people: ['age', 'planToAge', 'sex', 'retirementAge'] },
   },
+  // Monte Carlo (phase 8): what the projection reads (its volatility and Run are on the page).
+  monteCarlo: {
+    sections: ['projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'spending', 'legacy', 'assumptions'],
+    fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
+  },
   // The year-by-year planner (phase 6): what the projection reads (its changes are made on the page).
   planner: {
     sections: ['projection', 'household', 'dependents', 'income', 'ssBenefits', 'contributions', 'deductions', 'accounts', 'spending', 'assumptions'],

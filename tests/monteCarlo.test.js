@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { logSigma, normalDraws, pathReturn, percentile, returnShocks, seededRandom, simulatePaths, summarizeMonteCarlo, sustainableOnPaths } from '../src/lib/monteCarlo.js';
+import { histogram, logSigma, normalDraws, pathReturn, percentile, returnShocks, seededRandom, simulatePaths, summarizeMonteCarlo, sustainableOnPaths } from '../src/lib/monteCarlo.js';
 import { meetsPlan } from '../src/lib/projectionSummary.js';
 import { runProjection } from '../src/lib/projection.js';
 import { PREVIEW_DEFAULT_VALUES, toHousehold } from '../src/lib/household.js';
@@ -157,5 +157,25 @@ describe('the simulation with no volatility (the default household)', () => {
     const all = simulatePaths(h, need, { to: 6, seed: 5 });
     expect(simulatePaths(h, need, { to: 6, seed: 5 })).toEqual(all);
     expect([...simulatePaths(h, need, { from: 0, to: 3, seed: 5 }), ...simulatePaths(h, need, { from: 3, to: 6, seed: 5 })]).toEqual(all);
+  });
+});
+
+describe('histogram (HAND CALC)', () => {
+  // 0..8 and 100, 4 bins to the 90th percentile: position 9 × 0.9 = 8.1 → 8 + 0.1 × 92 = 17.2;
+  // width 4.3: [0, 4.3) holds 0-4 (5), [4.3, 8.6) 5-8 (4), [8.6, 12.9) none, the last, open, 100.
+  it('equal bins to the clip percentile, the last open', () => {
+    const h = histogram([0, 1, 2, 3, 4, 5, 6, 7, 8, 100], { bins: 4, clip: 0.9 });
+    expect(h.map((b) => b.count)).toEqual([5, 4, 0, 1]);
+    expect(h[1].from).toBeCloseTo(4.3, 10);
+    expect(h.map((b) => b.open)).toEqual([false, false, false, true]);
+  });
+  // Ages 72, 72, 74.5, 75 at width 1: from 72, bins 72, 73, 74, 75 holding 2, 0, 1, 1.
+  it('a fixed width (ages)', () => {
+    const h = histogram([72, 75, 72, 74.5], { width: 1 });
+    expect(h.map((b) => [b.from, b.count])).toEqual([[72, 2], [73, 0], [74, 1], [75, 1]]);
+  });
+  it('every value the same: one bin; none: no bins', () => {
+    expect(histogram([5, 5, 5])).toEqual([{ from: 5, to: 5, count: 3, open: false }]);
+    expect(histogram([])).toEqual([]);
   });
 });

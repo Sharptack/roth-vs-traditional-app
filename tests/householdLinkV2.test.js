@@ -45,8 +45,8 @@ describe('version 2 share links', () => {
   it('stay a reasonable length for a two-person household with rows', () => {
     // five income rows (Social Security and a pension among them) and every field: well within what
     // browsers and chat apps carry
-    // (3,500: rows carry the QBI and lump-sum fields since 2026-10-09)
-    expect(householdLinkSearchV2(couple).length).toBeLessThan(3500);
+    // (3,500: rows carry the QBI and lump-sum fields since 2026-10-09; 3,600: Monte Carlo's volatility, 2026-10-16)
+    expect(householdLinkSearchV2(couple).length).toBeLessThan(3600);
   });
 
   it('clean what comes back, like a saved household', () => {
