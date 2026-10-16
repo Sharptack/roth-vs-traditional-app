@@ -5,8 +5,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import LineChart from './charts/LineChart.jsx';
 import WinnerGrid from './charts/WinnerGrid.jsx';
-import { SCENARIOS } from '../lib/threeWay.js';
-import { THREE_WAY_AGES, THREE_WAY_BALANCES, THREE_WAY_INCOMES, THREE_WAY_POINTS, THREE_WAY_SAMPLE } from '../data/threeWayGrid.js';
+import { SCENARIOS, threeWayRanking } from '../lib/threeWay.js';
+import {
+  THREE_WAY_AGES,
+  THREE_WAY_BALANCES,
+  THREE_WAY_HEIR_RATES,
+  THREE_WAY_INCOMES,
+  THREE_WAY_POINTS,
+  THREE_WAY_SAMPLE,
+  THREE_WAY_SAVINGS_STEPS,
+} from '../data/threeWayGrid.js';
 import { formatCurrency } from '../lib/format.js';
 import { SCENARIOS_HASH } from '../lib/route.js';
 
@@ -101,21 +109,40 @@ function useThreeWayRun() {
   return { run, start, cancel };
 }
 
-function describe(r) {
+const pct0 = (v) => `${Math.round(v * 100)}%`;
+
+// What the maps and the closer look rank by: wealth at 95 at an heirs' rate, or lifetime tax.
+const BY = {
+  wealth: { label: 'After-tax wealth at 95', short: 'wealth at 95' },
+  tax: { label: 'Lifetime tax (federal income tax + IRMAA)', short: 'lifetime tax' },
+};
+const wealthLabel = (heirRate) => `After-tax wealth at 95 (heirs at ${pct0(heirRate)})`;
+
+// A point with its winner for the view chosen.
+const rankedFor = (r, view) => (r ? { ...r, ...threeWayRanking(r, view) } : undefined);
+
+function describe(r, heirRate) {
   const { age, income, balance } = r.point;
   const s = r.scenarios;
+  const three = (pick) => `Roth ${formatCurrency(pick(s.roth))}, Pre-tax ${formatCurrency(pick(s.pretax))}, with conversions ${formatCurrency(pick(s.converting))}`;
   const parts = [
-    `Age ${age}, ${compactMoney(income)} pay, ${compactMoney(balance)} Pre-tax`,
-    `After-tax wealth at 95: Roth ${formatCurrency(s.roth.endingAfterTax)}, Pre-tax ${formatCurrency(s.pretax.endingAfterTax)}, with conversions ${formatCurrency(s.converting.endingAfterTax)}`,
+    `Age ${age}, ${compactMoney(income)} pay, ${compactMoney(balance)} Pre-tax, saving ${pct0(r.savingsRate)} of pay${r.raised ? ' (raised from 10% so the money lasts)' : ''}`,
+    `Wealth at 95, heirs at ${pct0(heirRate)}: ${three((x) => x.endingAt[heirRate])}`,
+    `Lifetime tax: ${three((x) => x.totalTax)}`,
     r.noConversions ? 'No room to convert (below today’s rate)' : `Converted ${formatCurrency(s.converting.converted)} in all`,
   ];
-  if (r.allRunOut) parts.push(`Runs out in all three; sustainable spending: Roth ${formatCurrency(s.roth.sustainable)}, Pre-tax ${formatCurrency(s.pretax.sustainable)}, with conversions ${formatCurrency(s.converting.sustainable)}`);
+  if (r.allRunOut) parts.push(`Runs out in all three even saving ${pct0(THREE_WAY_SAVINGS_STEPS.at(-1))}; sustainable spending: ${three((x) => x.sustainable)}`);
   if (r.winner === 'even') parts.push(`About even: ${r.tied.map((k) => INFO[k].short).join(', ')}`);
   return parts.join('\n');
 }
 
-// The cells' marks: no room to convert; the money runs out in all three.
+// The cells' marks: savings raised; no room to convert; the money runs out in all three.
 const MARKS = [
+  {
+    symbol: '↑',
+    note: `savings raised from 10% (in steps up to ${pct0(THREE_WAY_SAVINGS_STEPS.at(-1))}) until the money lasts to 95 in all three; the rate is in the hover and the table`,
+    test: (r) => r.raised,
+  },
   {
     symbol: '°',
     note: "no room to convert: at the spending need nothing in retirement is taxed below today's rate, so the conversions scenario is Pre-tax itself",
@@ -123,34 +150,62 @@ const MARKS = [
   },
   {
     symbol: '†',
-    note: 'the money runs out before 95 in all three, so each leaves $0: ranked by sustainable spending instead',
+    note: `the money runs out before 95 in all three even saving ${pct0(THREE_WAY_SAVINGS_STEPS.at(-1))} (shown at 10%), so each leaves $0: ranked by sustainable spending instead`,
     test: (r) => r.allRunOut,
   },
 ];
 
-const formatLead = (r) => (r.winner === 'even' ? '' : `+${(r.lead * 100).toFixed(r.lead < 0.1 ? 1 : 0)}%`);
+// Wealth or spending: how much more the winner has; tax: how much less it pays.
+const formatLead = (r) => {
+  if (r.winner === 'even') return '';
+  const v = (r.lead * 100).toFixed(r.lead < 0.1 ? 1 : 0);
+  return r.measure === 'tax' ? `−${v}% tax` : `+${v}%`;
+};
 
-function WinnerMaps({ results }) {
+function ViewControls({ view, setView }) {
+  return (
+    <div className="three-way-controls">
+      <Select
+        label="Rank by"
+        value={view.by}
+        onChange={(by) => setView({ ...view, by })}
+        options={Object.entries(BY).map(([k, b]) => ({ value: k, label: b.label }))}
+      />
+      <Select
+        label="Heirs' tax rate on Pre-tax left"
+        value={view.heirRate}
+        onChange={(v) => setView({ ...view, heirRate: Number(v) })}
+        options={THREE_WAY_HEIR_RATES.map((h) => ({ value: h, label: pct0(h) }))}
+      />
+    </div>
+  );
+}
+
+function WinnerMaps({ results, view }) {
+  const what =
+    view.by === 'tax'
+      ? 'pays the least lifetime tax, and how much less than the next best'
+      : `leaves the most after-tax wealth at 95 (leftover Pre-tax taxed at the heirs' ${pct0(view.heirRate)}), and by how much it beats the next best`;
   return (
     <div className="card">
-      <h2>Who comes out ahead</h2>
+      <h2>Who comes out ahead: {BY[view.by].short}</h2>
       <p className="hint">
-        One map per starting age: pay across, the existing Pre-tax balance down. Each cell names the scenario that leaves
-        the most after-tax wealth at 95 (or, marked †, the most sustainable spending), and by how much it beats the next best. Hover a cell for all three.
+        One map per starting age: pay across, the existing Pre-tax balance down. Each cell names the scenario that {what}
+        {view.by === 'tax' ? ' (the heirs’ rate doesn’t change it)' : ''}. Hover a cell for all three.
       </p>
       <div className="three-way-maps">
         {THREE_WAY_AGES.map((age) => (
           <div key={age}>
             <h3>Starting at {age}</h3>
             <WinnerGrid
-              caption={`Starting at ${age}: the scenario that comes out ahead, by pay (across) and existing Pre-tax balance (down)`}
+              caption={`Starting at ${age}: the scenario that comes out ahead on ${BY[view.by].short}, by pay (across) and existing Pre-tax balance (down)`}
               rows={THREE_WAY_BALANCES.map((b) => ({ key: b, label: compactMoney(b) }))}
               columns={THREE_WAY_INCOMES.map((i) => ({ key: i, label: compactMoney(i) }))}
               rowHeading="Balance"
               columnHeading="Pay"
-              cellAt={(balance, income) => results[keyOf({ age, income, balance })]}
+              cellAt={(balance, income) => rankedFor(results[keyOf({ age, income, balance })], view)}
               scenarios={INFO}
-              describe={describe}
+              describe={(r) => describe(r, view.heirRate)}
               formatLead={formatLead}
               marks={MARKS}
               legend={age === THREE_WAY_AGES[THREE_WAY_AGES.length - 1]}
@@ -177,14 +232,16 @@ function Select({ label, value, onChange, options }) {
   );
 }
 
-function CloserLook({ results }) {
+function CloserLook({ results, view }) {
   const [across, setAcross] = useState('income');
   const [held, setHeld] = useState({ income: 100000, age: 35, balance: 100000 });
   const axis = AXES[across];
-  const slice = axis.values.map((x) => results[keyOf({ ...held, [across]: x })]);
+  const slice = axis.values.map((x) => rankedFor(results[keyOf({ ...held, [across]: x })], view));
   const ready = slice.every(Boolean);
-  // On the point's own measure: wealth at 95, or sustainable spending where all three run out.
-  const versus = (r, k) => ((r.scenarios[k][r.measure] - r.scenarios.pretax[r.measure]) / r.scenarios.pretax[r.measure]) * 100;
+  // On the view's measure (sustainable spending where all three run out), vs. all Pre-tax.
+  const valueOf = (r, k) =>
+    ({ wealth: r.scenarios[k].endingAt[view.heirRate], tax: r.scenarios[k].totalTax, sustainable: r.scenarios[k].sustainable })[r.measure];
+  const versus = (r, k) => ((valueOf(r, k) - valueOf(r, 'pretax')) / valueOf(r, 'pretax')) * 100;
   const series = ready
     ? SCENARIOS.map((k) => ({ key: k, label: INFO[k].label, color: INFO[k].color, points: slice.map((r, i) => ({ x: axis.values[i], y: versus(r, k) })) }))
     : [];
@@ -192,13 +249,14 @@ function CloserLook({ results }) {
     .filter((k) => k !== across)
     .map((k) => `${AXES[k].label.toLowerCase()} ${AXES[k].format(held[k])}`)
     .join(', ');
+  const measureText = view.by === 'tax' ? 'lifetime tax (lower is better)' : `after-tax wealth at 95, heirs at ${pct0(view.heirRate)}`;
 
   return (
     <div className="card">
       <h2>A closer look</h2>
       <p className="hint">
-        One variable across, the other two held. Each line is a scenario&rsquo;s after-tax wealth at 95 compared with
-        all Pre-tax (the zero line); where the money runs out in all three (marked † in the table), their sustainable spending.
+        One variable across, the other two held. Each line is a scenario&rsquo;s {measureText}, compared with all Pre-tax
+        (the zero line); where the money runs out in all three (marked † in the table), their sustainable spending.
       </p>
       <div className="three-way-controls">
         <Select
@@ -230,12 +288,12 @@ function CloserLook({ results }) {
             formatY={pctSigned}
             formatYTick={pctTick}
             xLabel={axis.label}
-            yLabel="After-tax wealth at 95 vs. all Pre-tax"
+            yLabel={view.by === 'tax' ? 'Lifetime tax vs. all Pre-tax' : 'Wealth at 95 vs. all Pre-tax'}
           />
           <details className="details">
             <summary>Show the numbers ({heldText})</summary>
             <div className="details-body">
-              <SliceTable axis={axis} slice={slice} />
+              <SliceTable axis={axis} slice={slice} heirRate={view.heirRate} />
             </div>
           </details>
         </>
@@ -244,11 +302,11 @@ function CloserLook({ results }) {
   );
 }
 
-function SliceTable({ axis, slice }) {
+function SliceTable({ axis, slice, heirRate }) {
   const groups = [
-    { key: 'endingAfterTax', label: 'After-tax wealth at 95' },
-    { key: 'totalTax', label: 'Lifetime tax' },
-    { key: 'sustainable', label: 'Sustainable spending' },
+    { key: 'wealth', label: wealthLabel(heirRate), pick: (s) => s.endingAt[heirRate] },
+    { key: 'tax', label: 'Lifetime tax', pick: (s) => s.totalTax },
+    { key: 'sustainable', label: 'Sustainable spending', pick: (s) => s.sustainable },
   ];
   return (
     <div className="table-wrap">
@@ -258,6 +316,7 @@ function SliceTable({ axis, slice }) {
             <th rowSpan={2} className="row-head">
               {axis.label}
             </th>
+            <th rowSpan={2}>Savings rate</th>
             <th rowSpan={2}>Spending need</th>
             {groups.map((g) => (
               <th key={g.key} colSpan={3}>
@@ -277,12 +336,16 @@ function SliceTable({ axis, slice }) {
                 {axis.format(axis.values[i])}
                 {r.allRunOut && ' †'}
               </th>
+              <td>
+                {pct0(r.savingsRate)}
+                {r.raised && ' ↑'}
+              </td>
               <td>{formatCurrency(r.need)}</td>
               {groups.flatMap((g) =>
                 SCENARIOS.map((k) => (
                   <td key={`${g.key}-${k}`} className={g.key === r.measure && r.tied.includes(k) ? 'three-way-best' : undefined}>
-                    {formatCurrency(r.scenarios[k][g.key])}
-                    {g.key === 'endingAfterTax' && r.scenarios[k].runsOut && '*'}
+                    {formatCurrency(g.pick(r.scenarios[k]))}
+                    {g.key === 'wealth' && r.scenarios[k].runsOut && '*'}
                   </td>
                 )),
               )}
@@ -292,8 +355,10 @@ function SliceTable({ axis, slice }) {
         </tbody>
       </table>
       <p className="hint">
-        Bold = the winner (or within 0.5% of it): the most after-tax wealth, or at † (the money runs out in all three) the most sustainable spending. * = the money runs out before 95 at the spending need.
-        Lifetime tax = federal income tax + IRMAA.
+        Bold = the winner on the measure chosen (or within 0.5% of it); at † (the money runs out in all three), the most
+        sustainable spending. ↑ = savings raised so the money lasts; a higher savings rate also lowers the spending need
+        (the need is take-home pay after savings). * = the money runs out before 95 at the spending need. Lifetime tax =
+        federal income tax + IRMAA.
       </p>
     </div>
   );
@@ -308,6 +373,7 @@ export default function ThreeWayPage() {
     };
   }, []);
   const { run, start, cancel } = useThreeWayRun();
+  const [view, setView] = useState({ by: 'wealth', heirRate: THREE_WAY_SAMPLE.heirRate });
   const results = run?.results ?? {};
 
   return (
@@ -326,15 +392,17 @@ export default function ThreeWayPage() {
           conversions rule).
         </p>
         <p>
-          <strong>The winner leaves the most after-tax wealth at 95, spending the plan&rsquo;s need.</strong> Sustainable
-          spending can&rsquo;t show conversions: at the highest steady spending the low brackets are already full, so the
-          rule never converts. Within 0.5% is about even.
+          <strong>Ranked by the after-tax wealth left at 95, spending the plan&rsquo;s need</strong> (leftover Pre-tax
+          taxed at the heirs&rsquo; rate you choose), <strong>or by lifetime tax.</strong> Sustainable spending can&rsquo;t
+          show conversions: at the highest steady spending the low brackets are already full, so the rule never converts.
+          Within 0.5% is about even.
         </p>
         <p className="hint">
-          Every sample household: single, W-2 pay, {THREE_WAY_SAMPLE.savingsRate * 100}% of pay saved to a 401(k), the
-          existing balance all Pre-tax, retiring at {THREE_WAY_SAMPLE.retirementAge}, planning to{' '}
-          {THREE_WAY_SAMPLE.planToAge}, no debt payments, and the app&rsquo;s default assumptions (7% return, 2.5%
-          inflation, IRMAA on, surplus income saved in retirement, heirs taxed at 24%).
+          Every sample household: single, W-2 pay, {pct0(THREE_WAY_SAMPLE.savingsRate)} of pay saved to a 401(k) (raised in
+          steps up to {pct0(THREE_WAY_SAVINGS_STEPS.at(-1))} where the money would run out before 95), the existing balance
+          all Pre-tax, retiring at {THREE_WAY_SAMPLE.retirementAge}, planning to {THREE_WAY_SAMPLE.planToAge}, no debt
+          payments, and the app&rsquo;s default assumptions (7% return, 2.5% inflation, IRMAA on, surplus income saved in
+          retirement).
         </p>
         <div className="button-row">
           {run?.running ? (
@@ -351,7 +419,7 @@ export default function ThreeWayPage() {
               <progress value={run.done} max={run.total} /> {run.done} of {run.total} households
             </span>
           )}
-          {!run && <span className="hint">About a minute or two; the maps fill in as it goes.</span>}
+          {!run && <span className="hint">About two minutes; the maps fill in as it goes.</span>}
         </div>
         {run?.error && <p className="note">{run.error}</p>}
         {run?.cancelled && run.done < run.total && (
@@ -359,12 +427,13 @@ export default function ThreeWayPage() {
             Stopped at {run.done} of {run.total}.
           </p>
         )}
+        {run && <ViewControls view={view} setView={setView} />}
       </div>
 
       {run && (
         <div className="scenario-batches">
-          <WinnerMaps results={results} />
-          <CloserLook results={results} />
+          <WinnerMaps results={results} view={view} />
+          <CloserLook results={results} view={view} />
         </div>
       )}
 
