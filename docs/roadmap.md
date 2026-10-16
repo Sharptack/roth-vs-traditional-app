@@ -8,9 +8,9 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 7, the switchover and the "Before phase" lists. 1,025 tests. Last closed: phase 7 (tag `phase-7-done`): on the Roth page under "Over a lifetime", the bracket each year against a chosen rate and the Roth vs. Pre-tax answer again with conversions in the years taxed below it (four full runs; conversions year by year with IRMAA room). With it: the "Before phase 7" input and page items, and the Social Security page rework (claiming strategy grid with the selected beside the most, year-by-year stacked bars, two freely chosen strategies on the break-even graph, a couple's joint odds).
 
-**In progress:** phase 8, Monte Carlo (decisions 2026-10-16, steps under Phase 8). Step (a) done 2026-10-16, local: the projection's yearReturn and the seeded lognormal paths (`monteCarlo.js`, hand-calculated tests).
+**In progress:** phase 8, Monte Carlo (decisions 2026-10-16, steps under Phase 8). Steps (a) and (b) done 2026-10-16, local: the projection's yearReturn, the seeded lognormal paths and the simulation (`monteCarlo.js`, hand-calculated tests).
 
-**Next:** phase 8 step (b), the simulation; then phase 9, guardrails.
+**Next:** phase 8 step (c), the page (workers, Run button, charts); then phase 9, guardrails.
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years; month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -134,6 +134,7 @@ The projection assumes the same return every year, which hides sequence risk: ba
 - (a) **The engine:** runProjection takes `yearReturn` (the plan's return each year by default: today's results); seeded lognormal paths (`src/lib/monteCarlo.js`). Tests: a hand-made three-year path, zero volatility = the projection exactly, a seed repeats, σ by hand, the drawn returns' median, average and spread. Measured: about 2.5 ms a projection (61 years), so 1,000 paths take about 2.5 seconds.
   **Done 2026-10-16.**
 - (b) **The simulation:** every path at the spending need: chance of success (no shortfall, and the legacy goal left), the portfolio by year (10th to 90th percentiles), at a chosen age and at the end, when the failing paths run out; the spending each of the first 200 paths sustains. Pure, in chunks, so a worker can report progress.
+  **Done 2026-10-16.** `simulatePaths`, `sustainableOnPaths`, `summarizeMonteCarlo` in `monteCarlo.js`; any range of paths, so chunks join to the whole. Tests: three given paths worked by hand (success, balances, the fan, run-out ages, each path's spending), no volatility = the projection, a seed repeats. The spending search stops within 0.5% (a `tolerance` option on sustainableSpending; default $1, today's results). Measured on the default household (need $65,380): 1,000 paths 5.5 s, the 200-path spending search 26 s on one thread, so step (c) splits the work over several workers. Chance of success 91%; the median path sustains $136,914 against the projection's $133,401 (the median path lands near the projection, as decided).
 - (c) **The page** (#/monte-carlo, under Evaluations): the volatility slider, the Run button and progress (a background worker), the chance of success, the fan chart, the distribution charts, the run-out ages; out of date after an input changes. Dashboard tile and Copy summary.
 - (d) **The Docs article**, with the S&P 500 figures cited.
 

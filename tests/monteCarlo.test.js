@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { logSigma, normalDraws, pathReturn, returnShocks, seededRandom } from '../src/lib/monteCarlo.js';
+import { logSigma, normalDraws, pathReturn, percentile, returnShocks, seededRandom, simulatePaths, summarizeMonteCarlo, sustainableOnPaths } from '../src/lib/monteCarlo.js';
+import { meetsPlan } from '../src/lib/projectionSummary.js';
 import { runProjection } from '../src/lib/projection.js';
 import { PREVIEW_DEFAULT_VALUES, toHousehold } from '../src/lib/household.js';
 
@@ -85,5 +86,76 @@ describe('logSigma and a year’s return (HAND CALC)', () => {
     expect(mean).toBeCloseTo(0.08793, 2); // standard error 0.2/√100,000 = 0.0006
     expect(sd).toBeCloseTo(0.2, 2);
     expect(median).toBeCloseTo(0.07, 2);
+  });
+});
+
+// Phase 8 step b: the simulation.
+describe('percentile', () => {
+  // [1..5]: the 10th at position 4 × 0.1 = 0.4 → 1 + 0.4 × (2 − 1) = 1.4; the median 3; the 90th 4.6.
+  it('linear between neighbors: 1.4, 3, 4.6', () => {
+    expect(percentile([1, 2, 3, 4, 5], 0.1)).toBeCloseTo(1.4, 10);
+    expect(percentile([1, 2, 3, 4, 5], 0.5)).toBe(3);
+    expect(percentile([1, 2, 3, 4, 5], 0.9)).toBeCloseTo(4.6, 10);
+    expect(percentile([], 0.5)).toBeNull();
+  });
+});
+
+describe('simulatePaths and summarizeMonteCarlo (HAND CALC, three given paths)', () => {
+  // 100,000 in Roth at 70, three years (to 72), $40,000 a year spent (no tax on Roth); each year the
+  // withdrawal comes out, then the return:
+  //   A, 10% a year: (100,000 − 40,000) × 1.1 = 66,000; (66,000 − 40,000) × 1.1 = 28,600; year 3
+  //     has 28,600 for a 40,000 need: short 11,400 at 72, ends at 0. Fails.
+  //   B, 50% a year: 60,000 × 1.5 = 90,000; 50,000 × 1.5 = 75,000; 35,000 × 1.5 = 52,500. Succeeds.
+  //   C, 0%: 60,000; 20,000; short 20,000 at 72, ends at 0. Fails.
+  // Chance 1/3. Year 1 sorted 60,000, 66,000, 90,000: the 10th = 60,000 + 0.2 × 6,000 = 61,200, the
+  // median 66,000, the 90th = 66,000 + 0.8 × 24,000 = 85,200. End: 0, 0, 52,500 (median 0).
+  const returnPaths = [[0.1, 0.1, 0.1], [0.5, 0.5, 0.5], [0, 0, 0]];
+  const h = { ...rothOnly(100000), calculators: { projection: { endAge: 72 } } };
+  const outcomes = simulatePaths(h, 40000, { to: 3, returnPaths });
+  const m = summarizeMonteCarlo(outcomes);
+  it('each path: success, balances, the age it falls short', () => {
+    expect(outcomes.map((o) => o.success)).toEqual([false, true, false]);
+    expect(outcomes[0].balances).toEqual([expect.closeTo(66000, 6), expect.closeTo(28600, 6), 0]);
+    expect(outcomes[1].balances).toEqual([expect.closeTo(90000, 6), expect.closeTo(75000, 6), expect.closeTo(52500, 6)]);
+    expect(outcomes.map((o) => o.runOutAge)).toEqual([72, null, 72]);
+  });
+  it('the summary: a 1-in-3 chance, the fan, the end, when the failures run out', () => {
+    expect(m.chance).toBeCloseTo(1 / 3, 10);
+    expect(m.fan[0]).toMatchObject({ year: 2026, age: 70, p10: expect.closeTo(61200, 6), p50: expect.closeTo(66000, 6), p90: expect.closeTo(85200, 6) });
+    expect(m.end.values).toEqual([0, 0, expect.closeTo(52500, 6)]);
+    expect(m.end.p50).toBe(0);
+    expect(m.runOut).toMatchObject({ count: 2, p50: 72 });
+    expect(m.income).toBeNull();
+  });
+  // The spending each path sustains, W:
+  //   A: ((100,000 − W) × 1.1 − W) × 1.1 = W → 121,000 = 3.31 W → W = 36,555.89
+  //   B: ((100,000 − W) × 1.5 − W) × 1.5 = W → 225,000 = 4.75 W → W = 47,368.42
+  //   C: 100,000 = 3 W → 33,333.33. The search stops within half a percent below each.
+  it('the spending each path sustains: 36,555.89, 47,368.42, 33,333.33 (within half a percent below)', () => {
+    const w = sustainableOnPaths(h, { to: 3, returnPaths });
+    [36555.89, 47368.42, 33333.33].forEach((x, i) => {
+      expect(w[i]).toBeLessThanOrEqual(x);
+      expect(w[i]).toBeGreaterThan(x * 0.995);
+    });
+    expect(summarizeMonteCarlo(outcomes, w).income.p50).toBe(w[0]);
+  });
+});
+
+describe('the simulation with no volatility (the default household)', () => {
+  const h = toHousehold(PREVIEW_DEFAULT_VALUES, Y);
+  const need = 60000;
+  const plan = runProjection(h, { need }).rows;
+  const m = summarizeMonteCarlo(simulatePaths(h, need, { to: 5, volatility: 0 }));
+  it('every path is the projection: the fan collapses onto it, the chance is the plan’s 0 or 1', () => {
+    expect(m.chance).toBe(meetsPlan(h, need) ? 1 : 0);
+    m.fan.forEach((f, t) => {
+      expect(f.p10).toBe(plan[t].endBalances.total);
+      expect(f.p90).toBe(plan[t].endBalances.total);
+    });
+  });
+  it('a seed repeats exactly; chunks join to the whole', () => {
+    const all = simulatePaths(h, need, { to: 6, seed: 5 });
+    expect(simulatePaths(h, need, { to: 6, seed: 5 })).toEqual(all);
+    expect([...simulatePaths(h, need, { from: 0, to: 3, seed: 5 }), ...simulatePaths(h, need, { from: 3, to: 6, seed: 5 })]).toEqual(all);
   });
 });

@@ -115,7 +115,9 @@ export function meetsPlan(household, need, { legacy, ...options } = {}) {
 // with no shortfall and, with options.legacy, the legacy goal left at the end. Bisection on the
 // need: a higher need can only run out sooner and leave less. Each step is a whole projection, so it
 // stops at $1 of precision. 0 when even no spending can't meet the goal (meetsPlan(h, 0, …) says).
-export function sustainableSpending(household, options = {}) {
+// options.tolerance (Monte Carlo's many searches, phase 8): stop within that share of the answer
+// instead (0.005 = half a percent), never finer than $1; the answer is still one that lasts.
+export function sustainableSpending(household, { tolerance = 0, ...options } = {}) {
   const lasts = (need) => meetsPlan(household, need, options);
   let lo = 0;
   let hi = 50000;
@@ -124,7 +126,7 @@ export function sustainableSpending(household, options = {}) {
     hi *= 2;
     if (hi > 1e9) return hi;
   }
-  while (hi - lo > 1) {
+  while (hi - lo > Math.max(1, tolerance * lo)) {
     const mid = (lo + hi) / 2;
     if (lasts(mid)) lo = mid;
     else hi = mid;

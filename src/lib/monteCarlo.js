@@ -9,6 +9,17 @@
 // with x = e^(σ²), the mean of 1 + R is (1 + g)√x and its variance (1 + g)² x (x − 1) = s², so
 // x = (1 + √(1 + 4 s² / (1 + g)²)) / 2.
 
+import { runProjection } from './projection.js';
+import { legacyOption, legacyValue, sustainableSpending } from './projectionSummary.js';
+import { strategyById } from './strategies.js';
+
+export const DEFAULT_VOLATILITY = 0.2;
+export const DEFAULT_PATHS = 1000;
+export const INCOME_PATHS = 200; // the paths the spending search runs on (decided 2026-10-16)
+export const DEFAULT_SEED = 1;
+export const INCOME_TOLERANCE = 0.005; // each path's spending search stops within half a percent
+const MAX_YEARS = 120; // draws per path: more than any plan's years
+
 // mulberry32: a small seeded generator, uniform on [0, 1). The same seed gives the same sequence.
 export function seededRandom(seed) {
   let a = seed >>> 0;
@@ -59,5 +70,97 @@ export function pathReturn(shocks, volatility) {
   return (rate, t) => {
     const shift = sigmaOf(rate) * (shocks[t] ?? 0);
     return shift === 0 ? rate : (1 + rate) * Math.exp(shift) - 1;
+  };
+}
+
+// The options every path runs with, as the projection page: its end age and withdrawal strategy,
+// and the legacy goal (if any) for success and the spending search.
+export function monteCarloOptions(household) {
+  const own = household.calculators?.projection ?? {};
+  return { endAge: own.endAge, strategy: strategyById(own.strategy), legacy: legacyOption(household) };
+}
+
+// One path at the spending need: success (no shortfall in any year and the legacy goal, if any, left,
+// as meetsPlan), the total portfolio at the end of each year, and person 1's age in the first year
+// short of the need (null when none).
+// -> { success, balances, endTotal, runOutAge, years, ages }
+export function pathOutcome(household, need, { legacy, ...options }, yearReturn) {
+  const { rows } = runProjection(household, { ...options, need, yearReturn });
+  const short = rows.find((r) => r.shortfall > 0);
+  const last = rows[rows.length - 1];
+  const legacyMet = !(legacy?.target > 0) || legacyValue(last.endBalances, legacy) >= legacy.target;
+  return {
+    success: !short && legacyMet,
+    balances: rows.map((r) => r.endBalances.total),
+    endTotal: last.endBalances.total,
+    runOutAge: short ? short.ages[0] : null,
+    years: rows.map((r) => r.year),
+    ages: rows.map((r) => r.ages[0]),
+  };
+}
+
+// Each path's yearReturn, paths from to to (exclusive): from the seed and the volatility, or, with
+// returnPaths (tests), each path's returns year by year as given.
+function pathReturns({ from, to, volatility, seed, returnPaths }) {
+  if (returnPaths) return returnPaths.slice(from, to).map((path) => (_, t) => path[t]);
+  const shocks = returnShocks({ seed, paths: to, years: MAX_YEARS });
+  return shocks.slice(from, to).map((z) => pathReturn(z, volatility));
+}
+
+// Paths from to to (exclusive) at the spending need, in chunks so a worker can report progress.
+export function simulatePaths(household, need, { from = 0, to = DEFAULT_PATHS, volatility = DEFAULT_VOLATILITY, seed = DEFAULT_SEED, returnPaths } = {}) {
+  const options = monteCarloOptions(household);
+  return pathReturns({ from, to, volatility, seed, returnPaths }).map((yearReturn) => pathOutcome(household, need, options, yearReturn));
+}
+
+// The spending each path sustains (sustainableSpending on that path's returns: no shortfall, the
+// legacy goal left), paths from to to (exclusive), each within INCOME_TOLERANCE below the answer.
+export function sustainableOnPaths(household, { from = 0, to = INCOME_PATHS, volatility = DEFAULT_VOLATILITY, seed = DEFAULT_SEED, returnPaths } = {}) {
+  const options = monteCarloOptions(household);
+  return pathReturns({ from, to, volatility, seed, returnPaths }).map((yearReturn) => sustainableSpending(household, { ...options, yearReturn, tolerance: INCOME_TOLERANCE }));
+}
+
+// The p-th percentile (0 to 1) of sorted values, linear between neighbors: position (n − 1) × p.
+export function percentile(sorted, p) {
+  if (sorted.length === 0) return null;
+  const h = (sorted.length - 1) * p;
+  const lo = Math.floor(h);
+  const hi = Math.min(sorted.length - 1, lo + 1);
+  return sorted[lo] + (h - lo) * (sorted[hi] - sorted[lo]);
+}
+
+const BANDS = [0.1, 0.25, 0.5, 0.75, 0.9];
+const bands = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const [p10, p25, p50, p75, p90] = BANDS.map((p) => percentile(sorted, p));
+  return { p10, p25, p50, p75, p90, sorted };
+};
+// The percentiles with the sorted values (for the distribution charts).
+const spread = (values) => {
+  const { sorted, ...b } = bands(values);
+  return { values: sorted, ...b };
+};
+const bandsOnly = (values) => {
+  const { sorted, ...b } = bands(values);
+  return b;
+};
+
+// The page's figures from the paths' outcomes (and the spending each of the first paths sustains):
+//   chance: the share of paths that succeed; fan: the portfolio's percentiles each year (person 1's
+//   age); end: the portfolio at the end; runOut: person 1's age when the failing paths first fall
+//   short; income: the spending the paths sustain (its median succeeds in half of them).
+export function summarizeMonteCarlo(outcomes, incomes = []) {
+  const n = outcomes.length;
+  const { years = [], ages = [] } = outcomes[0] ?? {};
+  const fan = years.map((year, t) => ({ year, age: ages[t], ...bandsOnly(outcomes.map((o) => o.balances[t])) }));
+  const runOutAges = outcomes.filter((o) => o.runOutAge !== null).map((o) => o.runOutAge);
+  return {
+    paths: n,
+    successes: outcomes.filter((o) => o.success).length,
+    chance: n ? outcomes.filter((o) => o.success).length / n : null,
+    fan,
+    end: spread(outcomes.map((o) => o.endTotal)),
+    runOut: { count: runOutAges.length, ...spread(runOutAges) },
+    income: incomes.length ? spread(incomes) : null,
   };
 }
