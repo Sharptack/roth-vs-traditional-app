@@ -6,6 +6,7 @@ Finished phases and settled decisions from the round 2 plan, moved here word for
 
 | Date | Phase | Tests |
 | --- | --- | --- |
+| 2026-10-16 | Phase 9: Spending with guardrails | 1,119 |
 | 2026-10-16 | Phase 8: Monte Carlo | 1,048 |
 | 2026-10-16 | Phase 7: Roth vs. Pre-tax with conversions in the lower years | 1,025 |
 | 2026-10-16 | Social Security page rework (during phase 7) | 1,025 |
@@ -701,3 +702,42 @@ The projection assumes the same return every year, which hides sequence risk: ba
 
 **Closed:** 2026-10-16, 1,048 tests (tag `phase-8-done`). Every step done; the Done-when tests pass (no volatility reproduces the projection exactly; a fixed seed repeats). The histograms shade the middle 50% of paths and give the 80% range (10th and 90th percentiles) as figures under the chart. No existing results changed (`yearReturn` and `tolerance` default to today's behavior). Also during the phase: the projection's withdrawal-strategy table scrolls on a phone (the 19 px overflow fixed).
 
+## Phase 9: Spending with guardrails
+
+A spending number with rules for changing it: start at the spending that succeeds in 80% of the Monte Carlo paths, then know in advance at what portfolio value to raise it and at what value to cut it.
+
+**Decided with Michael (2026-10-16):**
+
+- **Risk-based guardrails only; no Guyton-Klinger beside them.** Reason: Michael prefers Income Lab's approach and doesn't want the two side by side. (Supersedes the proposal below and the archive's "Guardrails" line.)
+- **The target: 80% chance of success**, adjustable (Income Lab's default: the spending 80% of paths sustain). Replaces the 50% starting point.
+- **The guardrails: cut when the chance falls to 50%, raise when it reaches 95%**, both adjustable. Michael's leaning, not firm: he likes Income Lab (cut at 25%, raise at about 100%) and isn't sure. Revisit once the page shows how often cuts come and how large they are under each.
+- **The change: back to the target both ways** (the spending whose chance is 80% at that portfolio), **skipped when under 5%** (Income Lab's minimum change).
+- Sources: Income Lab's methodology help page (incomelab.helpjuice.com, "How are the retirement paycheck and guardrails calculated?"); Kitces, Fitzpatrick and Tharp, "Improving Retirement Distribution With Risk-Based Guardrails" (2021: a 90% target, cut at 70%, raise at 99%).
+
+**How it works.** The spending the plan sustains differs path by path (phase 8's "spending each path sustains", Income Lab's "spending cloud"). The chance of success at a spending is the share of paths that sustain it, so the target spending is that cloud's 20th percentile. A guardrail is a portfolio value: the value at which today's spending's chance falls to 50% (cut) or rises to 95% (raise), with the whole plan (Social Security, pensions, other income, the years left) in every path. At a guardrail, spending moves to the target spending at that portfolio value.
+
+**Outputs:**
+
+- The target spending (80% of paths sustain it) and today's chance at the plan's spending.
+- Today's guardrails: "if the portfolio falls to $X, cut spending to $Y; if it rises to $Z, raise it to $W", and the same levels for the next several years.
+- Spending under the rule across the paths: its range by year, how often a cut comes, the largest cut.
+
+**Steps:**
+
+- (a) Today's guardrails (`src/lib/guardrails.js`): the spending cloud with today's balances scaled, the chance at a spending, the target spending, the cut and raise portfolio values and the spending at each, the 5% minimum. Tests on hand-made return paths; with no volatility the chance is 0 or 1. **Done (2026-10-16):** every value is an order statistic of a per-path cloud (target: the ⌈0.8n⌉-th largest spending; cut: the ⌊0.5n⌋-th smallest needed portfolio; raise: the ⌈0.95n⌉-th), so a rerun lands on its target exactly; 200 paths (`GUARDRAIL_PATHS`), each search to 0.5%. About 14,000 projections on the default household (≈ 65 s on one thread at 4.6 ms each), so the page needs the workers.
+- (b) The plan from a later year at a given portfolio: the projection replayed to year t, its balances scaled there, random returns after. Gives the guardrails for the next several years. Test: scaled by 1, it is the projection. **Done (2026-10-16):** `runProjection` takes `needIn` (spending by year) and `rescale` ({ t, scale }); `guardrails(…, { start })` runs the plan to year t at its own returns and spending (the median path), scales the balances there, then each path's returns from its first draw. Success counts the years from t.
+- (c) The rule inside each path: measure the cost first (it needs the chance at every year of every path); likely a table of the spending cloud by year and portfolio value, built once from (b). Spending becomes a per-year amount in the projection. Tests: with no volatility nothing triggers; a hand-made path cuts where (a) says. **Done (2026-10-16):**
+  - Each path checks its spending at the start of each retired year against a table for that year, built along the plan at the target spending: 50 inner paths (seed 2, apart from the outer paths), each one's sustainable spending from that year at 0.5, 1 and 1.5 times the plan's portfolio then, joined by straight lines. Accuracy: within 0.4% of a direct search between the points (median; 1% at worst). The outer paths start at the target spending.
+  - Cost: one table about 5 s on one thread (the default household, 31 retired years: about 2.5 minutes on one thread, under a minute in the workers), after `runProjection` gained `snapshotAt`/`resume` (a run resumed from a later year's state is the whole run, row for row; it was 21 s a table replaying the early years).
+  - The years after today: each year's guardrails come from the same table (`tableGuardrails`), not a rerun; today's are the exact ones of step (a).
+  - "With no volatility nothing triggers" holds when spending starts at the sustainable spending; below it, the rule raises spending once to it (with no risk, the risk-based rule spends what the plan sustains).
+  - The page computes today's guardrails at the target spending (the recommended one), and shows the plan's own spending's chance beside it.
+- (d) The page (`#/guardrails`, under Evaluations): the four settings saved with the household, run in background workers with a Run button, as Monte Carlo. **Done (2026-10-16):** "Spending guardrails": the recommended spending (and the plan's need's chance), today's guardrails, the guardrails year by year (chart and table), spending under the rule (its fan and figures). Volatility is Monte Carlo's (one setting). The work runs in three stages; today's guardrails come first. In a browser on the Windows laptop: today's in about 30 s, all in about 75 s (the default household, 31 retired years; headless Chrome runs workers on the slow cores and took 2 to 3 times longer).
+  - Changes to step (c) found running it: the tables' points are 0, 0.25, 1 and 4 times the plan's portfolio (the 0.5/1/1.5 points erred badly far from them, which made the last years overspend); a table every second retired year and every one of the last 10, the years between from the two either side; each search starts from a guess (the same answers, faster).
+  - **For Michael to confirm (proposed 2026-10-16):** in the plan's last year the rule spends what is left, so a path counts as lasting when it pays its spending every year before the last; the page reports the last year apart (on the default household 78% of paths pay less than planned then, by 11% in the middle one: the tables, built from the middle path's account mix and IRMAA history, overstate what a path that has spent a lot can pay at the end). Spending figures are what was paid.
+  - For a household still working, today's cut value can be $0 (the savings to come carry the plan); the page says "no cut today" then.
+- (e) The Docs article. **Done (2026-10-16):** `articles/guardrails.md`, listed after Monte Carlo; Monte Carlo's article now links to it.
+
+**Done when:** each guardrail, rerun, lands on its target (the chance at the cut value is 50%, at the raise value 95%, and the new spending's chance there is 80%, within the paths' sampling).
+
+**Closed:** 2026-10-16, 1,119 tests (tag `phase-9-done`). Every step done; the Done-when tests pass (each of today's guardrails, rerun, lands on its target: the cut at 50%, the raise at 95%, the new spending at 80%; also from a later year). The Tests line changed with the method: no Guyton-Klinger path; "with no volatility no rule triggers" holds when spending starts at the sustainable spending (below it, one raise to it). Left open for Michael: the last-year rule (step d) and whether the 50%/95% guardrails stay. Also during the phase (Michael's commits): Social Security counts this year without a retirement age (a benefit received or claimed at a set age; his case $315 to $2,445 of tax), and an estimate from earnings for someone retired reads the work they left (a $100,000 job left at 65: $0 to $36,224 a year). Tests: the share-link length limit 3,600 to 3,700 (the four settings); the QBI upgrade test's timeout 60 to 120 s (33 s alone).
