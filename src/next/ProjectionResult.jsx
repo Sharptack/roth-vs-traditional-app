@@ -201,6 +201,7 @@ export default function ProjectionResult({ view, error }) {
         <p className="hint">
           Each strategy run at the retirement income number ({$(need)} per year), all else the same. The chosen one is marked.
         </p>
+        <div className="table-scroll">
         <table className="compare-table strategy-table">
           <thead>
             <tr>
@@ -232,6 +233,7 @@ export default function ProjectionResult({ view, error }) {
             })}
           </tbody>
         </table>
+        </div>
         <p className="hint">
           Roth conversions: the conversion&rsquo;s tax is paid from a taxable account; when there is none, or it runs
           short, it is held back from the conversion (less reaches Roth).

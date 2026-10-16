@@ -21,7 +21,6 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 - One contribution type per person (see Open questions). The Roth catch-up rule is stated on the Roth page but not applied to the numbers.
 - Only the first death is modeled; the survivor lives to their life expectancy. "Currently receiving" Social Security has no known PIA, so it gives a spouse no spousal top-up.
 - Funding: extra savings earn no extra employer match, and the savings-needed search scales the rows as entered (not the planner's contribution changes).
-- The projection's withdrawal-strategy table is 19 px wider than a phone screen.
 - Staged spending is designed (`docs/staged-spending-design.md`) but not built (Later release).
 
 **Decisions later phases build on** (details in the archive):
