@@ -8,9 +8,9 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 7, the switchover and the "Before phase" lists. 1,025 tests. Last closed: phase 7 (tag `phase-7-done`): on the Roth page under "Over a lifetime", the bracket each year against a chosen rate and the Roth vs. Pre-tax answer again with conversions in the years taxed below it (four full runs; conversions year by year with IRMAA room). With it: the "Before phase 7" input and page items, and the Social Security page rework (claiming strategy grid with the selected beside the most, year-by-year stacked bars, two freely chosen strategies on the break-even graph, a couple's joint odds).
 
-**In progress:** phase 8, Monte Carlo (decisions 2026-10-16, steps under Phase 8). Steps (a) to (c) done 2026-10-16, local (the page: #/monte-carlo, a Run button, workers, charts): the projection's yearReturn, the seeded lognormal paths and the simulation (`monteCarlo.js`, hand-calculated tests).
+**In progress:** phase 8, Monte Carlo (decisions 2026-10-16, steps under Phase 8). Every step, (a) to (d), done 2026-10-16, local and unpushed; waiting on Michael's look, then `/closeout`. The page: #/monte-carlo, a Run button, workers, charts; the projection's yearReturn, the seeded lognormal paths and the simulation (`monteCarlo.js`, hand-calculated tests).
 
-**Next:** phase 8 step (d), the Docs article; then phase 9, guardrails.
+**Next:** phase 9, spending with guardrails (builds on the paths and the spending each sustains).
 
 **Known gaps and open items:**
 - Social Security claiming ages are whole years; month-level claiming, partial first years and SSA's January-1st birthday rule aren't modeled (in `docs/ideas.md`).
@@ -138,6 +138,7 @@ The projection assumes the same return every year, which hides sequence risk: ba
 - (c) **The page** (#/monte-carlo, under Evaluations): the volatility slider, the Run button and progress (a background worker), the chance of success, the fan chart, the distribution charts, the run-out ages; out of date after an input changes. Dashboard tile and Copy summary.
   **Done 2026-10-16.** `src/next/MonteCarloResult.jsx`, run by `useMonteCarlo.js` in up to 4 workers (`monteCarlo.worker.js`; chunks of 50 paths, then 5 searches). The whole run takes about 8 to 12 seconds in the browser on the default household. Blocks: Chance of success (the volatility slider, saved with the household as `calculators.monteCarlo.volatility`; Run or Stop; progress), the portfolio over time (median and the middle 80% and 50% as bands, a `bands` option on LineChart), the portfolio at an age (a histogram, new `Histogram.jsx`, cut at the 90th percentile), the spending the paths sustain (with the need and the median marked; succeeds in 9 in 10, 3 in 4, half), when the failing paths run out. The run stays when moving between pages and is marked out of date once an input changes. Tile: the last run's chance, or "Not run yet". Checked in the browser at desktop and phone widths. Also: a share link now runs to 3,522 characters (the test's limit raised to 3,600).
 - (d) **The Docs article**, with the S&P 500 figures cited.
+  **Done 2026-10-16.** `articles/monte-carlo.md`, listed in Docs and linked from the page. The figures, worked out from NYU Stern's yearly table (1928 to 2023, 96 years, after inflation): the S&P 500's average year 8.40%, standard deviation 19.4%, compound growth 6.55%; 60% S&P 500 and 40% 10-year Treasuries rebalanced yearly: 5.79%, 12.5%, 5.03%. The 20% default is the S&P 500's 19.4% rounded. The projection article points to it; the Social Security blurbs (Docs index and dashboard) updated for the rework.
 
 ## Phase 9: Spending with guardrails
 

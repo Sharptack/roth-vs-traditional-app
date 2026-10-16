@@ -60,7 +60,7 @@ Some years bring in more than spending, tax and savings use: an RMD larger than 
 
 - Spending is flat in today's dollars; it doesn't fall with age or change for health care.
 - Earnings are flat in today's dollars: no raises.
-- Each return is the same every year (Monte Carlo comes in a later phase).
+- Each return is the same every year; [Monte Carlo](#/docs/monte-carlo) runs the plan over random returns.
 - Only the first death is modeled; the survivor lives to their life expectancy.
 - No state income tax.
 - Social Security's earnings test before full retirement age is not applied to work in retirement.

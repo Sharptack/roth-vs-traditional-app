@@ -31,6 +31,11 @@ export const DOCS_ARTICLES = [
     blurb: 'How each year is worked out: income over the years, withdrawal strategies, RMDs, dividends, returns, and whether the money lasts.',
   },
   {
+    slug: 'monte-carlo',
+    title: 'Monte Carlo',
+    blurb: 'The plan over 1,000 random return paths: the returns and the volatility, the chance of success, the portfolio’s spread, the spending the paths sustain, and when failing paths run out.',
+  },
+  {
     slug: 'spending',
     title: 'Retirement spending',
     blurb: 'What the resources allow the household to spend each year with its legacy goal, the goal’s cost, a charitable legacy, and Use in the plan.',
@@ -58,7 +63,7 @@ export const DOCS_ARTICLES = [
   {
     slug: 'social-security',
     title: 'The Social Security calculator',
-    blurb: 'When to claim: the grid of every pair of claiming ages, strategies year by year and on a break-even graph, spousal and survivor benefits, what each age does to the plan, and the chance of reaching the break-even ages.',
+    blurb: 'When to claim: the claiming strategy grid, the selected strategy beside the most and year by year, any two strategies on a break-even graph, spousal and survivor benefits, and the chance of being alive, for each of you and both.',
   },
   {
     slug: 'rates',

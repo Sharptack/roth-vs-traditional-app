@@ -166,7 +166,7 @@ export const CALCULATORS = [
     id: 'socialSecurity',
     group: 'decisions',
     title: 'Social Security: when to claim',
-    blurb: 'Lifetime benefits for every claiming age from 62 to 70, break-even ages, and for a couple every pair of ages, with spousal and survivor benefits.',
+    blurb: 'Lifetime benefits for every claiming age from 62 to 70, and for a couple every pair of ages, with spousal and survivor benefits; any two strategies on a break-even graph, and the chance of being alive.',
     ownTitle: 'Social Security inputs',
     article: 'social-security',
   },
