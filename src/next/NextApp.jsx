@@ -194,6 +194,7 @@ export const CALCULATORS = [
     title: 'Spending guardrails',
     blurb: 'The spending 80% of random return paths sustain, the portfolio values at which to cut or raise it (today and each retired year), and how spending moves under that rule.',
     ownTitle: 'Guardrails inputs',
+    article: 'guardrails',
   },
   {
     id: 'spending',

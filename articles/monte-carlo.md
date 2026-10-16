@@ -41,7 +41,7 @@ The spread of the portfolio at one age, the end of the plan to start (choose ano
 
 ## Spending the paths sustain
 
-For each of the first 200 paths, the highest steady spending after tax that path supports to the end of the plan (leaving the legacy goal, if any), found the way Retirement spending finds it, to within half a percent. The chart shows their spread with the spending need and the median marked, and the figures give the spending that succeeds in 9 paths in 10, in 3 in 4, and in half. The median is the spending with a 50% chance of success, the starting point for spending with guardrails, a later phase. Each path is its own search of about a dozen runs of the plan, so this part finishes after the rest.
+For each of the first 200 paths, the highest steady spending after tax that path supports to the end of the plan (leaving the legacy goal, if any), found the way Retirement spending finds it, to within half a percent. The chart shows their spread with the spending need and the median marked, and the figures give the spending that succeeds in 9 paths in 10, in 3 in 4, and in half. The median is the spending with a 50% chance of success; [Spending guardrails](#/docs/guardrails) recommends the one 80% sustain. Each path is its own search of about a dozen runs of the plan, so this part finishes after the rest.
 
 ## When the failing paths run out
 
@@ -52,4 +52,4 @@ For the paths that fall short, your age in the first year they can't pay the ful
 - Each year's return is independent of the last: no momentum, no recovery after a crash, no market cycles.
 - One return and volatility for every account; no separate stocks, bonds and cash, and no glide path toward lower risk with age.
 - Inflation is the input's, every year; lifespans are the plan's life expectancies (random lifespans are a later idea).
-- Spending stays fixed at the need whatever the markets do; spending rules that cut or raise it come with guardrails.
+- Spending stays fixed at the need whatever the markets do; [Spending guardrails](#/docs/guardrails) shows spending that is cut or raised with them.

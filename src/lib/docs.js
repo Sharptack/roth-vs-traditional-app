@@ -36,6 +36,11 @@ export const DOCS_ARTICLES = [
     blurb: 'The plan over 1,000 random return paths: the returns and the volatility, the chance of success, the portfolio’s spread, the spending the paths sustain, and when failing paths run out.',
   },
   {
+    slug: 'guardrails',
+    title: 'Spending guardrails',
+    blurb: 'Risk-based guardrails: the spending 80% of paths sustain, the portfolio values at which to cut or raise it, today and each retired year, and how spending moves under the rule.',
+  },
+  {
     slug: 'spending',
     title: 'Retirement spending',
     blurb: 'What the resources allow the household to spend each year with its legacy goal, the goal’s cost, a charitable legacy, and Use in the plan.',
