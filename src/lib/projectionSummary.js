@@ -88,11 +88,32 @@ export function legacyValue(endBalances, { measure = 'balance', heirTaxRate = DE
   return measure === 'afterTax' ? afterTaxEnding(endBalances, { heirTaxRate, charityShare }) : endBalances.total;
 }
 
-// legacyTarget(household, goal) -> the goal in dollars: { type: 'none' | 'amount' | 'share', amount,
-// share }. A share is of today's portfolio (every Existing Account).
-export function legacyTarget(household, { type = 'none', amount = 0, share = 0 } = {}) {
+// The calendar year the last person retires (no earlier than this year): the first year no one works.
+export function lastRetirementYear(household) {
+  return Math.max(household.year, ...household.people.map((p) => p.birthYear + p.retirementAge));
+}
+
+// The plan's portfolio at retirement (the default legacy goal's base, decided 2026-10-16): every
+// account at the start of the year the last person retires, as the projection has it at the spending
+// need (today's portfolio once everyone has retired), in today's dollars.
+// overrides: the projection's savings overrides ({ contributions, taxableSavings }), for a plan with
+// other savings (Pre-retirement funding's searches).
+export function retirementBalance(household, need = 0, overrides = {}) {
+  const own = household.calculators?.projection ?? {};
+  const { rows } = runProjection(household, { need, endAge: own.endAge, strategy: strategyById(own.strategy), ...overrides });
+  const row = rows.find((r) => r.year === lastRetirementYear(household)) ?? rows[0];
+  return row ? row.startBalances.total : 0;
+}
+
+// legacyTarget(household, goal) -> the goal in dollars: { type: 'none' | 'amount' | 'share' |
+// 'retirementShare', amount, share, retirementShare, retirementBalance }. A share is of today's
+// portfolio (every Existing Account); a retirement share of the plan's portfolio at retirement
+// (retirementBalance, worked out once with the spending need where the household is built; else here
+// with none drawn), so the goal is a fixed dollar amount whatever a calculator varies.
+export function legacyTarget(household, { type = 'none', amount = 0, share = 0, retirementShare = 0, retirementBalance: base } = {}) {
   if (type === 'amount') return Math.max(0, amount || 0);
   if (type === 'share') return Math.max(0, share || 0) * household.accounts.reduce((s, a) => s + (a.balance || 0), 0);
+  if (type === 'retirementShare') return Math.max(0, retirementShare || 0) * (Number.isFinite(base) ? base : retirementBalance(household));
   return 0;
 }
 
@@ -102,6 +123,16 @@ export function legacyOption(household) {
   const target = legacyTarget(household, goal);
   if (!(target > 0)) return null;
   return { target, measure: goal.measure, ...heirsOf(household) };
+}
+
+// The legacy option for a variant of the plan (other savings, another retirement age): a share of the
+// portfolio at retirement is worked out afresh for it (the variant's own balance then, at the need),
+// so a result found for the variant is the one the plan gets once the change is made; any other goal
+// is the household's as it is.
+export function legacyFor(household, need, overrides = {}) {
+  const goal = household.legacy;
+  if (goal?.type !== 'retirementShare') return legacyOption(household);
+  return legacyOption({ ...household, legacy: { ...goal, retirementBalance: retirementBalance(household, need, overrides) } });
 }
 
 // Whether the plan meets a spending need: no shortfall in any year, and the legacy goal (if any) left.

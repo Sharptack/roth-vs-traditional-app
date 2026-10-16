@@ -284,6 +284,7 @@ export function legacySummary(legacy) {
   const charity = Number(l.charityShare) > 0 ? ` · ${pct(l.charityShare)} to charity` : '';
   if (l.type === 'amount') return `${money(l.amount)} left at the end of the plan${after}${charity}`;
   if (l.type === 'share') return `${pct(l.share)} of today's portfolio left at the end of the plan${after}${charity}`;
+  if (l.type === 'retirementShare') return `${pct(l.retirementShare ?? '0.2')} of the portfolio at retirement left at the end of the plan${after}${charity}`;
   return `None: spend it all${charity}`;
 }
 

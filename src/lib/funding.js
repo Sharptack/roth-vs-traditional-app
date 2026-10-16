@@ -10,7 +10,7 @@
 //
 // Funded level = what the assets pay ÷ the need; within ABOUT_EVEN of 1 = about even.
 import { runProjection } from './projection.js';
-import { legacyOption, meetsPlan, sustainableSpending } from './projectionSummary.js';
+import { lastRetirementYear, legacyFor, meetsPlan, sustainableSpending } from './projectionSummary.js';
 import { strategyById } from './strategies.js';
 import { WITHDRAWAL_RATE } from './constants.js';
 import { everyoneRetired } from './spendingNeed.js';
@@ -26,10 +26,8 @@ export function fundedStatus(level) {
   return 'even';
 }
 
-// The calendar year the last person retires (no earlier than this year): the first year no one works.
-export function lastRetirementYear(household) {
-  return Math.max(household.year, ...household.people.map((p) => p.birthYear + p.retirementAge));
-}
+// The calendar year the last person retires: projectionSummary.js's (the legacy goal's base reads it too).
+export { lastRetirementYear };
 
 // The plan's projection options (the projection calculator's end age and strategy).
 function planOptions(household) {
@@ -75,7 +73,8 @@ export function atRetirement(household, need, { savings } = {}) {
 
 // Measure 2. -> { sustainable, need, funded, status }
 export function throughRetirement(household, need, { savings } = {}) {
-  const sustainable = sustainableSpending(household, { ...planOptions(household), legacy: legacyOption(household), ...savings });
+  // (a goal that is a share of the portfolio at retirement: this plan's, with these savings)
+  const sustainable = sustainableSpending(household, { ...planOptions(household), legacy: legacyFor(household, need, savings), ...savings });
   const funded = need > 0 ? sustainable / need : null;
   return { sustainable, need, funded, status: fundedStatus(funded) };
 }
@@ -132,11 +131,14 @@ const MAX_EXTRA = 10000000; // past this, more savings is taken as no answer
 export function savingsNeeded(household, need, { measure = 'atRetirement', target = 1 } = {}) {
   if (!(need > 0)) return null;
   const options = planOptions(household);
-  const legacy = legacyOption(household);
+  // (the legacy goal with each amount's savings: a share of the portfolio at retirement moves with them)
   const meets =
     measure === 'atRetirement'
       ? (extra) => atRetirement(household, need, { savings: savingsWith(household, extra) }).funded >= target
-      : (extra) => meetsPlan(household, target * need, { ...options, legacy, ...savingsWith(household, extra) });
+      : (extra) => {
+          const savings = savingsWith(household, extra);
+          return meetsPlan(household, target * need, { ...options, legacy: legacyFor(household, need, savings), ...savings });
+        };
   const planned = plannedSavings(household);
   const pay = householdPay(household);
   const result = (extra) => ({

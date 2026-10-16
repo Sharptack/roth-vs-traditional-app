@@ -22,7 +22,7 @@ import { householdValuesV2FromSearch } from '../lib/householdLink.js';
 import { CALCULATOR_INPUTS, INPUT_GROUPS, inputSections } from '../lib/householdInputs.js';
 import { DOCS_HASH, docsHash } from '../lib/docs.js';
 import { BLANK_HOUSEHOLD_VALUES, DEFAULT_HOUSEHOLD_VALUES, activePeople, addPlannerChange, isoDate, refreshAges, removePlannerChange, setGroupField, updateRow } from '../lib/householdValues.js';
-import { projectionView } from '../lib/projectionSummary.js';
+import { projectionView, retirementBalance } from '../lib/projectionSummary.js';
 import { plannerChangesNote, plannerTile } from '../lib/planner.js';
 import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
@@ -81,11 +81,15 @@ export function previewResult(values, year, { blend = true } = {}) {
   const household = toHouseholdV2(upgradeHouseholdValues(values, year), year);
   const householdErrors = validateHouseholdV2(household);
   const inputs = householdToCompareInputs(household);
-  const withSpending = (result) => ({
-    household,
-    result,
-    spending: householdErrors.length === 0 ? spendingNeed(household, result) : { need: null, error: householdErrors[0] },
-  });
+  const withSpending = (result) => {
+    const spending = householdErrors.length === 0 ? spendingNeed(household, result) : { need: null, error: householdErrors[0] };
+    // The default legacy goal's base (a share of the portfolio at retirement): worked out once, at the
+    // spending need, so every calculator holds the same dollar goal.
+    if (household.legacy?.type === 'retirementShare' && spending.need !== null) {
+      household.legacy = { ...household.legacy, retirementBalance: retirementBalance(household, spending.need) };
+    }
+    return { household, result, spending };
+  };
   // Already retired, with no earnings this year: nothing is saved from a paycheck to compare.
   if (householdErrors.length === 0 && everyoneRetired(household) && !(inputs.grossIncome > 0)) {
     return withSpending({ valid: false, errors: [RETIRED_MESSAGE] });

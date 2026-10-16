@@ -46,7 +46,9 @@
 //               method, baseline },        // phase 3: retirement spending from 'income' (take-home minus
 //                                          // savings) or 'budget' (baseline: today's spending, after tax)
 //   legacy: { type, amount, share, measure },   // phase 3: the legacy goal at the second death: type 'none' |
-//                                          // 'amount' (today's dollars) | 'share' (of today's portfolio);
+//                                          // 'amount' (today's dollars) | 'share' (of today's portfolio) |
+//                                          // 'retirementShare' (retirementShare: of the plan's portfolio at
+//                                          // retirement; the default, 20%, decided 2026-10-16);
 //                                          // measure 'balance' | 'afterTax' (Pre-tax at the heirs' rate);
 //                                          // charityShare: of what is left, to charity (Pre-tax first)
 //   assumptions: { returnRate, inflationRate, ageDeductions, taxSavedBasis, retirementRateShift, medicareIrmaa,
@@ -141,7 +143,9 @@ export const DEFAULT_HOUSEHOLD_VALUES = {
   dependents: [],
   deductions: { itemized: '' },
   spending: { debtPayments: '6000', otherExpenses: '0', retirementLifestyle: '1', method: 'income', baseline: '' },
-  legacy: { type: 'none', amount: '', share: '0.5', measure: 'balance', charityShare: '0' },
+  // The default legacy goal (Michael, 2026-10-16): 20% of the portfolio at retirement, for a more
+  // conservative plan. Saved households and links keep the goal they were saved with ('none' before).
+  legacy: { type: 'retirementShare', amount: '', share: '0.5', retirementShare: '0.2', measure: 'balance', charityShare: '0' },
   assumptions: {
     returnRate: '0.07',
     inflationRate: '0.025',

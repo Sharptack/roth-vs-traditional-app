@@ -269,9 +269,10 @@ export function toHouseholdV2(input, year) {
     },
     // The legacy goal (phase 3; projectionSummary.js legacyTarget / legacyValue).
     legacy: {
-      type: ['amount', 'share'].includes(values.legacy?.type) ? values.legacy.type : 'none',
+      type: ['amount', 'share', 'retirementShare'].includes(values.legacy?.type) ? values.legacy.type : 'none',
       amount: blankAsZero(values.legacy?.amount),
       share: blankAsZero(values.legacy?.share),
+      retirementShare: blankAsZero(values.legacy?.retirementShare ?? '0.2'),
       measure: values.legacy?.measure === 'afterTax' ? 'afterTax' : 'balance',
       // Of what is left, the share to charity, Pre-tax money first (step e, decided 2026-10-10).
       charityShare: Math.min(1, Math.max(0, blankAsZero(values.legacy?.charityShare) || 0)),
@@ -385,6 +386,9 @@ export function validateHouseholdV2(household) {
   const goal = household.legacy;
   if (goal?.type === 'amount' && !(isNum(goal.amount) && goal.amount >= 0)) errors.push("The legacy goal can't be negative.");
   if (goal?.type === 'share' && !(isNum(goal.share) && goal.share >= 0 && goal.share <= 3)) errors.push('Choose the legacy goal as a share of today’s portfolio.');
+  if (goal?.type === 'retirementShare' && !(isNum(goal.retirementShare) && goal.retirementShare >= 0 && goal.retirementShare <= 3)) {
+    errors.push('Choose the legacy goal as a share of the portfolio at retirement.');
+  }
   for (const d of household.dependents) {
     if (d.kind === 'child' && !(isNum(d.age) && d.age >= 0 && d.age <= 30)) errors.push("Enter each child's age (0 to 30).");
   }

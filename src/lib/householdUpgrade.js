@@ -113,7 +113,7 @@ export function upgradeHouseholdValues(values, year) {
     dependents: [],
     deductions: { itemized: '' },
     spending: { debtPayments: v.debtPayments, otherExpenses: v.otherExpenses, retirementLifestyle: v.retirementLifestyle, method: 'income', baseline: '' },
-    legacy: { type: 'none', amount: '', share: '0.5', measure: 'balance', charityShare: '0' },
+    legacy: { type: 'none', amount: '', share: '0.5', retirementShare: '0.2', measure: 'balance', charityShare: '0' }, // none: saved before the default goal (2026-10-16)
     assumptions: {
       returnRate: v.returnRate,
       inflationRate: pick(v, 'inflationRate'),

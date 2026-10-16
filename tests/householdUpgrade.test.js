@@ -153,7 +153,8 @@ describe('upgradeHouseholdValues, field by field', () => {
 
   it('leaves version 2 values as they are, and the defaults convert to the version 2 defaults', () => {
     expect(upgradeHouseholdValues(DEFAULT_HOUSEHOLD_VALUES, YEAR)).toBe(DEFAULT_HOUSEHOLD_VALUES);
-    expect(upgradeHouseholdValues(PREVIEW_DEFAULT_VALUES, YEAR)).toEqual(DEFAULT_HOUSEHOLD_VALUES);
+    // (but with no legacy goal: version 1 households were saved before the default goal, 2026-10-16)
+    expect(upgradeHouseholdValues(PREVIEW_DEFAULT_VALUES, YEAR)).toEqual({ ...DEFAULT_HOUSEHOLD_VALUES, legacy: { ...DEFAULT_HOUSEHOLD_VALUES.legacy, type: 'none' } });
   });
 });
 

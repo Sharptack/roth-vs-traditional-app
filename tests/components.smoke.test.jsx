@@ -1467,7 +1467,13 @@ describe('Already retired (2026-10-09)', () => {
     const { default: NextApp, previewResult } = await import('../src/next/NextApp.jsx');
     const { DEFAULT_HOUSEHOLD_VALUES: D } = await import('../src/lib/householdValues.js');
     const { retirementSpendingView, spendingChoice, applySpendingChoice } = await import('../src/lib/retirementSpending.js');
-    const plain = renderToStaticMarkup(<NextApp initialPage="spending" initialValues={D} client={null} />);
+    // The default goal (2026-10-16): 20% of the portfolio at retirement, in dollars on the page.
+    const r0 = previewResult(D, 2026);
+    expect(r0.household.legacy).toMatchObject({ type: 'retirementShare', retirementShare: 0.2 });
+    const defaultGoal = 0.2 * r0.household.legacy.retirementBalance;
+    const byDefault = renderToStaticMarkup(<NextApp initialPage="spending" initialValues={D} client={null} />);
+    expect(byDefault).toContain(`leaving the $${Math.round(defaultGoal).toLocaleString('en-US')} legacy goal`);
+    const plain = renderToStaticMarkup(<NextApp initialPage="spending" initialValues={{ ...D, legacy: { ...D.legacy, type: 'none' } }} client={null} />);
     expect(plain).toContain('<h1>Retirement spending</h1>');
     expect(plain).toContain('What the resources allow');
     expect(plain).toContain('No legacy goal is set');

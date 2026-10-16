@@ -755,7 +755,7 @@ export default function HouseholdInputs({
     // The legacy goal (phase 3): what is left at the end of the plan, read by Retirement spending
     // and the projection's sustainable spending.
     legacy: () => {
-      const l = values.legacy ?? { type: 'none', amount: '', share: '0.5', measure: 'balance', charityShare: '0' };
+      const l = values.legacy ?? { type: 'none', amount: '', share: '0.5', retirementShare: '0.2', measure: 'balance', charityShare: '0' };
       const set = (field) => setGroup('legacy', field);
       return (
         <>
@@ -767,12 +767,22 @@ export default function HouseholdInputs({
             options={[
               { value: 'none', label: 'Nothing set' },
               { value: 'amount', label: 'An amount' },
+              { value: 'retirementShare', label: 'A share of the portfolio at retirement' },
               { value: 'share', label: "A share of today's portfolio" },
             ]}
             hint="For heirs (or charity), at the end of the plan: the second death for a couple. Spending is then the most that still leaves it."
           />
           {l.type === 'amount' && (
             <CurrencyInput label="Legacy goal (today's dollars)" value={l.amount} onChange={set('amount')} />
+          )}
+          {l.type === 'retirementShare' && (
+            <SelectInput
+              label="Share of the portfolio at retirement"
+              hint="Of every account's balance at the start of the year the last person retires, as the plan projects it (today's balance once everyone has retired), in today's dollars. The default, 20%, keeps the plan on the conservative side."
+              value={l.retirementShare ?? '0.2'}
+              onChange={set('retirementShare')}
+              options={['0.1', '0.2', '0.25', '0.5', '0.75', '1'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%` }))}
+            />
           )}
           {l.type === 'share' && (
             <SelectInput

@@ -60,8 +60,13 @@ export function describeHousehold(household) {
   }
   // The legacy goal (phase 3), when one is set.
   const goal = household.legacy;
-  if (goal?.type === 'amount' || goal?.type === 'share') {
-    const what = goal.type === 'amount' ? formatCurrency(goal.amount) : `${formatPercent(goal.share, 0)} of today's portfolio`;
+  if (goal?.type === 'amount' || goal?.type === 'share' || goal?.type === 'retirementShare') {
+    const what =
+      goal.type === 'amount'
+        ? formatCurrency(goal.amount)
+        : goal.type === 'share'
+          ? `${formatPercent(goal.share, 0)} of today's portfolio`
+          : `${formatPercent(goal.retirementShare, 0)} of the portfolio at retirement${Number.isFinite(goal.retirementBalance) ? ` (${formatCurrency(goal.retirementShare * goal.retirementBalance)})` : ''}`;
     lines.push(bullet('Legacy goal', `${what} left at the end of the plan${goal.measure === 'afterTax' ? ', after tax' : ''}`));
   }
   if (goal?.charityShare > 0) lines.push(bullet('To charity', `${formatPercent(goal.charityShare, 0)} of what is left, Pre-tax money first`));

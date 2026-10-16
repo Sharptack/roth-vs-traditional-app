@@ -75,7 +75,8 @@ describe('cloud: saved households', () => {
   it('saves version 1 values converted to version 2', async () => {
     const r = recording({ id: 'n1', label: 'J', updated_at: 't' });
     await saveHousehold(r.client, { label: 'J', values: PREVIEW_DEFAULT_VALUES });
-    expect(r.seen()[0][1][1].data).toEqual(caseFromValuesV2(DEFAULT_HOUSEHOLD_VALUES));
+    // (with no legacy goal: version 1 values predate the default goal, 2026-10-16)
+    expect(r.seen()[0][1][1].data).toEqual(caseFromValuesV2({ ...DEFAULT_HOUSEHOLD_VALUES, legacy: { ...DEFAULT_HOUSEHOLD_VALUES.legacy, type: 'none' } }));
   });
 
   it('saves over an existing one by id', async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { runProjection } from '../src/lib/projection.js';
-import { afterTaxEnding, meetsPlan, legacyTarget, summarizeProjection, sustainableSpending } from '../src/lib/projectionSummary.js';
+import { afterTaxEnding, meetsPlan, legacyFor, legacyOption, legacyTarget, retirementBalance, summarizeProjection, sustainableSpending } from '../src/lib/projectionSummary.js';
 
 const Y = 2026;
 function retiree({ age, pretax = 0, roth = 0, taxable = 0, basisShare = 0, returnRate = 0 }) {
@@ -176,5 +176,33 @@ describe('whenLabel: when per year falls, in words', () => {
     expect(whenLabel({ year: 2061, ages: [95, 85], alive: [true, true] })).toBe('2061 (you 95, your spouse 85)');
     expect(whenLabel({ year: 2071, ages: [105, 95], alive: [false, true] })).toBe('2071 (your spouse 95)');
     expect(whenLabel({ year: 2071, ages: [95, 105], alive: [true, false] })).toBe('2071 (you 95)');
+  });
+});
+
+describe('the default legacy goal: a share of the portfolio at retirement (HAND CALC, decided 2026-10-16)', () => {
+  // 60, retiring at 63, $100,000 Roth at 10%, no pay, no tax: the start of 2029 (the retirement year)
+  // holds 100,000 × 1.1³ = 133,100; 20% of it = 26,620.
+  const h = { ...retiree({ age: 60, roth: 100000, returnRate: 0.1 }), people: [{ ...retiree({ age: 60 }).people[0], retirementAge: 63 }] };
+  it('the balance at the start of the last retirement year', () => {
+    expect(retirementBalance(h)).toBeCloseTo(133100, 6);
+    expect(legacyTarget(h, { type: 'retirementShare', retirementShare: 0.2 })).toBeCloseTo(26620, 6);
+  });
+  it('already retired: today’s portfolio', () => {
+    expect(retirementBalance(retiree({ age: 70, roth: 250000 }))).toBe(250000);
+  });
+  it('a balance worked out once (where the household is built) is used as given', () => {
+    expect(legacyTarget(h, { type: 'retirementShare', retirementShare: 0.2, retirementBalance: 500000 })).toBe(100000);
+    const withGoal = { ...h, legacy: { type: 'retirementShare', retirementShare: 0.2, retirementBalance: 500000, measure: 'balance' } };
+    expect(legacyOption(withGoal).target).toBe(100000);
+  });
+  // With $10,000 a year more to Roth while working (paid in at each year's end): 110,000 + 10,000 =
+  // 120,000; 132,000 + 10,000 = 142,000; 156,200 + 10,000 = 166,200 at the start of 2029: goal 33,240.
+  it('for a variant of the plan (other savings), worked out afresh', () => {
+    const withGoal = { ...h, legacy: { type: 'retirementShare', retirementShare: 0.2, retirementBalance: 133100, measure: 'balance' } };
+    const savings = { contributions: [{ owner: 'p1', amount: 10000, type: 'roth' }] };
+    expect(legacyFor(withGoal, 0, savings).target).toBeCloseTo(33240, 6);
+    expect(legacyFor(withGoal, 0).target).toBeCloseTo(26620, 6);
+    // any other goal: the household's as it is
+    expect(legacyFor({ ...h, legacy: { type: 'amount', amount: 5000 } }, 0, savings).target).toBe(5000);
   });
 });

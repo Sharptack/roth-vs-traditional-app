@@ -52,7 +52,9 @@ For the child tax credit. Enter each child with their age this year: a child und
 
 ## Legacy goal
 
-What the household wants to leave at the end of the plan (the second death, for a couple), for heirs or charity: **nothing set** (the default: spend it all), **an amount** in today's dollars, or **a share of today's portfolio** (of every Existing Account's balance today). **Measured as** the balance itself, or **after tax**, where Pre-tax money counts at the heirs' tax rate (under Withdrawals) and Roth and taxable money count in full.
+What the household wants to leave at the end of the plan (the second death, for a couple), for heirs or charity: **nothing set** (spend it all), **an amount** in today's dollars, **a share of the portfolio at retirement**, or **a share of today's portfolio** (of every Existing Account's balance today).
+
+**The default is 20% of the portfolio at retirement** (decided 2026-10-16), to keep the plan on the conservative side: every account at the start of the year the last person retires, as the year-by-year projection has it at the spending need (today's portfolio once everyone has retired), in today's dollars. It becomes a fixed dollar goal, the same on every page. Pre-retirement funding works it out afresh for each change it weighs (more savings, another retirement age), since those change the portfolio at retirement, so its answers hold once the change is made. A household saved before the default, or opened from an older link, keeps the goal it was saved with (nothing set, before); choosing a goal replaces the default. **Measured as** the balance itself, or **after tax**, where Pre-tax money counts at the heirs' tax rate (under Withdrawals) and Roth and taxable money count in full.
 
 With a goal set, sustainable spending is the most the household can spend each year that never falls short and still leaves the goal: on the Retirement spending page and in the projection's funded status.
 
