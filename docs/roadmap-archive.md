@@ -6,6 +6,9 @@ Finished phases and settled decisions from the round 2 plan, moved here word for
 
 | Date | Phase | Tests |
 | --- | --- | --- |
+| 2026-10-16 | Phase 7: Roth vs. Pre-tax with conversions in the lower years | 1,025 |
+| 2026-10-16 | Social Security page rework (during phase 7) | 1,025 |
+| 2026-10-15 | Before phase 7: inputs and page items | 1,013 |
 | 2026-10-15 | Phase 6: year-by-year planner | 1,013 |
 | 2026-10-15 | Before phase 6: Social Security planner additions | 972 |
 | 2026-10-12 | Phase 5: Social Security | 959 |
@@ -605,3 +608,52 @@ The projection page's year table gets these first (they need no planner), so the
   **Done 2026-10-12.** `articles/planner.md` ("The year-by-year planner"), listed in Docs and linked from the page; its examples are the hand-worked tests (the $34,886.36 of room, $4,176 and $16,333.36 of cost, the $77,386.36 IRMAA room and $1,148.40 surcharge). The projection and conversion articles point to it.
 
 **Closed:** 2026-10-15, 1,013 tests (tag `phase-6-done`). Every step done; decision 3's note added 2026-10-15. Two decided changes to existing results: a conversion's tax from a taxable account, else held back (decision 6), and IRMAA before the projection from the first year's income without conversions (2026-10-13).
+
+## Before phase 7: inputs and page items
+
+Asked by Michael on 2026-10-15, after phase 6. Read as follows (Claude, 2026-10-15; no numbers change). **Status:** (a) to (e) done 2026-10-15 (1,013 tests; checked in the browser except (e), which needs a sign-in); pushed 2026-10-15; archived at phase 7's `/closeout`.
+
+- (a) **The legacy goal moves to the Household group** on the inputs page (Household, Children and dependents, Legacy goal), out of Income and expenses.
+- (b) **Social Security gets its own section**, "Social Security", in Income and expenses after Income: one block per person (the benefit: estimated, PIA or currently receiving; the amount; the claiming age). The Income section no longer lists or offers Social Security. The rows stay where they are in the household (`values.incomes`, type `socialSecurity`), so saves, links and every result are unchanged; a person with no row shows as estimated, and editing it adds their row.
+- (c) **"Add" buttons more prominent:** "+ Add income" and the other row lists' add buttons (contributions, accounts, debts, dependents) become outlined buttons instead of plain links.
+- (d) **"Collapse all results" on the Roth page** also collapses the lifetime comparison ("Over a lifetime"), which sits outside the page's blocks.
+- (e) **The Households card** (sign-in and saved households) starts open on the dashboard and closed on the inputs page. Michael asked whether that is too much: it isn't (a default per page, one line each).
+
+## Social Security page rework (during phase 7)
+
+Asked by Michael on 2026-10-16; read as follows (Claude, 2026-10-16; no numbers change: the page shows the same figures, arranged differently, plus a couple's joint odds). **Status:** done 2026-10-16 (1,025 tests; checked in the browser, desktop and phone width); archived at phase 7's `/closeout`.
+
+- (a) **Inputs order:** Household, Social Security, Discount rate, then Income. Income stays: a benefit estimated from earnings reads the wages there (Michael asked whether it's still needed).
+- (b) **"Every pair of claiming ages" is renamed "Claiming strategy".** The colored dots are gone (they marked the strategies compared on the graph). One cell is selected (the plan's to start), and under the grid the selected sits beside the most: each person's monthly benefits and lifetime, the household total, the difference; "Use in the plan" for either.
+- (c) **Year by year:** a stacked bar chart, your benefits and your spouse's each year (survivor years shaded), with the table under it in a dropdown. The strategy is the selected or the most, nothing else.
+- (d) **Break-even:** two strategies, each with both people's claiming ages chosen freely; the most vs. the selected to start. The crossings table under the graph is gone; one line above it says where one pulls ahead.
+- (e) **The per-person "When to claim" tables are gone**, and with them the plan rerun at each claiming age (spending the plan supports, lifetime tax; `claimingPlanEffect` stays in the lib, tested, for later). The per-person break-even ages remain in the chance-of-being-alive table.
+- (f) **Joint odds for a couple** under the chance of being alive: at every fifth year of your age to 100, each alive, both alive, at least one alive (independent lives), and the expected years to the first and second death (hand-calculated tests).
+
+## Phase 7: Roth vs. Pre-tax with conversions in low-income years
+
+The question: if the household converts Pre-tax money to Roth in the years after retirement when its tax bracket is low, does that change the Roth vs. Pre-tax decision today? The Roth vs. Pre-tax calculator keeps its layout; this phase adds blocks to it.
+
+**New block: your tax bracket over time.** The bracket each year of the plan (from the projection), with today's rate on contributions as a line across it. The years below the line are the low-income years, typically between retirement and the start of Social Security and RMDs.
+
+**New block: with conversions in the lower years.** One choice, not a list of strategies: convert in the years taxed below a chosen rate (today's contribution rate by default, or a bracket), filling each such year up to it. The block shows:
+
+- The conversions year by year, with each year's IRMAA room.
+- The Roth vs. Pre-tax answer again with those conversions, beside the answer without them (sustainable spending, lifetime tax, after-tax wealth for heirs). For example: "Without conversions Roth leads by $1,200 a year; converting in the years below 22%, Pre-tax leads by $900."
+
+**Behind the blocks:** four lifetime runs, contributing Roth or Pre-tax, each with and without the conversions (the Roth side's existing Pre-tax money converts too, so the comparison is fair). The page shows only the two answers; that pairing is what "four-way" meant. Later, the planner's per-year conversions (phase 6) can stand in for the rule.
+
+**Tests:** each figure equals a separate full run; with no years below the chosen rate the blocks reduce to today's lifetime comparison.
+
+**Decisions (Michael, 2026-10-15):**
+
+| Question | Decision |
+| --- | --- |
+| How far to fill a low year | To the top of the bracket under the chosen rate (22% chosen: to the top of 12%), so every converted dollar is taxed below it. |
+| Which years convert | Any retired year below the rate, RMD years included (on top of the RMD); each person once they have retired. |
+| IRMAA | Each year's IRMAA room shown; a checkbox (off by default) also stops each year's conversion at the next IRMAA tier. |
+| "Use in the plan" | No button this phase; conversions go into the plan through the planner. |
+
+Decided by Claude while building (open to change): the conversion runs keep the plan's withdrawal strategy and the planner's changes, and add the rule's conversions on top (as the planner's conversions sit on top of a conversion strategy); "below the rate" compares the year's bracket (marginal rate), not the effective marginal rate.
+
+**Closed:** 2026-10-16, 1,025 tests (tag `phase-7-done`). Every item done: the rule and the four-run comparison (`lowerYearConversions.js`, hand-calculated tests, each figure equal to a separate full run; no years below the rate = today's lifetime comparison), the block on the Roth page under "Over a lifetime" (the bracket each year against the chosen rate, the answer without and with conversions, the conversions year by year with IRMAA room and the IRMAA-tier checkbox), and the Roth article's section "With Roth conversions in the lower years". No existing results changed.
