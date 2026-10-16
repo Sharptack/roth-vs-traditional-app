@@ -101,7 +101,7 @@ export function pathOutcome(household, need, { legacy, ...options }, yearReturn)
 
 // Each path's yearReturn, paths from to to (exclusive): from the seed and the volatility, or, with
 // returnPaths (tests), each path's returns year by year as given.
-function pathReturns({ from, to, volatility, seed, returnPaths }) {
+export function pathReturns({ from, to, volatility, seed, returnPaths }) {
   if (returnPaths) return returnPaths.slice(from, to).map((path) => (_, t) => path[t]);
   const shocks = returnShocks({ seed, paths: to, years: MAX_YEARS });
   return shocks.slice(from, to).map((z) => pathReturn(z, volatility));
