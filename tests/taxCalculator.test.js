@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { householdToYearTaxParams, taxCalculatorResult } from '../src/lib/taxCalculator.js';
 import { PREVIEW_DEFAULT_VALUES, toHousehold } from '../src/lib/household.js';
+import { toHouseholdV2 } from '../src/lib/householdV2.js';
+import { DEFAULT_HOUSEHOLD_VALUES } from '../src/lib/householdValues.js';
 
 const Y = 2026;
 const run = (values) => taxCalculatorResult(householdToYearTaxParams(toHousehold({ ...PREVIEW_DEFAULT_VALUES, ...values }, Y)));
@@ -129,5 +131,43 @@ describe("the bracket visual's scale: total income and taxable income (2026-10-0
     expect(p.now.room).toBeCloseTo(43224.78, 1);
     expect(p.now.roomIncome).toBe(to22.income - 125000); // more total income than taxable: the 20% QBI and half SE tax come off too
     expect(p.now.roomIncome).toBeGreaterThan(p.now.room);
+  });
+});
+
+// Social Security without a retirement age (found 2026-10-16): the tax page asks only for the age,
+// so a person already receiving (or claiming at a set age) must count without one.
+describe('tax calculator: Social Security with no retirement age (2026, HAND CALC)', () => {
+  // Michael's household: MFJ (no spouse entered), age 71 (born 1955-09-04), retirement age blank;
+  // $43,000 ordinary other income, $1,000 qualified dividends, $3,000/mo Social Security received.
+  const values = (ss) => ({
+    ...DEFAULT_HOUSEHOLD_VALUES,
+    filingStatus: 'mfj',
+    people: [{ ...DEFAULT_HOUSEHOLD_VALUES.people[0], ageEntry: 'age', age: '71', retirementAge: '', planToAge: '' }],
+    incomes: [
+      { ...DEFAULT_HOUSEHOLD_VALUES.incomes[0], id: 'i1', type: 'other', treatment: 'ordinary', amount: '43000' },
+      { ...DEFAULT_HOUSEHOLD_VALUES.incomes[0], id: 'i2', type: 'other', treatment: 'qualified', amount: '1000' },
+      { ...DEFAULT_HOUSEHOLD_VALUES.incomes[0], id: 'i3', type: 'socialSecurity', ...ss },
+    ],
+    contributions: [],
+  });
+  const runV2 = (v) => taxCalculatorResult(householdToYearTaxParams(toHouseholdV2(v, Y)));
+
+  it('receiving $3,000 a month: the $36,000 counts', () => {
+    // provisional income 44,000 + 18,000 = 62,000; MFJ thresholds 32,000 / 44,000:
+    //   taxable SS = min(0.85 x 36,000 = 30,600, 0.85 x 18,000 + min(6,000, 18,000) = 21,300) = 21,300
+    // deductions 32,200 + 1,650 (65+) + 6,000 (senior, MAGI under 150,000) = 39,850
+    // taxable 43,000 + 21,300 + 1,000 - 39,850 = 25,450: ordinary 24,450 x 10% = 2,445; the 1,000 at 0%
+    // (without the benefit, as before the fix: 44,000 - 39,850 = 4,150, ordinary 3,150 x 10% = 315)
+    const t = runV2(values({ ssMode: 'receiving', amount: '3000' }));
+    expect(t.result.lines.socialSecurity).toBe(36000);
+    expect(t.result.lines.taxableSocialSecurity).toBeCloseTo(21300, 6);
+    expect(t.result.incomeTax).toBeCloseTo(2445, 6);
+  });
+
+  it('a PIA claimed at a set age counts too; claimed "at retirement" with no retirement age, nothing yet', () => {
+    // born 1955: full retirement age 66 and 2 months; claimed at 67 = 10 months of delayed credits at
+    // 2/3% = 6.667%: 2,000 x 1.06667 = 2,133.33 a month = 25,600 a year (claimed: 71 >= 67)
+    expect(runV2(values({ ssMode: 'pia', amount: '2000', fromAge: '67' })).result.lines.socialSecurity).toBeCloseTo(25600, 6);
+    expect(runV2(values({ ssMode: 'pia', amount: '2000', fromAge: '' })).result.lines.socialSecurity).toBe(0);
   });
 });

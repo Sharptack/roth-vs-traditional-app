@@ -208,8 +208,11 @@ export function socialSecuritySchedule(household) {
 
 // The household's Social Security in year t (0 = this year): each part that has started by then.
 export function socialSecurityInYear(household, t) {
-  // An age not entered yet (the form shows the error): nothing to work out.
-  if (!household.people.every((p) => Number.isFinite(p.birthYear) && Number.isFinite(p.retirementAge))) return 0;
+  // An age not entered yet (the form shows the error): nothing to work out. The retirement age is
+  // needed only for a claim "at retirement": the tax page doesn't ask for it, and a benefit already
+  // received or claimed at a set age counts without it (fixed 2026-10-16).
+  const needsRetirementAge = (p) => p.socialSecurity.mode !== 'receiving' && !Number.isFinite(p.socialSecurity.claimAge);
+  if (!household.people.every((p) => Number.isFinite(p.birthYear) && (Number.isFinite(p.retirementAge) || !needsRetirementAge(p)))) return 0;
   const ages = household.people.map((p) => household.year - p.birthYear + t);
   return socialSecuritySchedule(household).reduce(
     (acc, s, i) => acc + (ages[i] >= s.ownStartAge ? s.own : 0) + (ages[i] >= s.topUpStartAge ? s.topUp : 0),
