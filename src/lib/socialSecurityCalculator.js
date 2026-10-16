@@ -10,7 +10,7 @@ import { strategyById } from './strategies.js';
 import { benefitCrossings, breakEvenAge, claimingGrid, cumulativeCurve, lifetimeBenefits, openClaimAges } from './socialSecurityLifetime.js';
 import { getFullRetirementAgeMonths } from './socialSecurity.js';
 import { addRow, updateRow } from './householdValues.js';
-import { deathRates, survival } from './lifeTable.js';
+import { deathRates, survival, survivalCurve } from './lifeTable.js';
 import { LIFE_TABLE } from '../data/lifeTable.js';
 
 // Each person as the lifetime functions take them, with the plan's claiming age.
@@ -160,5 +160,33 @@ export function survivalView(view, table = LIFE_TABLE) {
         { kind: 'planTo', age: p.planToAge, chance: chance(i, p.planToAge), label: 'life expectancy in the plan' },
       ],
     })),
+    joint: people.length === 2 ? jointSurvival(qs, now) : null,
   };
+}
+
+// A couple's joint odds (asked 2026-10-16), the two lives taken as independent: at each of the
+// first person's ages that is a multiple of 5 (after their age now, to 100), the chance each is
+// alive, both are, and at least one is (1 − both gone). expected: the years until the first death
+// and until the second, each month counted by the chance of both (or either) being alive through
+// it (the average of its start and end, as lifeExpectancy).
+// -> { rows: [{ years, ages, alive: [a, b], both, either }], expected: { first, second } }
+export function jointSurvival(qs, now) {
+  const curves = qs.map((q, i) => survivalCurve(q, now[i]));
+  const at = (i, k) => curves[i][k] ?? 0;
+  const both = (k) => at(0, k) * at(1, k);
+  const either = (k) => at(0, k) + at(1, k) - both(k);
+  const months = Math.max(...curves.map((c) => c.length));
+  let first = 0;
+  let second = 0;
+  for (let k = 1; k < months; k++) {
+    first += (both(k - 1) + both(k)) / 2;
+    second += (either(k - 1) + either(k)) / 2;
+  }
+  const rows = [];
+  for (let age = (Math.floor(now[0] / 5) + 1) * 5; age <= 100; age += 5) {
+    const years = age - now[0];
+    const k = years * 12;
+    rows.push({ years, ages: [age, now[1] + years], alive: [at(0, k), at(1, k)], both: both(k), either: either(k) });
+  }
+  return { rows, expected: { first: first / 12, second: second / 12 } };
 }

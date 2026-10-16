@@ -335,10 +335,11 @@ export const CALCULATOR_INPUTS = {
     sections: ['funding', 'household', 'contributions', 'income', 'ssBenefits', 'spending', 'legacy', 'projection', 'dependents', 'deductions', 'accounts', 'assumptions'],
     fields: { people: FOR_PLAN, assumptions: WITHOUT_PROJECTION },
   },
-  // Social Security (phase 5): the discount rate, then the people (ages, life expectancy, sex for the
-  // survival chart) and their Social Security rows.
+  // Social Security (phase 5): the people (ages, life expectancy, sex for the survival chart), their
+  // Social Security rows, the discount rate (this order from 2026-10-16), and the income (wages for
+  // a benefit estimated from earnings).
   socialSecurity: {
-    sections: ['socialSecurity', 'ssBenefits', 'household', 'income'],
+    sections: ['household', 'ssBenefits', 'socialSecurity', 'income'],
     fields: { people: ['age', 'planToAge', 'sex', 'retirementAge'] },
   },
   // The year-by-year planner (phase 6): what the projection reads (its changes are made on the page).

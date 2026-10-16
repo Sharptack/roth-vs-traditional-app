@@ -131,6 +131,32 @@ describe('survivalView (HAND CALC on a made-up table)', async () => {
     const be = s.reach[1].marks.find((m) => m.kind === 'breakEven');
     expect(be.chance).toBeCloseTo(0.9 ** (Math.round((be.age - 64) * 12) / 12), 10);
   });
+  // Joint odds (asked 2026-10-16). At A's 70 (4 years on, B 68): each 0.9^4 = 0.6561; both
+  // 0.6561^2 = 0.43046721; at least one 0.6561 + 0.6561 − 0.43046721 = 0.88173279.
+  it('joint: at A’s 70, both alive 0.43046721, at least one 0.88173279', () => {
+    expect(s.joint.rows.map((r) => r.ages[0])).toEqual([70, 75, 80, 85, 90, 95, 100]);
+    const r = s.joint.rows[0];
+    expect(r.years).toBe(4);
+    expect(r.ages).toEqual([70, 68]);
+    expect(r.alive[0]).toBeCloseTo(0.6561, 10);
+    expect(r.both).toBeCloseTo(0.43046721, 10);
+    expect(r.either).toBeCloseTo(0.88173279, 10);
+  });
+  // Expected years, by hand. Each month someone survives with s = 0.9^(1/12); the sum of the
+  // month averages is (1 + s)/2 × (1 − s^N)/(1 − s). −ln s = 0.00878004, 1 − s = 0.0087415,
+  // (1 + s)/2 = 0.9956292: 113.8967 months untruncated = 9.49139 years. A (66) ends at 120:
+  // N = 648, s^648 = 0.9^54 = 0.0033826 → 9.45928; B (64): 0.9^56 = 0.0027399 → 9.46538.
+  // Both alive: r = s^2 = 0.81^(1/12), 1 − r = 0.0174068, (1 + r)/2 = 0.9912966 → 56.9488 months
+  // = 4.74573 years, × (1 − 0.81^54 = 1 − 0.0000114) = 4.74568. The second death: E[A] + E[B] −
+  // first = 14.17898 (+ 0.00014, the half month as A's curve drops to 0) = 14.1791.
+  it('joint: the first death expected in 4.7457 years, the second in 14.179', () => {
+    expect(s.joint.expected.first).toBeCloseTo(4.74568, 4);
+    expect(s.joint.expected.second).toBeCloseTo(14.1791, 3);
+  });
+  it('one person: no joint odds', () => {
+    const single = socialSecurityView({ ...household(), filingStatus: 'single', people: [person('p1', 1960, 80, 2000, 67)] });
+    expect(survivalView(single, table).joint).toBeNull();
+  });
 });
 
 // Before phase 6 (asked 2026-10-12): the strategies compared on the page.

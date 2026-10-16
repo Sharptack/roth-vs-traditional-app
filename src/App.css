@@ -2709,14 +2709,6 @@ th.win .th-sub {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-.ss-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 4px;
-  vertical-align: middle;
-}
 .ss-panel {
   margin-top: 12px;
   padding: 12px;
@@ -2743,6 +2735,50 @@ th.win .th-sub {
   flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 8px;
+}
+.ss-panel .total-row th,
+.ss-panel .total-row td {
+  font-weight: 700;
+  border-top: 2px solid var(--line);
+}
+.ss-strategies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ss-strategy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 8px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.ss-strategy legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+.ss-strategy .dim {
+  color: var(--dim);
+  font-weight: 400;
+}
+.ss-strategy-total {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.ss-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+.ss-joint-head {
+  margin: 16px 0 4px;
+  font-size: 1rem;
 }
 .ss-years {
   max-height: 480px;

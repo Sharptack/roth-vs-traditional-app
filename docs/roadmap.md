@@ -8,7 +8,7 @@ The plan for round 2: the current status, the phases left, and how they fit toge
 
 **Done:** round one; round 2 phases 0 to 6, the switchover and the "Before phase" lists. 1,013 tests. Last closed: phase 6 (tag `phase-6-done`), with the Social Security additions before it (the claiming grid, strategies year by year, the break-even graph). Phase 6: the year table's breakdowns (click a year: income, withdrawals, the tax calculator's rows, each account; columns that open into their parts), and the year-by-year planner (#/planner): Roth conversions and contribution changes for single years, straight into the plan, with each year's bracket and IRMAA room, a conversion's cost, each change's lifetime value, and suggestions.
 
-**In progress:** phase 7, Roth vs. Pre-tax with conversions in the lower years. Decisions set with Michael 2026-10-15 (under Phase 7 below). Built 2026-10-15, local, unpushed: the rule and the four-run comparison (`lowerYearConversions.js`, hand-calculated tests), the block on the Roth page under "Over a lifetime" (the answer without and with conversions, the bracket each year against the chosen rate, the conversions year by year with IRMAA room; "Collapse all results" reaches it), and the Roth article's new section. 1,022 tests. Waiting on Michael's look, then `/closeout` (which also archives the "Before phase 7" list, pushed 2026-10-15).
+**In progress:** phase 7, Roth vs. Pre-tax with conversions in the lower years. Decisions set with Michael 2026-10-15 (under Phase 7 below). Built 2026-10-15, local, unpushed: the rule and the four-run comparison (`lowerYearConversions.js`, hand-calculated tests), the block on the Roth page under "Over a lifetime" (the answer without and with conversions, the bracket each year against the chosen rate, the conversions year by year with IRMAA room; "Collapse all results" reaches it), and the Roth article's new section. 1,022 tests. Also built 2026-10-16, local, unpushed: the Social Security page rework (below, under "Social Security page rework"); 1,025 tests. Waiting on Michael's look, then `/closeout` (which also archives the "Before phase 7" list, pushed 2026-10-15).
 
 **Next:** phase 8, Monte Carlo.
 
@@ -108,6 +108,17 @@ Asked by Michael on 2026-10-15, after phase 6. Read as follows (Claude, 2026-10-
 - (c) **"Add" buttons more prominent:** "+ Add income" and the other row lists' add buttons (contributions, accounts, debts, dependents) become outlined buttons instead of plain links.
 - (d) **"Collapse all results" on the Roth page** also collapses the lifetime comparison ("Over a lifetime"), which sits outside the page's blocks.
 - (e) **The Households card** (sign-in and saved households) starts open on the dashboard and closed on the inputs page. Michael asked whether that is too much: it isn't (a default per page, one line each).
+
+## Social Security page rework (during phase 7)
+
+Asked by Michael on 2026-10-16; read as follows (Claude, 2026-10-16; no numbers change: the page shows the same figures, arranged differently, plus a couple's joint odds). **Status:** built 2026-10-16, local, unpushed (1,025 tests; checked in the browser, desktop and phone width). Archived at phase 7's `/closeout`.
+
+- (a) **Inputs order:** Household, Social Security, Discount rate, then Income. Income stays: a benefit estimated from earnings reads the wages there (Michael asked whether it's still needed).
+- (b) **"Every pair of claiming ages" is renamed "Claiming strategy".** The colored dots are gone (they marked the strategies compared on the graph). One cell is selected (the plan's to start), and under the grid the selected sits beside the most: each person's monthly benefits and lifetime, the household total, the difference; "Use in the plan" for either.
+- (c) **Year by year:** a stacked bar chart, your benefits and your spouse's each year (survivor years shaded), with the table under it in a dropdown. The strategy is the selected or the most, nothing else.
+- (d) **Break-even:** two strategies, each with both people's claiming ages chosen freely; the most vs. the selected to start. The crossings table under the graph is gone; one line above it says where one pulls ahead.
+- (e) **The per-person "When to claim" tables are gone**, and with them the plan rerun at each claiming age (spending the plan supports, lifetime tax; `claimingPlanEffect` stays in the lib, tested, for later). The per-person break-even ages remain in the chance-of-being-alive table.
+- (f) **Joint odds for a couple** under the chance of being alive: at every fifth year of your age to 100, each alive, both alive, at least one alive (independent lives), and the expected years to the first and second death (hand-calculated tests).
 
 ## Phase 7: Roth vs. Pre-tax with conversions in low-income years
 

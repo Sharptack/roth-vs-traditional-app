@@ -28,7 +28,7 @@ import { everyoneRetired, spendingNeed } from '../lib/spendingNeed.js';
 import { rmdStartAge } from '../lib/rmd.js';
 import { HOME_HASH, PAGES, pageFromHash } from '../lib/route.js';
 import { conversionTile, fundingTile, pensionTile, projectionTile, rothTile, socialSecurityTile, spendingTile, taxTile } from '../lib/suiteTiles.js';
-import { applyClaimAge, claimingPlanEffect, socialSecurityView, survivalView } from '../lib/socialSecurityCalculator.js';
+import { applyClaimAge, socialSecurityView, survivalView } from '../lib/socialSecurityCalculator.js';
 import SocialSecurityResult from './SocialSecurityResult.jsx';
 import { applyRetirementAge, applySavingsChoice, fundingView, overfundedView, retirementAgeDetail, retirementAgeTable, savingsChoice } from '../lib/funding.js';
 import FundingResult from './FundingResult.jsx';
@@ -255,15 +255,6 @@ export default function NextApp({ initialPage, initialValues, client }) {
   // The projection runs many whole projections (sustainable spending), so it follows the inputs a
   // beat behind while typing (useDeferredValue) instead of blocking each keystroke.
   const deferredRoth = useDeferredValue(roth);
-  // Social Security's plan effect: a sustainable-spending search per claiming age (about a second
-  // for a couple, measured 2026-10-10), so it follows the inputs a beat behind too.
-  const claimingEffect = useMemo(
-    () =>
-      page === 'socialSecurity' && deferredRoth.spending.need !== null && socialSecurityReady(deferredRoth.household)
-        ? claimingPlanEffect(deferredRoth.household, deferredRoth.spending.need)
-        : null,
-    [page, deferredRoth],
-  );
   const projection = useMemo(() => (shownOn(page, 'projection') ? projectionOf(deferredRoth) : null), [deferredRoth, page]);
   const spendingView = useMemo(() => (shownOn(page, 'spending') ? spendingOf(deferredRoth) : null), [deferredRoth, page]);
   // "Use in the plan" on Retirement spending (decided 2026-10-10): the budget that spends what the resources allow.
@@ -630,7 +621,7 @@ export default function NextApp({ initialPage, initialValues, client }) {
                   lifetimeError={roth.spending.error}
                 />}
               {calculator.id === 'socialSecurity' && (
-                <SocialSecurityResult view={socialSecurity} effect={claimingEffect} survival={survival} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
+                <SocialSecurityResult view={socialSecurity} survival={survival} onUse={locked ? undefined : (personId, age) => setValues((v) => applyClaimAge(v, personId, age))} />
               )}
               {calculator.id === 'planner' && (
                 <PlannerResult

@@ -1501,9 +1501,10 @@ describe('Already retired (2026-10-09)', () => {
     const page = renderToStaticMarkup(<NextApp initialPage="socialSecurity" initialValues={D} client={null} />);
     expect(page).toContain('<h1>Social Security: when to claim</h1>');
     expect(page).toContain('Lifetime Social Security');
-    expect(page).toContain('When to claim');
-    expect(page).toContain('Use in the plan');
-    expect(page).toContain('has paid more by age');
+    expect(page).toContain('Claiming strategy');
+    expect(page).toMatch(/Selected(: the most| vs\. the most)/);
+    expect(page).toContain('Break-even');
+    expect(page).not.toContain('When to claim');
     expect(page).toContain('Discount rate');
     expect(page).not.toMatch(/NaN|Infinity/);
     // Use in the plan: the plan now claims at 70
