@@ -6,12 +6,14 @@ import {
   guardrailSettings,
   guardrails,
   portfolioTotal,
+  planPortfolios,
   requiredScales,
-  scaledHousehold,
   spendingCloud,
   summarizeGuardrails,
   targetSpending,
 } from '../src/lib/guardrails.js';
+import { runProjection } from '../src/lib/projection.js';
+import { PREVIEW_DEFAULT_VALUES, toHousehold } from '../src/lib/household.js';
 
 // Phase 9 step a (decided 2026-10-16): risk-based guardrails; target 80%, cut at 50%, raise at 95%,
 // back to the target, changes under 5% skipped.
@@ -52,14 +54,23 @@ describe('the order statistics (HAND CALC)', () => {
   });
 });
 
-describe('scaling today’s balances', () => {
-  it('every account times the scale; the basis follows its share', () => {
-    const h = { ...rothOnly(100000), accounts: [{ id: 'a', owner: 'p1', type: 'taxable', balance: 50000, basisShare: 0.4 }, { id: 'b', owner: 'p1', type: 'roth', balance: 10000 }] };
-    const s = scaledHousehold(h, 1.5);
-    expect(s.accounts.map((a) => a.balance)).toEqual([75000, 15000]);
-    expect(s.accounts[0].basisShare).toBe(0.4);
-    expect(portfolioTotal(s)).toBe(90000);
-    expect(h.accounts[0].balance).toBe(50000);
+describe('the projection: spending by year and the balances rescaled (phase 9 step b)', () => {
+  const h = toHousehold(PREVIEW_DEFAULT_VALUES, Y);
+  it('the same need every year, and a rescale by 1: today’s results exactly', () => {
+    const plain = runProjection(h, { need: 60000 });
+    expect(runProjection(h, { needIn: () => 60000 })).toEqual(plain);
+    expect(runProjection(h, { need: 60000, rescale: { t: 3, scale: 1 } })).toEqual(plain);
+  });
+  // HAND CALC: $100,000 Roth at 5%, $20,000 a year: year 0 (100,000 − 20,000) × 1.05 = 84,000; doubled
+  // at the start of year 1: 168,000 → (168,000 − 20,000) × 1.05 = 155,400. Spending 30,000 in year 1
+  // instead (no rescale): (84,000 − 30,000) × 1.05 = 56,700.
+  it('a rescale at the start of a year, and a different need that year', () => {
+    const rows = runProjection(rothOnly(100000), { need: 20000, endAge: 71, rescale: { t: 1, scale: 2 } }).rows;
+    expect(rows.map((r) => r.endBalances.total)).toEqual([expect.closeTo(84000, 6), expect.closeTo(155400, 6)]);
+    expect(rows[1].startBalances.total).toBeCloseTo(168000, 6);
+    const other = runProjection(rothOnly(100000), { needIn: (t) => (t === 1 ? 30000 : 20000), endAge: 71 }).rows;
+    expect(other[1].endBalances.total).toBeCloseTo(56700, 6);
+    expect(other[1].detail.spending.baseNeed).toBe(30000);
   });
 });
 
@@ -179,5 +190,65 @@ describe('no volatility', () => {
     const g = guardrails(h, 55000, { to: 5, volatility: 0 });
     expect([0, 1]).toContain(g.chance);
     expect(g.cut.scale).toBe(g.raise.scale);
+  });
+});
+
+describe('from a later year (HAND CALC)', () => {
+  // $100,000 Roth, 70 to 73, $20,000 a year. Year 0 at the plan's 5%: (100,000 − 20,000) × 1.05 = 84,000
+  // at the start of year 1. Then three years on each path's returns (its draws from its first):
+  //   A 10%: W = 84,000 × 1.21 / 3.31 = 30,707.0; C 0%: 84,000 / 3 = 28,000.
+  // Needed scale at $20,000: A 66,200 / 101,640 = 0.651318 (54,710.74 = 20,000 × 3.31 / 1.21);
+  //   C 60,000 / 84,000 = 0.714286 (3 × 20,000).
+  // Both last at scale 1: chance 2/2 ≥ 95%: raise now to the target, ⌈0.8 × 2⌉ = 2nd largest = 28,000 (+40%).
+  // Cut: ⌊0.5 × 2⌋ = 1st = A's → $54,710.74; spending there: C's 28,000 × 0.651318 = 18,236.9 (−8.8%).
+  // Raise: ⌈0.95 × 2⌉ = 2nd = C's → $60,000; spending there 20,000: no change.
+  const h = rothOnly(100000, 73);
+  const opts = { to: 2, returnPaths: [[0.1, 0.1, 0.1], [0, 0, 0]], start: 1 };
+  it('the plan’s portfolio at the start of each year', () => {
+    expect(planPortfolios(h, 20000).slice(0, 2)).toEqual([100000, expect.closeTo(84000, 6)]);
+    expect(portfolioTotal({ accounts: [{ balance: 100000 }, { balance: 25000 }, {}] })).toBe(125000);
+  });
+  it('each path’s needed scale and the spending it sustains, from year 1', () => {
+    const k = requiredScales(h, 20000, opts);
+    expect(k[0]).toBeGreaterThanOrEqual(66200 / 101640 - 1e-12);
+    expect(k[0] / (66200 / 101640)).toBeLessThan(1.006);
+    expect(k[1] / (60000 / 84000)).toBeLessThan(1.006);
+    const c = spendingCloud(h, 1, { ...opts, before: 20000 });
+    expect(c[0] / ((84000 * 1.21) / 3.31)).toBeGreaterThan(0.994);
+    expect(c[1] / 28000).toBeGreaterThan(0.994);
+    expect(c[1]).toBeLessThanOrEqual(28000 + 1e-6);
+  });
+  const g = guardrails(h, 20000, opts);
+  it('raise now; cut at $54,711 to about $18,237; raise at $60,000 with no change', () => {
+    expect(g).toMatchObject({ portfolio: expect.closeTo(84000, 6), chance: 1, now: { kind: 'raise', applies: true } });
+    expect(g.target / 28000).toBeGreaterThan(0.994);
+    expect(g.cut.portfolio / 54710.74).toBeGreaterThanOrEqual(1 - 1e-9);
+    expect(g.cut.portfolio / 54710.74).toBeLessThan(1.006);
+    expect(g.cut.spending / 18236.9).toBeGreaterThan(0.99);
+    expect(g.cut.spending / 18236.9).toBeLessThan(1.01);
+    expect(g.raise.portfolio / 60000).toBeLessThan(1.006);
+    expect(g.raise.applies).toBe(false);
+  });
+});
+
+describe('from a later year, rerun (random paths)', () => {
+  const h = {
+    ...rothOnly(0, 85),
+    accounts: [
+      { id: 'a1', owner: 'p1', type: 'pretax', balance: 600000 },
+      { id: 'a2', owner: 'p1', type: 'roth', balance: 200000 },
+    ],
+  };
+  const spending = 55000;
+  const opts = { to: 20, volatility: 0.2, seed: 5, start: 3 };
+  const g = guardrails(h, spending, opts);
+  const rerun = (s, k) => chanceAt(h, s, k, { ...opts, before: spending });
+  it('year 3’s cut and raise land on 50% and 95%; the new spending on 80%', () => {
+    expect(rerun(spending, g.cut.scale)).toBeGreaterThanOrEqual(0.5);
+    expect(rerun(spending, g.cut.scale * 0.98)).toBeLessThan(0.5);
+    expect(rerun(spending, g.raise.scale)).toBeGreaterThanOrEqual(0.95);
+    expect(rerun(g.cut.spending, g.cut.scale)).toBeGreaterThanOrEqual(0.8);
+    expect(rerun(g.cut.spending * 1.02, g.cut.scale)).toBeLessThan(0.8);
+    expect(g.portfolio).toBe(planPortfolios(h, spending)[3]);
   });
 });

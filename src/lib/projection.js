@@ -255,7 +255,11 @@ export function socialSecurityInYear(household, t) {
 //   yearReturn       (rate, t) => this year's return, from the plan's return for the year (before or after
 //                    retirement) and the year's index t (0 = the first year); Monte Carlo's random paths
 //                    (phase 8). Default: the plan's return, today's results.
-export function runProjection(household, { need = 0, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0, yearChanges = household.plannerChanges ?? [], yearReturn } = {}) {
+//   needIn           (t) => the need in year t (phase 9: spending that changes along a path, the
+//                    guardrails); replaces need where given. Default: need every year.
+//   rescale          { t, scale }: at the start of year t, every account's balance (and basis) times
+//                    scale (phase 9: the plan from a later year at a given portfolio). Default: none.
+export function runProjection(household, { need = 0, needIn, rescale, strategy = proportionalStrategy, contributions, taxableSavings, endAge, retirementRateShift, convertNow = 0, yearChanges = household.plannerChanges ?? [], yearReturn } = {}) {
   const { year, people, filingStatus, futureContributions: fc, assumptions } = household;
   // The household's own what-if (assumptions.retirementRateShift) unless a caller sets one.
   const rateShiftInRetirement = retirementRateShift ?? assumptions.retirementRateShift ?? 0;
@@ -361,6 +365,14 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     // today's dollars (pensionIncome.js)
     const pensions = pensionIncomesInYear(household, t, { deceased: survivorYear ? people[deceased].id : null });
     const pension = pensions.reduce((s, p) => s + p.amount, 0);
+
+    // The portfolio rescaled at the start of this year (see rescale above).
+    if (rescale && rescale.t === t) {
+      for (const a of accounts) {
+        a.balance *= rescale.scale;
+        a.basis *= rescale.scale;
+      }
+    }
 
     // 2. This year's contributions (paid in at the end of the year), with any planner change.
     const changed = changedPlanIn(calendarYear);
@@ -490,7 +502,8 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
     };
 
     const live = accounts.filter((a) => a.balance > 0);
-    const needThisYear = anyRetired ? need * (survivorYear ? survivorSpending : 1) : 0;
+    const baseNeed = needIn ? needIn(t) : need;
+    const needThisYear = anyRetired ? baseNeed * (survivorYear ? survivorSpending : 1) : 0;
     // The one-time conversion (first year only): from every Pre-tax account, pro rata by balance.
     const pretaxLive = live.filter((a) => a.type === 'pretax');
     const pretaxTotal = pretaxLive.reduce((s, a) => s + a.balance, 0);
@@ -797,7 +810,7 @@ export function runProjection(household, { need = 0, strategy = proportionalStra
         income,
         accounts: [...flows.values()].filter(hasActivity),
         spending: {
-          baseNeed: need, // the need before the survivor share
+          baseNeed, // the need before the survivor share
           need: needThisYear,
           afterTaxIncome: cash,
           surplus,

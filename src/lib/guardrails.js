@@ -8,35 +8,55 @@
 // value per path, give everything as an order statistic, so a rerun lands on its target exactly:
 //   - the spending each path sustains (phase 8's) at a portfolio value: the target spending is the
 //     m-th largest, m = ⌈target × n⌉, so at least that share of paths sustain it;
-//   - the portfolio each path needs to sustain the plan's spending: today's balances, every account
+//   - the portfolio each path needs to sustain the plan's spending: the balances, every account
 //     scaled by one factor, searched path by path. The chance at a portfolio value is the share of
 //     paths needing no more. The cut value is the m-th smallest, m = ⌊cut × n⌋ (the chance there is
 //     m / n, at most the cut level); the raise value the m-th smallest, m = ⌈raise × n⌉ (at least the
 //     raise level).
 // At a guardrail, spending moves to the target spending at that portfolio value (a third cloud).
+//
+// From a later year (step b): start = the year's index t. The plan runs to year t at its own returns
+// (the median path) and the plan's spending; at the start of year t the balances are scaled (the
+// portfolio "if it is $X then"), and from then on each path's random returns (its draws from its
+// first) and the spending searched. Success counts the years from t (and the legacy goal at the end).
 
-import { pathOutcome, pathReturns, DEFAULT_SEED, DEFAULT_VOLATILITY, INCOME_TOLERANCE, monteCarloOptions } from './monteCarlo.js';
-import { sustainableSpending } from './projectionSummary.js';
+import { pathReturns, DEFAULT_SEED, DEFAULT_VOLATILITY, INCOME_TOLERANCE, monteCarloOptions } from './monteCarlo.js';
+import { runProjection } from './projection.js';
+import { legacyValue } from './projectionSummary.js';
 
 export const DEFAULT_GUARDRAILS = { target: 0.8, cut: 0.5, raise: 0.95, minChange: 0.05 };
 export const GUARDRAIL_PATHS = 200;
 export const SCALE_TOLERANCE = 0.005; // each path's portfolio search stops within half a percent
-const MAX_SCALE = 1024; // a path that needs more than 1,024 times today's portfolio: never (Infinity)
+const MAX_SCALE = 1024; // a path that needs more than 1,024 times the portfolio: never (Infinity)
 
 // Today's portfolio: every Existing Account.
 export const portfolioTotal = (household) => household.accounts.reduce((s, a) => s + (a.balance || 0), 0);
 
-// The household with every account's balance times scale (a taxable account's basis follows its
-// basis share). The legacy goal is not rescaled: callers take it from the household as it is.
-export function scaledHousehold(household, scale) {
-  return { ...household, accounts: household.accounts.map((a) => ({ ...a, balance: (a.balance || 0) * scale })) };
+// The plan at its own returns and spending: the portfolio at the start of each year (index t), for
+// the guardrails from a later year.
+export function planPortfolios(household, spending) {
+  const { legacy: _legacy, ...options } = monteCarloOptions(household);
+  const { rows } = runProjection(household, { ...options, need: spending });
+  return rows.map((r, t) => (t === 0 ? portfolioTotal(household) : rows[t - 1].endBalances.total));
 }
 
-// The smallest scale of today's balances at which one path sustains the spending (no shortfall, the
-// legacy goal left), within SCALE_TOLERANCE above; 0 when it lasts with nothing; Infinity when it
-// never does. Bisection: more money can only last as long and leave as much.
-function requiredScale(household, spending, options, yearReturn) {
-  const lasts = (k) => pathOutcome(scaledHousehold(household, k), spending, options, yearReturn).success;
+// Whether one path lasts from year start: the plan's spending (before) until then, spending from
+// then, the balances times scale at its start, the path's returns from its start.
+function lastsFrom(household, { spending, before, scale, start, options, yearReturn }) {
+  const { legacy, ...rest } = options;
+  const { rows } = runProjection(household, {
+    ...rest,
+    needIn: (t) => (t < start ? before : spending),
+    rescale: { t: start, scale },
+    yearReturn: (rate, t) => (t < start ? rate : yearReturn(rate, t - start)),
+  });
+  if (!rows.slice(start).every((r) => r.shortfall === 0)) return false;
+  return !(legacy?.target > 0) || legacyValue(rows[rows.length - 1].endBalances, legacy) >= legacy.target;
+}
+
+// The smallest scale at which a path sustains the spending, within SCALE_TOLERANCE above; 0 when it
+// lasts with nothing; Infinity when it never does. Bisection: more money only lasts as long.
+function requiredScale(lasts) {
   if (lasts(0)) return 0;
   let lo = 0;
   let hi = 1;
@@ -53,28 +73,49 @@ function requiredScale(household, spending, options, yearReturn) {
   return hi;
 }
 
-// Each path's needed scale of today's balances at the spending, paths from to to (exclusive), on
-// Monte Carlo's paths (the same seed: path k is the Monte Carlo page's path k).
-export function requiredScales(household, spending, { from = 0, to = GUARDRAIL_PATHS, volatility = DEFAULT_VOLATILITY, seed = DEFAULT_SEED, returnPaths } = {}) {
-  const options = monteCarloOptions(household);
-  return pathReturns({ from, to, volatility, seed, returnPaths }).map((yearReturn) => requiredScale(household, spending, options, yearReturn));
+// The highest spending a path sustains, within INCOME_TOLERANCE below (as sustainableSpending), never
+// finer than $1. 0 when not even none lasts.
+function sustainedSpending(lasts) {
+  let lo = 0;
+  let hi = 50000;
+  while (lasts(hi)) {
+    lo = hi;
+    hi *= 2;
+    if (hi > 1e9) return hi;
+  }
+  while (hi - lo > Math.max(1, INCOME_TOLERANCE * lo)) {
+    const mid = (lo + hi) / 2;
+    if (lasts(mid)) lo = mid;
+    else hi = mid;
+  }
+  return lo;
 }
 
-// The spending each path sustains with today's balances times scale, paths from to to (exclusive),
-// each within INCOME_TOLERANCE below the answer (the legacy goal from the household unscaled).
-export function spendingCloud(household, scale, { from = 0, to = GUARDRAIL_PATHS, volatility = DEFAULT_VOLATILITY, seed = DEFAULT_SEED, returnPaths } = {}) {
-  const options = monteCarloOptions(household);
-  const scaled = scaledHousehold(household, scale);
-  return pathReturns({ from, to, volatility, seed, returnPaths }).map((yearReturn) => sustainableSpending(scaled, { ...options, yearReturn, tolerance: INCOME_TOLERANCE }));
+// Each path's yearReturn (Monte Carlo's paths: the same seed, so path k is the Monte Carlo page's
+// path k), with the options every path runs with.
+function setup(household, { from = 0, to = GUARDRAIL_PATHS, volatility = DEFAULT_VOLATILITY, seed = DEFAULT_SEED, returnPaths } = {}) {
+  return { options: monteCarloOptions(household), returns: pathReturns({ from, to, volatility, seed, returnPaths }) };
 }
 
-// The share of paths that sustain the spending with today's balances times scale (a direct rerun,
-// for checking a guardrail).
-export function chanceAt(household, spending, scale, { from = 0, to = GUARDRAIL_PATHS, volatility = DEFAULT_VOLATILITY, seed = DEFAULT_SEED, returnPaths } = {}) {
-  const options = monteCarloOptions(household);
-  const scaled = scaledHousehold(household, scale);
-  const ok = pathReturns({ from, to, volatility, seed, returnPaths }).filter((yearReturn) => pathOutcome(scaled, spending, options, yearReturn).success);
-  return ok.length / (to - from);
+// Each path's needed scale of the balances at the start of year start (default today) to sustain the
+// spending, paths from to to (exclusive).
+export function requiredScales(household, spending, { start = 0, ...paths } = {}) {
+  const { options, returns } = setup(household, paths);
+  return returns.map((yearReturn) => requiredScale((scale) => lastsFrom(household, { spending, before: spending, scale, start, options, yearReturn })));
+}
+
+// The spending each path sustains from year start with the balances there times scale (the plan's
+// spending, before, until then), paths from to to (exclusive).
+export function spendingCloud(household, scale, { start = 0, before = 0, ...paths } = {}) {
+  const { options, returns } = setup(household, paths);
+  return returns.map((yearReturn) => sustainedSpending((spending) => lastsFrom(household, { spending, before, scale, start, options, yearReturn })));
+}
+
+// The share of paths that sustain the spending from year start with the balances times scale (a
+// direct rerun, for checking a guardrail).
+export function chanceAt(household, spending, scale, { start = 0, before = spending, ...paths } = {}) {
+  const { options, returns } = setup(household, paths);
+  return returns.filter((yearReturn) => lastsFrom(household, { spending, before, scale, start, options, yearReturn })).length / returns.length;
 }
 
 // The m-th smallest of values (1-based), m clamped to 1..n.
@@ -101,15 +142,15 @@ function move(spending, to, minChange) {
   return { spending: to, change, applies: change === null ? to > 0 : Math.abs(change) >= minChange };
 }
 
-// Today's guardrails from the clouds:
-//   spending: the plan's (the need); portfolio: today's; scales: each path's needed scale at the
-//   spending; today / atCut / atRaise: the spending each path sustains today, at the cut value and at
-//   the raise value (null until run).
-// -> { paths, spending, portfolio, chance, target, now, cut, raise }
-//   chance: the share of paths sustaining the spending today; target: the target spending today;
-//   now: 'cut' | 'raise' | null, today's chance already past a guardrail, with the move to the target;
-//   cut / raise: { portfolio, scale, chance (at the value), spending, change, applies }.
-export function summarizeGuardrails({ spending, portfolio, scales, today, atCut = null, atRaise = null, settings = DEFAULT_GUARDRAILS }) {
+// The guardrails at one point from the clouds:
+//   spending: the plan's (the need); portfolio: the portfolio then (today's, or the plan's at a later
+//   year); scales: each path's needed scale at the spending; today / atCut / atRaise: the spending
+//   each path sustains there, at the cut value and at the raise value (null until run).
+// -> { paths, spending, portfolio, settings, chance, target, now, cut, raise }
+//   chance: the share of paths sustaining the spending; target: the target spending (null without
+//   today); now: { kind: 'cut' | 'raise', ...the move to the target } when the chance is already past
+//   a guardrail; cut / raise: { scale, portfolio, chance (at the value), spending, change, applies }.
+export function summarizeGuardrails({ spending, portfolio, scales, today = null, atCut = null, atRaise = null, settings = DEFAULT_GUARDRAILS }) {
   const n = scales.length;
   const chanceAtScale = (k) => scales.filter((s) => s <= k).length / n;
   const chance = chanceAtScale(1);
@@ -135,13 +176,15 @@ export function summarizeGuardrails({ spending, portfolio, scales, today, atCut 
   };
 }
 
-// The whole calculation in one thread (tests and small runs; the page splits it across workers):
-// the needed scales and today's cloud, then the clouds at the two guardrails.
-export function guardrails(household, spending, { settings = DEFAULT_GUARDRAILS, ...paths } = {}) {
-  const portfolio = portfolioTotal(household);
-  const scales = requiredScales(household, spending, paths);
-  const today = spendingCloud(household, 1, paths);
+// The whole calculation for one year in one thread (tests and small runs; the page splits it across
+// workers): the needed scales and the cloud there, then the clouds at the two guardrails. start: the
+// year's index (0 = today; later = the plan's portfolio that year, on its own returns).
+export function guardrails(household, spending, { settings = DEFAULT_GUARDRAILS, start = 0, ...paths } = {}) {
+  const portfolio = start === 0 ? portfolioTotal(household) : planPortfolios(household, spending)[start];
+  const at = { start, before: spending, ...paths };
+  const scales = requiredScales(household, spending, at);
+  const today = spendingCloud(household, 1, at);
   const g = guardrailScales(scales, settings);
-  const cloudAt = (k) => (Number.isFinite(k) ? spendingCloud(household, k, paths) : null);
+  const cloudAt = (k) => (Number.isFinite(k) ? spendingCloud(household, k, at) : null);
   return summarizeGuardrails({ spending, portfolio, scales, today, atCut: cloudAt(g.cut), atRaise: cloudAt(g.raise), settings });
 }
